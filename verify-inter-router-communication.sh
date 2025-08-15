@@ -1,108 +1,122 @@
 #!/bin/bash
 
-# Verification script for Inter-Router Communication
-# Checks routing tables, firewall rules, and connectivity
+# Verification Script for Inter-Router Communication
+# Tests connectivity between all network segments
 
-set -euo pipefail
+set -e
 
-# Colors for output
+# Color codes for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-# Router configurations
-ZEPHYR_IP="15.0.0.1"
-ZEPHYR_LAN="15.0.0.0/24"
-
-SPYDR_IP="192.168.1.1"
-SPYDR_LAN="192.168.1.0/24"
-
-# SSH options
-SSH_OPTS="-o ConnectTimeout=10 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-
-echo -e "${BLUE}=== Inter-Router Communication Status Check ===${NC}"
-echo -e "${BLUE}Checking communication between:${NC}"
-echo -e "  • Zephyr (${ZEPHYR_LAN})"
-echo -e "  • Spydr (${SPYDR_LAN})"
+echo -e "${BLUE}========================================${NC}"
+echo -e "${BLUE}Inter-Router Communication Verification${NC}"
+echo -e "${BLUE}========================================${NC}"
 echo ""
 
-# Function to check router configuration
-check_router() {
-    local router_name=$1
-    local router_ip=$2
-    local target_network=$3
+# Function to run test and report result
+run_test() {
+    local from_router=$1
+    local from_name=$2
+    local to_ip=$3
+    local to_name=$4
     
-    echo -e "\n${BLUE}=== Checking $router_name Router ($router_ip) ===${NC}"
+    echo -n -e "  ${from_name} → ${to_name} (${to_ip}): "
     
-    # Check if router is reachable
-    if ! ssh $SSH_OPTS root@$router_ip "exit" 2>/dev/null; then
-        echo -e "${RED}✗ Cannot connect to $router_name router${NC}"
+    if ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no root@${from_router} "ping -c 2 -W 2 ${to_ip}" >/dev/null 2>&1; then
+        echo -e "${GREEN}✓ SUCCESS${NC}"
+        return 0
+    else
+        echo -e "${RED}✗ FAILED${NC}"
         return 1
     fi
-    
-    # Check routing table
-    echo -e "\n${YELLOW}Routing Table:${NC}"
-    ssh $SSH_OPTS root@$router_ip "ip route | grep '$target_network' || echo 'No route found for $target_network'"
-    
-    # Check firewall zones
-    echo -e "\n${YELLOW}Firewall Zones:${NC}"
-    ssh $SSH_OPTS root@$router_ip "uci show firewall 2>/dev/null | grep -E '(zone.*name|forwarding.*src|forwarding.*dest|rule.*Accept)' | grep -i '${router_name,,}' || echo 'No specific zones/rules found'"
-    
-    # Check active connections
-    echo -e "\n${YELLOW}Active Connections to Target Network:${NC}"
-    ssh $SSH_OPTS root@$router_ip "conntrack -L 2>/dev/null | grep '$target_network' | head -5 || echo 'No active connections found'"
 }
 
-# Check Zephyr configuration
-check_router "Zephyr" "$ZEPHYR_IP" "$SPYDR_LAN"
+# Show current routing tables
+echo -e "${YELLOW}Current Routing Tables:${NC}"
+echo ""
+echo -e "${BLUE}Zephyr Router:${NC}"
+ssh -o StrictHostKeyChecking=no root@zephyr.router "ip route show" 2>/dev/null | sed 's/^/  /'
+echo ""
+echo -e "${BLUE}Spydr Router:${NC}"
+ssh -o StrictHostKeyChecking=no root@spydr.router "ip route show" 2>/dev/null | sed 's/^/  /'
+echo ""
 
-# Check Spydr configuration  
-check_router "Spydr" "$SPYDR_IP" "$ZEPHYR_LAN"
+# Test Matrix
+echo -e "${YELLOW}Connectivity Test Matrix:${NC}"
+echo ""
 
-# Connectivity tests
-echo -e "\n${BLUE}=== Connectivity Tests ===${NC}"
+# From Zephyr
+echo -e "${BLUE}From Zephyr Router:${NC}"
+run_test "zephyr.router" "Zephyr" "192.168.1.1" "Spydr LAN"
+run_test "zephyr.router" "Zephyr" "13.0.0.250" "Spydr WAN"
+run_test "zephyr.router" "Zephyr" "13.0.0.254" "ATT Gateway"
+run_test "zephyr.router" "Zephyr" "8.8.8.8" "Internet (Google DNS)"
+echo ""
 
-# Test from Zephyr to Spydr
-echo -e "\n${YELLOW}Testing Zephyr → Spydr:${NC}"
-if ssh $SSH_OPTS root@$ZEPHYR_IP "ping -c 3 -W 2 $SPYDR_IP" >/dev/null 2>&1; then
-    echo -e "${GREEN}✓ Zephyr can ping Spydr LAN IP ($SPYDR_IP)${NC}"
-    
-    # Traceroute
-    echo -e "${YELLOW}  Traceroute:${NC}"
-    ssh $SSH_OPTS root@$ZEPHYR_IP "traceroute -n -m 5 $SPYDR_IP 2>/dev/null || echo '  Traceroute not available'"
+# From Spydr
+echo -e "${BLUE}From Spydr Router:${NC}"
+run_test "spydr.router" "Spydr" "15.0.0.1" "Zephyr LAN"
+run_test "spydr.router" "Spydr" "13.0.0.73" "Zephyr WAN"
+run_test "spydr.router" "Spydr" "13.0.0.254" "ATT Gateway"
+run_test "spydr.router" "Spydr" "8.8.8.8" "Internet (Google DNS)"
+echo ""
+
+# Test DNS resolution
+echo -e "${YELLOW}DNS Resolution Tests:${NC}"
+echo ""
+echo -e "${BLUE}From Zephyr:${NC}"
+if ssh -o StrictHostKeyChecking=no root@zephyr.router "nslookup google.com" 2>/dev/null | grep -q "Address"; then
+    echo -e "  DNS Resolution: ${GREEN}✓ Working${NC}"
 else
-    echo -e "${RED}✗ Zephyr cannot reach Spydr LAN${NC}"
+    echo -e "  DNS Resolution: ${RED}✗ Failed${NC}"
 fi
 
-# Test from Spydr to Zephyr
-echo -e "\n${YELLOW}Testing Spydr → Zephyr:${NC}"
-if ssh $SSH_OPTS root@$SPYDR_IP "ping -c 3 -W 2 $ZEPHYR_IP" >/dev/null 2>&1; then
-    echo -e "${GREEN}✓ Spydr can ping Zephyr LAN IP ($ZEPHYR_IP)${NC}"
-    
-    # Traceroute
-    echo -e "${YELLOW}  Traceroute:${NC}"
-    ssh $SSH_OPTS root@$SPYDR_IP "traceroute -n -m 5 $ZEPHYR_IP 2>/dev/null || echo '  Traceroute not available'"
+echo ""
+echo -e "${BLUE}From Spydr:${NC}"
+if ssh -o StrictHostKeyChecking=no root@spydr.router "nslookup google.com" 2>/dev/null | grep -q "Address"; then
+    echo -e "  DNS Resolution: ${GREEN}✓ Working${NC}"
 else
-    echo -e "${RED}✗ Spydr cannot reach Zephyr LAN${NC}"
+    echo -e "  DNS Resolution: ${RED}✗ Failed${NC}"
 fi
 
-# Check WAN IPs
-echo -e "\n${BLUE}=== WAN IP Addresses ===${NC}"
-ZEPHYR_WAN=$(ssh $SSH_OPTS root@$ZEPHYR_IP "ip -4 addr show wan | grep inet | awk '{print \$2}' | cut -d/ -f1" 2>/dev/null | tr -d '\r\n')
-SPYDR_WAN=$(ssh $SSH_OPTS root@$SPYDR_IP "ip -4 addr show wan | grep inet | awk '{print \$2}' | cut -d/ -f1" 2>/dev/null | tr -d '\r\n')
+# Check ARP tables
+echo ""
+echo -e "${YELLOW}ARP Tables (showing cross-network entries):${NC}"
+echo ""
+echo -e "${BLUE}Zephyr ARP entries for Spydr:${NC}"
+ssh -o StrictHostKeyChecking=no root@zephyr.router "ip neigh show | grep -E '13.0.0.250|13.0.0.254'" 2>/dev/null | sed 's/^/  /' || echo "  No entries"
 
-echo -e "Zephyr WAN: ${ZEPHYR_WAN:-Not found}"
-echo -e "Spydr WAN: ${SPYDR_WAN:-Not found}"
+echo ""
+echo -e "${BLUE}Spydr ARP entries for Zephyr:${NC}"
+ssh -o StrictHostKeyChecking=no root@spydr.router "ip neigh show | grep -E '13.0.0.73|13.0.0.254'" 2>/dev/null | sed 's/^/  /' || echo "  No entries"
 
 # Summary
-echo -e "\n${BLUE}=== Summary ===${NC}"
-if ssh $SSH_OPTS root@$ZEPHYR_IP "ping -c 1 -W 1 $SPYDR_IP" >/dev/null 2>&1 && \
-   ssh $SSH_OPTS root@$SPYDR_IP "ping -c 1 -W 1 $ZEPHYR_IP" >/dev/null 2>&1; then
-    echo -e "${GREEN}✓ Inter-router communication is WORKING${NC}"
-    echo -e "${GREEN}  Devices on both LANs should be able to communicate${NC}"
-else
-    echo -e "${RED}✗ Inter-router communication is NOT WORKING${NC}"
-    echo -e "${YELLOW}  Run ./configure-inter-router-communication.sh to set it up${NC}"
-fi
+echo ""
+echo -e "${BLUE}========================================${NC}"
+echo -e "${BLUE}Network Topology Summary:${NC}"
+echo -e "${BLUE}========================================${NC}"
+echo ""
+echo "  [Zephyr Lab Network]"
+echo "    15.0.0.0/24"
+echo "         |"
+echo "    15.0.0.1 (Zephyr LAN)"
+echo "         |"
+echo "    13.0.0.73 (Zephyr WAN)"
+echo "         |"
+echo "  [ATT Network 13.0.0.0/24]"
+echo "         |"
+echo "    13.0.0.254 (ATT Gateway) --> Internet"
+echo "         |"
+echo "    13.0.0.250 (Spydr WiFi Client)"
+echo "         |"
+echo "    192.168.1.1 (Spydr LAN)"
+echo "         |"
+echo "  [Spydr Network]"
+echo "    192.168.1.0/24"
+echo ""
+echo -e "${GREEN}All networks should be able to communicate with each other.${NC}"
+echo -e "${YELLOW}If any tests failed, check firewall rules or network configuration.${NC}"
