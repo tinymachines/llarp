@@ -1,0 +1,320 @@
+
+<h1 class="sectionedit1" id="logging_messages">Logging messages</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__meta:infobox:howto_links">
+<div class="level1">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_info plugin_wrap">
+<p>
+This article relies on the following:
+</p>
+<ul>
+<li class="level1"><div class="li"> Accessing <a href="/docs/guide-quick-start/walkthrough_login" class="wikilink1" title="docs:guide-quick-start:walkthrough_login" data-wiki-id="docs:guide-quick-start:walkthrough_login">web interface</a> / <a href="/docs/guide-quick-start/sshadministration" class="wikilink1" title="docs:guide-quick-start:sshadministration" data-wiki-id="docs:guide-quick-start:sshadministration">command-line interface</a></div>
+</li>
+<li class="level1"><div class="li"> Managing <a href="/docs/guide-user/base-system/uci" class="wikilink1" title="docs:guide-user:base-system:uci" data-wiki-id="docs:guide-user:base-system:uci">configs</a> / <a href="/docs/guide-user/additional-software/managing_packages" class="wikilink1" title="docs:guide-user:additional-software:managing_packages" data-wiki-id="docs:guide-user:additional-software:managing_packages">packages</a> / <a href="/docs/guide-user/base-system/managing_services" class="wikilink1" title="docs:guide-user:base-system:managing_services" data-wiki-id="docs:guide-user:base-system:managing_services">services</a> / <a href="/docs/guide-user/base-system/log.essentials" class="wikilink1" title="docs:guide-user:base-system:log.essentials" data-wiki-id="docs:guide-user:base-system:log.essentials">logs</a></div>
+</li>
+</ul>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Logging messages&quot;,&quot;hid&quot;:&quot;logging_messages&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-113&quot;} -->
+<h2 class="sectionedit6" id="introduction">Introduction</h2>
+<div class="level2">
+
+<p>
+The OpenWrt system logging facility is an important debugging/monitoring capability.
+The standard logging facility is implemented using <code>logd</code>, the ubox log daemon.
+This is implemented as a <a href="https://en.wikipedia.org/wiki/Circular_buffer" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Circular_buffer">ring buffer</a> with fixed sized records stored in <a href="https://en.wikipedia.org/wiki/Random-access_memory" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Random-access_memory">RAM</a>.
+The ring buffer records can be read using <code>logread</code> on the router, streamed to a file or sent to a remote system through a <abbr title="Transmission Control Protocol">TCP</abbr>/<abbr title="User Datagram Protocol">UDP</abbr> socket.
+</p>
+<pre class="code bash"><span class="co0"># List syslog</span>
+logread
+&nbsp;
+<span class="co0"># Write a message with a tag to syslog</span>
+logger <span class="re5">-t</span> TAG MESSAGE
+&nbsp;
+<span class="co0"># List syslog filtered by tag</span>
+logread <span class="re5">-e</span> TAG</pre>
+<pre class="code">Usage: logger [OPTIONS] [MESSAGE]
+
+Write MESSAGE (or stdin) to syslog
+
+        -s      Log to stderr as well as the system log
+        -t TAG  Log using the specified tag (defaults to user name)
+        -p PRIO Priority (numeric or facility.level pair)</pre>
+
+<p>
+Examples of using priority and tag values:
+</p>
+<pre class="code bash">logger <span class="st0">&quot;example&quot;</span>
+logger <span class="re5">-p</span> notice <span class="re5">-t</span> example_tag <span class="st0">&quot;example notice&quot;</span>
+logger <span class="re5">-p</span> err <span class="re5">-t</span> example_tag <span class="st0">&quot;example error&quot;</span>
+<span class="co0"># Fri May  8 00:23:26 2020 user.notice root: example</span>
+<span class="co0"># Fri May  8 00:23:31 2020 user.notice example_tag: example notice</span>
+<span class="co0"># Fri May  8 00:23:40 2020 user.err example_tag: example error</span></pre>
+
+<p>
+The <code>logger</code> utility <a href="https://github.com/mirror/busybox/blob/master/sysklogd/logger.c" class="urlextern" title="https://github.com/mirror/busybox/blob/master/sysklogd/logger.c" rel="ugc nofollow">comes from the BusyBox</a> but you may replace it with the full version from <code>linux-utils</code> by installing the <code>logger</code> package. 
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Introduction&quot;,&quot;hid&quot;:&quot;introduction&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;114-1572&quot;} -->
+<h2 class="sectionedit7" id="messages_format">Messages format</h2>
+<div class="level2">
+
+<p>
+The message format differs based on the destination (local logread, local file, remote socket).
+Roughly it can be viewed as:
+</p>
+<pre class="code">&lt;time stamp&gt; &lt;router name&gt; &lt;subsystem name/pid&gt; &lt;log_prefix&gt;: &lt;message body&gt;</pre>
+
+<p>
+The logging message facility and priority are roughly equivalent to syslog implementations (see linux <code>/usr/include/sys/syslog.h</code>).
+The local &#039;logread&#039; executable puts the facility.priority after the time stamp.
+Logging to a remote socket puts a numeric value before the time stamp.
+</p>
+
+<p>
+For some common OpenWrt messages see <a href="/docs/guide-user/perf_and_log/log.messages" class="wikilink1" title="docs:guide-user:perf_and_log:log.messages" data-wiki-id="docs:guide-user:perf_and_log:log.messages">log.messages</a>.
+<img src="/lib/images/smileys/fixme.svg" class="icon smiley" alt="FIXME" /> - the log.messages reference is way out of date but a useful placeholder.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Messages format&quot;,&quot;hid&quot;:&quot;messages_format&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:7,&quot;range&quot;:&quot;1573-2271&quot;} -->
+<h2 class="sectionedit8" id="logd">logd</h2>
+<div class="level2">
+
+<p>
+<code>logd</code> is a default OpenWrt logging daemon provided by <a href="https://github.com/openwrt/ubox" class="urlextern" title="https://github.com/openwrt/ubox" rel="ugc nofollow">ubox</a> package.
+It listens on <code>/dev/log</code> unix socket to record syslog messages.
+It&#039;s configured in <code>/etc/config/system</code>. After changing the file, run 
+</p>
+<pre class="code bash">service log restart
+service system restart</pre>
+
+<p>
+to read in the new configuration and restart the service.
+</p>
+
+<p>
+There are three basic destinations for log messages: the RAM ring buffer (the default), a local persistent file, a remote destination listening for messages on a <abbr title="Transmission Control Protocol">TCP</abbr> or <abbr title="User Datagram Protocol">UDP</abbr> port.
+</p>
+
+<p>
+The full set of <code>log_*</code> options for <code>/etc/config/system</code> are defined in 
+<a href="/docs/guide-user/base-system/system_configuration" class="wikilink1" title="docs:guide-user:base-system:system_configuration" data-wiki-id="docs:guide-user:base-system:system_configuration">System Configuration</a>
+</p>
+
+<p>
+Additionally it sends log messsages to UBUS and you can listen them with <code>ubus subscribe log</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;logd&quot;,&quot;hid&quot;:&quot;logd&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:8,&quot;range&quot;:&quot;2272-3089&quot;} -->
+<h3 class="sectionedit9" id="logread">logread</h3>
+<div class="level3">
+
+<p>
+This is the default interface to read log messages. It&#039;s provided by the <a href="https://github.com/openwrt/ubox" class="urlextern" title="https://github.com/openwrt/ubox" rel="ugc nofollow">ubox</a> package.
+</p>
+
+<p>
+It is a local executable in <code>/sbin/logread</code> that will read the ring buffer records and display them chronologically.
+</p>
+
+<p>
+To show all log messages that contains a specific text (like a daemon name) and follow (like in <code>tail -f</code>) use:
+</p>
+<pre class="code bash">logread <span class="re5">-fe</span> firewall</pre>
+
+<p>
+Options:
+</p>
+<pre class="code">-s &lt;path&gt;		Path to ubus socket
+-l	&lt;count&gt;		Got only the last &#039;count&#039; messages
+-e	&lt;pattern&gt;	Filter messages with a regexp
+-r	&lt;server&gt; &lt;port&gt;	Stream message to a server
+-F	&lt;file&gt;		Log file
+-S	&lt;bytes&gt;		Log size
+-p	&lt;file&gt;		PID file
+-h	&lt;hostname&gt;	Add hostname to the message
+-P	&lt;prefix&gt;	Prefix custom text to streamed messages
+-z	&lt;facility&gt;	handle only messages with given facility (0-23), repeatable
+-Z	&lt;facility&gt;	ignore messages with given facility (0-23), repeatable
+-f			Follow log messages
+-u			Use UDP as the protocol
+-t			Add an extra timestamp
+-0			Use \0 instead of \n as trailer when using TCP</pre>
+
+<p>
+The <code>logread</code> can be also used to stream logs to a remote Syslog server.
+It&#039;s used internally by the <code>/etc/init.d/log</code>. You can configure the streaming in the <code>/etc/config/system</code>.
+</p>
+
+<p>
+Please note that if you install the <a href="/docs/guide-user/perf_and_log/log.syslog-ng3" class="wikilink1" title="docs:guide-user:perf_and_log:log.syslog-ng3" data-wiki-id="docs:guide-user:perf_and_log:log.syslog-ng3">syslog-ng</a> then the logread command will be overridden with it&#039;s own <code>/usr/sbin/logread</code> that has less options.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;logread&quot;,&quot;hid&quot;:&quot;logread&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:9,&quot;range&quot;:&quot;3090-4520&quot;} -->
+<h3 class="sectionedit10" id="local_file_logging">Local file logging</h3>
+<div class="level3">
+
+<p>
+In order to log to a local file on the router, one needs to set the following options:
+</p>
+<pre class="code bash">config system 
+...
+   option log_file <span class="st_h">'/var/log/mylog'</span>
+   option log_remote <span class="st_h">'0'</span></pre>
+
+<p>
+The <code>/etc/init.d/log</code> script will start additionally the <code>/sbin/logread -f -F /var/log/mylog -p /var/run/log</code> command to dump messages from a ring buffer into the file.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Local file logging&quot;,&quot;hid&quot;:&quot;local_file_logging&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:10,&quot;range&quot;:&quot;4521-4911&quot;} -->
+<h3 class="sectionedit11" id="network_logging">Network logging</h3>
+<div class="level3">
+
+<p>
+In order to log remotely one needs to set the following options in <code>/etc/config/system</code>
+</p>
+<pre class="code bash">config system
+...
+   option log_ip <span class="sy0">&lt;</span>destination IP<span class="sy0">&gt;</span>
+   option log_port <span class="sy0">&lt;</span>destination port<span class="sy0">&gt;</span>
+   option log_proto <span class="sy0">&lt;</span>tcp or udp<span class="sy0">&gt;</span></pre>
+
+<p>
+For the destination port, if you&#039;ll be manually reading the logs on the remote system as an unprivileged user (such as via the netcat command given below), then specify a high port (e.g. 5555). If you&#039;re sending to a syslog server, use whatever port the syslog server is listening on (typically 514).
+</p>
+
+<p>
+Additionally, the firewall3 default is to ACCEPT all <abbr title="Local Area Network">LAN</abbr> traffic. If the router blocks <abbr title="Local Area Network">LAN</abbr>-side access, add the following firewall3 rule to <code>/etc/config/firewall</code> to ACCEPT tcp/udp traffic from the router to the <abbr title="Local Area Network">LAN</abbr>-side.
+</p>
+<pre class="code bash">config rule
+      option target <span class="st_h">'ACCEPT'</span>
+      option dest <span class="st_h">'lan'</span>
+      option proto <span class="st_h">'tcp udp'</span>
+      option dest_port <span class="st_h">'5555'</span>
+      option name <span class="st_h">'ACCEPT-LOG-DEVICE-LAN'</span></pre>
+
+<p>
+and then reload the rules using <code>service firewall restart</code>.
+</p>
+
+<p>
+For the <abbr title="Local Area Network">LAN</abbr>-side station/client, there are a large number of mechanisms to listen for log messages.
+One of the simplest is ncat:
+</p>
+<pre class="code bash"><span class="co0"># TCP</span>
+ncat <span class="re5">-4</span> <span class="re5">-l</span> <span class="nu0">5555</span>
+&nbsp;
+<span class="co0"># Read UDP logs with ncat or python3</span>
+ncat <span class="re5">-u</span> <span class="re5">-4</span> <span class="re5">-l</span> <span class="nu0">5555</span>
+python3 <span class="re5">-c</span> <span class="st0">&quot;import socket
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+s.bind(('0.0.0.0', 5141))
+while True:
+   print(s.recvfrom(4096)[0].decode('utf-8'))&quot;</span></pre>
+
+<p>
+Log messages are in <a href="https://sematext.com/blog/what-is-syslog-daemons-message-formats-and-protocols/" class="urlextern" title="https://sematext.com/blog/what-is-syslog-daemons-message-formats-and-protocols/" rel="ugc nofollow">traditional syslog format (RFC 3164 / 5424)</a>, beginning with a priority number in angle brackets (e.g., &lt;30&gt;) and lacking a terminating newline.
+The above netcat method will therefore yield somewhat messy output. The python log reader above will most of the time get the line breaks into the right spots. A cleaner solution is to send messages to a remote machine&#039;s syslog daemon, in which case they will appear in the remote system&#039;s logs.
+See <a href="https://www.rsyslog.com/receiving-messages-from-a-remote-system/" class="urlextern" title="https://www.rsyslog.com/receiving-messages-from-a-remote-system/" rel="ugc nofollow">Receiving Messages from a Remote System</a> for server configuration instructions for rsyslog.
+</p>
+
+<p>
+The advantage to using <abbr title="Transmission Control Protocol">TCP</abbr> is reliability - it logs every event.
+The disadvantage is it can cause some performance degradation on the router if the logging level is high.
+There is a section on iptable event logging which can cause a noticable latency in traffic throughput using <abbr title="Transmission Control Protocol">TCP</abbr> socket logging.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Network logging&quot;,&quot;hid&quot;:&quot;network_logging&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:11,&quot;range&quot;:&quot;4912-7352&quot;} -->
+<h2 class="sectionedit12" id="test_runtime_logging_support">Test runtime logging support</h2>
+<div class="level2">
+
+<p>
+If you want to test the logging out, just run a command like 
+</p>
+<pre class="code">logger testLog &quot;Blah1&quot;</pre>
+
+<p>
+and it should be written to the configured destination.
+If an event is not logged, check:
+</p>
+
+<p>
+ * <code>/sbin/logd</code> is running; it should have an argument of <code>-S &lt;log_size&gt;</code> indicating the size of the ring buffer,  
+ * <code>logd</code> is configured correctly in <code>/etc/config/system</code>,
+ * restart it using <code>service log restart</code> and check for warnings/errors
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Test runtime logging support&quot;,&quot;hid&quot;:&quot;test_runtime_logging_support&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:12,&quot;range&quot;:&quot;7353-7841&quot;} -->
+<h2 class="sectionedit13" id="logrotate">Logrotate</h2>
+<div class="level2">
+
+<p>
+To automatically manage large collections of daily, weekly, or monthly logs, you may want to use <a href="/packages/pkgdata/logrotate" class="wikilink1" title="packages:pkgdata:logrotate" data-wiki-id="packages:pkgdata:logrotate">logrotate</a>.
+Here&#039;s an example that rotates a persistent log on a USB storage each night keeping it for 1 week.
+</p>
+<pre class="code bash"><span class="co0"># Install packages</span>
+opkg update
+opkg <span class="kw2">install</span> logrotate
+&nbsp;
+<span class="co0"># Configure logging</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>system<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.log_file=<span class="st0">&quot;/mnt/sda1/logs/system.log&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>system<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.log_remote=<span class="st0">&quot;0&quot;</span>
+uci commit system
+service system restart 
+&nbsp;
+<span class="co0"># Configure logrotate</span>
+<span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>logrotate.conf
+include <span class="sy0">/</span>etc<span class="sy0">/</span>logrotate.d
+<span class="sy0">/</span>mnt<span class="sy0">/</span>sda1<span class="sy0">/</span>logs<span class="sy0">/</span>system.log <span class="br0">&#123;</span>
+    daily
+    rotate <span class="nu0">1</span>
+    missingok
+    notifempty
+    postrotate
+        service log restart
+        <span class="kw2">sleep</span> <span class="nu0">1</span>
+        logger <span class="re5">-p</span> warn <span class="re5">-s</span> <span class="st0">&quot;Log rotation complete&quot;</span>
+    endscript
+<span class="br0">&#125;</span>
+EOF
+&nbsp;
+<span class="co0"># Configure cron</span>
+<span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>crontabs<span class="sy0">/</span>root
+<span class="nu0">58</span> <span class="nu0">23</span> <span class="sy0">*</span> <span class="sy0">*</span> <span class="sy0">*</span> logrotate <span class="sy0">/</span>etc<span class="sy0">/</span>logrotate.conf
+EOF
+service cron restart
+&nbsp;
+<span class="co0"># Debugging</span>
+logrotate <span class="re5">--verbose</span> <span class="re5">--debug</span> <span class="sy0">/</span>etc<span class="sy0">/</span>logrotate.conf</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Logrotate&quot;,&quot;hid&quot;:&quot;logrotate&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:13,&quot;range&quot;:&quot;7842-8807&quot;} -->
+<h2 class="sectionedit14" id="alternative_implementations">Alternative implementations</h2>
+<div class="level2">
+
+<p>
+The logging mechanism discussed here uses <code>logd</code>.
+There are other packages that provide the same functionality:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/perf_and_log/log.syslog-ng3" class="wikilink1" title="docs:guide-user:perf_and_log:log.syslog-ng3" data-wiki-id="docs:guide-user:perf_and_log:log.syslog-ng3">syslog-ng</a> - is better supported in OpenWrt and used by default by some manufactures like Turris.</div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/perf_and_log/log.rsyslog" class="wikilink1" title="docs:guide-user:perf_and_log:log.rsyslog" data-wiki-id="docs:guide-user:perf_and_log:log.rsyslog">rsyslog</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Alternative implementations&quot;,&quot;hid&quot;:&quot;alternative_implementations&quot;,&quot;codeblockOffset&quot;:13,&quot;secid&quot;:14,&quot;range&quot;:&quot;8808-&quot;} -->

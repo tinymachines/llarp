@@ -1,0 +1,140 @@
+
+<h1 class="sectionedit1" id="overriding_build_options">Overriding Build Options</h1>
+<div class="level1">
+
+<p>
+Some packages might require overriding certain build options because we are cross compiling.
+</p>
+
+<p>
+The build system allows for several entries under <strong>Advanced configuration options (for developers) &gt; Kernel extra CFLAGS</strong> and <strong>Advanced configuration options (for developers) &gt; Target Options</strong> which will pass the defined flags onto the kernel and packages respectively.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Overriding Build Options&quot;,&quot;hid&quot;:&quot;overriding_build_options&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-409&quot;} -->
+<h2 class="sectionedit2" id="autotoolsautoconf">Autotools: Autoconf</h2>
+<div class="level2">
+
+<p>
+<strong>CONFIGURE_VARS</strong>
+</p>
+<ol>
+<li class="level1"><div class="li"> Override ac_cv_* variables that are normally set during autoconf ./configure phase.</div>
+</li>
+<li class="level1"><div class="li"> override pkgconfig configure vars</div>
+</li>
+</ol>
+
+<p>
+Example: 
+Some packages check for features (header files) and do not offer -enable/-with or -disable/-without configure options (to be written into _ARGS). Search for the configure variable in config.log and preset it in CONFIGURE_VARS.
+</p>
+<pre class="code">      CONFIGURE_VARS += \
+              ac_cv_header_regex_h=no</pre>
+
+<p>
+<strong>CONFIGURE_ARGS</strong>
+</p>
+<ol>
+<li class="level1"><div class="li"> Add options/test after ./configure</div>
+</li>
+</ol>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Looking into config.log can help
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Autotools: Autoconf&quot;,&quot;hid&quot;:&quot;autotoolsautoconf&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;410-996&quot;} -->
+<h2 class="sectionedit3" id="compiler_flags">Compiler flags</h2>
+<div class="level2">
+
+<p>
+Available compiler flags are handled in rules.mk
+</p>
+<pre class="code">TARGET_CFLAGS:=$(TARGET_OPTIMIZATION)$(if $(CONFIG_DEBUG), -g3) $(EXTRA_OPTIMIZATION)
+TARGET_CXXFLAGS = $(TARGET_CFLAGS)
+TARGET_ASFLAGS_DEFAULT = $(TARGET_CFLAGS)
+TARGET_ASFLAGS = $(TARGET_ASFLAGS_DEFAULT)
+TARGET_CPPFLAGS:=-I$(STAGING_DIR)/usr/include -I$(STAGING_DIR)/include
+TARGET_LDFLAGS:=-L$(STAGING_DIR)/usr/lib -L$(STAGING_DIR)/lib</pre>
+
+<p>
+Typically you should only add additional options to compile flags.
+</p>
+<pre class="code">TARGET_CFLAGS+= -Wall</pre>
+
+<p>
+Example: Support multiple library versions via .../usr/lib/libname-v1/ or .../usr/lib/libname-v2/ and select them.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> BUG CXXFLAGS can contain wrong options because GCC/G++ accept different ones.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Compiler flags&quot;,&quot;hid&quot;:&quot;compiler_flags&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;997-1731&quot;} -->
+<h2 class="sectionedit4" id="make">Make</h2>
+<div class="level2">
+
+<p>
+MAKE_VARS
+in include/package-defaults.mk
+</p>
+<pre class="code">MAKE_VARS = \
+        CFLAGS=&quot;$(TARGET_CFLAGS) $(EXTRA_CFLAGS) $(TARGET_CPPFLAGS) $(EXTRA_CPPFLAGS)&quot; \
+        CXXFLAGS=&quot;$(TARGET_CXXFLAGS) $(EXTRA_CXXFLAGS) $(TARGET_CPPFLAGS) $(EXTRA_CPPFLAGS)&quot; \
+        LDFLAGS=&quot;$(TARGET_LDFLAGS) $(EXTRA_LDFLAGS)&quot;</pre>
+
+<p>
+MAKE_FLAGS
+</p>
+<pre class="code">MAKE_FLAGS = \
+        $(TARGET_CONFIGURE_OPTS) \
+        CROSS=&quot;$(TARGET_CROSS)&quot; \
+        ARCH=&quot;$(ARCH)&quot;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Make&quot;,&quot;hid&quot;:&quot;make&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:4,&quot;range&quot;:&quot;1732-2192&quot;} -->
+<h2 class="sectionedit5" id="cmake">CMake</h2>
+<div class="level2">
+
+<p>
+include/cmake.mk
+</p>
+
+<p>
+CMAKE_OPTIONS
+</p>
+
+<p>
+CMAKE_HOST_OPTIONS
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;CMake&quot;,&quot;hid&quot;:&quot;cmake&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:5,&quot;range&quot;:&quot;2193-2263&quot;} -->
+<h2 class="sectionedit6" id="scons">Scons</h2>
+<div class="level2">
+
+<p>
+SCONS_VARS are set in include/scons.mk
+</p>
+<pre class="code">SCONS_VARS = \
+        CC=&quot;$(TARGET_CC_NOCACHE)&quot; \
+        CXX=&quot;$(TARGET_CXX_NOCACHE)&quot; \
+        CFLAGS=&quot;$(TARGET_CFLAGS) $(EXTRA_CFLAGS)&quot; \
+        CXXFLAGS=&quot;$(TARGET_CFLAGS) $(EXTRA_CFLAGS)&quot; \
+        CPPFLAGS=&quot;$(TARGET_CPPFLAGS) $(EXTRA_CPPFLAGS)&quot; \
+        LDFLAGS=&quot;$(TARGET_LDFLAGS) $(EXTRA_LDFLAGS)&quot; \
+        DESTDIR=&quot;$(PKG_INSTALL_DIR)&quot;</pre>
+
+<p>
+SCONS_OPTIONS have no default set.
+</p>
+
+<p>
+scons is only used by a few packages: <a href="https://github.com/openwrt/packages/blob/master/net/iotivity/Makefile" class="urlextern" title="https://github.com/openwrt/packages/blob/master/net/iotivity/Makefile" rel="ugc nofollow">iotivity</a> smartsnmpd
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Scons&quot;,&quot;hid&quot;:&quot;scons&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:6,&quot;range&quot;:&quot;2264-&quot;} -->

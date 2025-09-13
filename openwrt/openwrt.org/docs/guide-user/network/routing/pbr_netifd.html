@@ -1,0 +1,361 @@
+
+<h1 class="sectionedit1" id="pbr_with_netifd">PBR with netifd</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__meta:infobox:howto_links">
+<div class="level1">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_info plugin_wrap">
+<p>
+This article relies on the following:
+</p>
+<ul>
+<li class="level1"><div class="li"> Accessing <a href="/docs/guide-quick-start/walkthrough_login" class="wikilink1" title="docs:guide-quick-start:walkthrough_login" data-wiki-id="docs:guide-quick-start:walkthrough_login">web interface</a> / <a href="/docs/guide-quick-start/sshadministration" class="wikilink1" title="docs:guide-quick-start:sshadministration" data-wiki-id="docs:guide-quick-start:sshadministration">command-line interface</a></div>
+</li>
+<li class="level1"><div class="li"> Managing <a href="/docs/guide-user/base-system/uci" class="wikilink1" title="docs:guide-user:base-system:uci" data-wiki-id="docs:guide-user:base-system:uci">configs</a> / <a href="/docs/guide-user/additional-software/managing_packages" class="wikilink1" title="docs:guide-user:additional-software:managing_packages" data-wiki-id="docs:guide-user:additional-software:managing_packages">packages</a> / <a href="/docs/guide-user/base-system/managing_services" class="wikilink1" title="docs:guide-user:base-system:managing_services" data-wiki-id="docs:guide-user:base-system:managing_services">services</a> / <a href="/docs/guide-user/base-system/log.essentials" class="wikilink1" title="docs:guide-user:base-system:log.essentials" data-wiki-id="docs:guide-user:base-system:log.essentials">logs</a></div>
+</li>
+</ul>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;PBR with netifd&quot;,&quot;hid&quot;:&quot;pbr_with_netifd&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-112&quot;} -->
+<h2 class="sectionedit6" id="introduction">Introduction</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> This how-to provides most common scenarios for <abbr title="Policy Based Routing">PBR</abbr> (Policy Based Routing) with netifd.</div>
+</li>
+<li class="level1"><div class="li"> It contains both <abbr title="Internet Protocol version 4">IPv4</abbr> and <abbr title="Internet Protocol version 6">IPv6</abbr> routing rules to prevent traffic leaks.</div>
+</li>
+<li class="level1"><div class="li"> Enable <a href="/docs/guide-user/firewall/fw3_configurations/fw3_nat#ipv6_nat" class="wikilink1" title="docs:guide-user:firewall:fw3_configurations:fw3_nat" data-wiki-id="docs:guide-user:firewall:fw3_configurations:fw3_nat">IPv6 NAT or NPT</a> and disable <a href="/docs/guide-user/network/ipv6/ipv6_extras#disabling_ipv6_source_filter" class="wikilink1" title="docs:guide-user:network:ipv6:ipv6_extras" data-wiki-id="docs:guide-user:network:ipv6:ipv6_extras">IPv6 source filter</a> if necessary.</div>
+</li>
+<li class="level1"><div class="li"> Follow <a href="/docs/guide-user/network/routing/basics#policy-based_routing" class="wikilink1" title="docs:guide-user:network:routing:basics" data-wiki-id="docs:guide-user:network:routing:basics">Routing and PBR basics</a> for common routing principles.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Introduction&quot;,&quot;hid&quot;:&quot;introduction&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;113-644&quot;} -->
+<h2 class="sectionedit7" id="guidelines">Guidelines</h2>
+<div class="level2">
+<ul>
+<li class="level1 node"><div class="li"> Assign each interface to a separate routing table.</div>
+<ul>
+<li class="level2"><div class="li"> It makes netifd create essential rules automatically to simplify the setup.</div>
+</li>
+<li class="level2"><div class="li"> This isolates each default route resolving possible routing conflicts.</div>
+</li>
+</ul>
+</li>
+<li class="level1 node"><div class="li"> Keep the default route enabled for each upstream interface.</div>
+<ul>
+<li class="level2"><div class="li"> Multiple interfaces can be connected and used simultaneously by different clients.</div>
+</li>
+</ul>
+</li>
+<li class="level1 node"><div class="li"> Do not duplicate static routes in different routing tables.</div>
+<ul>
+<li class="level2"><div class="li"> Duplicating the same routes in different tables is redundant and pointless.</div>
+</li>
+<li class="level2"><div class="li"> Avoid adding routes on different interfaces to the same table.</div>
+</li>
+</ul>
+</li>
+<li class="level1 node"><div class="li"> Create custom routing rules for each assigned routing table.</div>
+<ul>
+<li class="level2 node"><div class="li"> Elevate routing decision on the level of routing rules.</div>
+<ul>
+<li class="level3"><div class="li"> Abstract from the contents of routing tables for easier troubleshooting.</div>
+</li>
+</ul>
+</li>
+<li class="level2 node"><div class="li"> Use a specific custom priority for each routing rule.</div>
+<ul>
+<li class="level3"><div class="li"> A priority of about 30000 can override the <code>main</code> table.</div>
+</li>
+<li class="level3"><div class="li"> A priority of about 40000-80000 follows after the <code>main</code> table.</div>
+</li>
+</ul>
+</li>
+<li class="level2 node"><div class="li"> Arrange more specific rules before less specific ones.</div>
+<ul>
+<li class="level3"><div class="li"> Remember to prioritize tunnel endpoints and local addresses and subnets.</div>
+</li>
+</ul>
+</li>
+<li class="level2"><div class="li"> Preferably use the <code>main</code> table only for tunnel endpoints.</div>
+</li>
+<li class="level2 node"><div class="li"> Optionally use the <code>main</code> table for one of the upstream interfaces.</div>
+<ul>
+<li class="level3"><div class="li"> This can be useful in a trivial case to minimize configuration.</div>
+</li>
+<li class="level3"><div class="li"> It makes problematic to utilize high numeric priority values.</div>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Guidelines&quot;,&quot;hid&quot;:&quot;guidelines&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;645-2086&quot;} -->
+<h2 class="sectionedit8" id="instructions">Instructions</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Instructions&quot;,&quot;hid&quot;:&quot;instructions&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:8,&quot;range&quot;:&quot;2087-2111&quot;} -->
+<h3 class="sectionedit9" id="route_lan_to_vpn_and_dmz_to_wan">Route LAN to VPN and DMZ to WAN</h3>
+<div class="level3">
+
+<p>
+Assuming the following setup:
+</p>
+<ul>
+<li class="level1"><div class="li"> <abbr title="Virtual Private Network">VPN</abbr> and <abbr title="Wide Area Network">WAN</abbr> - upstream networks</div>
+</li>
+<li class="level1"><div class="li"> <abbr title="Local Area Network">LAN</abbr> and <abbr title="Demilitarized Zone">DMZ</abbr> - downstream networks</div>
+</li>
+</ul>
+
+<p>
+Prioritize routing <abbr title="Local Area Network">LAN</abbr> to <abbr title="Virtual Private Network">VPN</abbr>.
+Route <abbr title="Demilitarized Zone">DMZ</abbr> to <abbr title="Wide Area Network">WAN</abbr> by default.
+</p>
+<pre class="code bash"><span class="kw1">for</span> IPV <span class="kw1">in</span> <span class="nu0">4</span> <span class="nu0">6</span>
+<span class="kw1">do</span>
+uci <span class="kw1">set</span> network.lan.ip<span class="co1">${IPV}</span><span class="re2">table</span>=<span class="st0">&quot;1&quot;</span>
+uci <span class="kw1">set</span> network.vpn.ip<span class="co1">${IPV}</span><span class="re2">table</span>=<span class="st0">&quot;2&quot;</span>
+uci <span class="kw1">set</span> network.dmz.ip<span class="co1">${IPV}</span><span class="re2">table</span>=<span class="st0">&quot;3&quot;</span>
+uci <span class="re5">-q</span> delete network.lan_vpn<span class="co1">${IPV%4}</span>
+uci <span class="kw1">set</span> network.lan_vpn<span class="co1">${IPV%4}</span>=<span class="st0">&quot;rule<span class="es3">${IPV%4}</span>&quot;</span>
+uci <span class="kw1">set</span> network.lan_vpn<span class="co1">${IPV%4}</span>.in=<span class="st0">&quot;lan&quot;</span>
+uci <span class="kw1">set</span> network.lan_vpn<span class="co1">${IPV%4}</span>.lookup=<span class="st0">&quot;2&quot;</span>
+uci <span class="kw1">set</span> network.lan_vpn<span class="co1">${IPV%4}</span>.priority=<span class="st0">&quot;30000&quot;</span>
+<span class="kw1">done</span>
+uci commit network
+service network restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Route LAN to VPN and DMZ to WAN&quot;,&quot;hid&quot;:&quot;route_lan_to_vpn_and_dmz_to_wan&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:9,&quot;range&quot;:&quot;2112-2738&quot;} -->
+<h3 class="sectionedit10" id="route_vpn_server_lan_via_vpn_client">Route VPN server LAN via VPN client</h3>
+<div class="level3">
+
+<p>
+Assuming a working <a href="/docs/guide-user/services/vpn/wireguard/extras#site-to-site" class="wikilink1" title="docs:guide-user:services:vpn:wireguard:extras" data-wiki-id="docs:guide-user:services:vpn:wireguard:extras">WireGuard site-to-site</a> setup.
+</p>
+
+<p>
+Allow default routes via <abbr title="Virtual Private Network">VPN</abbr> client peer on <abbr title="Virtual Private Network">VPN</abbr> server.
+Prioritize routing <abbr title="Virtual Private Network">VPN</abbr> server <abbr title="Local Area Network">LAN</abbr> to <abbr title="Virtual Private Network">VPN</abbr> tunnel.
+</p>
+<pre class="code bash">uci add_list network.wgclient.allowed_ips=<span class="st0">&quot;0.0.0.0/0&quot;</span>
+uci add_list network.wgclient.allowed_ips=<span class="st0">&quot;::/0&quot;</span>
+<span class="kw1">for</span> IPV <span class="kw1">in</span> <span class="nu0">4</span> <span class="nu0">6</span>
+<span class="kw1">do</span>
+uci <span class="kw1">set</span> network.lan.ip<span class="co1">${IPV}</span><span class="re2">table</span>=<span class="st0">&quot;1&quot;</span>
+uci <span class="kw1">set</span> network.vpn.ip<span class="co1">${IPV}</span><span class="re2">table</span>=<span class="st0">&quot;2&quot;</span>
+uci <span class="re5">-q</span> delete network.lan_vpn<span class="co1">${IPV%4}</span>
+uci <span class="kw1">set</span> network.lan_vpn<span class="co1">${IPV%4}</span>=<span class="st0">&quot;rule<span class="es3">${IPV%4}</span>&quot;</span>
+uci <span class="kw1">set</span> network.lan_vpn<span class="co1">${IPV%4}</span>.in=<span class="st0">&quot;lan&quot;</span>
+uci <span class="kw1">set</span> network.lan_vpn<span class="co1">${IPV%4}</span>.lookup=<span class="st0">&quot;2&quot;</span>
+uci <span class="kw1">set</span> network.lan_vpn<span class="co1">${IPV%4}</span>.priority=<span class="st0">&quot;30000&quot;</span>
+<span class="kw1">done</span>
+uci commit network
+service network restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Route VPN server LAN via VPN client&quot;,&quot;hid&quot;:&quot;route_vpn_server_lan_via_vpn_client&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:10,&quot;range&quot;:&quot;2739-3487&quot;} -->
+<h3 class="sectionedit11" id="route_lan_to_vpn_with_failover_to_wan">Route LAN to VPN with failover to WAN</h3>
+<div class="level3">
+
+<p>
+Prioritize routing <abbr title="Local Area Network">LAN</abbr> to <abbr title="Virtual Private Network">VPN</abbr>.
+Route <abbr title="Local Area Network">LAN</abbr> to <abbr title="Wide Area Network">WAN</abbr> as fallback when <abbr title="Virtual Private Network">VPN</abbr> is down.
+</p>
+<pre class="code bash"><span class="kw1">for</span> IPV <span class="kw1">in</span> <span class="nu0">4</span> <span class="nu0">6</span>
+<span class="kw1">do</span>
+uci <span class="kw1">set</span> network.lan.ip<span class="co1">${IPV}</span><span class="re2">table</span>=<span class="st0">&quot;1&quot;</span>
+uci <span class="kw1">set</span> network.wan<span class="co1">${IPV%4}</span>.ip<span class="co1">${IPV}</span><span class="re2">table</span>=<span class="st0">&quot;2&quot;</span>
+uci <span class="re5">-q</span> delete network.lan_wan<span class="co1">${IPV%4}</span>
+uci <span class="kw1">set</span> network.lan_wan<span class="co1">${IPV%4}</span>=<span class="st0">&quot;rule<span class="es3">${IPV%4}</span>&quot;</span>
+uci <span class="kw1">set</span> network.lan_wan<span class="co1">${IPV%4}</span>.in=<span class="st0">&quot;lan&quot;</span>
+uci <span class="kw1">set</span> network.lan_wan<span class="co1">${IPV%4}</span>.lookup=<span class="st0">&quot;2&quot;</span>
+uci <span class="kw1">set</span> network.lan_wan<span class="co1">${IPV%4}</span>.priority=<span class="st0">&quot;40000&quot;</span>
+<span class="kw1">done</span>
+uci commit network
+service network restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Route LAN to VPN with failover to WAN&quot;,&quot;hid&quot;:&quot;route_lan_to_vpn_with_failover_to_wan&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:11,&quot;range&quot;:&quot;3488-4003&quot;} -->
+<h3 class="sectionedit12" id="route_lan_to_vpn_by_ip_set">Route LAN to VPN by IP set</h3>
+<div class="level3">
+
+<p>
+Route <abbr title="Local Area Network">LAN</abbr> traffic to <abbr title="Virtual Private Network">VPN</abbr> except destinations matching <abbr title="Internet Protocol">IP</abbr> set.
+Mark <abbr title="Local Area Network">LAN</abbr> traffic with firewall to apply custom routing.
+</p>
+<pre class="code bash"><span class="kw1">for</span> IPV <span class="kw1">in</span> <span class="nu0">4</span> <span class="nu0">6</span>
+<span class="kw1">do</span>
+uci <span class="re5">-q</span> delete firewall.wan_set<span class="co1">${IPV%4}</span>
+uci <span class="kw1">set</span> firewall.wan_set<span class="co1">${IPV%4}</span>=<span class="st0">&quot;ipset&quot;</span>
+uci <span class="kw1">set</span> firewall.wan_set<span class="co1">${IPV%4}</span>.name=<span class="st0">&quot;wan<span class="es3">${IPV%4}</span>&quot;</span>
+uci <span class="kw1">set</span> firewall.wan_set<span class="co1">${IPV%4}</span>.family=<span class="st0">&quot;ipv<span class="es3">${IPV}</span>&quot;</span>
+uci <span class="kw1">set</span> firewall.wan_set<span class="co1">${IPV%4}</span>.match=<span class="st0">&quot;net&quot;</span>
+uci <span class="re5">-q</span> delete firewall.lan_mark<span class="co1">${IPV%4}</span>
+uci <span class="kw1">set</span> firewall.lan_mark<span class="co1">${IPV%4}</span>=<span class="st0">&quot;rule&quot;</span>
+uci <span class="kw1">set</span> firewall.lan_mark<span class="co1">${IPV%4}</span>.name=<span class="st0">&quot;Mark-LAN-VPN&quot;</span>
+uci <span class="kw1">set</span> firewall.lan_mark<span class="co1">${IPV%4}</span>.src=<span class="st0">&quot;lan&quot;</span>
+uci <span class="kw1">set</span> firewall.lan_mark<span class="co1">${IPV%4}</span>.dest=<span class="st0">&quot;*&quot;</span>
+uci <span class="kw1">set</span> firewall.lan_mark<span class="co1">${IPV%4}</span>.ipset=<span class="st0">&quot;!wan<span class="es3">${IPV%4}</span> dest&quot;</span>
+uci <span class="kw1">set</span> firewall.lan_mark<span class="co1">${IPV%4}</span>.proto=<span class="st0">&quot;all&quot;</span>
+uci <span class="kw1">set</span> firewall.lan_mark<span class="co1">${IPV%4}</span>.family=<span class="st0">&quot;ipv<span class="es3">${IPV}</span>&quot;</span>
+uci <span class="kw1">set</span> firewall.lan_mark<span class="co1">${IPV%4}</span>.set_mark=<span class="st0">&quot;0x1&quot;</span>
+uci <span class="kw1">set</span> firewall.lan_mark<span class="co1">${IPV%4}</span>.target=<span class="st0">&quot;MARK&quot;</span>
+uci <span class="kw1">set</span> network.lan.ip<span class="co1">${IPV}</span><span class="re2">table</span>=<span class="st0">&quot;1&quot;</span>
+uci <span class="kw1">set</span> network.vpn.ip<span class="co1">${IPV}</span><span class="re2">table</span>=<span class="st0">&quot;2&quot;</span>
+uci <span class="re5">-q</span> delete network.lan_vpn<span class="co1">${IPV%4}</span>
+uci <span class="kw1">set</span> network.lan_vpn<span class="co1">${IPV%4}</span>=<span class="st0">&quot;rule<span class="es3">${IPV%4}</span>&quot;</span>
+uci <span class="kw1">set</span> network.lan_vpn<span class="co1">${IPV%4}</span>.in=<span class="st0">&quot;lan&quot;</span>
+uci <span class="kw1">set</span> network.lan_vpn<span class="co1">${IPV%4}</span>.mark=<span class="st0">&quot;1&quot;</span>
+uci <span class="kw1">set</span> network.lan_vpn<span class="co1">${IPV%4}</span>.lookup=<span class="st0">&quot;2&quot;</span>
+uci <span class="kw1">set</span> network.lan_vpn<span class="co1">${IPV%4}</span>.priority=<span class="st0">&quot;30000&quot;</span>
+<span class="kw1">done</span>
+uci commit firewall
+uci commit network
+service firewall restart
+service network restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Route LAN to VPN by IP set&quot;,&quot;hid&quot;:&quot;route_lan_to_vpn_by_ip_set&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:12,&quot;range&quot;:&quot;4004-5333&quot;} -->
+<h3 class="sectionedit13" id="route_lan_to_vpn_with_wan_port_forwarding">Route LAN to VPN with WAN port forwarding</h3>
+<div class="level3">
+
+<p>
+Route all traffic to <abbr title="Virtual Private Network">VPN</abbr> except a webserver running in <abbr title="Local Area Network">LAN</abbr> and serving to <abbr title="Wide Area Network">WAN</abbr>.
+Mark the webserver traffic with firewall to apply custom routing.
+</p>
+<pre class="code bash">uci <span class="re5">-q</span> delete firewall.lan_web
+uci <span class="kw1">set</span> firewall.lan_web=<span class="st0">&quot;rule&quot;</span>
+uci <span class="kw1">set</span> firewall.lan_web.name=<span class="st0">&quot;Mark-HTTPS&quot;</span>
+uci <span class="kw1">set</span> firewall.lan_web.src=<span class="st0">&quot;lan&quot;</span>
+uci <span class="kw1">set</span> firewall.lan_web.src_mac=<span class="st0">&quot;00:11:22:33:44:55&quot;</span>
+uci <span class="kw1">set</span> firewall.lan_web.src_port=<span class="st0">&quot;443&quot;</span>
+uci <span class="kw1">set</span> firewall.lan_web.dest=<span class="st0">&quot;*&quot;</span>
+uci <span class="kw1">set</span> firewall.lan_web.proto=<span class="st0">&quot;tcp&quot;</span>
+uci <span class="kw1">set</span> firewall.lan_web.set_mark=<span class="st0">&quot;0x1&quot;</span>
+uci <span class="kw1">set</span> firewall.lan_web.target=<span class="st0">&quot;MARK&quot;</span>
+<span class="kw1">for</span> IPV <span class="kw1">in</span> <span class="nu0">4</span> <span class="nu0">6</span>
+<span class="kw1">do</span>
+uci <span class="kw1">set</span> network.lan.ip<span class="co1">${IPV}</span><span class="re2">table</span>=<span class="st0">&quot;1&quot;</span>
+uci <span class="kw1">set</span> network.wan<span class="co1">${IPV%4}</span>.ip<span class="co1">${IPV}</span><span class="re2">table</span>=<span class="st0">&quot;2&quot;</span>
+uci <span class="re5">-q</span> delete network.lan_web<span class="co1">${IPV%4}</span>
+uci <span class="kw1">set</span> network.lan_web<span class="co1">${IPV%4}</span>=<span class="st0">&quot;rule<span class="es3">${IPV%4}</span>&quot;</span>
+uci <span class="kw1">set</span> network.lan_web<span class="co1">${IPV%4}</span>.in=<span class="st0">&quot;lan&quot;</span>
+uci <span class="kw1">set</span> network.lan_web<span class="co1">${IPV%4}</span>.mark=<span class="st0">&quot;1&quot;</span>
+uci <span class="kw1">set</span> network.lan_web<span class="co1">${IPV%4}</span>.lookup=<span class="st0">&quot;2&quot;</span>
+uci <span class="kw1">set</span> network.lan_web<span class="co1">${IPV%4}</span>.priority=<span class="st0">&quot;30000&quot;</span>
+<span class="kw1">done</span>
+uci commit firewall
+uci commit network
+service firewall restart
+service network restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Route LAN to VPN with WAN port forwarding&quot;,&quot;hid&quot;:&quot;route_lan_to_vpn_with_wan_port_forwarding&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:13,&quot;range&quot;:&quot;5334-6390&quot;} -->
+<h3 class="sectionedit14" id="route_lan_to_openvpn">Route LAN to OpenVPN</h3>
+<div class="level3">
+
+<p>
+Prioritize routing <abbr title="Local Area Network">LAN</abbr> to OpenVPN.
+Be sure to <a href="/docs/guide-user/services/vpn/openvpn/extras#network_interface" class="wikilink1" title="docs:guide-user:services:vpn:openvpn:extras" data-wiki-id="docs:guide-user:services:vpn:openvpn:extras">declare VPN interface</a> and <a href="/docs/guide-user/services/vpn/openvpn/extras#default_gateway" class="wikilink1" title="docs:guide-user:services:vpn:openvpn:extras" data-wiki-id="docs:guide-user:services:vpn:openvpn:extras">disable gateway redirection</a>.
+</p>
+<pre class="code bash"><span class="kw1">for</span> IPV <span class="kw1">in</span> <span class="nu0">4</span> <span class="nu0">6</span>
+<span class="kw1">do</span>
+uci <span class="kw1">set</span> network.lan.ip<span class="co1">${IPV}</span><span class="re2">table</span>=<span class="st0">&quot;1&quot;</span>
+uci <span class="kw1">set</span> network.vpn.ip<span class="co1">${IPV}</span><span class="re2">table</span>=<span class="st0">&quot;2&quot;</span>
+uci <span class="re5">-q</span> delete network.vpn_rt<span class="co1">${IPV%4}</span>
+uci <span class="kw1">set</span> network.vpn_rt<span class="co1">${IPV%4}</span>=<span class="st0">&quot;route<span class="es3">${IPV%4}</span>&quot;</span>
+uci <span class="kw1">set</span> network.vpn_rt<span class="co1">${IPV%4}</span>.interface=<span class="st0">&quot;vpn&quot;</span>
+uci <span class="re5">-q</span> delete network.lan_vpn<span class="co1">${IPV%4}</span>
+uci <span class="kw1">set</span> network.lan_vpn<span class="co1">${IPV%4}</span>=<span class="st0">&quot;rule<span class="es3">${IPV%4}</span>&quot;</span>
+uci <span class="kw1">set</span> network.lan_vpn<span class="co1">${IPV%4}</span>.in=<span class="st0">&quot;lan&quot;</span>
+uci <span class="kw1">set</span> network.lan_vpn<span class="co1">${IPV%4}</span>.lookup=<span class="st0">&quot;2&quot;</span>
+uci <span class="kw1">set</span> network.lan_vpn<span class="co1">${IPV%4}</span>.priority=<span class="st0">&quot;30000&quot;</span>
+<span class="kw1">done</span>
+uci <span class="kw1">set</span> network.vpn_rt.target=<span class="st0">&quot;0.0.0.0/0&quot;</span>
+uci <span class="kw1">set</span> network.vpn_rt6.target=<span class="st0">&quot;::/0&quot;</span>
+uci commit network
+service network restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Route LAN to OpenVPN&quot;,&quot;hid&quot;:&quot;route_lan_to_openvpn&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:14,&quot;range&quot;:&quot;6391-7245&quot;} -->
+<h3 class="sectionedit15" id="route_lan_to_tailscale">Route LAN to Tailscale</h3>
+<div class="level3">
+
+<p>
+Prioritize routing <abbr title="Local Area Network">LAN</abbr> to Tailscale. 
+Override the built-in rules generated by Tailscale.
+</p>
+<pre class="code bash"><span class="kw1">for</span> IPV <span class="kw1">in</span> <span class="nu0">4</span> <span class="nu0">6</span>
+<span class="kw1">do</span>
+uci <span class="kw1">set</span> network.lan.ip<span class="co1">${IPV}</span><span class="re2">table</span>=<span class="st0">&quot;1&quot;</span>
+uci <span class="re5">-q</span> delete network.lan_vpn<span class="co1">${IPV%4}</span>
+uci <span class="kw1">set</span> network.lan_vpn<span class="co1">${IPV%4}</span>=<span class="st0">&quot;rule&quot;</span>
+uci <span class="kw1">set</span> network.lan_vpn<span class="co1">${IPV%4}</span>.in=<span class="st0">&quot;lan&quot;</span>
+uci <span class="kw1">set</span> network.lan_vpn<span class="co1">${IPV%4}</span>.lookup=<span class="st0">&quot;52&quot;</span>
+uci <span class="kw1">set</span> network.lan_vpn<span class="co1">${IPV%4}</span>.priority=<span class="st0">&quot;30000&quot;</span>
+uci <span class="re5">-q</span> delete network.pbr<span class="co1">${IPV%4}</span>
+uci <span class="kw1">set</span> network.pbr<span class="co1">${IPV%4}</span>=<span class="st0">&quot;rule&quot;</span>
+uci <span class="kw1">set</span> network.pbr<span class="co1">${IPV%4}</span>.goto=<span class="st0">&quot;10000&quot;</span>
+uci <span class="kw1">set</span> network.pbr<span class="co1">${IPV%4}</span>.priority=<span class="st0">&quot;1&quot;</span>
+<span class="kw1">done</span>
+uci commit network
+service network restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Route LAN to Tailscale&quot;,&quot;hid&quot;:&quot;route_lan_to_tailscale&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:15,&quot;range&quot;:&quot;7246-7856&quot;} -->
+<h3 class="sectionedit16" id="prohibitive_routes">Prohibitive routes</h3>
+<div class="level3">
+
+<p>
+Create prohibitive routes in the target routing table.
+Assuming the loopback interface is always up and the default route has a lower metric.
+</p>
+<pre class="code bash"><span class="kw1">for</span> IPV <span class="kw1">in</span> <span class="nu0">4</span> <span class="nu0">6</span>
+<span class="kw1">do</span>
+uci <span class="kw1">set</span> network.vpn.ip<span class="co1">${IPV}</span><span class="re2">table</span>=<span class="st0">&quot;2&quot;</span>
+uci <span class="re5">-q</span> delete network.vpn_ks<span class="co1">${IPV%4}</span>
+uci <span class="kw1">set</span> network.vpn_ks<span class="co1">${IPV%4}</span>=<span class="st0">&quot;route<span class="es3">${IPV%4}</span>&quot;</span>
+uci <span class="kw1">set</span> network.vpn_ks<span class="co1">${IPV%4}</span>.interface=<span class="st0">&quot;loopback&quot;</span>
+uci <span class="kw1">set</span> network.vpn_ks<span class="co1">${IPV%4}</span>.type=<span class="st0">&quot;prohibit&quot;</span>
+uci <span class="kw1">set</span> network.vpn_ks<span class="co1">${IPV%4}</span>.metric=<span class="st0">&quot;9000&quot;</span>
+uci <span class="kw1">set</span> network.vpn_ks<span class="co1">${IPV%4}</span>.table=<span class="st0">&quot;2&quot;</span>
+<span class="kw1">done</span>
+uci <span class="kw1">set</span> network.vpn_ks.target=<span class="st0">&quot;0.0.0.0/0&quot;</span>
+uci <span class="kw1">set</span> network.vpn_ks6.target=<span class="st0">&quot;::/0&quot;</span>
+uci commit network
+service network restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Prohibitive routes&quot;,&quot;hid&quot;:&quot;prohibitive_routes&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:16,&quot;range&quot;:&quot;7857-8502&quot;} -->
+<h3 class="sectionedit17" id="prohibitive_rules">Prohibitive rules</h3>
+<div class="level3">
+
+<p>
+Create prohibitive rules overriding the default ones.
+Prioritize custom rules to override the prohibitive ones.
+</p>
+<pre class="code bash"><span class="kw1">for</span> IPV <span class="kw1">in</span> <span class="nu0">4</span> <span class="nu0">6</span>
+<span class="kw1">do</span>
+uci <span class="re5">-q</span> delete network.lan_ks<span class="co1">${IPV%4}</span>
+uci <span class="kw1">set</span> network.lan_ks<span class="co1">${IPV%4}</span>=<span class="st0">&quot;rule<span class="es3">${IPV%4}</span>&quot;</span>
+uci <span class="kw1">set</span> network.lan_ks<span class="co1">${IPV%4}</span>.in=<span class="st0">&quot;lan&quot;</span>
+uci <span class="kw1">set</span> network.lan_ks<span class="co1">${IPV%4}</span>.action=<span class="st0">&quot;prohibit&quot;</span>
+uci <span class="kw1">set</span> network.lan_ks<span class="co1">${IPV%4}</span>.priority=<span class="st0">&quot;32000&quot;</span>
+<span class="kw1">done</span>
+uci commit network
+service network restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Prohibitive rules&quot;,&quot;hid&quot;:&quot;prohibitive_rules&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:17,&quot;range&quot;:&quot;8503-&quot;} -->

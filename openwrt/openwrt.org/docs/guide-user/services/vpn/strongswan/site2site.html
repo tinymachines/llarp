@@ -1,0 +1,237 @@
+
+<h1 class="sectionedit1" id="ipsec_site-to-site">IPsec Site-to-Site</h1>
+<div class="level1">
+
+<p>
+This article assumes you have enabled IPSec on your OpenWrt router as described in the <a href="/docs/guide-user/services/vpn/strongswan/basics" class="wikilink1" title="docs:guide-user:services:vpn:strongswan:basics" data-wiki-id="docs:guide-user:services:vpn:strongswan:basics">basics guide</a> and the <a href="/docs/guide-user/services/vpn/strongswan/firewall" class="wikilink1" title="docs:guide-user:services:vpn:strongswan:firewall" data-wiki-id="docs:guide-user:services:vpn:strongswan:firewall">firewall guide</a>. Now we want to build the first site to site tunnel.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;IPsec Site-to-Site&quot;,&quot;hid&quot;:&quot;ipsec_site-to-site&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-314&quot;} -->
+<h2 class="sectionedit2" id="topology">Topology</h2>
+<div class="level2">
+
+<p>
+The task to achive is the connectivity of our home (W)<abbr title="Local Area Network">LAN</abbr> with our company&#039;s networks. To make it not too easy we also want to access the company&#039;s <abbr title="Demilitarized Zone">DMZ</abbr> through the tunnel. Here the (more or less) big picture.
+</p>
+
+<p>
+<a href="/_detail/doc/howto/ipsec_site_to_site.png?id=docs%3Aguide-user%3Aservices%3Avpn%3Astrongswan%3Asite2site" class="media" title="doc:howto:ipsec_site_to_site.png"><img src="/_media/doc/howto/ipsec_site_to_site.png" class="media" loading="lazy" alt="" /></a>
+</p>
+
+<p>
+Additionally we sum up the facts in text mode to explain the infrastructure in detail.
+</p>
+<ul>
+<li class="level1"><div class="li"> The interest of our efforts is to get from a computer in the home W(<abbr title="Local Area Network">LAN</abbr>) into the ACME <abbr title="Demilitarized Zone">DMZ</abbr> and internal networks.</div>
+</li>
+<li class="level1"><div class="li"> All traffic should be securely tunneled between our OpenWrt based router and the company&#039;s firewall.</div>
+</li>
+<li class="level1"><div class="li"> We do not care about our routers external <abbr title="Internet Protocol">IP</abbr>. So we name it x.x.x.x.</div>
+</li>
+<li class="level1"><div class="li"> The external <abbr title="Internet Protocol">IP</abbr> of the ACME firewall is 7.7.7.7. At least this should be a fixed access point throughout the internet.</div>
+</li>
+<li class="level1"><div class="li"> Our home (W)<abbr title="Local Area Network">LAN</abbr> uses <abbr title="Internet Protocol">IP</abbr> adresses 192.168.2.64/26. That is the subnet from 192.168.2.64 to 192.168.2.127. </div>
+</li>
+<li class="level1"><div class="li"> ACMEs internal <abbr title="Local Area Network">LAN</abbr> is 10.1.2.0/24 (<abbr title="Internet Protocol">IP</abbr> range between 10.1.2.1 and 10.1.2.254)</div>
+</li>
+<li class="level1"><div class="li"> The ACME <abbr title="Demilitarized Zone">DMZ</abbr> has official <abbr title="Internet Protocol">IP</abbr> addresses in the range 66.77.88.192/26. </div>
+</li>
+</ul>
+
+<p>
+This may not be the most basic setup but it is the simplest to show some facts. You can access multiple subnets through one remote IPsec gateway, you can tunnel official <abbr title="Internet Protocol">IP</abbr> adresses and you do not need a fixed external <abbr title="Internet Protocol">IP</abbr> address. 
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Topology&quot;,&quot;hid&quot;:&quot;topology&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;315-1591&quot;} -->
+<h2 class="sectionedit3" id="strongswan_configuration">Strongswan Configuration</h2>
+<div class="level2">
+
+<p>
+To reach the ACME infrastructure we have to tell racoon all the details about the tunnel and the remote networks. We provide all informations in the central <a href="/docs/guide-user/services/vpn/strongswan/configuration" class="wikilink1" title="docs:guide-user:services:vpn:strongswan:configuration" data-wiki-id="docs:guide-user:services:vpn:strongswan:configuration">/etc/config/ipsec</a> file. The required informations for Phase 1 (initial handshake) are:
+</p>
+<ul>
+<li class="level1"><div class="li"> <abbr title="Internet Protocol">IP</abbr> of the remote gateway: 7.7.7.7</div>
+</li>
+<li class="level1"><div class="li"> Aggressive Negotiation: Always a good idea if our router has a changing outside <abbr title="Internet Protocol">IP</abbr>.</div>
+</li>
+<li class="level1"><div class="li"> The local identfier. “bratwurst” was choosen in this case. Also needed with a changing outside <abbr title="Internet Protocol">IP</abbr>.</div>
+</li>
+<li class="level1"><div class="li"> Proposal: The most common standard for medium security level. A preshared key with Diffie Hellman group 2 and AES 128 Bit encryption.</div>
+</li>
+</ul>
+
+<p>
+For the tunnels we need security policies. There are two different subnets we want to reach so two sainfo blocks have to be created in our file. These define the so called Phase 2 proposals. We provide:
+</p>
+<ul>
+<li class="level1"><div class="li"> Definiton of the connected local and remote subnets</div>
+</li>
+<li class="level1"><div class="li"> Security parameters (similar to phase 1)</div>
+</li>
+</ul>
+<pre class="code">#/etc/config/ipsec
+config &#039;ipsec&#039;
+  list listen &#039;&#039;
+  
+config &#039;remote&#039; &#039;acme&#039;
+  option &#039;enabled&#039; &#039;1&#039;
+  option &#039;gateway&#039; &#039;7.7.7.7&#039;
+  option &#039;pre_shared_key&#039; &#039;yourpasswordhere&#039;
+  option &#039;exchange_mode&#039; &#039;aggressive&#039;
+  option &#039;local_identifier&#039; &#039;bratwurst&#039;
+  list   &#039;p1_proposal&#039; &#039;pre_g2_aes_sha1&#039;
+  list   &#039;tunnel&#039; &#039;acme_dmz&#039;
+  list   &#039;tunnel&#039; &#039;acme_lan&#039;
+
+config &#039;p1_proposal&#039; &#039;pre_g2_aes_sha1&#039;
+  option &#039;encryption_algorithm&#039; &#039;aes128&#039;
+  option &#039;hash_algorithm&#039; &#039;sha1&#039;
+  option &#039;dh_group&#039; &#039;2&#039;
+
+config &#039;tunnel&#039; &#039;acme_lan&#039;
+  option &#039;local_subnet&#039; &#039;192.168.2.64/26&#039;
+  option &#039;remote_subnet&#039; &#039;10.1.2.0/24&#039;
+  option &#039;p2_proposal&#039; &#039;g2_aes_sha1&#039;
+
+config &#039;tunnel&#039; &#039;acme_dmz&#039;
+  option &#039;local_subnet&#039; &#039;192.168.2.64/26&#039;
+  option &#039;remote_subnet&#039; &#039;66.77.88.192/26&#039;
+  option &#039;p2_proposal&#039; &#039;g2_aes_sha1&#039;
+
+config &#039;p2_proposal&#039; &#039;g2_aes_sha1&#039;
+  option &#039;pfs_group&#039; &#039;2&#039;
+  option &#039;encryption_algorithm&#039; &#039;aes128&#039;
+  option &#039;authentication_algorithm&#039; &#039;sha1&#039;
+...</pre>
+
+<p>
+Restart Charon and firewall afterwards. If everything was setup correctly according to the <a href="/docs/guide-user/services/vpn/strongswan/basics" class="wikilink1" title="docs:guide-user:services:vpn:strongswan:basics" data-wiki-id="docs:guide-user:services:vpn:strongswan:basics">basics</a> and <a href="/docs/guide-user/services/vpn/strongswan/firewall" class="wikilink1" title="docs:guide-user:services:vpn:strongswan:firewall" data-wiki-id="docs:guide-user:services:vpn:strongswan:firewall">firewall</a> guide you should be able to see the new configuration.
+</p>
+
+<p>
+... pictures with checks ...
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Strongswan Configuration&quot;,&quot;hid&quot;:&quot;strongswan_configuration&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;1592-3856&quot;} -->
+<h2 class="sectionedit4" id="central_side_gateway">Central Side Gateway</h2>
+<div class="level2">
+
+<p>
+ACME corporation uses a Juniper firewall. They kindly provided us some configuration pictures. Take them as a sample for your individual implementation.
+</p>
+
+<p>
+Phase 1 settings
+</p>
+
+<p>
+<a href="/_detail/doc/howto/ipsec_juniper1.png?id=docs%3Aguide-user%3Aservices%3Avpn%3Astrongswan%3Asite2site" class="media" title="doc:howto:ipsec_juniper1.png"><img src="/_media/doc/howto/ipsec_juniper1.png" class="media" loading="lazy" alt="" /></a>
+</p>
+
+<p>
+Phase 2 settings
+</p>
+
+<p>
+<a href="/_detail/doc/howto/ipsec_juniper2.png?id=docs%3Aguide-user%3Aservices%3Avpn%3Astrongswan%3Asite2site" class="media" title="doc:howto:ipsec_juniper2.png"><img src="/_media/doc/howto/ipsec_juniper2.png" class="media" loading="lazy" alt="" /></a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Central Side Gateway&quot;,&quot;hid&quot;:&quot;central_side_gateway&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:4,&quot;range&quot;:&quot;3857-4151&quot;} -->
+<h2 class="sectionedit5" id="firewall">Firewall</h2>
+<div class="level2">
+
+<p>
+To reach the remote subnets the last thing we need are two firewall rules. Simply allow all traffic from the local lan 192.168.2.64/26 to the ACME subnets. If you join multiple tunnels in the one zone called <abbr title="Virtual Private Network">VPN</abbr> you have to use explicit destination adresses to separate traffic. An ALL→ALL rule would allow traffic to all destination networks. And do not forget to contact the ACME firewall admin to add those access rules too.
+</p>
+
+<p>
+<a href="/_detail/doc/howto/ipsec_fw_site2site.png?id=docs%3Aguide-user%3Aservices%3Avpn%3Astrongswan%3Asite2site" class="media" title="doc:howto:ipsec_fw_site2site.png"><img src="/_media/doc/howto/ipsec_fw_site2site.png" class="media" loading="lazy" alt="" /></a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Firewall&quot;,&quot;hid&quot;:&quot;firewall&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:5,&quot;range&quot;:&quot;4152-4642&quot;} -->
+<h2 class="sectionedit6" id="dns">DNS</h2>
+<div class="level2">
+
+<p>
+Connecting two private networks opens an interesting <abbr title="Domain Name System">DNS</abbr> challenge. The ACME <abbr title="Domain Name System">DNS</abbr> server does not only resolve official server names to <abbr title="Internet Protocol">IP</abbr> addresses but also those of ACME internal servers. E.g. hobbit.acme.inc and its <abbr title="Internet Protocol">IP</abbr> 10.1.2.42. As we have established a <abbr title="Virtual Private Network">VPN</abbr> connection we already can reach this host by its address. To get it by its name too we have to offer a name resolution in our home domain. With OpenWrt being very powerful we assume that our router has an active Dnsmasq <abbr title="Domain Name System">DNS</abbr> server. So we have two possibilities to resolve acme.inc addresses.
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong>Manually</strong>: Each acme.inc server and its <abbr title="Internet Protocol">IP</abbr> address is put into the OpenWrt local hosts file. Dnsmasq will read this list and answer <abbr title="Domain Name System">DNS</abbr> requests for those ACME machines correctly. This should only be an option if we have a very restrictive <abbr title="Virtual Private Network">VPN</abbr> connection.</div>
+</li>
+<li class="level1"><div class="li"> <strong>Automatically</strong>: Dnsmasq forwards requests for acme.inc through the tunnel to the ACME <abbr title="Domain Name System">DNS</abbr> server. This avoids double work.  </div>
+</li>
+</ul>
+
+<p>
+<abbr title="Domain Name System">DNS</abbr> fowarding through <abbr title="Virtual Private Network">VPN</abbr> tunnels is almost the same as normal <abbr title="Domain Name System">DNS</abbr> forwarding with one exception. Dnsmasq must use the correct source interface. By default it will use the OpenWrt internet <abbr title="Internet Protocol">IP</abbr> for it&#039;s requests but this cannot be tunneled. So just expand the Dnsmasq forward settings in LuCI with the OpenWrt internal <abbr title="Internet Protocol">IP</abbr> address. In our scenario we wan&#039;t to reach ACME <abbr title="Domain Name System">DNS</abbr> at 10.1.2.250 by using our internal <abbr title="Internet Protocol">IP</abbr> 192.168.2.82. Don&#039;t forget to add this domain on the whitelist otherwise Dnsmasq will detect rebind attacks and discard requests.
+</p>
+
+<p>
+<a href="/_detail/doc/howto/ipsec_dns.png?id=docs%3Aguide-user%3Aservices%3Avpn%3Astrongswan%3Asite2site" class="media" title="doc:howto:ipsec_dns.png"><img src="/_media/doc/howto/ipsec_dns.png" class="media" loading="lazy" alt="" /></a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;DNS&quot;,&quot;hid&quot;:&quot;dns&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:6,&quot;range&quot;:&quot;4643-6181&quot;} -->
+<h2 class="sectionedit7" id="route-based_vpns">Route-Based VPNs</h2>
+<div class="level2">
+
+<p>
+The instructions above are for a policy-based <abbr title="Virtual Private Network">VPN</abbr>. Some VPNs (such as Azure gateways supporting IKEv2) are route-based and do not use traffic selectors. All traffic entering the tunnel is sent to the peer. The Strongswan wiki has some 
+<a href="https://wiki.strongswan.org/projects/strongswan/wiki/RouteBasedVPN" class="urlextern" title="https://wiki.strongswan.org/projects/strongswan/wiki/RouteBasedVPN" rel="ugc nofollow">information regarding route-based VPNs</a>. In general, the steps for configuring a route-based <abbr title="Virtual Private Network">VPN</abbr> are as follows:
+</p>
+<ol>
+<li class="level1"><div class="li"> Disable installation of routes in the charon daemon (install_routes = no in /etc/strongswan.conf)</div>
+</li>
+<li class="level1"><div class="li"> Add an updown script to each route-based connection. The updown script must accomplish the following:</div>
+</li>
+<li class="level1"><div class="li"> Create a tunnel interface for the connection (VTI is currently the only supported tunnel type; XFRM is not currently available in OpenWRT)</div>
+</li>
+<li class="level1"><div class="li"> Add routes to the remote peer using the newly created tunnel device. Ensure the source ip is correct! The tunnel device will only encapsulate packages whose source matches the “leftsubnet” parameter.</div>
+</li>
+</ol>
+
+<p>
+Here is an example script. You can save this (perhaps as /etc/strongswan.d/ipsec-notify.sh) and invoke it using the “local_updown” option for the tunnel configuration. This script is more advanced than most of the examples found elsewhere. It will attempt to automatically configure the source <abbr title="Internet Protocol">IP</abbr> address when routing into the tunnel (this might matter if you have multiple interfaces on your OpenWRT device).
+</p>
+<pre class="code">#!/bin/bash
+
+set -o nounset
+set -o errexit
+
+VTI_IF=&quot;vti${PLUTO_UNIQUEID}&quot;
+
+
+case &quot;${PLUTO_VERB}&quot; in
+    up-client)
+        ip tunnel add &quot;${VTI_IF}&quot; local &quot;${PLUTO_ME}&quot; remote &quot;${PLUTO_PEER}&quot; mode vti key &quot;${PLUTO_MARK_OUT%%/*}&quot;
+        sysctl -w net.ipv4.conf.${VTI_IF}.disable_policy=1
+        ip link set &quot;${VTI_IF}&quot; up
+        dev=`ip -4 -o route get ${PLUTO_MY_CLIENT} | awk &#039;{ print $5; }&#039;`
+        addr=`ip -4 -o address show ${dev} | awk &#039;{ split($4, fields, &quot;/&quot;); print fields[1]; }&#039;`
+        ip route add &quot;${PLUTO_PEER_CLIENT}&quot; dev &quot;${VTI_IF}&quot; src &quot;${addr}&quot;
+        ;;
+    down-client)
+        ip tunnel del &quot;${VTI_IF}&quot;
+        ;;
+esac</pre>
+
+<p>
+<strong>Important!</strong> This code requires that the kmod-ip-vti package is installed. It also requires that a unique mark be set on all tunnel traffic. This is accomplished in /etc/ipsec.conf by adding the mark parameter to the connection section, e.g. “mark=%unique”. There is not currently any UCI analogue for this connection option.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Route-Based VPNs&quot;,&quot;hid&quot;:&quot;route-based_vpns&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:7,&quot;range&quot;:&quot;6182-8588&quot;} -->
+<h2 class="sectionedit8" id="what_s_next">What&#039;s next</h2>
+<div class="level2">
+
+<p>
+You should now understand and what to do in case of local and remote <a href="/docs/guide-user/services/vpn/strongswan/overlappingsubnets" class="wikilink1" title="docs:guide-user:services:vpn:strongswan:overlappingsubnets" data-wiki-id="docs:guide-user:services:vpn:strongswan:overlappingsubnets">overlapping subnets</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;What&#039;s next&quot;,&quot;hid&quot;:&quot;what_s_next&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:8,&quot;range&quot;:&quot;8589-&quot;} -->

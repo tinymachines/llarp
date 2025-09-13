@@ -1,0 +1,548 @@
+
+<h1 class="sectionedit1" id="jshna_json_parsing_and_generation_library_in_for_shell_scripts">jshn: a JSON parsing and generation library in for shell scripts</h1>
+<div class="level1">
+
+<p>
+<code>jshn</code> (JSON SHell Notation), a small utility and shell library for parsing and generating <a href="https://en.wikipedia.org/wiki/JSON" class="urlextern" title="https://en.wikipedia.org/wiki/JSON" rel="ugc nofollow">JSON</a> data.
+</p>
+
+<p>
+Shell scripts (ash, bash, zsh) doesn&#039;t have built-in functions to work with JSON or other hierarchical structures so OpenWrt provides a shell library <a href="https://git.openwrt.org/?p=project/libubox.git;a=blob;f=sh/jshn.sh;hb=HEAD" class="urlextern" title="https://git.openwrt.org/?p=project/libubox.git;a=blob;f=sh/jshn.sh;hb=HEAD" rel="ugc nofollow">/usr/share/libubox/jshn.sh</a> from <code>libubox</code> package.
+You need to include it into your scripts and then you can call it&#039;s functions:
+</p>
+<pre class="code bash"><span class="co0">#!/bin/sh</span>
+&nbsp;
+<span class="co0"># source jshn shell library</span>
+. <span class="sy0">/</span>usr<span class="sy0">/</span>share<span class="sy0">/</span>libubox<span class="sy0">/</span>jshn.sh
+&nbsp;
+<span class="co0"># generating json data</span>
+json_init
+json_add_int <span class="st0">&quot;code&quot;</span> <span class="st0">&quot;0&quot;</span>
+json_add_string <span class="st0">&quot;msg&quot;</span> <span class="st0">&quot;Hello, world!&quot;</span>
+json_add_object <span class="st0">&quot;test&quot;</span>
+json_add_int <span class="st0">&quot;testdata&quot;</span> <span class="st0">&quot;1&quot;</span>
+json_close_object
+<span class="re2">MSG_JSON</span>=<span class="sy0">`</span>json_dump<span class="sy0">`</span>
+<span class="co0"># the MSG_JSON var now contains: { &quot;code&quot;: 0, &quot;msg&quot;: &quot;Hello, world!&quot;, &quot;test&quot;: { &quot;testdata&quot;: 1 } }</span>
+&nbsp;
+&nbsp;
+<span class="co0"># parsing json data from the MSG_JSON variable</span>
+<span class="kw3">local</span> var1 code msg <span class="co0"># declare local variables to load data into</span>
+json_load <span class="st0">&quot;<span class="es2">$MSG_JSON</span>&quot;</span>
+json_select <span class="kw3">test</span> <span class="co0"># go into the object inside of the &quot;test&quot; field</span>
+json_get_var var1 testdata <span class="co0"># first is var name &quot;var1&quot; then the JSON field name &quot;testdata&quot;</span>
+json_select .. <span class="co0"># go back to the upper level</span>
+<span class="co0"># load the &quot;code&quot; field into corresponding code var, and the &quot;msg&quot; field into the msg var </span>
+json_get_vars code msg
+&nbsp;
+<span class="kw3">echo</span> <span class="st0">&quot;code: <span class="es2">$code</span>, msg: <span class="es2">$msg</span>, testdata: <span class="es2">$var1</span>&quot;</span></pre>
+
+<p>
+Another example:
+</p>
+<pre class="code bash"><span class="co0">#!/bin/sh</span>
+&nbsp;
+<span class="co0"># source jshn shell library</span>
+. <span class="sy0">/</span>usr<span class="sy0">/</span>share<span class="sy0">/</span>libubox<span class="sy0">/</span>jshn.sh
+&nbsp;
+<span class="co0"># initialize JSON output structure</span>
+json_init
+&nbsp;
+<span class="co0"># add a boolean field</span>
+json_add_boolean foo <span class="nu0">0</span>
+&nbsp;
+<span class="co0"># add an integer field</span>
+json_add_int code <span class="nu0">123</span>
+&nbsp;
+<span class="co0"># add a string, take care of escaping</span>
+json_add_string result <span class="st0">&quot;Some complex string<span class="es1">\n</span> with newlines<span class="es1">\n</span> and even command output: <span class="es4">$(date)</span>&quot;</span>
+&nbsp;
+<span class="co0"># add an array with three integers</span>
+json_add_array alist
+json_add_int <span class="st0">&quot;&quot;</span> <span class="nu0">1</span>
+json_add_int <span class="st0">&quot;&quot;</span> <span class="nu0">2</span>
+json_add_int <span class="st0">&quot;&quot;</span> <span class="nu0">3</span>
+json_close_array
+&nbsp;
+<span class="co0"># add an object (dictionary)</span>
+json_add_object adict
+json_add_string foo bar
+json_add_string bar baz
+json_close_object
+&nbsp;
+<span class="co0"># build JSON object and print to stdout</span>
+json_dump
+&nbsp;
+<span class="co0"># will output something like this:</span>
+<span class="co0"># { &quot;foo&quot;: false, &quot;code&quot;: 123, &quot;result&quot;: &quot;Some complex string\\n with newlines\\n and even command output: Fri Jul 13 07:11:39 CEST 2018&quot;, &quot;alist&quot;: [ 1, 2, 3 ], &quot;adict&quot;: { &quot;foo&quot;: &quot;bar&quot;, &quot;bar&quot;: &quot;baz&quot; } }</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;jshn: a JSON parsing and generation library in for shell scripts&quot;,&quot;hid&quot;:&quot;jshna_json_parsing_and_generation_library_in_for_shell_scripts&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-2371&quot;} -->
+<h3 class="sectionedit2" id="more_complicated_examples">More complicated examples</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="parse_file_example">Parse file example</h4>
+<div class="level4">
+
+<p>
+Given the file:
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-developer/jshn?codeblock=2" title="Download Snippet" class="mediafile mf_json">/data1.json</a></dt>
+<dd><pre class="code yaml"><span class="br0">&#123;</span><span class="co3">
+  &quot;status&quot;</span><span class="sy2">: </span>200,<span class="co3">
+  &quot;msg&quot;</span><span class="sy2">: </span><span class="st0">&quot;ok&quot;</span>,<span class="co3">
+  &quot;result&quot;</span><span class="sy2">: </span><span class="br0">&#123;</span><span class="co3">
+    &quot;number&quot;</span><span class="sy2">: </span><span class="st0">&quot;99&quot;</span>,<span class="co3">
+    &quot;mac&quot;</span><span class="sy2">: </span><span class="st0">&quot;d85d4c9c2f1a&quot;</span>,<span class="co3">
+    &quot;last_seen&quot;</span><span class="sy2">: </span>1363777473407
+  <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+</dd></dl>
+
+<p>
+Script to parse it:
+</p>
+<pre class="code bash"><span class="co0">#!/bin/sh</span>
+. <span class="sy0">/</span>usr<span class="sy0">/</span>share<span class="sy0">/</span>libubox<span class="sy0">/</span>jshn.sh
+&nbsp;
+json_init
+json_load_file <span class="sy0">/</span>data2.txt  <span class="co0">## Load JSON from file</span>
+<span class="co0">## json_get_var &lt;local_var&gt; &lt;json_var&gt;</span>
+json_get_var status status    <span class="co0">## Get Value of status inside JSON string (i.e. MSG) into local &quot;status&quot; variable</span>
+json_get_var msg msg
+json_select result            <span class="co0">## Select &quot;result&quot; object of JSON string (i.e. MSG)</span>
+json_get_var number number
+json_get_var mac mac
+json_get_var last_seen last_seen</pre>
+
+</div>
+
+<h4 id="parse_arrays_example">Parse arrays example</h4>
+<div class="level4">
+
+<p>
+Given the file:
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-developer/jshn?codeblock=4" title="Download Snippet" class="mediafile mf_json">/data2.json</a></dt>
+<dd><pre class="code yaml"><span class="br0">&#123;</span><span class="co3">
+  &quot;ip_addrs&quot;</span><span class="sy2">: </span><span class="br0">&#123;</span><span class="co3">
+    &quot;lan&quot;</span><span class="sy2">: </span><span class="br0">&#91;</span><span class="st0">&quot;192.168.0.100&quot;</span>,<span class="st0">&quot;192.168.0.101&quot;</span>,<span class="st0">&quot;192.168.0.200&quot;</span><span class="br0">&#93;</span>
+  <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+</dd></dl>
+
+<p>
+Script to parse it:
+</p>
+<pre class="code bash"><span class="co0">#!/bin/sh</span>
+. <span class="sy0">/</span>usr<span class="sy0">/</span>share<span class="sy0">/</span>libubox<span class="sy0">/</span>jshn.sh
+&nbsp;
+json_init
+json_load_file <span class="sy0">/</span>data2.json
+json_select <span class="st0">&quot;ip_addrs&quot;</span>
+&nbsp;
+<span class="kw1">if</span> json_is_a lan array
+<span class="kw1">then</span>
+  json_select lan
+  <span class="re2">idx</span>=<span class="nu0">1</span> <span class="co0"># note that array element position starts from 1 not, 0</span>
+  <span class="kw1">while</span> json_is_a <span class="co1">${idx}</span> string  <span class="co0">## iterate over data inside &quot;lan&quot; object</span>
+  <span class="kw1">do</span>
+    json_get_var ip_addr <span class="re1">$idx</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;<span class="es2">$ip_addr</span>&quot;</span>
+    <span class="re2">idx</span>=$<span class="br0">&#40;</span><span class="br0">&#40;</span> idx + <span class="nu0">1</span> <span class="br0">&#41;</span><span class="br0">&#41;</span>
+  <span class="kw1">done</span>
+<span class="kw1">fi</span></pre>
+
+</div>
+
+<h4 id="parse_list_of_objects">Parse list of objects</h4>
+<div class="level4">
+
+<p>
+The example will download electricity hourly prices for Finland in JSON and parse it.
+The prices JSON looks like
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-developer/jshn?codeblock=6" title="Download Snippet" class="mediafile mf_json">prices.json</a></dt>
+<dd><pre class="code yaml"><span class="br0">&#123;</span><span class="co3">
+  &quot;prices&quot;</span><span class="sy2">: </span><span class="br0">&#91;</span>
+    <span class="br0">&#123;</span><span class="co3">
+      &quot;date&quot;</span><span class="sy2">: </span><span class="st0">&quot;2024-08-03T11:00:00.000Z&quot;</span>,<span class="co3">
+      &quot;value&quot;</span><span class="sy2">: </span>6.41
+    <span class="br0">&#125;</span>,
+    <span class="br0">&#123;</span><span class="co3">
+      &quot;date&quot;</span><span class="sy2">: </span><span class="st0">&quot;2024-08-03T12:00:00.000Z&quot;</span>,<span class="co3">
+      &quot;value&quot;</span><span class="sy2">: </span>4.1
+    <span class="br0">&#125;</span>,
+  <span class="br0">&#93;</span>
+<span class="br0">&#125;</span></pre>
+</dd></dl>
+
+<p>
+Script to parse it:
+</p>
+<pre class="code bash"><span class="co0">#!/bin/sh</span>
+<span class="kw1">set</span> <span class="re5">-e</span>
+. <span class="sy0">/</span>usr<span class="sy0">/</span>share<span class="sy0">/</span>libubox<span class="sy0">/</span>jshn.sh
+<span class="re2">date</span>=$<span class="br0">&#40;</span><span class="kw2">date</span> <span class="re5">-u</span> +<span class="sy0">%</span>Y-<span class="sy0">%</span>m-<span class="sy0">%</span>dT<span class="sy0">%</span>H:00:00.000Z<span class="br0">&#41;</span>
+&nbsp;
+<span class="co0"># download prices JSON via wget in quiet mode with output to stdout that will be saved to a variable PRICES_JSON</span>
+<span class="re2">PRICES_JSON</span>=$<span class="br0">&#40;</span><span class="kw2">wget</span> <span class="re5">-qO</span> - <span class="st0">&quot;https://sahkotin.fi/prices?start=<span class="es2">$date</span>&quot;</span><span class="br0">&#41;</span>
+<span class="re2">exit_status</span>=<span class="re4">$?</span>
+<span class="co0"># check exit code: if any error then exit</span>
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re1">$exit_status</span> <span class="re5">-ne</span> <span class="nu0">0</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+   <span class="sy0">&gt;&amp;</span><span class="nu0">2</span> <span class="kw3">echo</span> <span class="st0">&quot;error <span class="es2">$exit_status</span>&quot;</span>
+   <span class="kw3">exit</span> <span class="re1">$exit_status</span>
+<span class="kw1">fi</span>
+&nbsp;
+json_load <span class="st0">&quot;<span class="es2">$PRICES_JSON</span>&quot;</span>
+json_select <span class="st0">&quot;prices&quot;</span>
+<span class="re2">idx</span>=<span class="nu0">1</span> <span class="co0"># note that array element position starts from 1 not, 0</span>
+<span class="co0"># iterate over data inside &quot;price&quot; array until elements are objects</span>
+<span class="kw1">while</span> json_is_a <span class="re1">$idx</span> object
+<span class="kw1">do</span>
+  json_select  <span class="re1">$idx</span>
+  <span class="co0"># now parse {&quot;date&quot;: &quot;2024-08-04T21:00:00.000Z&quot;, &quot;value&quot;: 22.58}</span>
+  json_get_var price_date <span class="st0">&quot;date&quot;</span>
+  <span class="kw3">echo</span> <span class="st0">&quot;price_date: <span class="es2">$price_date</span>&quot;</span>
+  json_get_var price_value <span class="st0">&quot;value&quot;</span>
+  <span class="kw3">echo</span> <span class="st0">&quot;price_value: <span class="es2">$price_value</span>&quot;</span>
+  <span class="re2">idx</span>=$<span class="br0">&#40;</span><span class="br0">&#40;</span> idx + <span class="nu0">1</span> <span class="br0">&#41;</span><span class="br0">&#41;</span>
+  json_select .. <span class="co0"># go back to the upper level to the prices array</span>
+<span class="kw1">done</span>
+&nbsp;
+<span class="kw3">echo</span> <span class="st0">&quot;Total parsed <span class="es2">$idx</span>&quot;</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;More complicated examples&quot;,&quot;hid&quot;:&quot;more_complicated_examples&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:2,&quot;range&quot;:&quot;2372-5021&quot;} -->
+<h2 class="sectionedit3" id="json_for_each_item">json_for_each_item</h2>
+<div class="level2">
+
+<p>
+Function useful to iterate through the different elements of an array or object.
+The provided callback function is called for each element which is passed the value, key and user provided arguments.
+For field types different from array or object the callback is called with the retrieved value.
+</p>
+<pre class="code bash"><span class="co0">#!/bin/sh</span>
+. <span class="sy0">/</span>usr<span class="sy0">/</span>share<span class="sy0">/</span>libubox<span class="sy0">/</span>jshn.sh
+&nbsp;
+json_load_file <span class="sy0">/</span>data2.json
+&nbsp;
+dump_item<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+ <span class="kw3">echo</span> <span class="st0">&quot;item: $1 '$2'&quot;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+json_for_each_item <span class="st0">&quot;dump_item&quot;</span> <span class="st0">&quot;ip_addrs&quot;</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;json_for_each_item&quot;,&quot;hid&quot;:&quot;json_for_each_item&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:3,&quot;range&quot;:&quot;5022-5518&quot;} -->
+<h2 class="sectionedit4" id="json_get_values">json_get_values</h2>
+<div class="level2">
+
+<p>
+To get all values of an array use the <code>json_get_values</code>:
+</p>
+<pre class="code bash"><span class="co0">#!/bin/sh</span>
+. <span class="sy0">/</span>usr<span class="sy0">/</span>share<span class="sy0">/</span>libubox<span class="sy0">/</span>jshn.sh
+&nbsp;
+json_load <span class="st_h">'{&quot;alist&quot;:[1,2]}'</span>
+json_get_values values <span class="st0">&quot;alist&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;<span class="es3">${values}</span>&quot;</span> <span class="co0">#=&gt; 1 2</span>
+<span class="co0"># print comma separated</span>
+<span class="kw3">echo</span> <span class="st0">&quot;<span class="es3">${values// /, }</span>&quot;</span> <span class="co0">#=&gt; 1, 2</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;json_get_values&quot;,&quot;hid&quot;:&quot;json_get_values&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:4,&quot;range&quot;:&quot;5519-5808&quot;} -->
+<h2 class="sectionedit5" id="get_all_fields_into_variables">Get all fields into variables</h2>
+<div class="level2">
+
+<p>
+Get all fields and declare variables for them:
+</p>
+<pre class="code bash">json_load <span class="st_h">'{&quot;params&quot;:{&quot;id&quot;: 1, &quot;name&quot;: &quot;Alice&quot;}}'</span>
+json_select <span class="st0">&quot;params&quot;</span>
+json_get_keys keys
+<span class="kw1">for</span> key <span class="kw1">in</span> <span class="re1">$keys</span>
+<span class="kw1">do</span>
+  json_get_var <span class="st0">&quot;<span class="es2">$key</span>&quot;</span> <span class="st0">&quot;<span class="es2">$key</span>&quot;</span>
+<span class="kw1">done</span>
+<span class="kw3">echo</span> <span class="st0">&quot;<span class="es2">$id</span>&quot;</span> <span class="co0">#=&gt; 1</span>
+<span class="kw3">echo</span> <span class="st0">&quot;<span class="es2">$name</span>&quot;</span> <span class="co0">#=&gt; Alice</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Get all fields into variables&quot;,&quot;hid&quot;:&quot;get_all_fields_into_variables&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:5,&quot;range&quot;:&quot;5809-6102&quot;} -->
+<h2 class="sectionedit6" id="jshn_utility">jshn utility</h2>
+<div class="level2">
+
+<p>
+Internally the <code>/usr/share/libubox/jshn.sh</code> is just a wrapper for <a href="https://git.openwrt.org/?p=project/libubox.git;a=blob;f=jshn.c;hb=HEAD" class="urlextern" title="https://git.openwrt.org/?p=project/libubox.git;a=blob;f=jshn.c;hb=HEAD" rel="ugc nofollow">/usr/bin/jshn</a> utility.
+</p>
+<pre class="code">root@OpenWrt:/# jshn
+Usage: jshn [-n] [-i] -r &lt;message&gt;|-R &lt;file&gt;|-o &lt;file&gt;|-p &lt;prefix&gt;|-w</pre>
+
+<p>
+Options:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>-r &lt;message&gt;</code> parse from string <code>&lt;message&gt;</code>: called from <code>json_load()</code></div>
+</li>
+<li class="level1"><div class="li"> <code>-R &lt;file&gt;</code> parse from file <code>&lt;file&gt;</code>: called from <code>json_load_file()</code></div>
+</li>
+<li class="level1"><div class="li"> <code>-w</code> write the constructed object to stdout: called from <code>json_dump()</code></div>
+</li>
+<li class="level1"><div class="li"> <code>-o &lt;file&gt;</code> write to file <code>&lt;file&gt;</code></div>
+</li>
+<li class="level1"><div class="li"> <code>-p &lt;prefix&gt;</code> set prefix</div>
+</li>
+<li class="level1"><div class="li"> <code>-n</code> no newlines \n on formatting</div>
+</li>
+<li class="level1"><div class="li"> <code>-i</code> indent nested objects on formatting</div>
+</li>
+</ul>
+
+<p>
+You can call it directly:
+</p>
+<pre class="code bash">root<span class="sy0">@</span>OpenWrt:<span class="sy0">/</span><span class="co0"># jshn -R /etc/board.json </span>
+json_init;
+json_add_object <span class="st_h">'model'</span>;
+json_add_string <span class="st_h">'id'</span> <span class="st_h">'innotek-gmbh-virtualbox'</span>;
+json_add_string <span class="st_h">'name'</span> <span class="st_h">'innotek GmbH VirtualBox'</span>;
+json_close_object;
+json_add_object <span class="st_h">'network'</span>;
+json_add_object <span class="st_h">'lan'</span>;
+json_add_string <span class="st_h">'ifname'</span> <span class="st_h">'eth0'</span>;
+json_add_string <span class="st_h">'protocol'</span> <span class="st_h">'static'</span>;
+json_close_object;
+json_add_object <span class="st_h">'wan'</span>;
+json_add_string <span class="st_h">'ifname'</span> <span class="st_h">'eth1'</span>;
+json_add_string <span class="st_h">'protocol'</span> <span class="st_h">'dhcp'</span>;
+json_close_object;
+json_close_object;</pre>
+
+<p>
+The output is then evaluated inside of the shell script to create in memory structure as in file.
+</p>
+
+<p>
+If you created an object like:
+</p>
+<pre class="code bash">json_init;
+json_add_string <span class="st_h">'username'</span> <span class="st_h">'root'</span>;
+json_dump;</pre>
+
+<p>
+Then internally it will call <code>jshn -w</code> with the json obj passed via multiple env variables like
+</p>
+<pre class="code">root@OpenWrt:/# JSON_CUR=J_V T_J_V_username=string K_J_V=username J_V_username=root jshn -w
+{ &quot;username&quot;: &quot;root&quot; }</pre>
+
+<p>
+Here <code>J_V</code> stands for “JSON value”:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>JSON_CUR</code> means a name of var with root object to format</div>
+</li>
+<li class="level1"><div class="li"> <code>K_J_V</code> is a key name i.e. <code>username</code></div>
+</li>
+<li class="level1"><div class="li"> <code>T_J_V_username</code> is a type of the <code>username</code> field</div>
+</li>
+<li class="level1"><div class="li"> <code>J_V_username=root</code> is a value of the  the <code>username</code> field i.e. <code>root</code></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;jshn utility&quot;,&quot;hid&quot;:&quot;jshn_utility&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:6,&quot;range&quot;:&quot;6103-8047&quot;} -->
+<h2 class="sectionedit7" id="other_examples">Other examples</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Other examples&quot;,&quot;hid&quot;:&quot;other_examples&quot;,&quot;codeblockOffset&quot;:15,&quot;secid&quot;:7,&quot;range&quot;:&quot;8048-8075&quot;} -->
+<h3 class="sectionedit8" id="get_bridge_status">Get bridge status</h3>
+<div class="level3">
+
+<p>
+OpenWrt have a command <code>devstatus</code> to check network device status. E.g. <code>devstatus br-lan</code> prints:
+</p>
+<pre class="code yaml"><span class="br0">&#123;</span><span class="co3">
+        &quot;external&quot;</span><span class="sy2">: </span>false,<span class="co3">
+        &quot;present&quot;</span><span class="sy2">: </span>true,<span class="co3">
+        &quot;type&quot;</span><span class="sy2">: </span><span class="st0">&quot;bridge&quot;</span>,<span class="co3">
+        &quot;up&quot;</span><span class="sy2">: </span>true,<span class="co3">
+        &quot;carrier&quot;</span><span class="sy2">: </span>true,<span class="co3">
+        &quot;bridge-members&quot;</span><span class="sy2">: </span><span class="br0">&#91;</span>
+                <span class="st0">&quot;eth0.1&quot;</span>,
+                <span class="st0">&quot;wlan0&quot;</span>
+        <span class="br0">&#93;</span>,<span class="co3">
+        &quot;mtu&quot;</span><span class="sy2">: </span>1500,<span class="co3">
+        &quot;mtu6&quot;</span><span class="sy2">: </span>1500,<span class="co3">
+        &quot;macaddr&quot;</span><span class="sy2">: </span><span class="st0">&quot;84:16:f9:9b:e0:7a&quot;</span>,<span class="co3">
+        &quot;txqueuelen&quot;</span><span class="sy2">: </span>1000,<span class="co3">
+        &quot;ipv6&quot;</span><span class="sy2">: </span>true,<span class="co3">
+        &quot;promisc&quot;</span><span class="sy2">: </span>false,<span class="co3">
+        &quot;rpfilter&quot;</span><span class="sy2">: </span>0,<span class="co3">
+        &quot;acceptlocal&quot;</span><span class="sy2">: </span>false,<span class="co3">
+        &quot;igmpversion&quot;</span><span class="sy2">: </span>0,<span class="co3">
+        &quot;mldversion&quot;</span><span class="sy2">: </span>0,<span class="co3">
+        &quot;neigh4reachabletime&quot;</span><span class="sy2">: </span>30000,<span class="co3">
+        &quot;neigh6reachabletime&quot;</span><span class="sy2">: </span>30000,<span class="co3">
+        &quot;neigh4gcstaletime&quot;</span><span class="sy2">: </span>60,<span class="co3">
+        &quot;neigh6gcstaletime&quot;</span><span class="sy2">: </span>60,<span class="co3">
+        &quot;neigh4locktime&quot;</span><span class="sy2">: </span>100,<span class="co3">
+        &quot;dadtransmits&quot;</span><span class="sy2">: </span>1,<span class="co3">
+        &quot;multicast&quot;</span><span class="sy2">: </span>true,<span class="co3">
+        &quot;sendredirects&quot;</span><span class="sy2">: </span>true,<span class="co3">
+        &quot;statistics&quot;</span><span class="sy2">: </span><span class="br0">&#123;</span><span class="co3">
+                &quot;collisions&quot;</span><span class="sy2">: </span>0,<span class="co3">
+                &quot;rx_frame_errors&quot;</span><span class="sy2">: </span>0,<span class="co3">
+                &quot;tx_compressed&quot;</span><span class="sy2">: </span>0,<span class="co3">
+                &quot;multicast&quot;</span><span class="sy2">: </span>0,<span class="co3">
+                &quot;rx_length_errors&quot;</span><span class="sy2">: </span>0,<span class="co3">
+                &quot;tx_dropped&quot;</span><span class="sy2">: </span>0,<span class="co3">
+                &quot;rx_bytes&quot;</span><span class="sy2">: </span>10609108786,<span class="co3">
+                &quot;rx_missed_errors&quot;</span><span class="sy2">: </span>0,<span class="co3">
+                &quot;tx_errors&quot;</span><span class="sy2">: </span>0,<span class="co3">
+                &quot;rx_compressed&quot;</span><span class="sy2">: </span>0,<span class="co3">
+                &quot;rx_over_errors&quot;</span><span class="sy2">: </span>0,<span class="co3">
+                &quot;tx_fifo_errors&quot;</span><span class="sy2">: </span>0,<span class="co3">
+                &quot;rx_crc_errors&quot;</span><span class="sy2">: </span>0,<span class="co3">
+                &quot;rx_packets&quot;</span><span class="sy2">: </span>39594607,<span class="co3">
+                &quot;tx_heartbeat_errors&quot;</span><span class="sy2">: </span>0,<span class="co3">
+                &quot;rx_dropped&quot;</span><span class="sy2">: </span>0,<span class="co3">
+                &quot;tx_aborted_errors&quot;</span><span class="sy2">: </span>0,<span class="co3">
+                &quot;tx_packets&quot;</span><span class="sy2">: </span>91154927,<span class="co3">
+                &quot;rx_errors&quot;</span><span class="sy2">: </span>0,<span class="co3">
+                &quot;tx_bytes&quot;</span><span class="sy2">: </span>121051584071,<span class="co3">
+                &quot;tx_window_errors&quot;</span><span class="sy2">: </span>0,<span class="co3">
+                &quot;rx_fifo_errors&quot;</span><span class="sy2">: </span>0,<span class="co3">
+                &quot;tx_carrier_errors&quot;</span><span class="sy2">: </span>0
+        <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+
+<p>
+You can check the <code>devstatus</code> sources to see that internally it makes a <a href="/docs/techref/ubus" class="wikilink1" title="docs:techref:ubus" data-wiki-id="docs:techref:ubus">ubus call</a> and uses the <code>jshn</code> to format output:
+</p>
+<pre class="code bash"><span class="kw2">cat</span> <span class="sy0">/</span>sbin<span class="sy0">/</span>devstatus
+<span class="co0">#!/bin/sh</span>
+. <span class="sy0">/</span>usr<span class="sy0">/</span>share<span class="sy0">/</span>libubox<span class="sy0">/</span>jshn.sh
+<span class="re2">DEVICE</span>=<span class="st0">&quot;$1&quot;</span>
+&nbsp;
+<span class="br0">&#91;</span> <span class="re5">-n</span> <span class="st0">&quot;<span class="es2">$DEVICE</span>&quot;</span> <span class="br0">&#93;</span> <span class="sy0">||</span> <span class="br0">&#123;</span>
+	<span class="kw3">echo</span> <span class="st0">&quot;Usage: $0 &lt;device&gt;&quot;</span>
+	<span class="kw3">exit</span> <span class="nu0">1</span>
+<span class="br0">&#125;</span>
+&nbsp;
+json_init
+json_add_string name <span class="st0">&quot;<span class="es2">$DEVICE</span>&quot;</span>
+ubus call network.device status <span class="st0">&quot;<span class="es4">$(json_dump)</span>&quot;</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Get bridge status&quot;,&quot;hid&quot;:&quot;get_bridge_status&quot;,&quot;codeblockOffset&quot;:15,&quot;secid&quot;:8,&quot;range&quot;:&quot;8076-10244&quot;} -->
+<h3 class="sectionedit9" id="check_if_link_is_up_using_devstatus_and_jshn">Check if Link is up using devstatus and jshn</h3>
+<div class="level3">
+<pre class="code bash"><span class="co0">#!/bin/sh</span>
+&nbsp;
+. <span class="sy0">/</span>usr<span class="sy0">/</span>share<span class="sy0">/</span>libubox<span class="sy0">/</span>jshn.sh
+&nbsp;
+<span class="re2">WANDEV</span>=<span class="st0">&quot;<span class="es4">$(uci get network.wan.ifname)</span>&quot;</span>
+&nbsp;
+json_load <span class="st0">&quot;<span class="es4">$(devstatus $WANDEV)</span>&quot;</span>
+&nbsp;
+json_get_var var1 speed
+json_get_var var2 <span class="kw2">link</span>
+&nbsp;
+<span class="kw3">echo</span> <span class="st0">&quot;Speed: <span class="es2">$var1</span>&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Link: <span class="es2">$var2</span>&quot;</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Check if Link is up using devstatus and jshn&quot;,&quot;hid&quot;:&quot;check_if_link_is_up_using_devstatus_and_jshn&quot;,&quot;codeblockOffset&quot;:17,&quot;secid&quot;:9,&quot;range&quot;:&quot;10245-10524&quot;} -->
+<h2 class="sectionedit10" id="additional_json_parsing_tools">Additional JSON parsing tools</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Additional JSON parsing tools&quot;,&quot;hid&quot;:&quot;additional_json_parsing_tools&quot;,&quot;codeblockOffset&quot;:18,&quot;secid&quot;:10,&quot;range&quot;:&quot;10525-10567&quot;} -->
+<h3 class="sectionedit11" id="jsonfilter">jsonfilter</h3>
+<div class="level3">
+
+<p>
+The <a href="https://git.openwrt.org/project/jsonpath.git" class="interwiki iw_commit" title="https://git.openwrt.org/project/jsonpath.git">jsonfilter</a> tool in included into OpenWrt. The help output:
+</p>
+<pre class="code">root@openwrt:~# jsonfilter --help
+== Usage ==
+
+  # jsonfilter [-a] [-i &lt;file&gt; | -s &quot;json...&quot;] {-t &lt;pattern&gt; | -e &lt;pattern&gt;}
+  -q            Quiet, no errors are printed
+  -h, --help    Print this help
+  -a            Implicitely treat input as array, useful for JSON logs
+  -i path       Specify a JSON file to parse
+  -s &quot;json&quot;     Specify a JSON string to parse
+  -l limit      Specify max number of results to show
+  -F separator  Specify a field separator when using export
+  -t &lt;pattern&gt;  Print the type of values matched by pattern
+  -e &lt;pattern&gt;  Print the values matched by pattern
+  -e VAR=&lt;pat&gt;  Serialize matched value for shell &quot;eval&quot;
+
+== Patterns ==
+
+  Patterns are JsonPath: http://goessner.net/articles/JsonPath/
+  This tool implements $, @, [], * and the union operator &#039;,&#039;
+  plus the usual expressions and literals.
+  It does not support the recursive child search operator &#039;..&#039; or
+  the &#039;?()&#039; and &#039;()&#039; filter expressions as those would require a
+  complete JavaScript engine to support them.
+
+== Examples ==
+
+  Display the first IPv4 address on lan:
+  # ifstatus lan | jsonfilter -e &#039;@[&quot;ipv4-address&quot;][0].address&#039;
+
+  Extract the release string from the board information:
+  # ubus call system board | jsonfilter -e &#039;@.release.description&#039;
+
+  Find all interfaces which are up:
+  # ubus call network.interface dump | \
+        jsonfilter -e &#039;@.interface[@.up=true].interface&#039;
+
+  Export br-lan traffic counters for shell eval:
+  # devstatus br-lan | jsonfilter -e &#039;RX=@.statistics.rx_bytes&#039; \
+        -e &#039;TX=@.statistics.tx_bytes&#039;</pre>
+
+<p>
+Usage example:
+</p>
+<pre class="code bash">ubus call network.wireless status <span class="sy0">|</span> jsonfilter <span class="re5">-e</span> <span class="st_h">'@[*]'</span> <span class="sy0">|</span> jsonfilter <span class="re5">-a</span> <span class="re5">-e</span> <span class="st_h">'@[1]'</span></pre>
+
+<p>
+The first jsonfilter call will output one radio JSON structure object per line, the second call then consumes this lines while using the -a flag to treat them like an array, this allows you to select the first or second radio regardless of the name.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;jsonfilter&quot;,&quot;hid&quot;:&quot;jsonfilter&quot;,&quot;codeblockOffset&quot;:18,&quot;secid&quot;:11,&quot;range&quot;:&quot;10568-12615&quot;} -->
+<h3 class="sectionedit12" id="jq">jq</h3>
+<div class="level3">
+
+<p>
+<a href="https://stedolan.github.io/jq/" class="urlextern" title="https://stedolan.github.io/jq/" rel="ugc nofollow">jq</a> jq is a flexible command-line JSON processor that is very popular for scripting.
+It&#039;s not installed by default in OpenWRT because is too big (more than 200Kb) so to install use <code>opkg update; opkg install jq</code>
+By default it just colorize an output e.g. <code>cat /etc/board.json | jq</code>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;jq&quot;,&quot;hid&quot;:&quot;jq&quot;,&quot;codeblockOffset&quot;:20,&quot;secid&quot;:12,&quot;range&quot;:&quot;12616-12949&quot;} -->
+<h3 class="sectionedit13" id="see_also">See also</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> <a href="https://github.com/burningtree/awesome-json" class="urlextern" title="https://github.com/burningtree/awesome-json" rel="ugc nofollow">Awesome JSON</a> A curated list of awesome JSON libraries and resources.</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/yurt-page/openwrt-script-samples" class="urlextern" title="https://github.com/yurt-page/openwrt-script-samples" rel="ugc nofollow">OpenWrt script samples</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://forum.openwrt.org/t/writing-shell-scripts-support-topic/206144" class="urlextern" title="https://forum.openwrt.org/t/writing-shell-scripts-support-topic/206144" rel="ugc nofollow">Writing shell scripts support forum topic</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;See also&quot;,&quot;hid&quot;:&quot;see_also&quot;,&quot;codeblockOffset&quot;:20,&quot;secid&quot;:13,&quot;range&quot;:&quot;12950-&quot;} -->

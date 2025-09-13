@@ -1,0 +1,62 @@
+
+<h1 class="sectionedit1" id="netfilter_configuration_examples">netfilter Configuration Examples</h1>
+<div class="level1">
+
+<p>
+This section contains a collection of netfilter configuration examples that are
+difficult or impossible to provision through the
+<a href="/docs/guide-user/firewall/overview" class="wikilink1" title="docs:guide-user:firewall:overview" data-wiki-id="docs:guide-user:firewall:overview">fw3 application</a>.
+</p>
+
+<p>
+These rule sets will generally be added to <code>/etc/firewall.user</code> and will be
+parsed after the fw3 configuration.  Rules added using <code>-A</code> will be appended
+to the end of the existing chain so may not be run if there is a prior match.
+Use <code>-I [rulenum]</code> to insert the rule after rulenum in the chain (default is 
+adding as the first rule.)
+</p>
+
+<p>
+To reiterate an earlier point, the netfilter chains can get a tricky
+because the <a href="/docs/guide-user/firewall/overview" class="wikilink1" title="docs:guide-user:firewall:overview" data-wiki-id="docs:guide-user:firewall:overview">fw3 application</a>
+implicitly creates a number of them to organize rule sets.
+See <a href="/docs/guide-user/firewall/netfilter_iptables/netfilter_management" class="wikilink1" title="docs:guide-user:firewall:netfilter_iptables:netfilter_management" data-wiki-id="docs:guide-user:firewall:netfilter_iptables:netfilter_management">netfilter management</a>
+for tools to diagnose <code>iptables</code> commands.
+</p>
+
+<p>
+The examples in this section explicitly use the <code>iptables</code> application and
+not fw3 UCI configurations.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;netfilter Configuration Examples&quot;,&quot;hid&quot;:&quot;netfilter_configuration_examples&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1016&quot;} -->
+<h2 class="sectionedit2" id="limit_incoming_traffic_from_the_wan_zone">Limit incoming traffic from the WAN zone</h2>
+<div class="level2">
+
+<p>
+This example uses the netfilter <code>limit</code> match to forward at most 1000
+packets/second from the <abbr title="Wide Area Network">WAN</abbr>-sid to the <abbr title="Local Area Network">LAN</abbr>-side.  After the number of packets
+exceeds the limit (1000/s), a subsequent rule will be processed until the
+policy (which is usually set to DROP.)
+</p>
+<pre class="file"># create a new chain and append to the forwarding_wan chain
+iptables -N wan_forward_limit
+iptables -A wan_forward_limit -m limit --limit 1000/s --limit-burst 10000 -j RETURN
+iptables -A forwarding_wan_rule -j wan_forward_limit</pre>
+
+<p>
+For practical reasons, this rule would only used if the <abbr title="Local Area Network">LAN</abbr>-side network is
+very slow/congested (for example, a T1 ~1.5Mbit throughput).
+</p>
+
+<p>
+As an example of a rule implicitly created by fw3, this rule is created when
+the <code>Enable SYN-flood protection</code> checkbox is set.  This rule prevents a <abbr title="Distributed Denial of Service">DDoS</abbr>
+syn-flood attack by limiting the number of <abbr title="Transmission Control Protocol">TCP</abbr> SYN packets to 25/sec.  All SYN
+packets after the limit are handled by a subsequent rule.
+</p>
+<pre class="file">iptables -t filter -A syn_flood -p tcp -m tcp --tcp-flags FIN,SYN,RST,ACK SYN -m limit --limit 25/sec --limit-burst 50 -m comment --comment &quot;!fw3&quot; -j RETURN</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Limit incoming traffic from the WAN zone&quot;,&quot;hid&quot;:&quot;limit_incoming_traffic_from_the_wan_zone&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;1017-&quot;} -->

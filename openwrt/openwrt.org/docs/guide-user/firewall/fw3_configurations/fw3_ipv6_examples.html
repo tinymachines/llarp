@@ -1,0 +1,190 @@
+
+<h1 class="sectionedit1" id="ipv6_firewall_examples">IPv6 firewall examples</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;IPv6 firewall examples&quot;,&quot;hid&quot;:&quot;ipv6_firewall_examples&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-37&quot;} -->
+<h2 class="sectionedit2" id="port_accept_for_ipv6">Port accept for IPv6</h2>
+<div class="level2">
+
+<p>
+To open port 80 so that a local webserver at <code>2001:db8:42::1337</code> can be reached from the Internet:
+</p>
+<pre class="code bash">config rule
+	option src <span class="st_h">'wan'</span>
+	option proto <span class="st_h">'tcp'</span>
+	option dest <span class="st_h">'lan'</span>
+	option dest_ip <span class="st_h">'2001:db8:42::1337'</span>
+	option dest_port <span class="st_h">'80'</span>
+	option family <span class="st_h">'ipv6'</span>
+	option target <span class="st_h">'ACCEPT'</span></pre>
+
+<p>
+To open <abbr title="Secure Shell">SSH</abbr> access to all <abbr title="Internet Protocol version 6">IPv6</abbr> hosts in the local network:
+</p>
+<pre class="code bash">config rule
+	option src <span class="st_h">'wan'</span>
+	option proto <span class="st_h">'tcp'</span>
+	option dest <span class="st_h">'lan'</span>
+	option dest_port <span class="st_h">'22'</span>
+	option family <span class="st_h">'ipv6'</span>
+	option target <span class="st_h">'ACCEPT'</span></pre>
+
+<p>
+To open all <abbr title="Transmission Control Protocol">TCP</abbr>/<abbr title="User Datagram Protocol">UDP</abbr> port between 1024 and 65535 towards the local <abbr title="Internet Protocol version 6">IPv6</abbr> network:
+</p>
+<pre class="code bash">config rule
+	option src <span class="st_h">'wan'</span>
+	option proto <span class="st_h">'tcp udp'</span>
+	option dest <span class="st_h">'lan'</span>
+	option dest_port <span class="st_h">'1024:65535'</span>
+	option family <span class="st_h">'ipv6'</span>
+	option target <span class="st_h">'ACCEPT'</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Port accept for IPv6&quot;,&quot;hid&quot;:&quot;port_accept_for_ipv6&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;38-838&quot;} -->
+<h2 class="sectionedit3" id="forwarding_ipv6_tunnel_traffic">Forwarding IPv6 tunnel traffic</h2>
+<div class="level2">
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> This example is for <abbr title="Internet Protocol version 6">IPv6</abbr> tunnels only, and does not apply to native dual-stack interfaces.
+</p>
+
+<p>
+The example below assumes your tunnel interface is configured on it&#039;s own zone.
+An alternative setup that may also be used is having your <abbr title="Internet Protocol version 6">IPv6</abbr> tunnel on an interface like <code>henet</code> and attached to the <code>wan</code> zone.
+This is also correct, but if you plan on passing a prefix down to your <abbr title="Local Area Network">LAN</abbr> and want to firewall appropriately it is better to create a separate firewall zone as described below.
+</p>
+
+<p>
+<abbr title="Internet Protocol version 6">IPv6</abbr> packets may not be forwarded from lan to your wan6 interface and vice versa by default.
+Make sure that <code>net.ipv6.conf.all.forwarding=1</code> is enabled, you can run <code>sysctl net.ipv6.conf.all.forwarding</code> to confirm the value set.
+(This is likely already enabled by default on newer OpenWrt builds).
+</p>
+
+<p>
+Assuming your tunnel interface is called <code>wan6</code>, add the following sections to <code>/etc/config/firewall</code> to create a new zone <code>wan6</code>.
+</p>
+<pre class="code bash">config zone
+	option name <span class="st_h">'wan6'</span>
+	option network <span class="st_h">'wan6'</span>
+	option family <span class="st_h">'ipv6'</span>
+	option input <span class="st_h">'ACCEPT'</span>
+	option output <span class="st_h">'ACCEPT'</span>
+	option forward <span class="st_h">'REJECT'</span>
+&nbsp;
+config forwarding
+        option dest <span class="st_h">'wan6'</span>
+        option src <span class="st_h">'lan'</span></pre>
+
+<p>
+Forwarding lan → wan6 will allow your <abbr title="Internet Protocol version 6">IPv6</abbr> prefix to work on the lan side, you can confirm this by going to <a href="https://test-ipv6.com" class="urlextern" title="https://test-ipv6.com" rel="ugc nofollow">https://test-ipv6.com</a>.
+</p>
+
+<p>
+The <code>family</code> option ensures that the zone and all associated entries (<code>rule</code>, <code>forwarding</code> and <code>redirect</code> sections) are only added to <em>ip6tables</em> but not <em>iptables</em>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Forwarding IPv6 tunnel traffic&quot;,&quot;hid&quot;:&quot;forwarding_ipv6_tunnel_traffic&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:3,&quot;range&quot;:&quot;839-2364&quot;} -->
+<h3 class="sectionedit4" id="opening_ipv6_ports_to_lan_clients">Opening IPv6 ports to LAN clients</h3>
+<div class="level3">
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Adding the following forwarding rule below will expose <strong>ALL <abbr title="Internet Protocol version 6">IPv6</abbr> ports</strong> behind a v6 host on the <abbr title="Local Area Network">LAN</abbr>, which is potentially very dangerous.
+Instead, you should selectively define allow <abbr title="Internet Protocol version 6">IPv6</abbr> firewall rules to avoid this.
+The documentation was previously worded in a way that stated this forwarding rule was needed to allow <abbr title="Internet Protocol version 6">IPv6</abbr> traffic to flow properly.
+This is not true.
+You do not need to allow wan6 → lan to everything.
+</p>
+<pre class="code bash"><span class="co0"># Only enable this if you know what you're doing and have additional firewall rules blocking access to IPv6 TCP/UDP ports.</span>
+config forwarding
+        option dest <span class="st_h">'lan'</span>
+        option src <span class="st_h">'wan6'</span></pre>
+
+<p>
+Any firewall rules required to open one or more ports would follow the same syntax as the examples above, with the exception of the <code>src</code> value being <code>wan6</code>, rather than <code>wan</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Opening IPv6 ports to LAN clients&quot;,&quot;hid&quot;:&quot;opening_ipv6_ports_to_lan_clients&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:4,&quot;range&quot;:&quot;2365-3234&quot;} -->
+<h2 class="sectionedit5" id="dynamic_prefix_forwarding">Dynamic prefix forwarding</h2>
+<div class="level2">
+
+<p>
+Forward <abbr title="Internet Protocol version 6">IPv6</abbr> traffic from <abbr title="Wide Area Network">WAN</abbr> to a specific <abbr title="Local Area Network">LAN</abbr> host using its GUA address.
+Configure a <a href="/docs/guide-user/base-system/dhcp_configuration#static_leases" class="wikilink1" title="docs:guide-user:base-system:dhcp_configuration" data-wiki-id="docs:guide-user:base-system:dhcp_configuration">static IPv6 suffix</a> and add a forwarding rule.
+</p>
+<pre class="code bash">uci add firewall rule
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>rule<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.name=<span class="st0">&quot;Forward-IPv6&quot;</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>rule<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.src=<span class="st0">&quot;wan&quot;</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>rule<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.dest=<span class="st0">&quot;lan&quot;</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>rule<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.dest_ip=<span class="st0">&quot;::23/-64&quot;</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>rule<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.family=<span class="st0">&quot;ipv6&quot;</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>rule<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.proto=<span class="st0">&quot;tcp udp&quot;</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>rule<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.target=<span class="st0">&quot;ACCEPT&quot;</span>
+uci commit firewall
+service firewall restart</pre>
+
+<p>
+The negative netmask notation works only with OpenWrt firewall:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>/-64</code> equivalent for <code>/::0000:ffff:ffff:ffff:ffff</code></div>
+</li>
+<li class="level1"><div class="li"> <code>/-60</code> equivalent for <code>/::000f:ffff:ffff:ffff:ffff</code></div>
+</li>
+<li class="level1"><div class="li"> <code>/-56</code> equivalent for <code>/::00ff:ffff:ffff:ffff:ffff</code></div>
+</li>
+<li class="level1"><div class="li"> <code>/-48</code> equivalent for <code>/::ffff:ffff:ffff:ffff:ffff</code></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Dynamic prefix forwarding&quot;,&quot;hid&quot;:&quot;dynamic_prefix_forwarding&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:5,&quot;range&quot;:&quot;3235-4160&quot;} -->
+<h2 class="sectionedit6" id="ipv6_port_forwarding">IPv6 port forwarding</h2>
+<div class="level2">
+
+<p>
+Forward a specific <abbr title="Internet Protocol version 6">IPv6</abbr> port from <abbr title="Wide Area Network">WAN</abbr> to a <abbr title="Local Area Network">LAN</abbr> host behind NAT66.
+Configure a <a href="/docs/guide-user/base-system/dhcp_configuration#static_leases" class="wikilink1" title="docs:guide-user:base-system:dhcp_configuration" data-wiki-id="docs:guide-user:base-system:dhcp_configuration">static DHCPv6 lease</a> and add a redirect using the ULA address.
+</p>
+<pre class="code bash">uci add firewall redirect
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>redirect<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.name=<span class="st0">&quot;Forward-SSH-IPv6&quot;</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>redirect<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.src=<span class="st0">&quot;wan&quot;</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>redirect<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.src_dport=<span class="st0">&quot;22&quot;</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>redirect<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.dest=<span class="st0">&quot;lan&quot;</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>redirect<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.dest_ip=<span class="st0">&quot;fd00:db8:42::1337&quot;</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>redirect<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.dest_port=<span class="st0">&quot;22&quot;</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>redirect<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.family=<span class="st0">&quot;ipv6&quot;</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>redirect<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.proto=<span class="st0">&quot;tcp&quot;</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>redirect<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.target=<span class="st0">&quot;DNAT&quot;</span>
+uci commit firewall
+service firewall restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;IPv6 port forwarding&quot;,&quot;hid&quot;:&quot;ipv6_port_forwarding&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:6,&quot;range&quot;:&quot;4161-4913&quot;} -->
+<h2 class="sectionedit7" id="ipv6_firewall_testing">IPv6 firewall testing</h2>
+<div class="level2">
+
+<p>
+You can confirm the state of your <abbr title="Internet Protocol version 6">IPv6</abbr> firewall using a couple of tools:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="https://ipv6.chappell-family.com/ipv6tcptest/" class="urlextern" title="https://ipv6.chappell-family.com/ipv6tcptest/" rel="ugc nofollow">https://ipv6.chappell-family.com/ipv6tcptest/</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://www.ipv6scanner.com/cgi-bin/main.py" class="urlextern" title="http://www.ipv6scanner.com/cgi-bin/main.py" rel="ugc nofollow">http://www.ipv6scanner.com/cgi-bin/main.py</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://ifconfig.co" class="urlextern" title="https://ifconfig.co" rel="ugc nofollow">https://ifconfig.co</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://ipv6.icanhazip.com" class="urlextern" title="https://ipv6.icanhazip.com" rel="ugc nofollow">https://ipv6.icanhazip.com</a></div>
+</li>
+</ul>
+
+<p>
+These tools will allow you to query one or more ports against an <abbr title="Internet Protocol version 6">IPv6</abbr> address to determine the response.
+In most cases you should not have open ports, unless these have been explicitly opened via a firewall rule.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;IPv6 firewall testing&quot;,&quot;hid&quot;:&quot;ipv6_firewall_testing&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:7,&quot;range&quot;:&quot;4914-&quot;} -->

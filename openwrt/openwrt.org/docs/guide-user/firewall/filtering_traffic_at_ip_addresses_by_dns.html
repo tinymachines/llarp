@@ -1,0 +1,216 @@
+
+<h1 class="sectionedit1" id="fw4_filtering_traffic_with_ip_sets_by_dns">fw4 Filtering traffic with IP sets by DNS</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__meta:infobox:howto_links">
+<div class="level1">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_info plugin_wrap">
+<p>
+This article relies on the following:
+</p>
+<ul>
+<li class="level1"><div class="li"> Accessing <a href="/docs/guide-quick-start/walkthrough_login" class="wikilink1" title="docs:guide-quick-start:walkthrough_login" data-wiki-id="docs:guide-quick-start:walkthrough_login">web interface</a> / <a href="/docs/guide-quick-start/sshadministration" class="wikilink1" title="docs:guide-quick-start:sshadministration" data-wiki-id="docs:guide-quick-start:sshadministration">command-line interface</a></div>
+</li>
+<li class="level1"><div class="li"> Managing <a href="/docs/guide-user/base-system/uci" class="wikilink1" title="docs:guide-user:base-system:uci" data-wiki-id="docs:guide-user:base-system:uci">configs</a> / <a href="/docs/guide-user/additional-software/managing_packages" class="wikilink1" title="docs:guide-user:additional-software:managing_packages" data-wiki-id="docs:guide-user:additional-software:managing_packages">packages</a> / <a href="/docs/guide-user/base-system/managing_services" class="wikilink1" title="docs:guide-user:base-system:managing_services" data-wiki-id="docs:guide-user:base-system:managing_services">services</a> / <a href="/docs/guide-user/base-system/log.essentials" class="wikilink1" title="docs:guide-user:base-system:log.essentials" data-wiki-id="docs:guide-user:base-system:log.essentials">logs</a></div>
+</li>
+</ul>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;fw4 Filtering traffic with IP sets by DNS&quot;,&quot;hid&quot;:&quot;fw4_filtering_traffic_with_ip_sets_by_dns&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-138&quot;} -->
+<h2 class="sectionedit6" id="introduction">Introduction</h2>
+<div class="level2">
+
+<p>
+This guide creates a <strong>set</strong> of <abbr title="Internet Protocol">IP</abbr> addresses for traffic filtering and is an equivalent of <a href="/docs/guide-user/firewall/fw3_configurations/dns_ipset" class="wikilink1" title="docs:guide-user:firewall:fw3_configurations:dns_ipset" data-wiki-id="docs:guide-user:firewall:fw3_configurations:dns_ipset">dns_ipset</a> based on <strong>nftables/fw4</strong> which is the default starting from <em>OpenWrt 22.03</em>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Introduction&quot;,&quot;hid&quot;:&quot;introduction&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;139-394&quot;} -->
+<h2 class="sectionedit7" id="goal">Goal</h2>
+<div class="level2">
+
+<p>
+Avoid a direct connection to the <abbr title="Internet Protocol">IP</abbr> address bypass of <a href="/docs/guide-user/firewall/fw3_configurations/fw3_parent_controls#blocking_name_resolution_dns_by_adblockers" class="wikilink1" title="docs:guide-user:firewall:fw3_configurations:fw3_parent_controls" data-wiki-id="docs:guide-user:firewall:fw3_configurations:fw3_parent_controls"> DNS based filtering </a> of a website or with <abbr title="DNS over HTTPS">DoH</abbr>. The general use case is a traffic restriction to be applied for SmartTV, IoT and other devices for which you want to enforce limited Internet access.
+</p>
+
+<p>
+To achieve this, a <strong>set</strong> of <abbr title="Internet Protocol">IP</abbr> addresses is created from a list of allowed or denied domains. A firewall rule to allow or deny traffic to those <abbr title="Internet Protocol">IP</abbr> address is then created. The below example refers to the allow case for a specific interface called <em>wildlan</em>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Goal&quot;,&quot;hid&quot;:&quot;goal&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;395-1040&quot;} -->
+<h2 class="sectionedit8" id="prerequisites">Prerequisites</h2>
+<div class="level2">
+<ol>
+<li class="level1"><div class="li"> You need a firewall zone without forwarding to <strong>wan</strong>, so that no traffic to the Internet is allowed by default. Below, this firewall zone is referenced as <em>wildlan</em></div>
+</li>
+<li class="level1"><div class="li"> <strong>dig</strong> and <strong>grep</strong> are installed (only for <em>Case 2</em>)</div>
+</li>
+<li class="level1"><div class="li"> A standard fw4 configuration with <em>inet fw4</em> table</div>
+</li>
+</ol>
+
+<p>
+This wiki covers two cases, based on the <em>dnsmasq</em> running version. <em>Case 1</em> applies only to <em>dnsmasq</em> 2.87 or greater.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Prerequisites&quot;,&quot;hid&quot;:&quot;prerequisites&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:8,&quot;range&quot;:&quot;1041-1486&quot;} -->
+<h2 class="sectionedit9" id="case_1_command-line_instructions">[CASE 1] Command-line instructions</h2>
+<div class="level2">
+
+<p>
+Install <em>dnsmasq-full</em> as follows
+</p>
+<pre class="code bash">opkg update; <span class="kw3">cd</span> <span class="sy0">/</span>tmp<span class="sy0">/</span> <span class="sy0">&amp;&amp;</span> opkg download dnsmasq-full; opkg <span class="kw2">install</span> ipset libnettle8 libnetfilter-conntrack3;
+opkg remove dnsmasq; opkg <span class="kw2">install</span> dnsmasq-full <span class="re5">--cache</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>; <span class="kw2">rm</span> <span class="re5">-f</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>dnsmasq-full<span class="sy0">*</span>.ipk;</pre>
+
+<p>
+Confirm <em>dnsmasq</em> is running with
+</p>
+<pre class="code bash">opkg list-installed dns<span class="sy0">*</span></pre>
+
+<p>
+A valid result looks like <em>dnsmasq-full - 2.88-1</em>
+</p>
+
+<p>
+In <em>/etc/hotplug.d/iface/20-firewall</em>, add the below code to create the <strong>nft set</strong> in which we will save the <abbr title="Internet Protocol">IP</abbr> addresses, the proposed code is <strong>ipv4</strong> only but can be extended to cover <strong>ipv6</strong>.
+</p>
+<pre class="code bash"><span class="co0"># Filter wildlan by IP addresses</span>
+<span class="co0">## Create a set for &quot;inet fw4&quot; table with name &quot;allowlist&quot; that can include &quot;ipv4_addr&quot;</span>
+nft add <span class="kw1">set</span> inet fw4 allowlist <span class="br0">&#123;</span> <span class="kw3">type</span> ipv4_addr \;<span class="br0">&#125;</span>
+nft insert rule inet fw4 forward_wildlan <span class="kw2">ip</span> daddr <span class="sy0">@</span>allowlist accept</pre>
+
+<p>
+The <em>wildlan</em> zone has no access to Internet unless the target <abbr title="Internet Protocol">IP</abbr> address is listed in <em>allowlist</em>. With <em>dnsmasq 2.87</em>, resolved IPs can be automatically added to a set.
+</p>
+
+<p>
+Edit <strong>/etc/dnsmasq.conf</strong> with
+</p>
+<pre class="code bash"><span class="co0"># The IP address corresponding to allowed.url URLs will be saved in the nftset (/4# filters for ipv4)</span>
+<span class="re2">nftset</span>=<span class="sy0">/</span>first.allowed.urls<span class="sy0">/</span><span class="nu0">4</span><span class="co0">#inet#fw4#allowlist</span>
+<span class="re2">nftset</span>=<span class="sy0">/</span>second.allowed.urls<span class="sy0">/</span><span class="nu0">4</span><span class="co0">#inet#fw4#allowlist</span>
+...</pre>
+
+<p>
+Looking to the case in which you want to ensure that only <abbr title="Internet Protocol">IP</abbr> addresses resolved via your <abbr title="Domain Name System">DNS</abbr> are allowed, then use # wildcard. This make sense if you want avoid access via direct <abbr title="Internet Protocol">IP</abbr> without a filter for specific URLs.
+</p>
+<pre class="code bash"><span class="re2">nftset</span>=<span class="sy0">/</span><span class="co0">#/4#inet#fw4#allowlist</span></pre>
+
+<p>
+The relevant <abbr title="Internet Protocol">IP</abbr> address of the allowed URLs can be listed with the below command, the set will anyhow remain empty till any of the allowed URLs is resolved via <em>dnsmasq</em>.
+</p>
+<pre class="code bash">nft list <span class="kw1">set</span> inet fw4 allowlist</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;[CASE 1] Command-line instructions&quot;,&quot;hid&quot;:&quot;case_1_command-line_instructions&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:9,&quot;range&quot;:&quot;1487-3325&quot;} -->
+<h2 class="sectionedit10" id="case_2_command-line_instructions">[CASE 2] Command-line instructions</h2>
+<div class="level2">
+
+<p>
+This applies only to <em>OpenWrt 22.03</em>, <em>OpenWrt 22.03.1</em> and <em>OpenWrt 22.03.2</em> that have an older release of <em>dnsmasq</em>. In this case we cannot use <em>dnsmasq</em> to automatically fill the <abbr title="Internet Protocol">IP</abbr> addresses in the set, so this must be done via a script.
+</p>
+
+<p>
+In <em>/etc/hotplug.d/iface/20-firewall</em>, add the below code to create the <strong>nft set</strong> in which we will save the <abbr title="Internet Protocol">IP</abbr> addresses, the proposed code is <strong>ipv4</strong> only but can be extended to cover <strong>ipv6</strong>.
+</p>
+<pre class="code bash"><span class="co0"># Filter wildlan by IP addresses</span>
+<span class="co0">## Create a set for &quot;inet fw4&quot; table with name &quot;allowlist&quot; that can include &quot;ipv4_addr&quot;</span>
+nft add <span class="kw1">set</span> inet fw4 allowlist <span class="br0">&#123;</span> <span class="kw3">type</span> ipv4_addr \;<span class="br0">&#125;</span>
+&nbsp;
+<span class="co0">## Add element to &quot;allowlist&quot; from file urls.txt</span>
+<span class="kw1">for</span> address <span class="kw1">in</span> $<span class="br0">&#40;</span><span class="kw2">dig</span> a <span class="re5">-f</span> <span class="sy0">/</span>etc<span class="sy0">/</span>sets-ipdns<span class="sy0">/</span>wildlan-urls.list +short <span class="sy0">|</span> <span class="kw2">grep</span> <span class="re5">-v</span> <span class="st_h">'\.$'</span><span class="br0">&#41;</span>; <span class="kw1">do</span>
+	nft add element inet fw4 allowlist <span class="br0">&#123;</span><span class="re1">$address</span> timeout 24h<span class="br0">&#125;</span>
+<span class="kw1">done</span>
+&nbsp;
+nft insert rule inet fw4 forward_wildlan <span class="kw2">ip</span> daddr <span class="sy0">@</span>allowlist accept</pre>
+
+<p>
+The list of domains to which traffic will be allowed shall be included in a the custom file <em>/etc/sets-ipdns/wildlan-urls.list</em>. To create the file:
+</p>
+<pre class="code bash"><span class="kw3">cd</span> <span class="sy0">/</span>etc
+<span class="kw2">mkdir</span> sets-ipdns
+<span class="kw3">cd</span> sets-ipdns
+<span class="kw2">vim</span> wildlan-urls.list</pre>
+
+<p>
+List inside <strong>vim</strong> the domain names that shall be allowed.
+</p>
+
+<p>
+Based on this forward chain, only the traffic with destination to the <abbr title="Internet Protocol">IP</abbr> addresses included in @allowlist will be allowed.
+</p>
+
+<p>
+The <em>/etc/hotplug.d/iface/20-firewall</em> is executed at any change of any interface (so mostly at boot time), so that @allowlist will be filled with <abbr title="Internet Protocol">IP</abbr> addresses only at that stage. That <strong>set</strong> shall be periodically updated for two reasons:
+1. The <abbr title="Internet Protocol">IP</abbr> addresses may change
+2. In case of <abbr title="Domain Name System">DNS</abbr> Load Balancing, the same <abbr title="Domain Name System">DNS</abbr> query will result in different <abbr title="Internet Protocol">IP</abbr> addresses (all valid) based on time of request.
+</p>
+
+<p>
+In the Scheduled Task in Luci or in <em>/etc/crontabs/root</em>, configure a script to update the <strong>sets</strong> every 15 minutes.
+</p>
+<pre class="code bash"><span class="nu0">15</span> <span class="sy0">*</span> <span class="sy0">*</span> <span class="sy0">*</span> <span class="sy0">*</span> <span class="sy0">/</span>etc<span class="sy0">/</span>sets-ipdns<span class="sy0">/</span>update-sets.sh</pre>
+
+<p>
+In the <em>/etc/sets-ipdns/update-sets.sh</em>
+</p>
+<pre class="code bash"><span class="co0">## Add element to &quot;allowlist&quot; from file urls.txt</span>
+<span class="kw1">for</span> address <span class="kw1">in</span> $<span class="br0">&#40;</span><span class="kw2">dig</span> a <span class="re5">-f</span> <span class="sy0">/</span>etc<span class="sy0">/</span>sets-ipdns<span class="sy0">/</span>wildlan-urls.list +short <span class="sy0">|</span> <span class="kw2">grep</span> <span class="re5">-v</span> <span class="st_h">'\.$'</span><span class="br0">&#41;</span>; <span class="kw1">do</span>
+	nft add element inet fw4 allowlist <span class="br0">&#123;</span><span class="re1">$address</span> timeout 24h<span class="br0">&#125;</span>
+<span class="kw1">done</span></pre>
+
+<p>
+Enable the script and reboot
+</p>
+<pre class="code bash"><span class="kw2">chmod</span> +x <span class="sy0">/</span>etc<span class="sy0">/</span>sets-ipdns<span class="sy0">/</span>update-sets.sh
+reboot</pre>
+
+<p>
+After reboot, verify the content of the @allowlist and the result should be a list of <strong>ipv4</strong> addresses.
+</p>
+<pre class="code bash">nft list <span class="kw1">set</span> inet fw4 allowlist</pre>
+
+<p>
+The final crosscheck is to verify that addresses listed in <em>/etc/sets-ipdns/wildlan-urls.list</em> can be accessed, no other domains should be accessible unless the same <abbr title="Internet Protocol">IP</abbr> address is shared between multiple domains (that happen with CDNs).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;[CASE 2] Command-line instructions&quot;,&quot;hid&quot;:&quot;case_2_command-line_instructions&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:10,&quot;range&quot;:&quot;3326-6059&quot;} -->
+<h2 class="sectionedit11" id="limitations">Limitations</h2>
+<div class="level2">
+
+<p>
+In <em>CASE 1</em> any <abbr title="Uniform Resource Locator">URL</abbr> and sub-<abbr title="Uniform Resource Locator">URL</abbr> that is listed will be allowed, rather in <em>CASE 2</em> only the exact listed <abbr title="Uniform Resource Locator">URL</abbr> will be allowed. This make <em>CASE 2</em> functionally working only for services that doesn&#039;t use multiple sub-URLs.
+</p>
+
+<p>
+In <em>CASE 2</em> the script will periodically query the <abbr title="Domain Name System">DNS</abbr> with all domains included in <em>/etc/sets-ipdns/wildlan-urls.list</em> so that list should be reasonably small.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Limitations&quot;,&quot;hid&quot;:&quot;limitations&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:11,&quot;range&quot;:&quot;6060-6477&quot;} -->
+<h2 class="sectionedit12" id="further_improvements">Further Improvements</h2>
+<div class="level2">
+
+<p>
+The command line instructions that are included in <em>/etc/hotplug.d/iface/20-firewall</em> trigger a rebuild of the firewall configuration at each change of any interface. This is not triggered when a UCI/LUCI firewall change is applied. So at any change in the firewall configuration, the rebuild will not involve the custom rules included in <em>/etc/hotplug.d/iface/20-firewall</em>. As a result, connectivity of devices that rely on this will be lost.
+</p>
+
+<p>
+The rules will be reapplied at next change in status of any interface, that could also be triggered on purpose to rebuild the rules.
+</p>
+
+<p>
+If in the next released is included a custom file for NFT commands that is triggered at any firewall rebuild, this problem will be solved.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Further Improvements&quot;,&quot;hid&quot;:&quot;further_improvements&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:12,&quot;range&quot;:&quot;6478-&quot;} -->

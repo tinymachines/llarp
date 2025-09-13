@@ -1,0 +1,122 @@
+
+<h1 class="sectionedit1" id="openwrt_on_uefi_based_x86_systems">OpenWrt on UEFI based x86 systems</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;OpenWrt on UEFI based x86 systems&quot;,&quot;hid&quot;:&quot;openwrt_on_uefi_based_x86_systems&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-49&quot;} -->
+<h2 class="sectionedit2" id="introduction">Introduction</h2>
+<div class="level2">
+
+<p>
+UEFI boot has been required for years now, boards that only support UEFI are common, and Intel has stated back in 2017 that “legacy” BIOS will no longer be supported after 2020.
+</p>
+
+<p>
+<a href="https://www.anandtech.com/show/12068/intel-to-remove-bios-support-from-uefi-by-2020" class="urlextern" title="https://www.anandtech.com/show/12068/intel-to-remove-bios-support-from-uefi-by-2020" rel="ugc nofollow">https://www.anandtech.com/show/12068/intel-to-remove-bios-support-from-uefi-by-2020</a>
+</p>
+
+<p>
+<a href="http://www.uefi.org/sites/default/files/resources/Brian_Richardson_Intel_Final.pdf" class="urlextern" title="http://www.uefi.org/sites/default/files/resources/Brian_Richardson_Intel_Final.pdf" rel="ugc nofollow">http://www.uefi.org/sites/default/files/resources/Brian_Richardson_Intel_Final.pdf</a>.
+</p>
+
+<p>
+To accommodate this, it&#039;s necessary for OpenWrt build system to generate UEFI bootable images.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Introduction&quot;,&quot;hid&quot;:&quot;introduction&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;50-520&quot;} -->
+<h2 class="sectionedit3" id="status">Status</h2>
+<div class="level2">
+
+<p>
+As of OpenWrt <code><a href="https://git.openwrt.org/?p=openwrt/openwrt.git;a=commit;h=a6b7c3e672764858fd294998406ae791f5964b4a" class="interwiki iw_commit" title="https://git.openwrt.org/?p=openwrt/openwrt.git;a=commit;h=a6b7c3e672764858fd294998406ae791f5964b4a">a6b7c3e672764858fd294998406ae791f5964b4a</a></code>, EFI-compatible images are available on the x86-64 <a href="https://downloads.openwrt.org/snapshots/targets/x86/64/" class="urlextern" title="https://downloads.openwrt.org/snapshots/targets/x86/64/" rel="ugc nofollow">snapshots</a> downloads page.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Status&quot;,&quot;hid&quot;:&quot;status&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;521-824&quot;} -->
+<h2 class="sectionedit4" id="building_uefi_bootable_openwrt_image">Building UEFI bootable OpenWrt image</h2>
+<div class="level2">
+
+<p>
+To build an EFI-compatible OpenWrt image:
+</p>
+<ul>
+<li class="level1"><div class="li"> Run <code>make menuconfig</code>.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> Go to <strong>Target Images</strong> and make sure that the option <strong>Build GRUB EFI images (Linux x86 or x86_64 host only)</strong> is checked.</div>
+</li>
+</ul>
+
+<p>
+Select additional packages as necessary and finally save changes and exit menuconfig.
+</p>
+
+<p>
+Run <code>make</code> as usual to build the image.
+</p>
+
+<p>
+The resulting image(s) will be available in <code>./bin/targets/x86/64/</code> (depending on the image format(s) you chose), which can be written to disk after decompression.
+</p>
+
+<p>
+Note that these are <strong>disk images</strong>, not partition images, which must be written to a block device directly e.g. <code>/dev/sdb</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Building UEFI bootable OpenWrt image&quot;,&quot;hid&quot;:&quot;building_uefi_bootable_openwrt_image&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;825-1505&quot;} -->
+<h2 class="sectionedit5" id="uefi_secure_boot">UEFI Secure Boot</h2>
+<div class="level2">
+
+<p>
+To generate signed image for use with secure boot, there is a <a href="https://github.com/alive4ever/openwrt" class="urlextern" title="https://github.com/alive4ever/openwrt" rel="ugc nofollow">development repository</a> with corresponding <a href="https://github.com/alive4ever/packages" class="urlextern" title="https://github.com/alive4ever/packages" rel="ugc nofollow">packages feed</a> under <code>feature-uefi-secure-boot</code> branch.
+</p>
+
+<p>
+The repository contains changes based on Jow-staging branch to generate secure boot capable image
+</p>
+
+<p>
+The related packages feed repository contains stuffs needed to sign efi binaries, i.e. gnu-efi and sbsigntool and stuffs to manipulate efi variables, i.e. efivar, efibootmgr, and efitools.
+</p>
+<pre class="code bash"><span class="co0"># Add the development git repository</span>
+$ <span class="kw2">git remote</span> add devrepo https:<span class="sy0">//</span>github.com<span class="sy0">/</span>alive4ever<span class="sy0">/</span>openwrt
+$ <span class="kw2">git fetch</span> devrepo
+$ <span class="kw2">git checkout</span> feature-uefi-secure-boot
+&nbsp;
+<span class="co0"># Configure the corresponding package repository</span>
+$ <span class="kw3">echo</span> <span class="st_h">'src-git packages https://github.com/alive4ever/packages;feature-uefi-secure-boot'</span> <span class="sy0">&gt;</span> .<span class="sy0">/</span>feeds.conf
+$ .<span class="sy0">/</span>scripts<span class="sy0">/</span>feeds clean
+$ .<span class="sy0">/</span>scripts<span class="sy0">/</span>feeds update packages
+$ .<span class="sy0">/</span>scripts<span class="sy0">/</span>feeds update <span class="re5">-i</span>
+$ .<span class="sy0">/</span>scripts<span class="sy0">/</span>feeds <span class="kw2">install</span> <span class="re5">-a</span>
+&nbsp;
+<span class="co0"># Now, configure the build system</span>
+<span class="co0"># Select x86 as Target, x86_64 as Subtarget</span>
+<span class="co0"># make sure to select 'Sign EFI executable binaries' under 'Target Images'</span>
+<span class="co0"># UEFI related tools are available under Utilities section,</span>
+<span class="co0"># which consist of efitools, efibootmgr, efivar, and sbsigntool</span>
+$ <span class="kw2">make</span> menuconfig
+&nbsp;
+<span class="co0"># The certificate and key need to be generated</span>
+<span class="co0"># to perform uefi binary signing</span>
+$ <span class="re2">OLD_UMASK</span>=$<span class="br0">&#40;</span><span class="kw3">umask</span><span class="br0">&#41;</span>
+$ <span class="kw3">umask</span> 077
+$ openssl req <span class="re5">-new</span> <span class="re5">-x509</span> <span class="re5">-sha256</span> \
+  <span class="re5">-days</span> <span class="nu0">90</span> <span class="re5">-out</span> .<span class="sy0">/</span>db.crt \
+  <span class="re5">-subj</span> <span class="st_h">'/CN=secure boot signing certificate'</span> \
+  <span class="re5">-newkey</span> rsa:<span class="nu0">2048</span> <span class="re5">-nodes</span> \
+  <span class="re5">-keyout</span> .<span class="sy0">/</span>db.key
+$ <span class="kw3">umask</span> <span class="re1">$OLD_UMASK</span>
+&nbsp;
+<span class="co0"># run make to generate UEFI secure bootable OpenWrt image</span>
+$ <span class="kw2">make</span></pre>
+
+<p>
+Remember to import <code>db.crt</code> (which may needs to be converted into DER or other format) into <code>db</code> UEFI variable to securely boot the resulting image.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;UEFI Secure Boot&quot;,&quot;hid&quot;:&quot;uefi_secure_boot&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;1506-&quot;} -->

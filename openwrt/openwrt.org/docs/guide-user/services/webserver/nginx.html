@@ -1,0 +1,823 @@
+
+<h1 class="sectionedit1" id="nginx_webserver">Nginx webserver</h1>
+<div class="level1">
+
+<p>
+<a href="http://wiki.nginx.org/" class="urlextern" title="http://wiki.nginx.org/" rel="ugc nofollow">Nginx</a>
+is a high-performance <abbr title="Hypertext Transfer Protocol">HTTP</abbr>/S server with other functions as well.
+It is a perfect candidate to run on OpenWrt due to the performance and memory
+handling.
+<strong>NB:</strong> At this time (2020-07-21), the configuration described below is contained in the master, but not in the current release (19.07).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Nginx webserver&quot;,&quot;hid&quot;:&quot;nginx_webserver&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-354&quot;} -->
+<h2 class="sectionedit2" id="install">Install</h2>
+<div class="level2">
+
+<p>
+We can install Nginx with <abbr title="Secure Socket Layer">SSL</abbr> (using libopenssl) by:
+</p>
+<pre class="code"> opkg update &amp;&amp; opkg install nginx-ssl </pre>
+
+<p>
+Of course there will be port issues if we installed
+<a href="/docs/guide-user/luci/luci.essentials" class="wikilink1" title="docs:guide-user:luci:luci.essentials" data-wiki-id="docs:guide-user:luci:luci.essentials">LuCI</a>
+before or after Nginx, since the standard LuCI package installs
+<a href="/docs/guide-user/services/webserver/uhttpd" class="wikilink1" title="docs:guide-user:services:webserver:uhttpd" data-wiki-id="docs:guide-user:services:webserver:uhttpd">uHTTPd</a>,
+which also wants to claim port 80 (and port 443 for <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr>).
+So configuring and/or portforwarding may be neccessary.
+There are ways to run
+<a href="/docs/guide-user/luci/luci.essentials#configuration" class="wikilink1" title="docs:guide-user:luci:luci.essentials" data-wiki-id="docs:guide-user:luci:luci.essentials">LuCI with Nginx</a>
+but that is not coverd here.
+For a quick fix, just change the uhttpd port to something else in
+<code>/etc/config/uhttpd</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Install&quot;,&quot;hid&quot;:&quot;install&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;355-1026&quot;} -->
+<h2 class="sectionedit3" id="configuration">Configuration</h2>
+<div class="level2">
+
+
+
+<p>
+The official Documentation contains a
+<a href="https://docs.nginx.com/nginx/admin-guide/" class="urlextern" title="https://docs.nginx.com/nginx/admin-guide/" rel="ugc nofollow">Admin Guide</a>.
+Here we will look at some often used configuration parts and how we handle them
+at OpenWrt.
+At different places there are references to the official
+<a href="https://docs.nginx.com/nginx/technical-specs/" class="urlextern" title="https://docs.nginx.com/nginx/technical-specs/" rel="ugc nofollow">Technical Specs</a>
+for further reading.
+</p>
+
+<p>
+<strong>tl;dr:</strong> When starting Nginx by <code>/etc/init.d/nginx</code>, it creates its main
+configuration dynamically based on a minimal template and the
+<a href="/docs/guide-user/base-system/uci" class="wikilink1" title="docs:guide-user:base-system:uci" data-wiki-id="docs:guide-user:base-system:uci">🡒UCI</a> configuration.
+</p>
+
+<p>
+The UCI <code>/etc/config/nginx</code> contains initially:
+</p>
+<div class="table sectionedit4"><table class="inline">
+	<tr class="row0">
+		<td class="col0"> <code>config server &#039;_lan</code>&#039; </td><td class="col1"> Default server for the <abbr title="Local Area Network">LAN</abbr>, which includes all <code>/etc/nginx/conf.d/*.locations</code>. </td>
+	</tr>
+	<tr class="row1">
+		<td class="col0"> <code>config server &#039;_redirect2ssl</code>&#039; </td><td class="col1"> Redirects inexistent URLs to <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr>. </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;1791-1979&quot;} -->
+<p>
+It enables also the <code>/etc/nginx/conf.d/</code> directory for further configuration:
+</p>
+<div class="table sectionedit5"><table class="inline">
+	<tr class="row0">
+		<td class="col0"> <code>/etc/nginx/conf.d/$NAME.conf</code> </td><td class="col1"> Is included in the main configuration. It is prioritized over a UCI <code>config server &#039;$NAME&#039; </code>. </td>
+	</tr>
+	<tr class="row1">
+		<td class="col0"> <code>/etc/nginx/conf.d/$NAME.locations</code> </td><td class="col1"> Is include in the <code>_lan</code> server and can be re-used for others, too. </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> <code>/etc/nginx/restrict_locally</code> </td><td class="col1"> Is include in the <code>_lan</code> server and allows only accesses from <abbr title="Local Area Network">LAN</abbr>. </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table1&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;2061-2416&quot;} -->
+<p>
+Setup configuration (for a server <code>$NAME</code>):
+</p>
+<div class="table sectionedit6"><table class="inline">
+	<tr class="row0">
+		<td class="col0 leftalign"> <code>nginx-util [add_ssl|del_ssl] $NAME</code>  </td><td class="col1"> Add/remove a self-signed certificate and corresponding directives. </td>
+	</tr>
+	<tr class="row1">
+		<td class="col0"> <code>uci set nginx.$NAME.access_log=&#039;logd openwrt</code>&#039; </td><td class="col1"> Writes accesses to Openwrt’s <a href="/docs/guide-user/base-system/log.essentials" class="wikilink1" title="docs:guide-user:base-system:log.essentials" data-wiki-id="docs:guide-user:base-system:log.essentials">🡒logd</a>. </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> <code>uci set nginx.$NAME.error_log=&#039;logd&#039; </code> </td><td class="col1"> Writes errors to Openwrt’s <a href="/docs/guide-user/base-system/log.essentials" class="wikilink1" title="docs:guide-user:base-system:log.essentials" data-wiki-id="docs:guide-user:base-system:log.essentials">🡒logd</a>. </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> <code>uci [set|add_list] nginx.$NAME.key=&#039;value&#039; </code> </td><td class="col1"> Becomes a <code>key value;</code> directive if the <em>key</em> does not start with <em>uci_</em>. </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> <code>uci set nginx.$NAME=[disable|server]</code> </td><td class="col1">Disable/enable inclusion in the dynamic conf.</td>
+	</tr>
+	<tr class="row5">
+		<td class="col0"> <code>uci set nginx.global.uci_enable=false</code> </td><td class="col1"> Use a custom <code>/etc/nginx/nginx.conf</code> rather than a dynamic conf. </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table2&quot;,&quot;secid&quot;:6,&quot;range&quot;:&quot;2464-3194&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;1027-3195&quot;} -->
+<h3 class="sectionedit7" id="basic">Basic</h3>
+<div class="level3">
+
+
+
+<p>
+We modify the configuration by changing servers saved in the UCI configuration
+at <code>/etc/config/nginx</code> and/or by creating different configuration files in the
+<code>/etc/nginx/conf.d/</code> directory.
+These files use the file extensions <code>.locations</code> and <code>.conf</code> plus <code>.crt</code>
+and <code>.key</code> for <abbr title="Secure Socket Layer">SSL</abbr> certificates and keys.<sup><a href="#fn__1" id="fnt__1" class="fn_top">1)</a></sup>
+For the new configuration to take effect, we must reload it by:
+</p>
+<pre class="code bash">service nginx reload</pre>
+
+<p>
+For OpenWrt we use a special initial configuration, which is explained in the
+section <a href="#openwrt_s_defaults" title="docs:guide-user:services:webserver:nginx ↵" class="wikilink1">🡓OpenWrt’s Defaults</a>.
+So, we can make a site available at a specific <abbr title="Uniform Resource Locator">URL</abbr> in the <strong><abbr title="Local Area Network">LAN</abbr></strong> by creating a
+<code>.locations</code> file in the directory <code>/etc/nginx/conf.d/</code>.
+Such a file consists just of some
+<a href="https://nginx.org/en/docs/http/ngx_http_core_module.html#location" class="urlextern" title="https://nginx.org/en/docs/http/ngx_http_core_module.html#location" rel="ugc nofollow">
+location blocks</a>.
+Under the latter link, you can find also the official documentation for all
+available directives of the <abbr title="Hypertext Transfer Protocol">HTTP</abbr> core of Nginx.
+Look for <em>location</em> in the Context list.
+</p>
+
+<p>
+The following example provides a simple template, see at the end for
+different <a href="#locations_for_apps" title="docs:guide-user:services:webserver:nginx ↵" class="wikilink1">🡓Locations for Apps</a><sup><a href="#fn__2" id="fnt__2" class="fn_top">2)</a></sup>:
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-user/services/webserver/nginx?codeblock=2" title="Download Snippet" class="mediafile mf_locations">/etc/nginx/conf.d/example.locations</a></dt>
+<dd><pre class="code nginx"><a href="http://wiki.nginx.org/NginxHttpCoreModule#location"><span class="kw3">location</span></a> /ex/am/ple <span class="br0">&#123;</span>
+	<a href="http://wiki.nginx.org/NginxHttpLogModule#access_log"><span class="kw20">access_log</span></a> off<span class="sy0">;</span> <span class="co1"># default: not logging accesses.</span>
+	<span class="co1"># access_log /proc/self/fd/1 openwrt; # use logd (init forwards stdout).</span>
+	<span class="co1"># error_log stderr; # default: logging to logd (init forwards stderr).</span>
+	<a href="http://wiki.nginx.org/CoreModule#error_log"><span class="kw1">error_log</span></a> /dev/null<span class="sy0">;</span> <span class="co1"># disable error logging after config file is read.</span>
+	<span class="co1"># (state path of a file for access_log/error_log to the file instead.)</span>
+	<a href="http://wiki.nginx.org/NginxHttpIndexModule#index"><span class="kw15">index</span></a> <a href="http://wiki.nginx.org/NginxHttpIndexModule#index"><span class="kw15">index</span></a>.html<span class="sy0">;</span>
+<span class="br0">&#125;</span>
+<span class="co1"># location /eg/static { … }</span></pre>
+</dd></dl>
+
+<p>
+All location blocks in all <code>.locations</code> files must use different URLs,
+since they are all included in the <code>_lan</code> server that is part of the
+<a href="#openwrt_s_defaults" title="docs:guide-user:services:webserver:nginx ↵" class="wikilink1">🡓OpenWrt’s Defaults</a>.<sup><a href="#fn__3" id="fnt__3" class="fn_top">3)</a></sup>
+We should use the root <abbr title="Uniform Resource Locator">URL</abbr> for other sites than LuCI only on <strong>other</strong> domain
+names, e.g., we could make a site available at <a href="https://example.com/" class="urlextern" title="https://example.com/" rel="ugc nofollow">https://example.com/</a>.
+In order to do that, we create <a href="#new_server_parts" title="docs:guide-user:services:webserver:nginx ↵" class="wikilink1">🡓New Server Parts</a> for all
+domain names.
+We can also activate <abbr title="Secure Socket Layer">SSL</abbr> thereby, see
+<a href="#ssl_server_parts" title="docs:guide-user:services:webserver:nginx ↵" class="wikilink1">🡓SSL Server Parts</a>.
+We use such server parts also for publishing sites to the internet (<abbr title="Wide Area Network">WAN</abbr>)
+instead of making them available just locally (in the <abbr title="Local Area Network">LAN</abbr>).
+</p>
+
+<p>
+Via <code>/etc/nginx/conf.d/*.conf</code> files we can add directives to the <em>http</em> part of
+the configuration.
+If you would change the configuration <code>uci.conf.template</code>
+instead, it is not updated to new package&#039;s versions anymore.
+Although it is not recommended, you can also disable the whole UCI config and
+create your own <code>/etc/nginx/nginx.conf</code>; then invoke:
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> nginx.global.uci_enable=<span class="kw2">false</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Basic&quot;,&quot;hid&quot;:&quot;basic&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:7,&quot;range&quot;:&quot;3196-6542&quot;} -->
+<h3 class="sectionedit8" id="new_server_parts">New Server Parts</h3>
+<div class="level3">
+
+
+
+<p>
+For making the router reachable from the <abbr title="Wide Area Network">WAN</abbr> at a registered domain name,
+it is not enough letting the
+<a href="/docs/guide-user/firewall/firewall_configuration" class="wikilink1" title="docs:guide-user:firewall:firewall_configuration" data-wiki-id="docs:guide-user:firewall:firewall_configuration">🡒firewall</a> accept requests
+(typically on ports 80 and 443) and giving the name server the internet <abbr title="Internet Protocol">IP</abbr>
+address of the router (maybe updated automatically by a
+<a href="/docs/guide-user/services/ddns/client" class="wikilink1" title="docs:guide-user:services:ddns:client" data-wiki-id="docs:guide-user:services:ddns:client">🡒DDNS Client</a>).
+</p>
+
+<p>
+We also need to set up virtual hosting for this domain name by creating an
+appropriate server section in <code>/etc/config/nginx</code>
+(or in a <code>/etc/nginx/conf.d/*.conf</code> file, which cannot be changed using UCI).
+All such parts are included in the main configuration of OpenWrt
+(<a href="#openwrt_s_defaults" title="docs:guide-user:services:webserver:nginx ↵" class="wikilink1">🡓OpenWrt’s Defaults</a>).
+</p>
+
+<p>
+In the server part, we state the domain as
+<a href="https://nginx.org/en/docs/http/ngx_http_core_module.html#server_name" class="urlextern" title="https://nginx.org/en/docs/http/ngx_http_core_module.html#server_name" rel="ugc nofollow">
+server_name</a>.
+The link points to the same document as for the location blocks in the
+<a href="#basic" title="docs:guide-user:services:webserver:nginx ↵" class="wikilink1">🡑Basic Configuration</a>: the official documentation for all available
+directives of the <abbr title="Hypertext Transfer Protocol">HTTP</abbr> core of Nginx.
+This time look for <em>server</em> in the Context list, too.
+The server part should also contain similar location blocks as
+<a class="folder" href="#folded_6d82c449bef8284042dc7a474ea867cf_1">before. </a><span class="folded hidden" id="folded_6d82c449bef8284042dc7a474ea867cf_1">
+We can re-include a <code>.locations</code> file that is included in the server part for
+the <abbr title="Local Area Network">LAN</abbr> by default.
+Then the site is reachable under the same path at both domains, e.g. by
+<a href="https://192.168.1.1/ex/am/ple" class="urlextern" title="https://192.168.1.1/ex/am/ple" rel="ugc nofollow">https://192.168.1.1/ex/am/ple</a> as well as by <a href="https://example.com/ex/am/ple" class="urlextern" title="https://example.com/ex/am/ple" rel="ugc nofollow">https://example.com/ex/am/ple</a>.
+</span>
+</p>
+
+<p>
+We can add directives to a server in the UCI configuration by invoking
+<code>uci [set|add_list] nginx.example_com.key=value</code>.
+If the <em>key</em> is not starting with <em>uci_</em>, it becomes a <code>key value;</code>
+<a class="folder" href="#folded_6d82c449bef8284042dc7a474ea867cf_2">directive. </a><span class="folded hidden" id="folded_6d82c449bef8284042dc7a474ea867cf_2">
+Although the UCI config does not support nesting like Nginx, we can add a whole
+block as <em>value</em>.
+</span>
+</p>
+
+<p>
+We cannot use dots in a <em>key</em> name other than in the <em>value</em>.
+In the following example we replace the dot in <em>example.com</em> by an
+underscore for the UCI name of the server, but not for Nginx&#039;s <em>server_name</em>:
+</p>
+<pre class="code bash">uci add nginx server <span class="sy0">&amp;&amp;</span>
+uci rename nginx.<span class="sy0">@</span>server<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>=example_com <span class="sy0">&amp;&amp;</span>
+uci add_list nginx.example_com.listen=<span class="st_h">'80'</span> <span class="sy0">&amp;&amp;</span>
+uci add_list nginx.example_com.listen=<span class="st_h">'[::]:80'</span> <span class="sy0">&amp;&amp;</span>
+uci <span class="kw1">set</span> nginx.example_com.server_name=<span class="st_h">'example.com'</span> <span class="sy0">&amp;&amp;</span>
+uci add_list nginx.example_com.include=<span class="st_h">'conf.d/example.com.locations'</span>
+<span class="co0"># uci add_list nginx.example_com.location='/ { … }' # root location for this server.</span></pre>
+
+<p>
+We can disable respective re-enable this server again by:
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> nginx.example_com=disable <span class="co0"># respective: uci set nginx.example_com=server</span></pre>
+
+<p>
+These changes are made in the RAM (and can be used until a reboot), we can save
+them permanently by:
+</p>
+<pre class="code bash">uci commit nginx</pre>
+
+<p>
+For creating a similar <code>/etc/nginx/conf.d/example.com.conf</code>, we can adopt the
+following:
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-user/services/webserver/nginx?codeblock=7" title="Download Snippet" class="mediafile mf_conf">/etc/nginx/conf.d/example.com.conf</a></dt>
+<dd><pre class="code nginx"><a href="http://wiki.nginx.org/NginxHttpCoreModule#server"><span class="kw3">server</span></a> <span class="br0">&#123;</span>
+	<a href="http://wiki.nginx.org/NginxHttpCoreModule#listen"><span class="kw3">listen</span></a> 80<span class="sy0">;</span>
+	<a href="http://wiki.nginx.org/NginxHttpCoreModule#listen"><span class="kw3">listen</span></a> <span class="br0">&#91;</span>::<span class="br0">&#93;</span>:80<span class="sy0">;</span>
+	<a href="http://wiki.nginx.org/NginxHttpCoreModule#server_name"><span class="kw3">server_name</span></a> example.com<span class="sy0">;</span>
+	<a href="http://wiki.nginx.org/CoreModule#include"><span class="kw1">include</span></a> <span class="st0">'conf.d/example.com.locations'</span><span class="sy0">;</span>
+	<span class="co1"># location / { … } # root location for this server.</span>
+<span class="br0">&#125;</span></pre>
+</dd></dl>
+
+<p>
+<a href="#openwrt_s_defaults" title="docs:guide-user:services:webserver:nginx ↵" class="wikilink1">🡓OpenWrt’s Defaults</a> include the UCI server
+<code>config server &#039;_redirect2ssl&#039; </code>.
+It  acts as <em>default_server</em> for <abbr title="Hypertext Transfer Protocol">HTTP</abbr> and redirects requests for inexistent
+URLs to <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr>.
+For making another domain name accessible to all addresses, the corresponding
+server part should listen on port <em>80</em> and contain the <abbr title="Fully Qualified Domain Name">FQDN</abbr> as
+<em>server_name</em>, cf. the official documentation on
+<a href="https://nginx.org/en/docs/http/request_processing.html" class="urlextern" title="https://nginx.org/en/docs/http/request_processing.html" rel="ugc nofollow">request_processing</a>.
+</p>
+
+<p>
+Furthermore, there is a UCI server named <code>_lan</code>.
+It is the <em>default_server</em> for <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> and allows connections from <abbr title="Local Area Network">LAN</abbr> only.
+It includes the file <code>/etc/nginx/restrict_locally</code> with
+appropriate <em>allow/deny</em> directives, cf. the official documentation on
+<a href="https://nginx.org/en/docs/http/ngx_http_access_module.html" class="urlextern" title="https://nginx.org/en/docs/http/ngx_http_access_module.html" rel="ugc nofollow">limiting access</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;New Server Parts&quot;,&quot;hid&quot;:&quot;new_server_parts&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:8,&quot;range&quot;:&quot;6543-10479&quot;} -->
+<h3 class="sectionedit9" id="ssl_server_parts">SSL Server Parts</h3>
+<div class="level3">
+
+
+
+<p>
+For enabling <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> for a domain we need a <abbr title="Secure Socket Layer">SSL</abbr> certificate as well as its key and
+add them by the directives <em>ssl_certificate</em> respective
+<em>ssl_certificate_key</em> to the server part of the domain
+(<a href="https://nginx.org/en/docs/http/configuring_https_servers.html#sni" class="urlextern" title="https://nginx.org/en/docs/http/configuring_https_servers.html#sni" rel="ugc nofollow">TLS SNI</a>
+is supported by default).
+The rest of the configuration is similar as for general
+<a href="#new_server_parts" title="docs:guide-user:services:webserver:nginx ↵" class="wikilink1">🡑New Server Parts</a>.
+We only have to adjust the listen directives by adding the <em>ssl</em> parameter and
+changing the port from <em>80</em> to <em>443</em>.
+</p>
+
+<p>
+The official documentation of the <abbr title="Secure Socket Layer">SSL</abbr> module contains an
+<a href="https://nginx.org/en/docs/http/ngx_http_ssl_module.html#example" class="urlextern" title="https://nginx.org/en/docs/http/ngx_http_ssl_module.html#example" rel="ugc nofollow">
+example</a> with some optimizations.
+We can extend an existing UCI server section similarly, e.g., for the above
+<code>config server &#039;example_com&#039; </code> we invoke:
+</p>
+<pre class="code bash"><span class="co0"># Instead of 'del_list' the listen* entries, we could use '443 ssl' beforehand.</span>
+uci del_list nginx.example_com.listen=<span class="st_h">'80'</span> <span class="sy0">&amp;&amp;</span>
+uci del_list nginx.example_com.listen=<span class="st_h">'[::]:80'</span> <span class="sy0">&amp;&amp;</span>
+uci add_list nginx.example_com.listen=<span class="st_h">'443 ssl'</span> <span class="sy0">&amp;&amp;</span>
+uci add_list nginx.example_com.listen=<span class="st_h">'[::]:443 ssl'</span> <span class="sy0">&amp;&amp;</span>
+uci <span class="kw1">set</span> nginx.example_com.ssl_certificate=<span class="st_h">'/etc/nginx/conf.d/example.com.crt'</span> <span class="sy0">&amp;&amp;</span>
+uci <span class="kw1">set</span> nginx.example_com.ssl_certificate_key=<span class="st_h">'/etc/nginx/conf.d/example.com.key'</span> <span class="sy0">&amp;&amp;</span>
+uci <span class="kw1">set</span> nginx.example_com.ssl_session_cache=<span class="st_h">'shared:SSL:32k'</span> <span class="sy0">&amp;&amp;</span>
+uci <span class="kw1">set</span> nginx.example_com.ssl_session_timeout=<span class="st_h">'64m'</span> <span class="sy0">&amp;&amp;</span>
+uci commit nginx</pre>
+
+<p>
+For making the server in <code>/etc/nginx/conf.d/example.com.conf</code> available
+via <abbr title="Secure Socket Layer">SSL</abbr>, we can make similar changes there.
+</p>
+
+<p>
+The following command creates a <strong>self-signed</strong> <abbr title="Secure Socket Layer">SSL</abbr> certificate and changes the
+corresponding configuration:
+</p>
+<pre class="code bash">nginx-util add_ssl example.com</pre>
+<ol>
+<li class="level1"><div class="li"> If a <code>conf.d/example.com.conf</code> file exists, it    adds <em>ssl_*</em> directives and changes the <em>listen</em> directives there.    Else it does that similarly to the example above for a <a class="folder" href="#folded_6d82c449bef8284042dc7a474ea867cf_3">selected UCI    server. </a><span class="folded hidden" id="folded_6d82c449bef8284042dc7a474ea867cf_3"> Hereby it searches the UCI config first for a server with the    given name and then for a server whose <em>server_name</em> contains the name.    For <em>example.com</em> it is the latter as a UCI key cannot have dots.</span></div>
+</li>
+<li class="level1"><div class="li"> It checks if there is a certificate with key for &#039;example.com&#039; that is    valid for at least 13 months or tries to create a self-signed one.</div>
+</li>
+<li class="level1"><div class="li"> When cron is activated, it installs a cron job for renewing the self-signed    certificate every year if needed, too. We can activate cron by:     <pre class="code bash">service cron <span class="kw3">enable</span> <span class="sy0">&amp;&amp;</span> service cron start</pre>
+</div>
+</li>
+</ol>
+
+<p>
+This can be undone by invoking:
+</p>
+<pre class="code bash">nginx-util del_ssl example.com</pre>
+
+<p>
+For using an <abbr title="Secure Socket Layer">SSL</abbr> certificate and key that are managed otherwise, there is:
+</p>
+<pre class="code bash">nginx-util add_ssl example.com <span class="st0">&quot;<span class="es2">$MANAGER</span>&quot;</span> <span class="st0">&quot;/absolute/path/to/crt&quot;</span> <span class="st0">&quot;/absolute/path/to/key&quot;</span></pre>
+
+<p>
+It only adds <em>ssl_*</em> directives and changes the <em>listen</em> directives in
+the appropriate configuration, but does not create or change the certificate
+or its key. This can be reverted by:
+</p>
+<pre class="code bash">nginx-util del_ssl example.com <span class="st0">&quot;<span class="es2">$MANAGER</span>&quot;</span></pre>
+
+<p>
+For example <a href="https://github.com/ndilieto/uacme" class="urlextern" title="https://github.com/ndilieto/uacme" rel="ugc nofollow">uacme</a> or
+<a href="https://github.com/Neilpang/acme.sh" class="urlextern" title="https://github.com/Neilpang/acme.sh" rel="ugc nofollow">acme.sh</a> can be used for creating an <abbr title="Secure Socket Layer">SSL</abbr>
+certificate signed by Let’s Encrypt and changing the config
+<a class="folder" href="#folded_6d82c449bef8284042dc7a474ea867cf_4">accordingly. </a><span class="folded hidden" id="folded_6d82c449bef8284042dc7a474ea867cf_4">
+They call <code>nginx-util add_ssl $<abbr title="Fully Qualified Domain Name">FQDN</abbr> acme $CRT $KEY</code>
+internally.</span>
+We can install them by:
+</p>
+<pre class="code bash">opkg update <span class="sy0">&amp;&amp;</span> opkg <span class="kw2">install</span> uacme <span class="co0">#or: acme #and for LuCI: luci-app-acme</span></pre>
+
+<p>
+See <a href="/docs/guide-user/services/tls/certs" class="wikilink1" title="docs:guide-user:services:tls:certs" data-wiki-id="docs:guide-user:services:tls:certs">TLS/SSL certificates for a server</a>
+</p>
+
+<p>
+<a href="#openwrt_s_defaults" title="docs:guide-user:services:webserver:nginx ↵" class="wikilink1">🡓OpenWrt’s Defaults</a> include a UCI server for the <abbr title="Local Area Network">LAN</abbr>:
+<code>config server &#039;_lan&#039; </code>.
+It has <em>ssl_*</em> directives prepared for a self-signed<sup><a href="#fn__4" id="fnt__4" class="fn_top">4)</a></sup>
+<abbr title="Secure Socket Layer">SSL</abbr> certificate, which is created on the first start of Nginx.
+The server listens on all addresses, is the <em>default_server</em> for <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> and
+allows connections from <abbr title="Local Area Network">LAN</abbr> only (by including the file <code>restrict_locally</code>
+with <em>allow/deny</em> directives, cf. the official documentation on
+<a href="https://nginx.org/en/docs/http/ngx_http_access_module.html" class="urlextern" title="https://nginx.org/en/docs/http/ngx_http_access_module.html" rel="ugc nofollow">limiting access</a>).
+</p>
+
+<p>
+For making another domain name accessible to all addresses, the corresponding
+<abbr title="Secure Socket Layer">SSL</abbr> server part should listen on port <em>443</em> and contain the <abbr title="Fully Qualified Domain Name">FQDN</abbr> as
+<em>server_name</em>, cf. the official documentation on
+<a href="https://nginx.org/en/docs/http/request_processing.html" class="urlextern" title="https://nginx.org/en/docs/http/request_processing.html" rel="ugc nofollow">request_processing</a>.
+</p>
+
+<p>
+Furthermore, there is also a UCI server named <code>_redirect2ssl</code>, which listens
+on all addresses, acts as <em>default_server</em> for <abbr title="Hypertext Transfer Protocol">HTTP</abbr> and redirects requests for
+inexistent URLs to <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;SSL Server Parts&quot;,&quot;hid&quot;:&quot;ssl_server_parts&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:9,&quot;range&quot;:&quot;10480-15214&quot;} -->
+<h3 class="sectionedit10" id="openwrt_s_defaults">OpenWrt’s Defaults</h3>
+<div class="level3">
+
+
+
+<p>
+Since Nginx is compiled with these presets, we can pretend that the main
+configuration will always contain the following directives
+(though we can overwrite them):
+</p>
+<pre class="code nginx"><a href="http://wiki.nginx.org/CoreModule#pid"><span class="kw1">pid</span></a> <span class="st0">&quot;/var/run/nginx.pid&quot;</span><span class="sy0">;</span>
+<a href="http://wiki.nginx.org/CoreModule#lock_file"><span class="kw1">lock_file</span></a> <span class="st0">&quot;/var/lock/nginx.lock&quot;</span><span class="sy0">;</span>
+<a href="http://wiki.nginx.org/CoreModule#error_log"><span class="kw1">error_log</span></a> <span class="st0">&quot;stderr&quot;</span><span class="sy0">;</span>
+<a href="http://wiki.nginx.org/NginxHttpProxyModule#proxy_temp_path"><span class="kw23">proxy_temp_path</span></a> <span class="st0">&quot;/var/lib/nginx/proxy&quot;</span><span class="sy0">;</span>
+<a href="http://wiki.nginx.org/NginxHttpCoreModule#client_body_temp_path"><span class="kw3">client_body_temp_path</span></a> <span class="st0">&quot;/var/lib/nginx/body&quot;</span><span class="sy0">;</span>
+<a href="http://wiki.nginx.org/NginxHttpFcgiModule#fastcgi_temp_path"><span class="kw11">fastcgi_temp_path</span></a> <span class="st0">&quot;/var/lib/nginx/fastcgi&quot;</span><span class="sy0">;</span></pre>
+
+<p>
+When starting or reloading the Nginx service, the <code>/etc/init.d/nginx</code> script
+sets also the following directives
+(so we cannot change them in the used configuration file):
+</p>
+<pre class="code nginx"><a href="http://wiki.nginx.org/CoreModule#daemon"><span class="kw1">daemon</span></a> off<span class="sy0">;</span> <span class="co1"># procd expects services to run in the foreground</span></pre>
+
+<p>
+Then, the init sript creates the main configuration
+<code>uci.conf</code> dynamically from the template:
+</p>
+<dl class="file">
+<dt><a href="/_export/code/docs/guide-user/services/webserver/nginx?codeblock=17" title="Download Snippet" class="mediafile mf_template">/etc/nginx/uci.conf.template</a></dt>
+<dd><pre class="code file nginx"><span class="co1"># Consider using UCI or creating files in /etc/nginx/conf.d/ for configuration.</span>
+<span class="co1"># Parsing UCI configuration is skipped if uci set nginx.global.uci_enable=false</span>
+<span class="co1"># For details see: https://openwrt.org/docs/guide-user/services/webserver/nginx</span>
+&nbsp;
+<a href="http://wiki.nginx.org/CoreModule#worker_processes"><span class="kw1">worker_processes</span></a> auto<span class="sy0">;</span>
+&nbsp;
+<a href="http://wiki.nginx.org/CoreModule#user"><span class="kw1">user</span></a> <a href="http://wiki.nginx.org/NginxHttpCoreModule#root"><span class="kw3">root</span></a><span class="sy0">;</span>
+&nbsp;
+<a href="http://wiki.nginx.org/CoreModule#events"><span class="kw1">events</span></a> <span class="br0">&#123;</span><span class="br0">&#125;</span>
+&nbsp;
+<a href="http://wiki.nginx.org/NginxHttpCoreModule#http"><span class="kw3">http</span></a> <span class="br0">&#123;</span>
+	<a href="http://wiki.nginx.org/NginxHttpLogModule#access_log"><span class="kw20">access_log</span></a> off<span class="sy0">;</span>
+	<a href="http://wiki.nginx.org/NginxHttpLogModule#log_format"><span class="kw20">log_format</span></a> openwrt
+		<span class="st0">'$request_method $scheme://$host$request_uri =&gt; $status'</span>
+		<span class="st0">' (${body_bytes_sent}B in ${request_time}s) &lt;- $http_referer'</span><span class="sy0">;</span>
+&nbsp;
+	<a href="http://wiki.nginx.org/CoreModule#include"><span class="kw1">include</span></a> mime.<a href="http://wiki.nginx.org/NginxHttpCoreModule#types"><span class="kw3">types</span></a><span class="sy0">;</span>
+	<a href="http://wiki.nginx.org/NginxHttpCoreModule#default_type"><span class="kw3">default_type</span></a> application/octet-stream<span class="sy0">;</span>
+	<a href="http://wiki.nginx.org/NginxHttpCoreModule#sendfile"><span class="kw3">sendfile</span></a> on<span class="sy0">;</span>
+&nbsp;
+	<a href="http://wiki.nginx.org/NginxHttpCoreModule#client_max_body_size"><span class="kw3">client_max_body_size</span></a> 128M<span class="sy0">;</span>
+	<a href="http://wiki.nginx.org/NginxHttpCoreModule#large_client_header_buffers"><span class="kw3">large_client_header_buffers</span></a> 2 1k<span class="sy0">;</span>
+&nbsp;
+	<a href="http://wiki.nginx.org/NginxHttpGzipModule#gzip"><span class="kw13">gzip</span></a> on<span class="sy0">;</span>
+	<a href="http://wiki.nginx.org/NginxHttpGzipModule#gzip_vary"><span class="kw13">gzip_vary</span></a> on<span class="sy0">;</span>
+	<a href="http://wiki.nginx.org/NginxHttpGzipModule#gzip_proxied"><span class="kw13">gzip_proxied</span></a> any<span class="sy0">;</span>
+&nbsp;
+	<a href="http://wiki.nginx.org/NginxHttpCoreModule#root"><span class="kw3">root</span></a> /www<span class="sy0">;</span>
+&nbsp;
+	<span class="co1">#UCI_HTTP_CONFIG</span>
+	<a href="http://wiki.nginx.org/CoreModule#include"><span class="kw1">include</span></a> conf.d/*.conf<span class="sy0">;</span>
+<span class="br0">&#125;</span></pre>
+</dd></dl>
+
+<p>
+So, the access log is turned off by default and we can look at the error log
+by <code>logread</code>, as init.d script forwards stderr and stdout to the
+<a href="/docs/guide-user/base-system/log.essentials" class="wikilink1" title="docs:guide-user:base-system:log.essentials" data-wiki-id="docs:guide-user:base-system:log.essentials">🡒runtime log</a>.
+We can set the <em>error_log</em> and <em>access_log</em> to files, where the log
+messages are forwarded to instead (after the configuration is read).
+And for redirecting the access log of a <em>server</em> or <em>location</em> to the logd,
+too, we insert the following directive in the corresponding block:
+</p>
+<pre class="code nginx">	<a href="http://wiki.nginx.org/NginxHttpLogModule#access_log"><span class="kw20">access_log</span></a> /proc/self/fd/1 openwrt<span class="sy0">;</span></pre>
+
+<p>
+If we setup a server through UCI, we can use the options <em>error_log</em> and/or
+<em>access_log</em> also with the special path
+<a class="folder" href="#folded_6d82c449bef8284042dc7a474ea867cf_5">&#039;logd&#039;. </a><span class="folded hidden" id="folded_6d82c449bef8284042dc7a474ea867cf_5">
+When initializing the Nginx service, this special path is replaced by <em>stderr</em>
+respective <em>/proc/self/fd/1</em> (which are forwarded to the runtime log).
+</span>
+</p>
+
+<p>
+For creating the configuration from the template shown above, Nginx’s init
+script replaces the comment <code>#UCI_<abbr title="Hypertext Transfer Protocol">HTTP</abbr>_CONFIG</code> by all UCI servers.
+For each server section in the the UCI configuration, it basically copies all
+options into a Nginx <em>server { … }</em> part, in detail:
+</p>
+<ul>
+<li class="level1"><div class="li"> Options starting with <code>uci_</code> are skipped. Currently there is only  the <code>option uci_manage_ssl=…</code> in <a class="folder" href="#folded_6d82c449bef8284042dc7a474ea867cf_6">usage. </a><span class="folded hidden" id="folded_6d82c449bef8284042dc7a474ea867cf_6"> It is set to  <em>&#039;self-signed&#039;</em> when invoking  <code>nginx-util add_ssl $NAME</code>.  Then the corresponding certificate is re-newed if it is about to expire.  All those certificates are checked on the initialization of the Nginx service  and if Cron is available, it is deployed for checking them annually, too.</span></div>
+</li>
+<li class="level1"><div class="li"> All other lists or options of the form <code>key=&#039;value&#039; </code> are written  one-to-one as <code>key value;</code> directives to the configuration file.  Just the path <em>logd</em> has a special meaning for the logging directives  (described in the previous paragraph).</div>
+</li>
+</ul>
+
+<p>
+The init.d script of Nginx uses the <em>nginx-util</em> for creating
+the configuration file
+<a class="folder" href="#folded_6d82c449bef8284042dc7a474ea867cf_7">in RAM. </a><span class="folded hidden" id="folded_6d82c449bef8284042dc7a474ea867cf_7">
+The main configuration <code>/etc/nginx/uci.conf</code> is a symbolic link to this place
+(it is a dead link if the Nginx service is not running).
+</span>
+</p>
+
+<p>
+We could use a custom configuration created at <code>/etc/nginx/nginx.conf</code> instead of the
+dynamic configuration, too.<sup><a href="#fn__5" id="fnt__5" class="fn_top">5)</a></sup>
+This is not encouraged since you cannot setup servers using UCI anymore.
+Rather, we can put custom configuration parts to <code>.conf</code> files in the
+<code>/etc/nginx/conf.d/</code> directory.
+The main configuration pulls in all <code>conf.d/*.conf</code> files
+into the <em>http {…}</em> block behind the created UCI servers.
+</p>
+
+<p>
+The initial UCI config is enabled and contains two server section:
+</p>
+<dl class="file">
+<dt><a href="/_export/code/docs/guide-user/services/webserver/nginx?codeblock=20" title="Download Snippet" class="mediafile mf_">/etc/config/nginx</a></dt>
+<dd><pre class="code file nginx">config main global
+	option uci_enable <span class="st0">'true'</span>
+&nbsp;
+config <a href="http://wiki.nginx.org/NginxHttpCoreModule#server"><span class="kw3">server</span></a> <span class="st0">'_lan'</span>
+	list <a href="http://wiki.nginx.org/NginxHttpCoreModule#listen"><span class="kw3">listen</span></a> <span class="st0">'443 ssl default_server'</span>
+	list <a href="http://wiki.nginx.org/NginxHttpCoreModule#listen"><span class="kw3">listen</span></a> <span class="st0">'[::]:443 ssl default_server'</span>
+	option <a href="http://wiki.nginx.org/NginxHttpCoreModule#server_name"><span class="kw3">server_name</span></a> <span class="st0">'_lan'</span>
+	list <a href="http://wiki.nginx.org/CoreModule#include"><span class="kw1">include</span></a> <span class="st0">'restrict_locally'</span>
+	list <a href="http://wiki.nginx.org/CoreModule#include"><span class="kw1">include</span></a> <span class="st0">'conf.d/*.locations'</span>
+	option uci_manage_ssl <span class="st0">'self-signed'</span>
+	option <a href="http://wiki.nginx.org/NginxHttpSslModule#ssl_certificate"><span class="kw33">ssl_certificate</span></a> <span class="st0">'/etc/nginx/conf.d/_lan.crt'</span>
+	option <a href="http://wiki.nginx.org/NginxHttpSslModule#ssl_certificate_key"><span class="kw33">ssl_certificate_key</span></a> <span class="st0">'/etc/nginx/conf.d/_lan.key'</span>
+	option <a href="http://wiki.nginx.org/NginxHttpSslModule#ssl_session_cache"><span class="kw33">ssl_session_cache</span></a> <span class="st0">'shared:SSL:32k'</span>
+	option <a href="http://wiki.nginx.org/NginxHttpSslModule#ssl_session_timeout"><span class="kw33">ssl_session_timeout</span></a> <span class="st0">'64m'</span>
+	option <a href="http://wiki.nginx.org/NginxHttpLogModule#access_log"><span class="kw20">access_log</span></a> <span class="st0">'off; # logd openwrt'</span>
+&nbsp;
+config <a href="http://wiki.nginx.org/NginxHttpCoreModule#server"><span class="kw3">server</span></a> <span class="st0">'_redirect2ssl'</span>
+	list <a href="http://wiki.nginx.org/NginxHttpCoreModule#listen"><span class="kw3">listen</span></a> <span class="st0">'80'</span>
+	list <a href="http://wiki.nginx.org/NginxHttpCoreModule#listen"><span class="kw3">listen</span></a> <span class="st0">'[::]:80'</span>
+	option <a href="http://wiki.nginx.org/NginxHttpCoreModule#server_name"><span class="kw3">server_name</span></a> <span class="st0">'_redirect2ssl'</span>
+	option <a href="http://wiki.nginx.org/NginxHttpRewriteModule#return"><span class="kw24">return</span></a> <span class="st0">'302 https://$host$request_uri'</span></pre>
+</dd></dl>
+
+<p>
+While the <abbr title="Local Area Network">LAN</abbr> server is the <em>default_server</em> for <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr>, the server
+redirecting requests for an inexistent <code>server_name</code> from <abbr title="Hypertext Transfer Protocol">HTTP</abbr> to <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> acts
+as <em>default_server</em> if there is <a class="folder" href="#folded_6d82c449bef8284042dc7a474ea867cf_8">no other </a><span class="folded hidden" id="folded_6d82c449bef8284042dc7a474ea867cf_8">;
+it uses an invalid name for that, more in the official documentation on
+<a href="https://nginx.org/en/docs/http/request_processing.html" class="urlextern" title="https://nginx.org/en/docs/http/request_processing.html" rel="ugc nofollow">request_processing</a>
+</span>.
+</p>
+
+<p>
+The <abbr title="Local Area Network">LAN</abbr> server pulls in all <code>.locations</code> files from the directory
+<code>/etc/nginx/conf.d/</code>.
+We can install the location parts of different sites there (see
+<a href="#basic" title="docs:guide-user:services:webserver:nginx ↵" class="wikilink1">🡑Basic Configuration</a>) and re-include them into other servers.
+This is needed especially for making them available to the <abbr title="Wide Area Network">WAN</abbr>
+(<a href="#new_server_parts" title="docs:guide-user:services:webserver:nginx ↵" class="wikilink1">🡑New Server Parts</a>).
+The <abbr title="Local Area Network">LAN</abbr> server listens for all addresses on port <em>443</em> and restricts the
+access to local addresses by including:
+</p>
+<dl class="file">
+<dt><a href="/_export/code/docs/guide-user/services/webserver/nginx?codeblock=21" title="Download Snippet" class="mediafile mf_">/etc/nginx/restrict_locally</a></dt>
+<dd><pre class="code file nginx">	<a href="http://wiki.nginx.org/NginxHttpAccessModule#allow"><span class="kw5">allow</span></a> ::1<span class="sy0">;</span>
+	<a href="http://wiki.nginx.org/NginxHttpAccessModule#allow"><span class="kw5">allow</span></a> fc00::/7<span class="sy0">;</span>
+	<a href="http://wiki.nginx.org/NginxHttpAccessModule#allow"><span class="kw5">allow</span></a> fec0::/10<span class="sy0">;</span>
+	<a href="http://wiki.nginx.org/NginxHttpAccessModule#allow"><span class="kw5">allow</span></a> fe80::/10<span class="sy0">;</span>
+	<a href="http://wiki.nginx.org/NginxHttpAccessModule#allow"><span class="kw5">allow</span></a> 127.0.0.0/8<span class="sy0">;</span>
+	<a href="http://wiki.nginx.org/NginxHttpAccessModule#allow"><span class="kw5">allow</span></a> 10.0.0.0/8<span class="sy0">;</span>
+	<a href="http://wiki.nginx.org/NginxHttpAccessModule#allow"><span class="kw5">allow</span></a> 172.16.0.0/12<span class="sy0">;</span>
+	<a href="http://wiki.nginx.org/NginxHttpAccessModule#allow"><span class="kw5">allow</span></a> 192.168.0.0/16<span class="sy0">;</span>
+	<a href="http://wiki.nginx.org/NginxHttpAccessModule#allow"><span class="kw5">allow</span></a> 169.254.0.0/16<span class="sy0">;</span>
+	<a href="http://wiki.nginx.org/NginxHttpAccessModule#deny"><span class="kw5">deny</span></a> all<span class="sy0">;</span></pre>
+</dd></dl>
+
+<p>
+When starting or reloading the Nginx service, the init.d looks which UCI servers
+have set <code>option uci_manage_ssl &#039;self-signed&#039; </code>, e.g. the <abbr title="Local Area Network">LAN</abbr> server.
+For all those servers it checks if there is a certificate that is still valid
+for 13 months or (re-)creates a self-signed one.
+If there is any such server, it installs also a cron job that checks the
+corresponding certificates once a year.
+The option <code>uci_manage_ssl</code> is set to <em>&#039;self-signed&#039;</em> respectively removed
+from a UCI server named <code>example_com</code> by the following
+(see <a href="#ssl_server_parts" title="docs:guide-user:services:webserver:nginx ↵" class="wikilink1">🡑SSL Server Parts</a>, too):
+</p>
+<pre class="code bash">nginx-util add_ssl example_com <span class="co0"># respectively: nginx-util del_ssl example_com</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;OpenWrt\u2019s Defaults&quot;,&quot;hid&quot;:&quot;openwrt_s_defaults&quot;,&quot;codeblockOffset&quot;:15,&quot;secid&quot;:10,&quot;range&quot;:&quot;15215-22363&quot;} -->
+<h2 class="sectionedit11" id="locations_for_apps">Locations for Apps</h2>
+<div class="level2">
+
+<p>
+For an overview see the official Admin Guide of Nginx on 
+<a href="https://docs.nginx.com/nginx/admin-guide/web-server/reverse-proxy/" class="urlextern" title="https://docs.nginx.com/nginx/admin-guide/web-server/reverse-proxy/" rel="ugc nofollow">
+Reverse Proxy</a>. 
+For logging look at the example in the <a href="#basic" title="docs:guide-user:services:webserver:nginx ↵" class="wikilink1">Basic Configuration</a>, too.
+Remember to restart Nginx after changing its configuration by:
+</p>
+<pre class="code">service nginx reload</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Locations for Apps&quot;,&quot;hid&quot;:&quot;locations_for_apps&quot;,&quot;codeblockOffset&quot;:23,&quot;secid&quot;:11,&quot;range&quot;:&quot;22364-22714&quot;} -->
+<h3 class="sectionedit12" id="php_with_fastcgi">PHP with FastCGI</h3>
+<div class="level3">
+
+<p>
+Install <a href="https://www.php.net/manual/en/install.unix.commandline.php" class="urlextern" title="https://www.php.net/manual/en/install.unix.commandline.php" rel="ugc nofollow">PHP</a>
+using FastCGI:
+</p>
+<pre class="code"> opkg update &amp;&amp; opkg install php7-fastcgi</pre>
+
+<p>
+In the Nginx configuration we can include the file
+<a href="https://github.com/nginx/nginx/blob/master/conf/fastcgi_params" class="urlextern" title="https://github.com/nginx/nginx/blob/master/conf/fastcgi_params" rel="ugc nofollow">
+fastcgi_params</a>, which is installed by default.
+We create a <code>.location</code> file like the following, see 
+<a href="https://github.com/search?q=repo%3Aopenwrt%2Fpackages+fastcgi_pass
++extension%3Alocations+extension%3Aconf&amp;type=Code" class="urlextern" title="https://github.com/search?q=repo%3Aopenwrt%2Fpackages+fastcgi_pass
++extension%3Alocations+extension%3Aconf&amp;type=Code" rel="ugc nofollow">
+other packages using fastcgi_pass</a>
+and Nginx&#039;s Wiki has a 
+<a href="https://www.nginx.com/resources/wiki/start/topics/examples/phpfcgi/" class="urlextern" title="https://www.nginx.com/resources/wiki/start/topics/examples/phpfcgi/" rel="ugc nofollow">
+PHP FastCGI Example</a>, too:
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-user/services/webserver/nginx?codeblock=25" title="Download Snippet" class="mediafile mf_locations">/etc/nginx/conf.d/php.locations</a></dt>
+<dd><pre class="code nginx"><a href="http://wiki.nginx.org/NginxHttpCoreModule#location"><span class="kw3">location</span></a> <span class="sy0">~</span> <span class="br0">&#91;</span>^/<span class="br0">&#93;</span>\.php$ <span class="br0">&#123;</span>
+    <span class="co1">#error_log /dev/null;</span>
+    <a href="http://wiki.nginx.org/NginxHttpFcgiModule#fastcgi_connect_timeout"><span class="kw11">fastcgi_connect_timeout</span></a> 300s<span class="sy0">;</span>
+    <a href="http://wiki.nginx.org/NginxHttpFcgiModule#fastcgi_read_timeout"><span class="kw11">fastcgi_read_timeout</span></a> 300s<span class="sy0">;</span>
+    <a href="http://wiki.nginx.org/NginxHttpFcgiModule#fastcgi_send_timeout"><span class="kw11">fastcgi_send_timeout</span></a> 300s<span class="sy0">;</span>
+    <a href="http://wiki.nginx.org/NginxHttpFcgiModule#fastcgi_buffer_size"><span class="kw11">fastcgi_buffer_size</span></a> 32k<span class="sy0">;</span>
+    <a href="http://wiki.nginx.org/NginxHttpFcgiModule#fastcgi_buffers"><span class="kw11">fastcgi_buffers</span></a> 4 32k<span class="sy0">;</span>
+    <a href="http://wiki.nginx.org/NginxHttpFcgiModule#fastcgi_busy_buffers_size"><span class="kw11">fastcgi_busy_buffers_size</span></a> 32k<span class="sy0">;</span>
+    <a href="http://wiki.nginx.org/NginxHttpFcgiModule#fastcgi_temp_file_write_size"><span class="kw11">fastcgi_temp_file_write_size</span></a> 32k<span class="sy0">;</span>
+    <a href="http://wiki.nginx.org/NginxHttpCoreModule#client_header_timeout"><span class="kw3">client_header_timeout</span></a> 10s<span class="sy0">;</span>
+    <a href="http://wiki.nginx.org/NginxHttpCoreModule#client_body_timeout"><span class="kw3">client_body_timeout</span></a> 10s<span class="sy0">;</span>
+    <a href="http://wiki.nginx.org/NginxHttpCoreModule#send_timeout"><span class="kw3">send_timeout</span></a> 60s<span class="sy0">;</span> <span class="co1"># default, increase if experiencing a lot of timeouts.</span>
+    output_buffers 1 32k<span class="sy0">;</span>
+    <a href="http://wiki.nginx.org/NginxHttpFcgiModule#fastcgi_index"><span class="kw11">fastcgi_index</span></a> <a href="http://wiki.nginx.org/NginxHttpIndexModule#index"><span class="kw15">index</span></a>.php<span class="sy0">;</span>
+    <a href="http://wiki.nginx.org/CoreModule#include"><span class="kw1">include</span></a> fastcgi_params<span class="sy0">;</span>
+    <a href="http://wiki.nginx.org/NginxHttpFcgiModule#fastcgi_param"><span class="kw11">fastcgi_param</span></a> HTTP_PROXY <span class="st0">&quot;&quot;</span><span class="sy0">;</span> <span class="co1"># Mitigate https://httpoxy.org/ vulnerability.</span>
+    <a href="http://wiki.nginx.org/NginxHttpRewriteModule#if"><span class="kw24">if</span></a> <span class="br0">&#40;</span>-f <span class="br0">&#41;</span> <span class="br0">&#123;</span>
+            <span class="co1"># Only throw it at PHP-FPM if file exists (prevents PHP exploits).</span>
+            <a href="http://wiki.nginx.org/NginxHttpFcgiModule#fastcgi_pass"><span class="kw11">fastcgi_pass</span></a>    127.0.0.1:1026<span class="sy0">;</span>  <span class="co1"># or: unix:/var/run/php-fpm.sock;</span>
+    <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+</dd></dl>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-user/services/webserver/nginx?codeblock=26" title="Download Snippet" class="mediafile mf_ini">/etc/php.ini</a></dt>
+<dd><pre class="code ini"><span class="re1">doc_root</span> <span class="sy0">=</span> <span class="st0">&quot;YOUR/DOCUMENT/ROOT&quot;</span>
+cgi.force_redirect <span class="sy0">=</span><span class="re2"> 1</span>
+cgi.redirect_status_env <span class="sy0">=</span> <span class="st0">&quot;yes&quot;</span>;</pre>
+</dd></dl>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;PHP with FastCGI&quot;,&quot;hid&quot;:&quot;php_with_fastcgi&quot;,&quot;codeblockOffset&quot;:24,&quot;secid&quot;:12,&quot;range&quot;:&quot;22715-24319&quot;} -->
+<h3 class="sectionedit13" id="uwsgi">uWSGI</h3>
+<div class="level3">
+
+<p>
+Install <a href="https://uwsgi-docs.readthedocs.io/en/latest/" class="urlextern" title="https://uwsgi-docs.readthedocs.io/en/latest/" rel="ugc nofollow">uWSGI</a> and needed plugins:
+</p>
+<pre class="code">opkg update &amp;&amp; opkg install uwsgi # and the plugin(s) used. </pre>
+
+<p>
+In the Nginx configuration we can include the file
+<a href="https://github.com/nginx/nginx/blob/master/conf/uwsgi_params" class="urlextern" title="https://github.com/nginx/nginx/blob/master/conf/uwsgi_params" rel="ugc nofollow">
+uwsgi_params</a>, which is installed by default.
+We create a <code>.locations</code> file like the following, see also
+<a href="https://github.com/search?q=repo%3Aopenwrt%2Fpackages+uwsgi_pass
++extension%3Alocations+extension%3Aconf&amp;type=Code" class="urlextern" title="https://github.com/search?q=repo%3Aopenwrt%2Fpackages+uwsgi_pass
++extension%3Alocations+extension%3Aconf&amp;type=Code" rel="ugc nofollow">
+other packages using uwsgi_pass</a>
+and the
+<a href="https://uwsgi-docs.readthedocs.io/en/latest/Nginx.html" class="urlextern" title="https://uwsgi-docs.readthedocs.io/en/latest/Nginx.html" rel="ugc nofollow">
+uWSGI documentation for Nginx</a>, too:
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-user/services/webserver/nginx?codeblock=28" title="Download Snippet" class="mediafile mf_locations">/etc/nginx/conf.d/mysite.locations</a></dt>
+<dd><pre class="code nginx"><a href="http://wiki.nginx.org/NginxHttpCoreModule#location"><span class="kw3">location</span></a> /mysite <span class="br0">&#123;</span>
+    <span class="co1"># error_log /dev/null;</span>
+    <a href="http://wiki.nginx.org/CoreModule#include"><span class="kw1">include</span></a>  /etc/nginx/uwsgi_params<span class="sy0">;</span>
+    <a href="http://wiki.nginx.org/NginxHttpUwsgiModule#uwsgi_pass"><span class="kw39">uwsgi_pass</span></a> unix:///var/run/mysite.socket<span class="sy0">;</span>
+    <span class="co1"># for CGI (like in LuCI):</span>
+    <span class="co1"># uwsgi_param SERVER_ADDR $server_addr;</span>
+    <span class="co1"># uwsgi_modifier1 9;</span>
+<span class="br0">&#125;</span></pre>
+</dd></dl>
+
+<p>
+For uWSGI, we create a configuration handling the application like the following, see 
+<a href="https://github.com/search?q=repo%3Aopenwrt%2Fpackages+[uwsgi]
++extension%3Aini&amp;type=Code" class="urlextern" title="https://github.com/search?q=repo%3Aopenwrt%2Fpackages+[uwsgi]
++extension%3Aini&amp;type=Code" rel="ugc nofollow">
+other packages using uWSGI</a>, too:
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-user/services/webserver/nginx?codeblock=29" title="Download Snippet" class="mediafile mf_ini">/etc/uwsgi/vassals/mysite.ini</a></dt>
+<dd><pre class="code ini"><span class="re0"><span class="br0">&#91;</span>uwsgi<span class="br0">&#93;</span></span>
+<span class="re1">strict</span> <span class="sy0">=</span><span class="re2"> true</span>
+<span class="co0">
+; adjust the needed plugins, path, name, user and socket for the application:</span>
+<span class="re1">plugin</span> <span class="sy0">=</span> 
+<span class="re1">manage-script-name</span> <span class="sy0">=</span><span class="re2"> true</span>
+<span class="re1">chdir</span> <span class="sy0">=</span><span class="re2"> /path/to/app</span>
+<span class="re1">mount</span> <span class="sy0">=</span><span class="re2"> /mysite=app</span>
+<span class="co0">; or use cgi = /mysite=/path/or/executable</span>
+<span class="re1">pidfile</span> <span class="sy0">=</span><span class="re2"> /var/etc/mysite/master.pid</span>
+&nbsp;
+<span class="re1">enable-threads</span> <span class="sy0">=</span><span class="re2"> true</span>
+<span class="co0">; threads = 3</span>
+<span class="re1">thunder-lock</span> <span class="sy0">=</span><span class="re2"> true</span>
+<span class="co0">; post-buffering = 8192</span>
+<span class="co0">; harakiri = 60</span>
+<span class="co0">; lazy-apps = true</span>
+<span class="re1">master</span> <span class="sy0">=</span><span class="re2"> true</span>
+<span class="co0">; idle = 600</span>
+<span class="co0">; processes = 3</span>
+<span class="co0">; cheaper-algo = spare</span>
+<span class="co0">; cheaper = 1</span>
+<span class="co0">; cheaper-initial = 1</span>
+<span class="co0">; cheaper-step = 1</span>
+<span class="co0">
+; plugin = syslog</span>
+<span class="co0">; disable-logging only affects req-logger:</span>
+<span class="re1">disable-logging</span> <span class="sy0">=</span><span class="re2"> true</span>
+<span class="re1">log-format</span><span class="sy0">=</span><span class="re2">%<span class="br0">&#40;</span>method<span class="br0">&#41;</span> %<span class="br0">&#40;</span>uri<span class="br0">&#41;</span> <span class="sy0">=</span>&gt; return %<span class="br0">&#40;</span>status<span class="br0">&#41;</span> <span class="br0">&#40;</span>%<span class="br0">&#40;</span>rsize<span class="br0">&#41;</span> bytes in %<span class="br0">&#40;</span>msecs<span class="br0">&#41;</span> ms<span class="br0">&#41;</span></span>
+<span class="co0">; req-logger = syslog:mysite_req</span>
+<span class="co0">
+; logger = mysite syslog:mysite_main</span>
+<span class="co0">
+; if-env = UWSGI_EMPEROR_FD</span>
+<span class="co0">; the regular expression leaves for successful de/activation only one line each:</span>
+<span class="co0">; log-route = mysite ^(?!... Starting uWSGI |compiled with version: |os: Linux|nodename: |machine: |clock source: |pcre jit |detected number of CPU cores: |current working directory: |writing pidfile to |detected binary path: |chdir.. to |your processes number limit is |your memory page size is |detected max file descriptor number: |lock engine: |thunder lock: |uwsgi socket |setgid.. to |setuid.. to |Python version: |Python main interpreter initialized at |python threads support |your server socket listen backlog is limited to |your mercy for graceful operations on workers is |mapped |... Operational MODE: |... uWSGI is running in multiple interpreter mode ...|spawned uWSGI worker |mounting |WSGI app |announcing my loyalty to the Emperor...|workers have been inactive for more than |SIGINT/SIGQUIT received...killing workers...|worker |goodbye to uWSGI.)</span>
+<span class="co0">; end-if =</span>
+&nbsp;
+<span class="re1">if-not-env</span> <span class="sy0">=</span><span class="re2"> UWSGI_EMPEROR_FD</span>
+<span class="co0">; log-route = mysite .*</span>
+<span class="re1">vacuum</span> <span class="sy0">=</span><span class="re2"> true</span>
+<span class="re1">socket</span> <span class="sy0">=</span><span class="re2"> /var/run/mysite.socket</span>
+<span class="co0">; cheap = true</span>
+<span class="re1">end-if</span> <span class="sy0">=</span>
+&nbsp;
+<span class="re1">chmod-socket</span> <span class="sy0">=</span><span class="re2"> 660</span>
+<span class="re1">chown-socket</span> <span class="sy0">=</span><span class="re2"> user:nogroup</span>
+<span class="re1">uid</span> <span class="sy0">=</span><span class="re2"> user</span>
+<span class="re1">gid</span> <span class="sy0">=</span><span class="re2"> nogroup</span></pre>
+</dd></dl>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;uWSGI&quot;,&quot;hid&quot;:&quot;uwsgi&quot;,&quot;codeblockOffset&quot;:27,&quot;secid&quot;:13,&quot;range&quot;:&quot;24320-27439&quot;} -->
+<h2 class="sectionedit14" id="extras">Extras</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Extras&quot;,&quot;hid&quot;:&quot;extras&quot;,&quot;codeblockOffset&quot;:30,&quot;secid&quot;:14,&quot;range&quot;:&quot;27440-27458&quot;} -->
+<h3 class="sectionedit15" id="dns_over_tls">DNS over TLS</h3>
+<div class="level3">
+
+<p>
+To hide <abbr title="Domain Name System">DNS</abbr> requests from your <abbr title="Internet Service Provider">ISP</abbr>, you may use your own upstream <abbr title="DNS over TLS">DoT</abbr> server, this typically constitutes a $5/month cloud virtual machine (VM) running nginx and working <abbr title="Domain Name System">DNS</abbr> for it&#039;s hostname.
+On this VM, setup nginx with Cloudflare <abbr title="Transport Layer Security">TLS</abbr> certificates and add this to nginx&#039;s configuration below the default http context and open port 853.
+</p>
+<pre class="code bash"><span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>nginx<span class="sy0">/</span>nginx.conf
+stream <span class="br0">&#123;</span>
+    <span class="co0"># DNS upstream pool</span>
+    upstream dns <span class="br0">&#123;</span>
+        zone dns 64k;
+        server 127.0.0.1:<span class="nu0">53</span>;
+    <span class="br0">&#125;</span>
+&nbsp;
+   <span class="co0"># DoT server for decryption</span>
+   server <span class="br0">&#123;</span>
+        listen <span class="nu0">853</span> ssl;
+        ssl_certificate <span class="sy0">/</span>etc<span class="sy0">/</span>letsencrypt<span class="sy0">/</span>live<span class="sy0">/</span>dns.example.com<span class="sy0">/</span>fullchain.pem;
+        ssl_certificate_key <span class="sy0">/</span>etc<span class="sy0">/</span>letsencrypt<span class="sy0">/</span>live<span class="sy0">/</span>dns.example.com<span class="sy0">/</span>privkey.pem;
+        proxy_pass dns;
+    <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+EOF</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;DNS over TLS&quot;,&quot;hid&quot;:&quot;dns_over_tls&quot;,&quot;codeblockOffset&quot;:30,&quot;secid&quot;:15,&quot;range&quot;:&quot;27459-&quot;} --><div class="footnotes">
+<div class="fn"><sup><a href="#fnt__1" id="fn__1" class="fn_bot">1)</a></sup> 
+<div class="content">
+We can disable a single configuration file in <code>/etc/nginx/conf.d/</code> by giving it
+another extension, e.g., by adding <code>.disabled</code>.</div></div>
+<div class="fn"><sup><a href="#fnt__2" id="fn__2" class="fn_bot">2)</a></sup> 
+<div class="content">look for
+<a href="https://github.com/search?utf8=%E2%9C%93&amp;q=repo%3Aopenwrt%2Fpackages
++extension%3Alocations&amp;type=Code&amp;ref=advsearch&amp;l=&amp;l=" class="urlextern" title="https://github.com/search?utf8=%E2%9C%93&amp;q=repo%3Aopenwrt%2Fpackages
++extension%3Alocations&amp;type=Code&amp;ref=advsearch&amp;l=&amp;l=" rel="ugc nofollow">
+other packages using a .locations file</a>, too.</div></div>
+<div class="fn"><sup><a href="#fnt__3" id="fn__3" class="fn_bot">3)</a></sup> 
+<div class="content">
+We reserve the <code>location /</code> for making LuCI available under the root <abbr title="Uniform Resource Locator">URL</abbr>,
+e.g. <a href="https://192.168.1.1/" class="urlextern" title="https://192.168.1.1/" rel="ugc nofollow">192.168.1.1/</a>.
+All other sites shouldn’t use the root <code>location /</code> without suffix.</div></div>
+<div class="fn"><sup><a href="#fnt__4" id="fn__4" class="fn_bot">4)</a></sup> 
+<div class="content">Let’s Encrypt (and other
+CAs) cannot sign certificates of a <strong>local</strong> server.</div></div>
+<div class="fn"><sup><a href="#fnt__5" id="fn__5" class="fn_bot">5)</a></sup> 
+<div class="content">
+For using a custom configuration at <code>/etc/nginx/nginx.conf</code>, we execute
+<pre class="code bash">uci <span class="kw1">set</span> nginx.global.uci_enable=<span class="st_h">'false'</span> </pre>
+
+Then the rest of the UCI config is ignored and <em>init.d</em> will not create the
+main configuration dynamically from the template anymore.
+Invoking <code>nginx-util [add_ssl|del_ssl] $<abbr title="Fully Qualified Domain Name">FQDN</abbr></code>
+will still try to change a server in <code>conf.d/$<abbr title="Fully Qualified Domain Name">FQDN</abbr>.conf</code>
+(this is less reliable than for a UCI config as it uses regular expressions, not
+a complete parser for the Nginx configuration).</div></div>
+</div>

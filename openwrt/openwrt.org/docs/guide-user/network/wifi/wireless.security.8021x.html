@@ -1,0 +1,295 @@
+
+<h1 class="sectionedit1" id="introduction_to_8021x">Introduction to 802.1X</h1>
+<div class="level1">
+
+<p>
+One of the lesser known features of 802.11 security, at least among home and small business users, is the ability to have individual usernames and passwords on a centralized authentication server which can be used by one or more wireless access point. A key advantage of this type of setup is that individual users can be added and removed from wireless access without disrupting other users or re-keying the network, which is why it is popular with enterprise customers. If you have a more complex setup such as Active Directory for user logins, it is possible to connect your wireless network back to your Active Directory server for authenticating these users.
+</p>
+
+<p>
+The wireless encryption mode used to support this type of setup is “WPA Enterprise” or “WPA2 Enterprise” on the access point. You may also see references to 802.1X, which is the standard for authenticating users (either wired or wirelessly) through a RADIUS server, and is the underlying protocol used by the WPA/2 Enterprise wireless encryption mode.
+</p>
+
+<p>
+Note that the individual usernames and passwords are stored in a RADIUS server which the access point will communicate with to authenticate users. In most cases, this RADIUS server software is running elsewhere on the network (obviously the access point will need to be able to reach it), but it is possible to install and run a RADIUS server on OpenWrt as well. The installation and configuration of a RADIUS server is outside the scope of this document however a few hints will be provided. RADIUS is a standardized protocol which is supported by many server applications including the Microsoft Windows Network Policy Server (NPS) can authenticate Active Directory users. A commonly used open source RAIDUS server is FreeRADIUS.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__meta:infobox:howto_links">
+<div class="level1">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap">
+<p>
+This article may contain network configuration that depends on migration to DSA in OpenWrt 21.02
+</p>
+<ul>
+<li class="level1"><div class="li"> Check if your device uses DSA or swconfig as not all devices have been migrated</div>
+</li>
+<li class="level1"><div class="li"> ifname@interface has been moved to device sections</div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/network/dsa/start" class="wikilink1" title="docs:guide-user:network:dsa:start" data-wiki-id="docs:guide-user:network:dsa:start">DSA Networking</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://forum.openwrt.org/t/mini-tutorial-for-dsa-network-config/96998" class="urlextern" title="https://forum.openwrt.org/t/mini-tutorial-for-dsa-network-config/96998" rel="ugc nofollow">Mini tutorial for DSA network config</a> on the forum</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://openwrt.org/releases/21.02/notes-21.02.0#new_network_configuration_syntax_and_boardjson_change" class="urlextern" title="https://openwrt.org/releases/21.02/notes-21.02.0#new_network_configuration_syntax_and_boardjson_change" rel="ugc nofollow">DSA in the 21.02 release notes</a></div>
+</li>
+</ul>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Introduction to 802.1X&quot;,&quot;hid&quot;:&quot;introduction_to_8021x&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1880&quot;} -->
+<h2 class="sectionedit6" id="prerequisites">Prerequisites</h2>
+<div class="level2">
+
+<p>
+Before beginning you will want to make sure you have completed the following steps:
+</p>
+<ul>
+<li class="level1"><div class="li"> Installed a RADIUS server such as <a href="/docs/guide-user/network/wifi/freeradius" class="wikilink1" title="docs:guide-user:network:wifi:freeradius" data-wiki-id="docs:guide-user:network:wifi:freeradius">FreeRADIUS</a> (on OpenWrt or on another server). Note that in 802.1X documentation the system holding the username/password database is referred to as the “authentication server” or sometimes just the “server”.</div>
+</li>
+<li class="level1"><div class="li"> Configured your router as a “client” on the RADIUS server. The <abbr title="Internet Protocol">IP</abbr> address of your router/access point must be allowed to connect to the RADIUS server and have an associated key/password which it will use to authenticate to the RADIUS server. Note that in 802.1X documentation the router/access point is referred to as the “client” or sometimes as the “authenticator” to distinguish it from the end user device which is attempting to authenticate and which is called the “supplicant”.</div>
+</li>
+<li class="level1"><div class="li"> Configured one or more usernames and passwords on the RADIUS server. Note that the user passwords must be stored in a format which matches the format the supplicant is using to check the password. For Windows clients this means you need to store the password as an NT/LM Hash value, for other clients it would usually be Crypt/MD5/SHA. To simplify things you can store the password as cleartext and the RADIUS server will then be able to generate the needed hashes on the fly but this has obvious security downsides and should be considered carefully but may be of use for troubleshooting.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Prerequisites&quot;,&quot;hid&quot;:&quot;prerequisites&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;1881-3364&quot;} -->
+<h2 class="sectionedit7" id="basic_8021x_wireless_user_authentication">Basic 802.1X Wireless User Authentication</h2>
+<div class="level2">
+
+<p>
+Enterprise WPA is not supported by the wpad-mini access point software on OpenWrt so you will need to remove that and install the full version of hostapd:
+</p>
+<pre class="code">opkg update
+opkg remove wpad-mini
+opkg install wpad
+# as of 19.07, older versions of OpenWrt may require hostapd instead of wpad</pre>
+
+<p>
+Next, you can modify your <code>/etc/config/wireless</code> file to support WPA Enterprise authentication. Specifically you will need to create a <code>wifi-iface</code> with the encryption option set to wpa2, a server address, and a key. One example might be:
+</p>
+<pre class="code">config wifi-iface
+      option device &#039;radio1&#039;
+      option mode &#039;ap&#039;
+      option ssid &#039;Test8021xNetwork&#039;
+      option network &#039;lan&#039;
+      option encryption &#039;wpa2&#039;
+      option server &#039;192.168.1.10&#039;
+      # if you are running server on your router then server would be 127.0.0.1 meaning localhost
+      option key &#039;MyClientPassword&#039;</pre>
+
+<p>
+Where 192.168.1.10 is a previously configured RADIUS server which is expecting connections from this client (router/<abbr title="Access Point">AP</abbr>) using the password “MyClientPassword”.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Basic 802.1X Wireless User Authentication&quot;,&quot;hid&quot;:&quot;basic_8021x_wireless_user_authentication&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;3365-4474&quot;} -->
+<h2 class="sectionedit8" id="x_dynamic_vlans_on_an_openwrt_router">802.1X Dynamic VLANs on an OpenWrt Router</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;802.1X Dynamic VLANs on an OpenWrt Router&quot;,&quot;hid&quot;:&quot;x_dynamic_vlans_on_an_openwrt_router&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:8,&quot;range&quot;:&quot;4475-4529&quot;} -->
+<h3 class="sectionedit9" id="introduction">Introduction</h3>
+<div class="level3">
+
+<p>
+In the following example we&#039;ll extend our previous 802.1X wireless network authentication to automatically assign users connecting to the SAME SSID to either the main “lan” network or a new “guest” network depending on their username. Note that some of the functionality needed to make this work was not included in OpenWrt until the “Chaos Calmer” release. It is technically possible to make dynamic VLANs work in prior releases but it requires modifying some system files, it is suggested that you run “Chaos Calmer” r43473 or newer releases if you want to use 802.1X dynamic VLANs on a router. If you really want the details on what needs to be changed see <a href="https://dev.openwrt.org/changeset/43473/" class="urlextern" title="https://dev.openwrt.org/changeset/43473/" rel="ugc nofollow">r43473</a>, <a href="https://dev.openwrt.org/changeset/42787" class="urlextern" title="https://dev.openwrt.org/changeset/42787" rel="ugc nofollow">r42787</a>, and <a href="https://dev.openwrt.org/changeset/41872" class="urlextern" title="https://dev.openwrt.org/changeset/41872" rel="ugc nofollow">r41872</a>.
+</p>
+
+<p>
+NOTE: You&#039;ll be working on changing the way your router&#039;s CPU connects to the switch as part of these configuration changes. If done improperly it&#039;s possible to lock yourself out of the router. If you do this you will need to be familiar with the recovery mechanism of your router so that you can get back in and reset or fix your configurations. It&#039;s a good idea to <strong>have a backup of your working configuration before starting</strong> and to be familiar with the way OpenWrt handles <abbr title="Virtual Local Area Network">VLAN</abbr> configuration (which can vary a bit from router to router). If you have physical access to your router you shouldn&#039;t be able to brick the router in such a way that it&#039;s impossible to recover but if you&#039;re working wirelessly or remotely it is possible. <em>It&#039;s best to setup a test network on a second router and work on that until you are familiar with the configuration as this is a tricky process to get right at first.</em>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Introduction&quot;,&quot;hid&quot;:&quot;introduction&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:9,&quot;range&quot;:&quot;4530-6283&quot;} -->
+<h3 class="sectionedit10" id="configuration">Configuration</h3>
+<div class="level3">
+
+<p>
+Because we&#039;ll be working with multiple VLANs we need to create an additional <abbr title="Virtual Local Area Network">VLAN</abbr> for the guest network and enable <abbr title="Virtual Local Area Network">VLAN</abbr> tagging on the CPU port for the “lan” and “guest” VLANs so that the router can communicate with both VLANs. In this case we&#039;ll keep the “lan” network on <abbr title="Virtual Local Area Network">VLAN</abbr> 1 and create a new “guest” network on <abbr title="Virtual Local Area Network">VLAN</abbr> 3. We&#039;re skipping over <abbr title="Virtual Local Area Network">VLAN</abbr> 2 because the particular router used to create this demonstration uses <abbr title="Virtual Local Area Network">VLAN</abbr> 2 to connect the <abbr title="Wide Area Network">WAN</abbr> port to the CPU, not all routers do this, some wire the <abbr title="Wide Area Network">WAN</abbr> port directly to the CPU. More information on the switch port layout can be found on the OpenWrt wiki page for your particular router.
+</p>
+
+<p>
+First, modify the existing “lan” <abbr title="Virtual Local Area Network">VLAN</abbr> to tag traffic going to the CPU port. In this example the CPU is on port 0 and ports 2, 3, 4 and 5 are the existing <abbr title="Local Area Network">LAN</abbr> switch ports (which we want to keep on the “lan” <abbr title="Virtual Local Area Network">VLAN</abbr> as they were). Port 1 on this router is a secondary CPU port used for the <abbr title="Wide Area Network">WAN</abbr> connection. <strong>Ports on your own router may vary, check the switch port details for your router on the OpenWrt wiki page for your specific router.</strong> On this router the existing <abbr title="Virtual Local Area Network">VLAN</abbr> 1 switch configuration in the <code>/etc/config/network</code> file looks like:
+</p>
+<pre class="code">config switch_vlan
+      option device &#039;switch0&#039;
+      option vlan &#039;1&#039;
+      option ports &#039;0 2 3 4 5&#039;</pre>
+
+<p>
+To start tagging <abbr title="Virtual Local Area Network">VLAN</abbr> 1 traffic to the CPU change it to look like:
+</p>
+<pre class="code">config switch_vlan
+      option device &#039;switch0&#039;
+      option vlan &#039;1&#039;
+      option ports &#039;0t 2 3 4 5&#039;</pre>
+
+<p>
+Now create the new <abbr title="Virtual Local Area Network">VLAN</abbr> for guests (we&#039;re using <abbr title="Virtual Local Area Network">VLAN</abbr> 3 on this router):
+</p>
+<pre class="code">config switch_vlan
+      option device &#039;switch0&#039;
+      option vlan &#039;3&#039;
+      option ports &#039;0t&#039;</pre>
+
+<p>
+Note that the only port in this <abbr title="Virtual Local Area Network">VLAN</abbr> is a tagged connection to the CPU port right now but the router will automatically bridge guest wireless users onto this <abbr title="Virtual Local Area Network">VLAN</abbr> following the 802.1X server&#039;s instruction. You can create additional VLANs as needed for your network design but beware the limits of the switch chip in your router. Many switch chips in consumer routers are limited to 15 VLANs.
+</p>
+
+<p>
+Next we need to modify the interface configuration in the same file. Because we&#039;re now tagging <abbr title="Virtual Local Area Network">VLAN</abbr> traffic we need to modify the “lan” interface configuration slightly. On this router the <abbr title="Local Area Network">LAN</abbr> CPU port is eth1, <em>check the switch port details for your router on the OpenWrt wiki page for your router to determine the <abbr title="Local Area Network">LAN</abbr> CPU port on your own router</em>. Where we previously found a section like:
+</p>
+<pre class="code">config interface &#039;lan&#039;
+      option ifname &#039;eth1&#039;
+      option type &#039;bridge&#039;
+      option proto &#039;static&#039;
+      option ipaddr &#039;192.168.1.1&#039;</pre>
+
+<p>
+We now need to make it:
+</p>
+<pre class="code">config interface &#039;vlan1&#039;
+      option ifname &#039;eth1.1&#039;
+      option type &#039;bridge&#039;
+      option proto &#039;static&#039;
+      option ipaddr &#039;192.168.1.1&#039;	</pre>
+
+<p>
+There are TWO important changes to be made here. First, the interface MUST be named <code>vlan1</code> so that the hostapd program can find the correct interface to attach the user to. Second, the ifname MUST be changed to <code>eth1.1</code> because the traffic is now being tagged on <abbr title="Virtual Local Area Network">VLAN</abbr> 1 between the switch and CPU.
+</p>
+
+<p>
+We also need to add a new interface on <abbr title="Virtual Local Area Network">VLAN</abbr> 3 for our guest network.
+</p>
+<pre class="code">config interface &#039;vlan3&#039;
+      option proto &#039;static&#039;
+      option ipaddr &#039;192.168.3.1&#039;
+      option netmask &#039;255.255.255.0&#039;
+      option type &#039;bridge&#039;
+      option ifname &#039;eth1.3&#039;</pre>
+
+<p>
+Note that the ifname is <code>eth1.3</code>, indicating this interface should interact with <abbr title="Virtual Local Area Network">VLAN</abbr> 3 on the switch CPU port and that the <code>ipaddr</code> is on a different network than <abbr title="Virtual Local Area Network">VLAN</abbr> 1. For simplicity&#039;s sake, I have made the third octet of the <abbr title="Internet Protocol">IP</abbr> address equal to the <abbr title="Virtual Local Area Network">VLAN</abbr> number, but this is not a requirement. The connection to the <abbr title="Virtual Local Area Network">VLAN</abbr> is made by the interface name, the ifname option, and switch configuration only.
+</p>
+
+<p>
+<strong>Important Note:</strong> Because you changed the name of your primary interface from “lan” to “vlan1” you will need to update your <code>/etc/config/dhcp</code> (the interface option) and <code>/etc/config/firewall</code> (the network option in the zones) files to reflect that change. <em>Failure to do this can lock you out of the router!</em>
+</p>
+
+<p>
+Save the changes to your <code>/etc/config/network</code> file and issue a <code>/etc/init.d/network</code> reload command to apply them. If you did everything correctly, your command prompt will return in a few moments and you should still have access to the router. If you have a problem accessing the router, you likely disconnected your CPU port from the switch and you&#039;ll need to use the recovery mechanism of your router to get back in.
+</p>
+
+<p>
+You might want to set a <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> server up for this guest interface as well as appropriate firewall rules to allow access to the Internet yet prevent access to the other <abbr title="Local Area Network">LAN</abbr> systems, but doing those things is outside the scope of this document. We&#039;ll proceed assuming that you have addressing and firewall rules set up and working. Before proceeding you may want to temporarily set a separate wireless SSID up on the router which: does NOT use 802.1X; is bridged to the guest network; is verified working. Otherwise, figure that out before adding in the 802.1X dynamic <abbr title="Virtual Local Area Network">VLAN</abbr> complexity.
+</p>
+
+<p>
+Now that we have a guest network functioning on the router, we can modify our wireless configuration to support 802.1X dynamic vlans. To do this, modify the SSID setup in your <code>/etc/config/wireless</code> file and remove the <code>network</code> option and add the <code>dynamic_vlan</code> and <code>vlan_tagged_interface</code> options. Note that <code>dynamic_vlan</code> is a tri-state setting, e.g. off=0, on=1, require=2, and is not a setting for the actual <abbr title="Virtual Local Area Network">VLAN</abbr> number. An example with the basic 802.1X setup found above would be:
+</p>
+<pre class="code">config wifi-iface
+      option device &#039;radio1&#039;
+      option mode &#039;ap&#039;
+      option ssid &#039;Test8021xNetwork&#039;
+      option encryption &#039;wpa2&#039;
+      option server &#039;192.168.1.10&#039;
+      option key &#039;MyClientPassword&#039;
+      option dynamic_vlan     &#039;2&#039;
+      option &#039;vlan_tagged_interface&#039; &#039;eth1&#039;
+      option &#039;vlan_bridge&#039; &#039;br-vlan&#039;
+      option &#039;vlan_naming&#039; &#039;0&#039;</pre>
+
+<p>
+Finally, you need to ensure that your RADIUS server sends <abbr title="Virtual Local Area Network">VLAN</abbr> information. On FreeRADIUS each username section should look like:
+</p>
+<pre class="code">&quot;username&quot;      Cleartext-Password := &quot;password&quot;
+                Tunnel-Type = &quot;VLAN&quot;,
+                Tunnel-Medium-Type = &quot;IEEE-802&quot;,
+                Tunnel-Private-Group-ID = &quot;1&quot;</pre>
+
+<p>
+The important part being the three “Tunnel-*” settings, where <code>Tunnel-Private-Group-ID</code> is set to the <abbr title="Virtual Local Area Network">VLAN</abbr> that user should be assigned.
+</p>
+
+<p>
+If everything has been done correctly to this point, you should be able to reboot your router and test with some different usernames with different VLANs associated to each user respectively.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:10,&quot;range&quot;:&quot;6284-12916&quot;} -->
+<h3 class="sectionedit11" id="how_it_workstroubleshooting">How It Works/Troubleshooting</h3>
+<div class="level3">
+
+<p>
+If you were able to make standard 802.1X work on your router and also can make VLANs work on your router but are having problems trying to do 802.1X with dynamic VLANs or you want to customize your configuration it is helpful to know how OpenWrt handles dynamic VLANs.
+</p>
+
+<p>
+When we set the interface names in the above example to <code>vlan1</code> and <code>vlan3</code> and set their type to <code>bridge</code>, OpenWrt automatically created two bridges (software switches) on the router named <code>br-vlan1</code> and <code>br-vlan3</code>. You can see these bridges, and which ports they&#039;re connected to, by running the <code>brctl show</code> command which gives output like this:
+</p>
+<pre class="code">root@OpenWrt:~# brctl show
+bridge name     bridge id               STP enabled     interfaces
+br-vlan1                7fff.e894f690dfb0       no              eth1.1
+br-vlan3                7fff.e894f690dfb0       no              eth1.3</pre>
+
+<p>
+In this example output you can see the two bridges and that <code>eth1.1</code> (the CPU port for <abbr title="Virtual Local Area Network">VLAN</abbr> 1) and <code>eth1.3</code> (the CPU port for <abbr title="Virtual Local Area Network">VLAN</abbr> 3) are the only members of each respective bridge. When an 802.1X dynamic <abbr title="Virtual Local Area Network">VLAN</abbr> wireless client joins <abbr title="Virtual Local Area Network">VLAN</abbr> 1 the output will change like this:
+</p>
+<pre class="code">root@OpenWrt:~# brctl show
+bridge name     bridge id               STP enabled     interfaces
+br-vlan1                7fff.e894f690dfb0       no              eth1.1
+                                                                wlan0.1
+br-vlan3                7fff.e894f690dfb0       no              eth1.3</pre>
+
+<p>
+As you can see the wlan0.1 interface (the connection for <abbr title="Virtual Local Area Network">VLAN</abbr> 1 traffic to wireless users on wlan0) is now a member of br-vlan1. Because <code>eth1.1</code> is a member of the same bridge, wireless users on <abbr title="Virtual Local Area Network">VLAN</abbr> 1 can exchange traffic with the CPU <abbr title="Virtual Local Area Network">VLAN</abbr> 1 port.
+</p>
+
+<p>
+But how does <code>wlan0.1</code> know to connect to <code>eth1.1</code> on br-vlan1? The answer lies in the hostapd software and in the additional configuration we did in <code>/etc/config/wireless</code>.
+</p>
+
+<p>
+On a normal Linux based access point, the idea is that you only need to set a <code>vlan_tagged_interface</code> option in your configuration which lets hostapd know what tagged CPU interface contains access to all VLANs. Hostapd would then automatically create sub-interfaces like <code>ethX.Y</code> where <code>ethX</code> is the tagged interface and <code>Y</code> is the <abbr title="Virtual Local Area Network">VLAN</abbr> number. Unfortunately this simple configuration does not work with OpenWrt because most users ALREADY use bridging on their CPU interface by setting the interface type to bridge in <code>/etc/config/network</code> which is part of the standard OpenWrt configuration as it is how non-802.1X wireless users connect to the CPU port. When you set things up that way, OpenWrt automatically creates a bridge called <code>br-lan</code> or <code>br-*</code> in front of whatever the interface name is and, then adds the physical interface such as <code>eth1.1</code> to the bridge. Run <code>brctl show</code> on an OpenWrt router which is not configured for 802.1X dynamic VLANs to see this setup.
+</p>
+
+<p>
+Because a physical interface can only be a member of ONE bridge hostapd is not then able to add eth1.1 to a new hostapd created bridge for wlan0.1 so you end up with no communication. If you ran <code>brctl show</code> on a mis-configured router like this you would see one or more bridge interfaces created by OpenWrt through the <code>/etc/config/network</code> file and one bridge interface created by hostapd for each <abbr title="Virtual Local Area Network">VLAN</abbr> a user had tried to connect to which ONLY had the <code>wlan0.Y</code> interface as a member. Obviously if the wlan interface is the only member of a bridge, the traffic has nowhere to go so the user is unable to obtain an <abbr title="Internet Protocol">IP</abbr> address or go anywhere.
+</p>
+
+<p>
+To work around this problem we make a few changes. First, we must name our interfaces in <code>/etc/config/network</code> based on their <abbr title="Virtual Local Area Network">VLAN</abbr> such as <code>vlan1</code> and <code>vlan3</code>. This causes OpenWrt to name the bridges it creates <code>br-vlan1</code> and <code>br-vlan3</code>. Second, we set the <code>vlan_bridge</code> option in <code>/etc/config/wireless</code> to “br-vlan” and the <code>vlan_naming</code> option to “0” what this does is tell hostapd to create bridges using the <code>br-vlanY</code> naming convention (where <code>Y</code> is the <abbr title="Virtual Local Area Network">VLAN</abbr> number). As you can see those bridges will already exist based on the OpenWrt configuration and because you can only have one bridge with the same name, hostapd just adds the <code>wlan0.Y</code> interface to the existing bridge, allowing it to communicate with the <code>eth1.Y</code> interface that OpenWrt placed there.
+</p>
+
+<p>
+If you have problems when you are using PEAP as EAP method, check your errors using logread. If you see this error: “IEEE 802.1X: authentication server did not include required <abbr title="Virtual Local Area Network">VLAN</abbr> ID in Access-Accept” you might solve it enabling <code>use_tunneled_reply</code> on radius PEAP configuration. If you are using freeradius, edit eap config (e.g. /etc/freeradius3/mods-enabled/eap), and change the <code>use_tunneled_reply</code> configuration inside of pear { ... } to <code>use_tunneled_reply = yes</code>, then restart freeradiusd (reload is not enough) and try again. Note that this possibly applies to other methods too.
+</p>
+
+<p>
+Hopefully this section allowed you to understand how hostapd interacts with OpenWrt to allow for dynamic VLANs over 802.1X. As you can see it&#039;s a bit of a tricky configuration. When things don&#039;t seem to be working correctly with dynamic VLANs but work with fixed VLANs, a good place to start is by checking the output of the <code>brctl show</code> command to see which interfaces are being connected to each other. Once you verify that this is the problem lies, it gives you a starting point to figure out what must be modified in the configuration to get the correct interfaces bridged together.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;How It Works\/Troubleshooting&quot;,&quot;hid&quot;:&quot;how_it_workstroubleshooting&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:11,&quot;range&quot;:&quot;12917-18483&quot;} -->
+<h2 class="sectionedit12" id="encryption_on_wired_networks">Encryption on wired networks</h2>
+<div class="level2">
+
+<p>
+Upstream hostapd and the Linux kernel supports encryption on wired networks (using IEEE 802.1AE “MACsec” to perform encryption at layer 2), but this is not yet supported in OpenWRT.  More details can be found in <a href="https://forum.openwrt.org/t/macsec-802-1ae-with-802-1x-eapol-key-management-with-wpa-supplicant/194433" class="urlextern" title="https://forum.openwrt.org/t/macsec-802-1ae-with-802-1x-eapol-key-management-with-wpa-supplicant/194433" rel="ugc nofollow">this forum post</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Encryption on wired networks&quot;,&quot;hid&quot;:&quot;encryption_on_wired_networks&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:12,&quot;range&quot;:&quot;18484-18862&quot;} -->
+<h2 class="sectionedit13" id="additional_resources">Additional Resources</h2>
+<div class="level2">
+
+<p>
+WPA Enterprise options can be found in the <a href="/docs/guide-user/network/wifi/basic#wpa_enterprise_access_point" class="wikilink1" title="docs:guide-user:network:wifi:basic" data-wiki-id="docs:guide-user:network:wifi:basic">Wireless documentation</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Additional Resources&quot;,&quot;hid&quot;:&quot;additional_resources&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:13,&quot;range&quot;:&quot;18863-&quot;} -->

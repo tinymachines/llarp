@@ -1,0 +1,62 @@
+
+<h1 class="sectionedit1" id="ssh_filesystem">SSH FileSystem</h1>
+<div class="level1">
+
+<p>
+Both solutions <a href="/docs/guide-user/services/nas/samba" class="wikilink1" title="docs:guide-user:services:nas:samba" data-wiki-id="docs:guide-user:services:nas:samba">samba</a> and <a href="/docs/guide-user/services/nas/nfs.server" class="wikilink1" title="docs:guide-user:services:nas:nfs.server" data-wiki-id="docs:guide-user:services:nas:nfs.server">nfs.server</a> do not offer security though encryption and are thus only suited for use in a closed intranet. If you need to remotely access files over the internet it is better to use an encrypted solution. The two common ways to do that are to use sshfs or to use samba or nfs over a <abbr title="Virtual Private Network">VPN</abbr>. In this recipe you will be shown how to set up and configure sshfs. sshfs is based on <abbr title="SSH File Transfer Protocol">SFTP</abbr> so you need to install sftp support on the server.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;SSH FileSystem&quot;,&quot;hid&quot;:&quot;ssh_filesystem&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-552&quot;} -->
+<h2 class="sectionedit2" id="needed_packages">Needed Packages</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> openssh-sftp-server (for server)</div>
+</li>
+<li class="level1"><div class="li"> sshfs (for client)</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Needed Packages&quot;,&quot;hid&quot;:&quot;needed_packages&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;553-642&quot;} -->
+<h2 class="sectionedit3" id="configuration">Configuration</h2>
+<div class="level2">
+
+<p>
+By default OpenWrt uses Dropbear for its ssh client/server, and it is this that sshfs will use for its actual ssh connection backbone.  On the client side you need to create an ssh key:
+</p>
+<pre class="code">dropbearkey -t ed25519 -f ~/.ssh/id_dropbear</pre>
+
+<p>
+This will save the private key to where dropbear&#039;s ssh client can find it.  It will also print out a line with the public key.  It&#039;s a good idea to save the printed public key line in a file on the client - the typical place is in ~/.ssh/id_dropbear.pub.  This public key line also needs to be copied to the server and placed in the file /etc/dropbear/authorized_keys
+</p>
+
+<p>
+There is nothing more to be done on the server. Now you can mount your sshfs on the client by executing:
+</p>
+<pre class="code">sshfs [user@]host:[dir] mountpoint</pre>
+
+<p>
+If you did not install the package to the standard destination (e.g. using opkg -d ram), you need to specify the sftp executable in your sshfs command:
+</p>
+<pre class="code">sshfs [user@]host:[dir] mountpoint -o sftp_server=/tmp/usr/libexec/sftp-server</pre>
+
+<p>
+The more convenient way would be to link the binary to the default destination, so execute on your OpenWrt:
+</p>
+<pre class="code">mkdir -p /usr/libexec
+ln -s /tmp/usr/libexec/sftp-server /usr/libexec/sftp-server</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;643-1845&quot;} -->
+<h2 class="sectionedit4" id="links">Links</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <a href="http://en.wikipedia.org/wiki/Secure_Shell_Filesystem" class="urlextern" title="http://en.wikipedia.org/wiki/Secure_Shell_Filesystem" rel="ugc nofollow">http://en.wikipedia.org/wiki/Secure_Shell_Filesystem</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://fuse.sourceforge.net/sshfs.html" class="urlextern" title="http://fuse.sourceforge.net/sshfs.html" rel="ugc nofollow">http://fuse.sourceforge.net/sshfs.html</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Links&quot;,&quot;hid&quot;:&quot;links&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;1846-&quot;} -->

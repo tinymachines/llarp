@@ -1,0 +1,256 @@
+
+<h1 class="sectionedit1" id="doh_with_dnsmasq_and_https-dns-proxy">DoH with Dnsmasq and https-dns-proxy</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__meta:infobox:howto_links">
+<div class="level1">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_info plugin_wrap">
+<p>
+This article relies on the following:
+</p>
+<ul>
+<li class="level1"><div class="li"> Accessing <a href="/docs/guide-quick-start/walkthrough_login" class="wikilink1" title="docs:guide-quick-start:walkthrough_login" data-wiki-id="docs:guide-quick-start:walkthrough_login">web interface</a> / <a href="/docs/guide-quick-start/sshadministration" class="wikilink1" title="docs:guide-quick-start:sshadministration" data-wiki-id="docs:guide-quick-start:sshadministration">command-line interface</a></div>
+</li>
+<li class="level1"><div class="li"> Managing <a href="/docs/guide-user/base-system/uci" class="wikilink1" title="docs:guide-user:base-system:uci" data-wiki-id="docs:guide-user:base-system:uci">configs</a> / <a href="/docs/guide-user/additional-software/managing_packages" class="wikilink1" title="docs:guide-user:additional-software:managing_packages" data-wiki-id="docs:guide-user:additional-software:managing_packages">packages</a> / <a href="/docs/guide-user/base-system/managing_services" class="wikilink1" title="docs:guide-user:base-system:managing_services" data-wiki-id="docs:guide-user:base-system:managing_services">services</a> / <a href="/docs/guide-user/base-system/log.essentials" class="wikilink1" title="docs:guide-user:base-system:log.essentials" data-wiki-id="docs:guide-user:base-system:log.essentials">logs</a></div>
+</li>
+</ul>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;DoH with Dnsmasq and https-dns-proxy&quot;,&quot;hid&quot;:&quot;doh_with_dnsmasq_and_https-dns-proxy&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-133&quot;} -->
+<h2 class="sectionedit6" id="introduction">Introduction</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> This how-to describes the method for setting up <a href="https://en.wikipedia.org/wiki/DNS_over_HTTPS" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/DNS_over_HTTPS">DNS over HTTPS</a> on OpenWrt.</div>
+</li>
+<li class="level1"><div class="li"> It relies on <a href="/docs/guide-user/base-system/dhcp.dnsmasq" class="wikilink1" title="docs:guide-user:base-system:dhcp.dnsmasq" data-wiki-id="docs:guide-user:base-system:dhcp.dnsmasq">Dnsmasq</a> and <a href="/packages/pkgdata/https-dns-proxy" class="wikilink1" title="packages:pkgdata:https-dns-proxy" data-wiki-id="packages:pkgdata:https-dns-proxy">https-dns-proxy</a> for masking <abbr title="Domain Name System">DNS</abbr> traffic as <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> traffic.</div>
+</li>
+<li class="level1"><div class="li"> Follow <a href="/docs/guide-user/firewall/fw3_configurations/intercept_dns" class="wikilink1" title="docs:guide-user:firewall:fw3_configurations:intercept_dns" data-wiki-id="docs:guide-user:firewall:fw3_configurations:intercept_dns">DNS hijacking</a> to intercept <abbr title="Domain Name System">DNS</abbr> traffic or use <a href="/docs/guide-user/services/vpn/start" class="wikilink1" title="docs:guide-user:services:vpn:start" data-wiki-id="docs:guide-user:services:vpn:start">VPN</a> to protect all traffic.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Introduction&quot;,&quot;hid&quot;:&quot;introduction&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;134-615&quot;} -->
+<h2 class="sectionedit7" id="goals">Goals</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;docs:guide-user:services:dns:dnscrypt_dnsmasq_dnscrypt-proxy&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:8,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__docs:guide-user:services:dns:dnscrypt_dnsmasq_dnscrypt-proxy">
+<div class="level2">
+<ul>
+<li class="level1 node"><div class="li"> Encrypt your <abbr title="Domain Name System">DNS</abbr> traffic improving security and privacy.</div>
+<ul>
+<li class="level2"><div class="li"> Prevent <abbr title="Domain Name System">DNS</abbr> leaks and <abbr title="Domain Name System">DNS</abbr> hijacking.</div>
+</li>
+</ul>
+</li>
+<li class="level1 node"><div class="li"> Bypass regional restrictions using public <abbr title="Domain Name System">DNS</abbr> providers.</div>
+<ul>
+<li class="level2"><div class="li"> Escape <abbr title="Domain Name System">DNS</abbr>-based content filters and internet censorship.</div>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;docs:guide-user:services:dns:dnscrypt_dnsmasq_dnscrypt-proxy&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:9,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Goals&quot;,&quot;hid&quot;:&quot;goals&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;616-744&quot;} -->
+<h2 class="sectionedit10" id="command-line_instructions">Command-line instructions</h2>
+<div class="level2">
+
+<p>
+Install the required packages.
+<abbr title="Domain Name System">DNS</abbr> encryption should be enabled automatically.
+</p>
+<pre class="code bash"><span class="co0"># Install packages</span>
+opkg update
+opkg <span class="kw2">install</span> https-dns-proxy</pre>
+
+<p>
+<abbr title="Local Area Network">LAN</abbr> clients should use Dnsmasq as a primary resolver.
+Dnsmasq forwards <abbr title="Domain Name System">DNS</abbr> queries to https-dns-proxy which encrypts <abbr title="Domain Name System">DNS</abbr> traffic.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Command-line instructions&quot;,&quot;hid&quot;:&quot;command-line_instructions&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:10,&quot;range&quot;:&quot;745-1074&quot;} -->
+<h2 class="sectionedit11" id="testing">Testing</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;docs:guide-user:services:dns:dnscrypt_dnsmasq_dnscrypt-proxy&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:12,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__docs:guide-user:services:dns:dnscrypt_dnsmasq_dnscrypt-proxy">
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;docs:guide-user:services:dns:dot_dnsmasq_dnsproxy&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:14,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__docs:guide-user:services:dns:dot_dnsmasq_dnsproxy">
+<div class="level4">
+
+<p>
+Verify domain name resolution with <a href="http://man.cx/nslookup%281%29" class="interwiki iw_man" title="http://man.cx/nslookup%281%29">nslookup</a>:
+</p>
+<pre class="code bash">nslookup openwrt.org localhost</pre>
+
+<p>
+To check your <abbr title="Domain Name System">DNS</abbr> provider, you can use:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="https://one.one.one.one/help/" class="urlextern" title="https://one.one.one.one/help/" rel="ugc nofollow">Cloudflare Test</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://adguard.com/en/test.html" class="urlextern" title="https://adguard.com/en/test.html" rel="ugc nofollow">AdGuard Test</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://test.nextdns.io/" class="urlextern" title="https://test.nextdns.io/" rel="ugc nofollow"> NextDNS Test</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://mullvad.net/en/check" class="urlextern" title="https://mullvad.net/en/check" rel="ugc nofollow">Mullvad Test</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://on.quad9.net/" class="urlextern" title="https://on.quad9.net/" rel="ugc nofollow">Quad9 Test</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://welcome.opendns.com/" class="urlextern" title="https://welcome.opendns.com/" rel="ugc nofollow">OpenDNS Test</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://www.cloudflare.com/ssl/encrypted-sni/" class="urlextern" title="https://www.cloudflare.com/ssl/encrypted-sni/" rel="ugc nofollow">Cloudflare Browser Check</a></div>
+</li>
+</ul>
+
+<p>
+<abbr title="Domain Name System">DNS</abbr> Leak Test and DNSSEC Test:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="https://dnsleaktest.com/" class="urlextern" title="https://dnsleaktest.com/" rel="ugc nofollow">DNS Leak Test #1</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dnscheck.tools/" class="urlextern" title="https://dnscheck.tools/" rel="ugc nofollow">DNS Leak Test #2</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://dnssec-or-not.com/" class="urlextern" title="http://dnssec-or-not.com/" rel="ugc nofollow">DNSSEC Test #1</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://wander.science/projects/dns/dnssec-resolver-test/" class="urlextern" title="https://wander.science/projects/dns/dnssec-resolver-test/" rel="ugc nofollow">DNSSEC Test #2</a></div>
+</li>
+</ul>
+
+<p>
+Alternative test via CLI:
+* check connection to Quad9 <abbr title="Domain Name System">DNS</abbr> (it require to use Quad9 <abbr title="Domain Name System">DNS</abbr> servers):
+</p>
+<pre class="code">dig +short txt proto.on.quad9.net.
+# should print: doh. or dot.</pre>
+
+<p>
+* check connection to NextDNS (it require to use NextDNS <abbr title="Domain Name System">DNS</abbr> servers):
+</p>
+<pre class="code">curl -SL https://test.nextdns.io/
+{
+        &quot;status&quot;: &quot;ok&quot;,
+        &quot;protocol&quot;: &quot;DOT&quot;,
+        &quot;profile&quot;: &quot;SOMEPROFILE&quot;,
+        &quot;client&quot;: &quot;80.XXX.XXX.XXX&quot;,
+        &quot;srcIP&quot;: &quot;80.XXX.XXX.XXX&quot;,
+        &quot;destIP&quot;: &quot;XX.XX.28.0&quot;,
+        &quot;anycast&quot;: true,
+        &quot;server&quot;: &quot;zepto-ber-1&quot;,
+        &quot;clientName&quot;: &quot;unknown-dot&quot;
+}</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;docs:guide-user:services:dns:dot_dnsmasq_dnsproxy&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:15,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level4">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;docs:guide-user:services:dns:dnscrypt_dnsmasq_dnscrypt-proxy&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:13,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Testing&quot;,&quot;hid&quot;:&quot;testing&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:11,&quot;range&quot;:&quot;1075-1207&quot;} -->
+<h2 class="sectionedit16" id="troubleshooting">Troubleshooting</h2>
+<div class="level2">
+
+<p>
+Collect and analyze the following information.
+</p>
+<pre class="code bash"><span class="co0"># Restart services</span>
+service log restart; service dnsmasq restart; service https-dns-proxy restart
+&nbsp;
+<span class="co0"># Log and status</span>
+logread <span class="re5">-e</span> dnsmasq; <span class="kw2">netstat</span> <span class="re5">-l</span> <span class="re5">-n</span> <span class="re5">-p</span> <span class="sy0">|</span> <span class="kw2">grep</span> <span class="re5">-e</span> dnsmasq
+logread <span class="re5">-e</span> https-dns; <span class="kw2">netstat</span> <span class="re5">-l</span> <span class="re5">-n</span> <span class="re5">-p</span> <span class="sy0">|</span> <span class="kw2">grep</span> <span class="re5">-e</span> https-dns
+&nbsp;
+<span class="co0"># Runtime configuration</span>
+pgrep <span class="re5">-f</span> <span class="re5">-a</span> dnsmasq; pgrep <span class="re5">-f</span> <span class="re5">-a</span> https-dns
+<span class="kw2">head</span> <span class="re5">-v</span> <span class="re5">-n</span> <span class="re5">-0</span> <span class="sy0">/</span>etc<span class="sy0">/</span>resolv.<span class="sy0">*</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>resolv.<span class="sy0">*</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>resolv.<span class="sy0">*/*</span>
+&nbsp;
+<span class="co0"># Persistent configuration</span>
+uci show dhcp; uci show https-dns-proxy</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Troubleshooting&quot;,&quot;hid&quot;:&quot;troubleshooting&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:16,&quot;range&quot;:&quot;1208-1727&quot;} -->
+<h3 class="sectionedit17" id="private_dns_server_cannot_be_accessed_on_android">&quot;Private DNS server cannot be accessed&quot; on Android</h3>
+<div class="level3">
+
+<p>
+When using a custom <abbr title="Domain Name System">DNS</abbr> server on your Android device in combination with https-dns-proxy on your router, you may be unable to connect to the Internet, resulting in an error message that reads: “Private <abbr title="Domain Name System">DNS</abbr> server cannot be accessed”. This is due to <abbr title="Domain Name System">DNS</abbr> forcing being enabled by default.
+</p>
+
+<p>
+In order to fix this, run the following commands in an <abbr title="Secure Shell">SSH</abbr> session:
+</p>
+<pre class="code bash">uci delete https-dns-proxy.config.force_dns
+uci <span class="kw1">set</span> https-dns-proxy.config.force_dns=<span class="st_h">'0'</span>
+uci commit https-dns-proxy
+service https-dns-proxy restart</pre>
+
+<p>
+Or, if you have the web interface installed, you can go to <strong>LuCI → Services → <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> <abbr title="Domain Name System">DNS</abbr> Proxy</strong> and change the “Force Router <abbr title="Domain Name System">DNS</abbr>” value to “Let local devices use their own <abbr title="Domain Name System">DNS</abbr> servers if set”. Then press “Save &amp; Apply”.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;\&quot;Private DNS server cannot be accessed\&quot; on Android&quot;,&quot;hid&quot;:&quot;private_dns_server_cannot_be_accessed_on_android&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:17,&quot;range&quot;:&quot;1728-2538&quot;} -->
+<h2 class="sectionedit18" id="extras">Extras</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Extras&quot;,&quot;hid&quot;:&quot;extras&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:18,&quot;range&quot;:&quot;2539-2557&quot;} -->
+<h3 class="sectionedit19" id="web_interface">Web interface</h3>
+<div class="level3">
+
+<p>
+If you want to manage the settings using web interface.
+Install the necessary packages.
+</p>
+<pre class="code bash"><span class="co0"># Install packages</span>
+opkg update
+opkg <span class="kw2">install</span> luci-app-https-dns-proxy
+service rpcd restart</pre>
+<ul>
+<li class="level1"><div class="li"> Navigate to <strong>LuCI → Network → <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> and <abbr title="Domain Name System">DNS</abbr></strong> to configure Dnsmasq.</div>
+</li>
+<li class="level1"><div class="li"> Navigate to <strong>LuCI → Services → <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> <abbr title="Domain Name System">DNS</abbr> Proxy</strong> to configure https-dns-proxy.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Web interface&quot;,&quot;hid&quot;:&quot;web_interface&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:19,&quot;range&quot;:&quot;2558-2942&quot;} -->
+<h3 class="sectionedit20" id="doh_provider">DoH provider</h3>
+<div class="level3">
+
+<p>
+https-dns-proxy is configured with Google <abbr title="Domain Name System">DNS</abbr> and Cloudflare <abbr title="Domain Name System">DNS</abbr> by default.
+You can change it to Google <abbr title="Domain Name System">DNS</abbr> or any other <a href="https://en.wikipedia.org/wiki/Public_recursive_name_server" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Public_recursive_name_server">DoH provider</a>.
+Use resolvers supporting DNSSEC validation if necessary.
+Specify several resolvers to improve fault tolerance.
+</p>
+<pre class="code bash"><span class="co0"># Configure DoH provider</span>
+<span class="kw1">while</span> uci <span class="re5">-q</span> delete https-dns-proxy.<span class="sy0">@</span>https-dns-proxy<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>; <span class="kw1">do</span> :; <span class="kw1">done</span>
+uci <span class="kw1">set</span> https-dns-proxy.dns=<span class="st0">&quot;https-dns-proxy&quot;</span>
+uci <span class="kw1">set</span> https-dns-proxy.dns.bootstrap_dns=<span class="st0">&quot;8.8.8.8,8.8.4.4&quot;</span>
+uci <span class="kw1">set</span> https-dns-proxy.dns.resolver_url=<span class="st0">&quot;https://dns.google/dns-query&quot;</span>
+uci <span class="kw1">set</span> https-dns-proxy.dns.listen_addr=<span class="st0">&quot;127.0.0.1&quot;</span>
+uci <span class="kw1">set</span> https-dns-proxy.dns.listen_port=<span class="st0">&quot;5053&quot;</span>
+uci commit https-dns-proxy
+service https-dns-proxy restart</pre>
+
+
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;DoH provider&quot;,&quot;hid&quot;:&quot;doh_provider&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:20,&quot;range&quot;:&quot;2943-&quot;} -->

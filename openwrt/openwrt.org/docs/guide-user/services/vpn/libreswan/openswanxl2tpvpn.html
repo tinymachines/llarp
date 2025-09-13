@@ -1,0 +1,392 @@
+
+<h1 class="sectionedit1" id="libreswan_l2tpipsec">Libreswan L2TP/IPsec</h1>
+<div class="level1">
+
+<p>
+This how-to explains how to configure an openwrt router to act as an L2TP/IPsec gateway (vpn server) using xl2tpd (for L2TP) and Libreswan (for IPsec).
+</p>
+
+<p>
+The new <a href="/docs/guide-user/services/vpn/strongswan/start" class="wikilink1" title="docs:guide-user:services:vpn:strongswan:start" data-wiki-id="docs:guide-user:services:vpn:strongswan:start">strongSwan documentation</a> is currently missing an L2TP/IPsec page.
+Use this one as a reference for the <strong>xl2tpd</strong> part.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Libreswan L2TP\/IPsec&quot;,&quot;hid&quot;:&quot;libreswan_l2tpipsec&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-365&quot;} -->
+<h2 class="sectionedit2" id="deprecation_note">Deprecation Note</h2>
+<div class="level2">
+
+<p>
+As of OpenWrt version 20.x.x, ipsec-tools was removed for security reasons (project abandoned <a href="http://ipsec-tools.sourceforge.net/" class="urlextern" title="http://ipsec-tools.sourceforge.net/" rel="ugc nofollow">http://ipsec-tools.sourceforge.net/</a>) and will not be coming back.
+</p>
+
+<p>
+See the discussion of OpenWrt developers here <a href="https://github.com/openwrt/packages/issues/7832" class="urlextern" title="https://github.com/openwrt/packages/issues/7832" rel="ugc nofollow">https://github.com/openwrt/packages/issues/7832</a>.
+</p>
+
+<p>
+Please use <a href="/docs/guide-user/services/vpn/strongswan/start" class="wikilink1" title="docs:guide-user:services:vpn:strongswan:start" data-wiki-id="docs:guide-user:services:vpn:strongswan:start">strongswan</a> for ipsec in OpenWrt.
+</p>
+
+<p>
+If you try to install Libreswan using this manual on OpenWRT &gt; 19.07.9, you&#039;ll get an error:
+</p>
+<pre class="code bash">opkg_install_cmd: Cannot <span class="kw2">install</span> package ipsec-tools.</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Deprecation Note&quot;,&quot;hid&quot;:&quot;deprecation_note&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;366-914&quot;} -->
+<h2 class="sectionedit3" id="installation">Installation</h2>
+<div class="level2">
+
+</div>
+
+<h4 id="server">Server</h4>
+<div class="level4">
+
+<p>
+Install the required packages.
+</p>
+<pre class="code bash">opkg update
+opkg <span class="kw2">install</span> ipsec-tools iptables-mod-ipsec kmod-crc-ccitt \
+kmod-crc16 kmod-crypto-aes kmod-crypto-arc4 kmod-crypto-authenc \
+kmod-crypto-core kmod-crypto-des kmod-crypto-hmac kmod-crypto-md5 \
+kmod-crypto-sha1 kmod-ipsec kmod-ipsec4 kmod-ppp libreswan ppp xl2tpd</pre>
+
+<p>
+The libreswan package might try to drag with it the kmod-libreswan package, if it does manually uninstall it as we are not going to use it and it might interfere with the default in kernel mod-ipsec module.
+</p>
+
+</div>
+
+<h4 id="client">Client</h4>
+<div class="level4">
+
+<p>
+IPsec/L2TP support is installed per default on android and windows devices.
+For Linux clients please consult your distributions documentation in order to find what packages they recommend.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation&quot;,&quot;hid&quot;:&quot;installation&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;915-1697&quot;} -->
+<h2 class="sectionedit4" id="configuration">Configuration</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:4,&quot;range&quot;:&quot;1698-1723&quot;} -->
+<h3 class="sectionedit5" id="xl2tpd_configuration">xl2tpd configuration</h3>
+<div class="level3">
+
+<p>
+The L2TP protocol is related to ppp and xl2tpd makes use of pppd.
+So the configuration of xl2tpd includes both configuring xl2tpd as well as pppd.
+</p>
+<pre class="code bash"><span class="co0"># /etc/xl2tpd/xl2tpd.conf</span>
+&nbsp;
+<span class="br0">&#91;</span>global<span class="br0">&#93;</span>
+port = <span class="nu0">1701</span>
+auth <span class="kw2">file</span> = <span class="sy0">/</span>etc<span class="sy0">/</span>xl2tpd<span class="sy0">/</span>xl2tp-secrets
+access control = no
+&nbsp;
+<span class="br0">&#91;</span>lns default<span class="br0">&#93;</span>
+exclusive = <span class="kw2">yes</span>
+<span class="kw2">ip</span> range = 10.1.20.31-10.1.20.50
+hidden bit = no
+<span class="kw3">local</span> <span class="kw2">ip</span> = 10.1.20.30
+length bit = <span class="kw2">yes</span>
+require chap = <span class="kw2">yes</span>
+refuse pap = <span class="kw2">yes</span>
+name = vpn
+ppp debug = <span class="kw2">yes</span>
+pppoptfile = <span class="sy0">/</span>etc<span class="sy0">/</span>ppp<span class="sy0">/</span>options.xl2tpd</pre>
+
+<p>
+Here follows some explanations of some of the options.
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>port</code> tells xl2tpd what port to listen on, the default port for l2tp is 1701.</div>
+</li>
+<li class="level1"><div class="li"> <code>access control</code> allows us to enable or disable l2tp authentication. We disable that as the l2tp authentication is pretty weak and its redundant because we use chap auth via pppd and ipsec.</div>
+</li>
+<li class="level1"><div class="li"> <code>ip range</code> tells xl2tpd what ip numbers to hand out to connecting clients.</div>
+</li>
+<li class="level1"><div class="li"> <code>local ip</code> the ip the openwrt server will use.</div>
+</li>
+<li class="level1"><div class="li"> <code>require chap</code> and <code>refuse pap</code> is used to disable pap and require chap authentication.</div>
+</li>
+<li class="level1"><div class="li"> <code>name</code> is the name of the vpn connection, this is used later on XXXXXX.</div>
+</li>
+<li class="level1"><div class="li"> <code>ppp debug</code> is used to toggle debug output, leave it on until it all works.</div>
+</li>
+<li class="level1"><div class="li"> <code>pppoptfile</code> tells xl2tpd what ppp options file it should use.</div>
+</li>
+</ul>
+
+<p>
+The file <code>/etc/ppp/options.xl2tpd</code> should contain this.
+</p>
+<pre class="code bash">lock
+noauth
+<span class="co0">#debug</span>
+dump
+logfd <span class="nu0">2</span>
+<span class="co0">#logfile /var/log/xl2tpd.log</span>
+mtu <span class="nu0">1400</span>
+mru <span class="nu0">1400</span>
+ms-dns 192.168.1.1
+lcp-echo-failure <span class="nu0">12</span>
+lcp-echo-interval <span class="nu0">5</span>
+require-mschap-v2
+nomppe</pre>
+<ul>
+<li class="level1"><div class="li"> <code>ms-dns</code> tells xl2tpd what dns-server it should configure clients to use, so alter this to suit your setup.</div>
+</li>
+<li class="level1"><div class="li"> <code>mtu</code> + <code>mru</code> might need som tweaking to suit your setup, so you avoid ip fragmentation.</div>
+</li>
+<li class="level1"><div class="li"> <code>lcp-echo-failure</code> + <code>lcp-echo-interval</code> tells xl2tpd how many echo request failures it should accept before terminating the client, and how often it should send echo requests.</div>
+</li>
+<li class="level1"><div class="li"> <code>require-mschap-v2</code> tells xl2tpd to require mschap-v2 authentication.</div>
+</li>
+<li class="level1"><div class="li"> <code>nomppe</code> instructs xl2tpd to reject mppe encryption as its of no use as we encapsulate the L2TP traffic in IPsec packets.</div>
+</li>
+</ul>
+
+<p>
+Add usernames and passwords and ipadresses to <code>/etc/ppp/chap.secrets</code>
+</p>
+<pre class="code bash"><span class="co0">#USERNAME  PROVIDER  PASSWORD  IPADDRESS</span>
+username	vpn	secret	10.1.20.32</pre>
+
+<p>
+Here each client needs a line, with the login username, the provider columns is the same as the name option se in <code>/etc/xl2tpd/xl2tpd.conf</code>.
+A separate password for each client and then the ip address the client should have, it should be in the range configured in <code>/etc/xl2tpd/xl2tpd.conf</code> with the <code>ip range</code> option.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;xl2tpd configuration&quot;,&quot;hid&quot;:&quot;xl2tpd_configuration&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:5,&quot;range&quot;:&quot;1724-4380&quot;} -->
+<h3 class="sectionedit6" id="libreswan_configuration">Libreswan configuration</h3>
+<div class="level3">
+
+<p>
+The Libreswan configuration is pretty straightforward.
+The exact default config file entries have changed a bit in recent releases, but the syntax has remained the same.
+Libreswan is picky about whitespaces so be careful and follow the conventions as described in the ipsec.conf manpage.
+The config setup section contains generic settings and should only contain the following options.
+</p>
+<pre class="code bash"><span class="co0"># /etc/ipsec.conf</span>
+&nbsp;
+config setup
+        <span class="re2">dumpdir</span>=<span class="sy0">/</span>var<span class="sy0">/</span>run<span class="sy0">/</span>pluto
+        <span class="re2">nat_traversal</span>=<span class="kw2">yes</span>
+        <span class="re2">oe</span>=off
+        <span class="re2">protostack</span>=netkey</pre>
+<ul>
+<li class="level1"><div class="li"> <code>oe=off</code>, as android clients dont seem to support this option.</div>
+</li>
+<li class="level1"><div class="li"> <code>protostack=netkey</code> that instructs Libreswan to use the default kernel IPsec implementation.</div>
+</li>
+</ul>
+
+<p>
+Then there should be a section that defines the actual ipsec connection, such as this.
+</p>
+<pre class="code bash"><span class="co0"># /etc/ipsec.conf</span>
+&nbsp;
+conn myvpn
+	<span class="re2">auto</span>=add
+	<span class="re2">authby</span>=secret
+	<span class="re2">pfs</span>=no
+	<span class="re2">type</span>=transport
+	<span class="re2">left</span>=xxx.xxx.xxx.xxx
+	<span class="re2">leftprotoport</span>=<span class="nu0">17</span><span class="sy0">/</span><span class="nu0">1701</span>
+	<span class="re2">right</span>=<span class="sy0">%</span>any
+	<span class="re2">rightprotoport</span>=<span class="nu0">17</span><span class="sy0">/%</span>any
+	<span class="re2">rekey</span>=no
+	<span class="re2">keyingtries</span>=<span class="nu0">5</span></pre>
+<ul>
+<li class="level1"><div class="li"> <code>auto=add</code> tells Libreswan we want this connection to be active at start.</div>
+</li>
+<li class="level1"><div class="li"> <code>authby=secret</code> specifies that we want to use PSK.</div>
+</li>
+<li class="level1"><div class="li"> <code>pfs=no</code> disables perfect forward security, android seems not to support this so i disable it.</div>
+</li>
+<li class="level1"><div class="li"> <code>type=transport</code> the type of IPsec connection we want, as L2TP does the tunneling all we need is transport mode to provide encryption.</div>
+</li>
+<li class="level1"><div class="li"> <code>left=xxx.xxx.xxx.xx</code> should be altered to reflect the public ip address of the openwrt router.</div>
+</li>
+<li class="level1"><div class="li"> <code>leftprotoport=17/1701</code> defines the connection to handle <abbr title="Internet Protocol">IP</abbr> type 17, <abbr title="User Datagram Protocol">UDP</abbr> and port 1701, the port used by L2TP traffic.</div>
+</li>
+<li class="level1"><div class="li"> <code>right=%any</code> allows the client to use any <abbr title="Internet Protocol">IP</abbr> address.</div>
+</li>
+<li class="level1"><div class="li"> <code>rightprotoport=17/%any</code> allows the client to use <abbr title="User Datagram Protocol">UDP</abbr> but any port, some L2TP implementations seem to use different source ports so the %any covers that.</div>
+</li>
+<li class="level1"><div class="li"> <code>rekey=no</code> tells Libreswan NOT to initiate a rekeying, as some mobile clients seem unable to handle rekeying well. Libreswan will still reply to rekeying if the client initiates it.</div>
+</li>
+<li class="level1"><div class="li"> <code>keyingtries=5</code> tells Libreswan to only try to reconnect/rekey to a client five times. This stops Libreswan from forever trying to bring back a failed connection.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Libreswan configuration&quot;,&quot;hid&quot;:&quot;libreswan_configuration&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:6,&quot;range&quot;:&quot;4381-6600&quot;} -->
+<h3 class="sectionedit7" id="network_configuration">Network configuration</h3>
+<div class="level3">
+
+<p>
+Each client L2TP connection get its own PPP interface, so we start by defining a bunch of interfaces.
+In this case four are defined but you can define as many as you need.
+You do this by adding the following lines.
+</p>
+<pre class="code bash"><span class="co0"># /etc/config/network</span>
+&nbsp;
+config <span class="st_h">'interface'</span> <span class="st_h">'vpn0'</span>
+	option <span class="st_h">'ifname'</span> <span class="st_h">'ppp0'</span>
+	option <span class="st_h">'proto'</span> <span class="st_h">'none'</span>
+	option <span class="st_h">'auto'</span> <span class="st_h">'1'</span>
+&nbsp;
+config <span class="st_h">'interface'</span> <span class="st_h">'vpn1'</span>
+	option <span class="st_h">'ifname'</span> <span class="st_h">'ppp1'</span>
+	option <span class="st_h">'proto'</span> <span class="st_h">'none'</span>
+	option <span class="st_h">'auto'</span> <span class="st_h">'1'</span>
+&nbsp;
+config <span class="st_h">'interface'</span> <span class="st_h">'vpn2'</span>
+	option <span class="st_h">'ifname'</span> <span class="st_h">'ppp2'</span>
+	option <span class="st_h">'proto'</span> <span class="st_h">'none'</span>
+	option <span class="st_h">'auto'</span> <span class="st_h">'1'</span>
+&nbsp;
+config <span class="st_h">'interface'</span> <span class="st_h">'vpn3'</span>
+	option <span class="st_h">'ifname'</span> <span class="st_h">'ppp3'</span>
+	option <span class="st_h">'proto'</span> <span class="st_h">'none'</span>
+	option <span class="st_h">'auto'</span> <span class="st_h">'1'</span></pre>
+
+<p>
+The next step is to group these interfaces together and allow traffic to and from the <abbr title="Virtual Private Network">VPN</abbr>.
+This is done by creating a zone that is made up by the <abbr title="Virtual Private Network">VPN</abbr> interfaces, and then allow traffic to flow to and form this zone.
+Add the following lines.
+</p>
+<pre class="code bash"><span class="co0"># /etc/config/firewall</span>
+&nbsp;
+config <span class="st_h">'zone'</span>
+	option <span class="st_h">'name'</span> <span class="st_h">'vpn'</span>
+	option <span class="st_h">'network'</span> <span class="st_h">'vpn0 vpn1 vpn2 vpn3'</span>
+	option <span class="st_h">'conntrack'</span> <span class="st_h">'1'</span>
+	option <span class="st_h">'input'</span> <span class="st_h">'ACCEPT'</span>
+	option <span class="st_h">'output'</span> <span class="st_h">'ACCEPT'</span>
+	option <span class="st_h">'forward'</span> <span class="st_h">'REJECT'</span>
+&nbsp;
+config <span class="st_h">'forwarding'</span>
+	option <span class="st_h">'src'</span> <span class="st_h">'vpn'</span>
+	option <span class="st_h">'dest'</span> <span class="st_h">'lan'</span>
+&nbsp;
+config <span class="st_h">'forwarding'</span>
+	option <span class="st_h">'src'</span> <span class="st_h">'lan'</span>
+	option <span class="st_h">'dest'</span> <span class="st_h">'vpn'</span>
+&nbsp;
+config <span class="st_h">'forwarding'</span>
+	option <span class="st_h">'src'</span> <span class="st_h">'vpn'</span>
+	option <span class="st_h">'dest'</span> <span class="st_h">'wan'</span></pre>
+
+<p>
+For a deeper understanding of what these lines do please consult the OpenWrt documentation.
+</p>
+
+<p>
+In order to allow IPsec traffic trough the firewall add the following rules.
+</p>
+<pre class="code bash"><span class="co0"># /etc/config/firewall</span>
+&nbsp;
+config <span class="st_h">'rule'</span>
+	option <span class="st_h">'target'</span> <span class="st_h">'ACCEPT'</span>
+	option <span class="st_h">'src'</span> <span class="st_h">'wan'</span>
+	option <span class="st_h">'_name'</span> <span class="st_h">'ip_50_ESP'</span>
+	option <span class="st_h">'proto'</span> <span class="st_h">'50'</span>
+&nbsp;
+config <span class="st_h">'rule'</span>
+	option <span class="st_h">'target'</span> <span class="st_h">'ACCEPT'</span>
+	option <span class="st_h">'_name'</span> <span class="st_h">'IP_51_AH'</span>
+	option <span class="st_h">'src'</span> <span class="st_h">'wan'</span>
+	option <span class="st_h">'proto'</span> <span class="st_h">'51'</span>
+&nbsp;
+config <span class="st_h">'rule'</span>
+	option <span class="st_h">'target'</span> <span class="st_h">'ACCEPT'</span>
+	option <span class="st_h">'_name'</span> <span class="st_h">'IKE'</span>
+	option <span class="st_h">'src'</span> <span class="st_h">'wan'</span>
+	option <span class="st_h">'proto'</span> <span class="st_h">'udp'</span>
+	option <span class="st_h">'dest_port'</span> <span class="st_h">'500'</span>
+&nbsp;
+config <span class="st_h">'rule'</span>
+	option <span class="st_h">'target'</span> <span class="st_h">'ACCEPT'</span>
+	option <span class="st_h">'_name'</span> <span class="st_h">'ipsec_NAT-T'</span>
+	option <span class="st_h">'src'</span> <span class="st_h">'wan'</span>
+	option <span class="st_h">'proto'</span> <span class="st_h">'udp'</span>
+	option <span class="st_h">'dest_port'</span> <span class="st_h">'4500'</span></pre>
+
+<p>
+This basically lets <abbr title="Internet Protocol">IP</abbr> type 50 and 51 packets trough, this is IPsec ah and esp packets.
+It also opens up port 500/udp traffic, this is used for the IKE protocol that is used by IPsec to manage encryption keys.
+Lastly port 4500/udp is opened, this is used when ipsec operates in <abbr title="Network Address Translation">NAT</abbr> traversal mode, e.g. when the client is behind a <abbr title="Network Address Translation">NAT</abbr>.
+</p>
+
+<p>
+The last thing we need to do is allow L2TP traffic through the firewall.
+We can not just open up udp port 1702 like we have done for the ipsec traffic.
+This would allow pure l2tp traffic trough and that is not acceptable as l2tp is unencrypted and uses somewhat weak mschapv2 authentication.
+</p>
+
+<p>
+The solution is to add a custom firewall rule that only allows udp traffic on port 1702 that have been delivered with ipsec encryption.
+</p>
+<pre class="code bash"><span class="co0"># /etc/firewall.user</span>
+iptables <span class="re5">-I</span> INPUT <span class="nu0">1</span> <span class="re5">-p</span> udp <span class="re5">-m</span> policy <span class="re5">--dir</span> <span class="kw1">in</span> <span class="re5">--pol</span> ipsec <span class="re5">-m</span> udp <span class="re5">--dport</span> <span class="nu0">1701</span> <span class="re5">-j</span> ACCEPT</pre>
+
+<p>
+Backfire have had some issues with automatically bringing up the <abbr title="Virtual Private Network">VPN</abbr> zone in the firewall, but it seems to work in trunk.
+In order to fix this i have just used a simple line in <code>rc.local</code> that brings up the <abbr title="Virtual Private Network">VPN</abbr> zone.
+After it has been brought up once it seems to work just fine.
+</p>
+<pre class="code bash"><span class="co0"># /etc/rc.local</span>
+<span class="co0"># Apply for each VPN interface to make firewall work properly with VPN connections</span>
+<span class="kw2">ifup</span> vpn0</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Network configuration&quot;,&quot;hid&quot;:&quot;network_configuration&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:7,&quot;range&quot;:&quot;6601-9928&quot;} -->
+<h3 class="sectionedit8" id="client_configuration">Client configuration</h3>
+<div class="level3">
+
+<p>
+Mount manually:
+</p>
+<pre class="code bash"><span class="kw2">sudo</span> <span class="kw2">mount</span> 192.168.1.254:<span class="sy0">/</span>mnt<span class="sy0">/</span>share1 <span class="sy0">/</span>home<span class="sy0">/</span>sandra<span class="sy0">/</span>nfs_share</pre>
+
+<p>
+Or mount permanently with entries on each client PC:
+</p>
+<pre class="code bash"><span class="co0"># /etc/fstab</span>
+<span class="co0"># Intranet</span>
+192.168.1.254:<span class="sy0">/</span>mnt<span class="sy0">/</span>sda2 <span class="sy0">/</span>media<span class="sy0">/</span>openwrt    nfs     ro,async,auto    <span class="nu0">0</span>       <span class="nu0">0</span>
+192.168.1.254:<span class="sy0">/</span>mnt<span class="sy0">/</span>sda4 <span class="sy0">/</span>media<span class="sy0">/</span>remote_stuff    nfs     rw,async,auto    <span class="nu0">0</span>       <span class="nu0">0</span>
+<span class="co0">#</span></pre>
+
+<p>
+Check the <a href="http://man.cx/mount" class="interwiki iw_man" title="http://man.cx/mount">mount</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Client configuration&quot;,&quot;hid&quot;:&quot;client_configuration&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:8,&quot;range&quot;:&quot;9929-10342&quot;} -->
+<h2 class="sectionedit9" id="troubleshooting">Troubleshooting</h2>
+<div class="level2">
+<pre class="code bash">nft list ruleset</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Troubleshooting&quot;,&quot;hid&quot;:&quot;troubleshooting&quot;,&quot;codeblockOffset&quot;:14,&quot;secid&quot;:9,&quot;range&quot;:&quot;10343-10408&quot;} -->
+<h2 class="sectionedit10" id="notes">Notes</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> The Project Homepage: <a href="https://libreswan.org/" class="urlextern" title="https://libreswan.org/" rel="ugc nofollow">https://libreswan.org/</a></div>
+</li>
+<li class="level1"><div class="li"> Configuration examples: <a href="https://libreswan.org/wiki/Configuration_examples" class="urlextern" title="https://libreswan.org/wiki/Configuration_examples" rel="ugc nofollow">https://libreswan.org/wiki/Configuration_examples</a></div>
+</li>
+<li class="level1"><div class="li"> A very good tutorial: <a href="http://www.frozentux.net/iptables-tutorial/iptables-tutorial.html" class="urlextern" title="http://www.frozentux.net/iptables-tutorial/iptables-tutorial.html" rel="ugc nofollow">http://www.frozentux.net/iptables-tutorial/iptables-tutorial.html</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Notes&quot;,&quot;hid&quot;:&quot;notes&quot;,&quot;codeblockOffset&quot;:15,&quot;secid&quot;:10,&quot;range&quot;:&quot;10409-&quot;} -->

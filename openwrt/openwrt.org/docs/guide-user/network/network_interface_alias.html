@@ -1,0 +1,115 @@
+
+<h1 class="sectionedit1" id="network_interface_aliases">Network interface aliases</h1>
+<div class="level1">
+
+<p>
+<em>Alias</em> sections can be used to define further <abbr title="Internet Protocol version 4">IPv4</abbr> and <abbr title="Internet Protocol version 6">IPv6</abbr> addresses for interfaces.
+They also allow combinations like <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> on the main interface and a static <abbr title="Internet Protocol version 6">IPv6</abbr> address in the alias,
+for example to deploy <abbr title="Internet Protocol version 6">IPv6</abbr> on wan while keeping normal internet connectivity.
+Each interface can have multiple aliases attached to it.
+</p>
+
+<p>
+Create an &#039;interface&#039; section per <abbr title="Internet Protocol">IP</abbr>, but alias interfaces may NOT be of type bridge.
+</p>
+<ul>
+<li class="level1"><div class="li"> For non-bridged interfaces (physdev, that is physical interfaces) the <code>device</code> is the <code>&lt;interface-of-network-for-same-phydev&gt;</code>.</div>
+</li>
+<li class="level1"><div class="li"> For cases where the interface is bridged the <code>device</code> is <code>br-base_interface</code>, where <code>base_interface</code> is the name of the primary <abbr title="Internet Protocol">IP</abbr>&#039;s config section (e.g. for a the default lan interface config, the first alias would use device <code>br-lan</code>).</div>
+</li>
+</ul>
+
+<p>
+A minimal alias definition for a bridged interface might be (for a scenario without VLANs):
+</p>
+<pre class="code bash">config interface <span class="st_h">'lan'</span>
+	option device <span class="st_h">'eth0'</span>
+	option <span class="kw3">type</span> <span class="st_h">'bridge'</span>
+	option proto <span class="st_h">'static'</span>
+	option ipaddr <span class="st_h">'192.168.1.1'</span>
+	option netmask <span class="st_h">'255.255.255.0'</span>
+&nbsp;
+config interface <span class="st_h">'lan1'</span>
+	option device <span class="st_h">'@lan'</span>
+	option proto <span class="st_h">'dhcp'</span>
+&nbsp;
+config interface <span class="st_h">'lan2'</span>
+	option device <span class="st_h">'@lan'</span>
+	option proto <span class="st_h">'static'</span>
+	option ipaddr <span class="st_h">'10.0.0.1'</span>
+	option netmask <span class="st_h">'255.255.255.0'</span></pre>
+
+<p>
+For a non-bridge interface:
+</p>
+<pre class="code bash">config interface <span class="st_h">'lan'</span>
+	option device <span class="st_h">'eth0'</span>
+	option proto <span class="st_h">'static'</span>
+	option ipaddr <span class="st_h">'192.168.1.1'</span>
+	option netmask <span class="st_h">'255.255.255.0'</span>
+&nbsp;
+config interface <span class="st_h">'lan1'</span>
+	option device <span class="st_h">'eth0'</span>
+	option proto <span class="st_h">'dhcp'</span>
+&nbsp;
+config interface <span class="st_h">'lan2'</span>
+	option device <span class="st_h">'eth0'</span>
+	option proto <span class="st_h">'static'</span>
+	option ipaddr <span class="st_h">'10.0.0.1'</span>
+	option netmask <span class="st_h">'255.255.255.0'</span></pre>
+
+<p>
+To see a list of interfaces you can do <code>ubus list network.interface.*</code> and to view the ip of a particular interface (the UCI name not the physical interface), do <code>ifstatus &lt;interface&gt;</code> (e.g. <code>ifstatus lan2</code>).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Network interface aliases&quot;,&quot;hid&quot;:&quot;network_interface_aliases&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1891&quot;} -->
+<h2 class="sectionedit2" id="options_for_alias_sections">Options for Alias sections</h2>
+<div class="level2">
+<div class="table sectionedit3"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Name </th><th class="col1"> Type </th><th class="col2"> Required </th><th class="col3"> Default </th><th class="col4"> Description </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> <code>interface</code> </td><td class="col1"> string </td><td class="col2"> yes </td><td class="col3"> <em>(none)</em> </td><td class="col4"> Specifies the <em>logical interface name</em> of the parent (or master) interface this alias belongs to; must refer to one of the defined <code>interface</code> sections </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> <code>proto</code> </td><td class="col1"> string </td><td class="col2"> yes </td><td class="col3"> <em>(none)</em> </td><td class="col4"> Specifies the <em>alias interface protocol</em> </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> <code>ipaddr</code> </td><td class="col1"> ip address </td><td class="col2"> yes, if no <code>ip6addr</code> is set </td><td class="col3"> <em>(none)</em> </td><td class="col4"> alias <abbr title="Internet Protocol">IP</abbr> address </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> <code>netmask</code> </td><td class="col1"> netmask </td><td class="col2"> yes, if no <code>ip6addr</code> is set </td><td class="col3"> <em>(none)</em> </td><td class="col4"> alias Netmask </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0"> <code>gateway</code> </td><td class="col1"> ip address </td><td class="col2"> no </td><td class="col3"> <em>(none)</em> </td><td class="col4"> Default gateway </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0"> <code>broadcast</code> </td><td class="col1"> ip address </td><td class="col2"> no </td><td class="col3"> <em>(none)</em> </td><td class="col4"> Broadcast address (autogenerated if not set) </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0"> <code>ip6addr</code> </td><td class="col1"> ipv6 address </td><td class="col2"> yes, if no <code>ipaddr</code> is set </td><td class="col3"> <em>(none)</em> </td><td class="col4"> <abbr title="Internet Protocol version 6">IPv6</abbr> address (CIDR notation) </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0"> <code>ip6gw</code> </td><td class="col1"> ipv6 address </td><td class="col2"> no </td><td class="col3"> <em>(none)</em> </td><td class="col4"> <abbr title="Internet Protocol version 6">IPv6</abbr> default gateway </td>
+	</tr>
+	<tr class="row9">
+		<td class="col0"> <code>dns</code> </td><td class="col1"> list of ip addresses </td><td class="col2"> no </td><td class="col3"> <em>(none)</em> </td><td class="col4"> <abbr title="Domain Name System">DNS</abbr> server(s) </td>
+	</tr>
+	<tr class="row10">
+		<td class="col0"> <code>layer</code> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> <code>3</code> </td><td class="col4"> Selects the interface to attach to for stacked protocols (tun over bridge over eth, ppp over eth or similar).<br/>
+3: attach to layer 3 interface (<em>tun*</em>, <em>ppp*</em> if parent is layer 3 else fallback to 2)<br/>
+2: attach to layer 2 interface (<em>br-*</em> if parent is bridge else fallback to layer 1)<br/>
+1: attach to layer 1 interface (<em>eth*</em>, <em>wlan*</em>) </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;1931-3244&quot;} -->
+<p>
+<img src="/lib/images/smileys/fixme.svg" class="icon smiley" alt="FIXME" /> please check if this is still true or not: At the time of writing, only the <code>static</code> protocol type is allowed for aliases.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Options for Alias sections&quot;,&quot;hid&quot;:&quot;options_for_alias_sections&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:2,&quot;range&quot;:&quot;1892-&quot;} -->

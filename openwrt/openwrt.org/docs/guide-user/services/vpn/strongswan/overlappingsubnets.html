@@ -1,0 +1,133 @@
+
+<h1 class="sectionedit1" id="ipsec_with_overlapping_subnets">IPsec With Overlapping Subnets</h1>
+<div class="level1">
+
+<p>
+One of the most common problems when establishing <abbr title="Virtual Private Network">VPN</abbr> tunnels are overlapping subnets. I.e. the <abbr title="Internet Protocol">IP</abbr> adresses at least on one tunnel end conflict with the existing setup. Very often the firewall administrator is struggling with such a setup because special settings have to take place to create correct address translation for a clean solution. Hopefully this article will help the OpenWrt user to make it fuss-free. We assume you have read the <a href="/docs/guide-user/services/vpn/strongswan/basics" class="wikilink1" title="docs:guide-user:services:vpn:strongswan:basics" data-wiki-id="docs:guide-user:services:vpn:strongswan:basics">basics</a> and the <a href="/docs/guide-user/services/vpn/strongswan/firewall" class="wikilink1" title="docs:guide-user:services:vpn:strongswan:firewall" data-wiki-id="docs:guide-user:services:vpn:strongswan:firewall">firewall</a> setup guide for IPsec.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;IPsec With Overlapping Subnets&quot;,&quot;hid&quot;:&quot;ipsec_with_overlapping_subnets&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-600&quot;} -->
+<h2 class="sectionedit2" id="real_life_example">Real Life Example</h2>
+<div class="level2">
+
+<p>
+So what is it all about. Let us start with a picture and some explanations. What do we have?
+</p>
+<ul>
+<li class="level1"><div class="li"> ACME company with internal subnet 10.1.2.0/24 has an existing tunnel to another company with subnet 192.168.2.0/24. The firewall therefore will route all packets with destination 192.168.2.1-192.168.2.254 into the existing tunnel.</div>
+</li>
+<li class="level1"><div class="li"> Our OpenWrt user at home has already a IPsec <abbr title="Virtual Private Network">VPN</abbr> connection too. The OpenWrt firewall protects their network 192.168.2.64/26 and routes all traffic to 10.1.0.0-10.1.3.254 towards the established tunnel to another company.</div>
+</li>
+<li class="level1"><div class="li"> When establishing a new tunnel between home and ACME without address translation we would run into routing conflicts. E.g. if we want to reach the server 10.1.2.55 from home it could either be a machine in the ACME network or in the others company network.</div>
+</li>
+</ul>
+
+<p>
+<a href="/_detail/doc/howto/ipsec_overlapping_subnets_1.png?id=docs%3Aguide-user%3Aservices%3Avpn%3Astrongswan%3Aoverlappingsubnets" class="media" title="doc:howto:ipsec_overlapping_subnets_1.png"><img src="/_media/doc/howto/ipsec_overlapping_subnets_1.png" class="media" loading="lazy" alt="" /></a>
+</p>
+
+<p>
+What to do? Both firewall adminstrators have to choose <abbr title="Internet Protocol">IP</abbr> address ranges for the new tunnel that do not overlap with the existing infrastructure. In our case:
+</p>
+<ul>
+<li class="level1"><div class="li"> The ACME administrator chooses to “hide” the remote home network behind the subnet 192.168.3.0/26. So when someone from ACME company wants to reach the newly conected home network they have to take on of those addresses instead of the real ones in range 192.168.2.64/26</div>
+</li>
+<li class="level1"><div class="li"> The same applies for the home user. They do not want to reach the ACME network with its real <abbr title="Internet Protocol">IP</abbr> addresses but changes the target range to 10.1.4.0/24.</div>
+</li>
+<li class="level1"><div class="li"> That means each of both sides determines the remote part of the tunnel subnets.</div>
+</li>
+</ul>
+
+<p>
+Let us look at the packet flow and see where address translation has to occur. Let us assume we want to reach ACME mailserver on address 10.1.2.55 from our laptop with address 192.168.2.77.
+</p>
+<ul>
+<li class="level1"><div class="li"> We cannot use the mailservers real address but have to choose 10.1.4.55 instead. You can see that the lower part of the <abbr title="Internet Protocol">IP</abbr> will match the original address while the higher is taken from the translated subnet.</div>
+</li>
+<li class="level1"><div class="li"> The laptop sends a packet with header 192.168.2.77→10.1.4.55.</div>
+</li>
+<li class="level1"><div class="li"> The OpenWrt firewall has to translate the source address into one that can safely pass the tunnel. Again it will only translate the higher digits. The header will become 192.168.3.13→10.1.4.55. If not sure why 2.77 is converted to 3.13 you just have to check the last bits of the home netmask ...11000000. Only the last 6 bits will be retained. </div>
+</li>
+<li class="level1"><div class="li"> The packet is sent into the tunnel.</div>
+</li>
+<li class="level1"><div class="li"> When it reaches the ACME firewall it will be translated again. This time the destination address will be mapped over to the real addresses. The header will be changed to 192.168.3.13→10.1.2.55</div>
+</li>
+<li class="level1"><div class="li"> The answer packet of the mailserver will travel this chain backwards. </div>
+</li>
+</ul>
+
+<p>
+<strong>Conclusion: If you have <abbr title="Internet Protocol">IP</abbr> conflicts in a new <abbr title="Virtual Private Network">VPN</abbr> setup first of all choose alternative addresses for packets that will pass the tunnel. Retain the subnet masks for both ends.
+</strong>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Real Life Example&quot;,&quot;hid&quot;:&quot;real_life_example&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;601-3487&quot;} -->
+<h2 class="sectionedit3" id="linux_nat">Linux NAT</h2>
+<div class="level2">
+
+<p>
+Now that we know where and how to change <abbr title="Internet Protocol">IP</abbr> addresses we will make a short excursion into the Linux netfilter deeps. We have no real choices to implement the above explained translation rules.
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong>Source address translation</strong>: Required for outgoing packets. The firewall allows source address translation only in the POSTROUTING chain of the <abbr title="Network Address Translation">NAT</abbr> table. This is the very last step of kernel packet mangling. This implies a feature and some trouble. All filter rules are applied before source translation. So they can be implemented with the original packets <abbr title="Internet Protocol">IP</abbr> addresses. We have no burden to work on translated packets. On the other hand the firewall cannot know that the packet is routed into an IPsec tunnel before the translation takes place. As mentioned <a href="/docs/guide-user/services/vpn/ipsec/racoon/firewall#preface" class="wikilink2" title="docs:guide-user:services:vpn:ipsec:racoon:firewall" rel="nofollow" data-wiki-id="docs:guide-user:services:vpn:ipsec:racoon:firewall">here</a> our firewall script already observes these quirks. </div>
+</li>
+<li class="level1"><div class="li"> <strong>Destination address translation</strong>: Required for incoming packets. The right place is the PREROUTING chain of the <abbr title="Network Address Translation">NAT</abbr> table. The firewall will jump there before any filter chain is traversed. And again we have the possibility to build filter rules based on how we “see” our internal network topology - with the real local addresses.</div>
+</li>
+<li class="level1"><div class="li"> <strong>iptables module</strong>: When most of us think about address translation in the kernel the SNAT and DNAT rules come into mind. If you dig into the documentation you will soon discover that they work well only on single addresses. If you provide address ranges these modules will apply some kind of randomness. So what we need is a 1:1 subnet mapping. The command of interest is <strong>NETMAP</strong>. It will replace the higher address bits of a <abbr title="Internet Protocol">IP</abbr> address with a new subnet while keeping the lower bits. This will help us to stay deterministic and to keep number of firewall rules small.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Linux NAT&quot;,&quot;hid&quot;:&quot;linux_nat&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;3488-5282&quot;} -->
+<h2 class="sectionedit4" id="openwrt_firewall_rules">OpenWrt Firewall Rules</h2>
+<div class="level2">
+
+<p>
+Once again we want to integrate the required rules nicely into the OpenWrt firewall concept. Let us start with the destination translation in the prerouitng chain. We want to translate the target <abbr title="Internet Protocol">IP</abbr> of packets that come out of the tunnel into the matching ones of our internal subnet. OpenWrt automatically creates two chains for the <abbr title="Virtual Private Network">VPN</abbr> zone: zone_vpn_prerouting and prerouting_vpn. They are already linked correctly but have to be populated correctly. Just a source/destination address match paired with a NETMAP translation will do what is required. Have a look at the picture.
+</p>
+
+<p>
+<a href="/_detail/doc/howto/ipsec_prerouting_chain.png?id=docs%3Aguide-user%3Aservices%3Avpn%3Astrongswan%3Aoverlappingsubnets" class="media" title="doc:howto:ipsec_prerouting_chain.png"><img src="/_media/doc/howto/ipsec_prerouting_chain.png" class="media" loading="lazy" alt="" /></a>
+</p>
+
+<p>
+For outgoing packets we need source translation in the postrouting chain. A zone_vpn_nat chain already exists but is not linked correctly. Just place an ACCEPT rule into it for every non-natted IPsec tunnel and a NETMAP rule for every tunnel that requires address translation.
+</p>
+
+<p>
+<a href="/_detail/doc/howto/ipsec_postrouting_chain.png?id=docs%3Aguide-user%3Aservices%3Avpn%3Astrongswan%3Aoverlappingsubnets" class="media" title="doc:howto:ipsec_postrouting_chain.png"><img src="/_media/doc/howto/ipsec_postrouting_chain.png" class="media" loading="lazy" alt="" /></a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;OpenWrt Firewall Rules&quot;,&quot;hid&quot;:&quot;openwrt_firewall_rules&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;5283-6266&quot;} -->
+<h2 class="sectionedit5" id="configuration">Configuration</h2>
+<div class="level2">
+
+<p>
+Nice to know, that the configuration is very simple. The <a href="/docs/guide-user/services/vpn/strongswan/basics#ikedaemon" class="wikilink1" title="docs:guide-user:services:vpn:strongswan:basics" data-wiki-id="docs:guide-user:services:vpn:strongswan:basics">ipsec</a> and <a href="/docs/guide-user/services/vpn/strongswan/firewall#vpnfirewallscript" class="wikilink1" title="docs:guide-user:services:vpn:strongswan:firewall" data-wiki-id="docs:guide-user:services:vpn:strongswan:firewall">firewall</a> scripts will take care of the required settings. You just have to add a <strong>local_nat</strong> configuration line into the tunnel section of your <a href="/docs/guide-user/services/vpn/strongswan/configuration" class="wikilink1" title="docs:guide-user:services:vpn:strongswan:configuration" data-wiki-id="docs:guide-user:services:vpn:strongswan:configuration">/etc/config/ipsec</a> file.
+</p>
+<pre class="code">...
+config &#039;tunnel&#039; &#039;acme_lan&#039;
+  option &#039;local_nat&#039; &#039;191.168.3.0/26&#039;
+  option &#039;remote_subnet&#039; &#039;192.168.10.0/24&#039;
+  option &#039;local_subnet&#039; &#039;192.168.2.64/26&#039;
+  option &#039;p2_proposal&#039; &#039;g2_aes_sha1&#039;
+...</pre>
+
+<p>
+This will tell the system that the local subnet 192.168.2.64/26 will be translated to 192.168.3.0/26 inside the IPsec tunnel.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;6267-7022&quot;} -->
+<h2 class="sectionedit6" id="what_s_next">What&#039;s Next</h2>
+<div class="level2">
+
+<p>
+OpenWrt as a central <abbr title="Virtual Private Network">VPN</abbr> gateway for <a href="/docs/guide-user/services/vpn/strongswan/roadwarrior" class="wikilink1" title="docs:guide-user:services:vpn:strongswan:roadwarrior" data-wiki-id="docs:guide-user:services:vpn:strongswan:roadwarrior">road warriors</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;What&#039;s Next&quot;,&quot;hid&quot;:&quot;what_s_next&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:6,&quot;range&quot;:&quot;7023-&quot;} -->

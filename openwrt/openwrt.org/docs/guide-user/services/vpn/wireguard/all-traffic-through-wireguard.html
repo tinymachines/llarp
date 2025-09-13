@@ -1,0 +1,332 @@
+
+<h2 class="sectionedit1" id="wireguard_routing_all_traffic">WireGuard routing all traffic</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;WireGuard routing all traffic&quot;,&quot;hid&quot;:&quot;wireguard_routing_all_traffic&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-43&quot;} -->
+<h2 class="sectionedit2" id="introduction">Introduction</h2>
+<div class="level2">
+
+<p>
+For some reasons you would like to force all traffic behind your router going through a Wireguard tunnel.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Introduction&quot;,&quot;hid&quot;:&quot;introduction&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;44-176&quot;} -->
+<h2 class="sectionedit3" id="prerequisites">Prerequisites</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> A working Wireguard server  </div>
+</li>
+<li class="level1 node"><div class="li"> All informations needed by a wireguard peer:</div>
+<ul>
+<li class="level2"><div class="li"> Endpoint <abbr title="Internet Protocol">IP</abbr> or <abbr title="Fully Qualified Domain Name">FQDN</abbr></div>
+</li>
+<li class="level2"><div class="li"> Endpoint Port</div>
+</li>
+<li class="level2"><div class="li"> Peer <abbr title="Internet Protocol">IP</abbr></div>
+</li>
+<li class="level2"><div class="li"> Server Public Key</div>
+</li>
+<li class="level2"><div class="li"> Peer Private Key</div>
+</li>
+<li class="level2"><div class="li"> Preshared Key </div>
+</li>
+</ul>
+</li>
+<li class="level1 node"><div class="li"> Optional: In order to avoid <abbr title="Domain Name System">DNS</abbr> leaks:  </div>
+<ul>
+<li class="level2"><div class="li"> <abbr title="Domain Name System">DNS</abbr> Server reachable on Wireguard Server</div>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Prerequisites&quot;,&quot;hid&quot;:&quot;prerequisites&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;177-507&quot;} -->
+<h2 class="sectionedit4" id="install_the_prerequisite_packages">Install the prerequisite packages</h2>
+<div class="level2">
+<pre class="code bash">opkg update
+opkg <span class="kw2">install</span> wireguard-tools</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Install the prerequisite packages&quot;,&quot;hid&quot;:&quot;install_the_prerequisite_packages&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;508-617&quot;} -->
+<h2 class="sectionedit5" id="create_wireguard_interface">Create Wireguard interface</h2>
+<div class="level2">
+
+<p>
+Here we create the Wireguard interface named: “wg0_int”
+</p>
+<pre class="code bash"> <span class="co0"># /etc/config/network</span>
+config interface <span class="st_h">'wg0_int'</span>
+    option proto <span class="st_h">'wireguard'</span>
+    option private_key <span class="st_h">'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'</span>
+    list addresses <span class="st_h">'192.168.3.100/32'</span></pre>
+
+<p>
+This second part define the peer. 
+</p>
+
+<p>
+In our case the peer is the “Wireguard Server” you want redirect all traffic to.
+</p>
+<pre class="code bash">config wireguard_wg0_int
+    option description <span class="st_h">'&lt;Peer_name&gt;'</span>
+    option public_key <span class="st_h">'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'</span>
+    option preshared_key <span class="st_h">'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'</span>
+    list allowed_ips <span class="st_h">'0.0.0.0/0'</span>
+    option route_allowed_ips <span class="st_h">'1'</span>
+    option endpoint_port <span class="st_h">'&lt;Peer_port&gt;'</span>
+    option persistent_keepalive <span class="st_h">'15'</span>
+    option endpoint_host <span class="st_h">'&lt;Peer_IP_or_FQDN&gt;'</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Create Wireguard interface&quot;,&quot;hid&quot;:&quot;create_wireguard_interface&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:5,&quot;range&quot;:&quot;618-1448&quot;} -->
+<h2 class="sectionedit6" id="configure_firewall">Configure Firewall</h2>
+<div class="level2">
+
+<p>
+Here the idea is to replace the default forward rule
+</p>
+<pre class="code bash"> <span class="co0"># /etc/config/firewall</span>
+config forwarding
+    option src <span class="st_h">'lan'</span>
+    option dest <span class="st_h">'wan'</span></pre>
+
+<p>
+by this one, forwarding lan traffic to wg0_zone instead of wan.
+</p>
+<pre class="code bash"> <span class="co0"># /etc/config/firewall</span>
+config forwarding
+    option src <span class="st_h">'lan'</span>
+    option dest <span class="st_h">'wg0_zone'</span></pre>
+
+<p>
+Also you need to activate “Masquerading” on wg0_zone:
+</p>
+<pre class="code bash"> <span class="co0"># /etc/config/firewall</span>
+config zone
+    option name <span class="st_h">'wg0_zone'</span>
+    option input <span class="st_h">'DROP'</span>
+    option forward <span class="st_h">'DROP'</span>
+    list network <span class="st_h">'wg0_int'</span>
+    option masq <span class="st_h">'1'</span>
+    option output <span class="st_h">'DROP'</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configure Firewall&quot;,&quot;hid&quot;:&quot;configure_firewall&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:6,&quot;range&quot;:&quot;1449-2072&quot;} -->
+<h2 class="sectionedit7" id="dns_configuration">DNS Configuration</h2>
+<div class="level2">
+
+<p>
+In order to avoid <abbr title="Domain Name System">DNS</abbr> Leak it is also a good idea to use a <abbr title="Domain Name System">DNS</abbr> Server hosted on the “Wireguard Server” (Same Public <abbr title="Internet Protocol">IP</abbr>).
+</p>
+
+<p>
+Here we just tell dnsmask to forward request to this other <abbr title="Domain Name System">DNS</abbr>.
+</p>
+
+<p>
+(Pihole can be a good solution)
+</p>
+<pre class="code bash"> <span class="co0"># /etc/config/dhcp</span>
+config dnsmasq
+    list server <span class="st_h">'&lt;DNS_server_to_forward_request_to_(peer_internal_wg0_ip)&gt;'</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;DNS Configuration&quot;,&quot;hid&quot;:&quot;dns_configuration&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:7,&quot;range&quot;:&quot;2073-2454&quot;} -->
+<h2 class="sectionedit8" id="example_configuration">Example Configuration</h2>
+<div class="level2">
+
+<p>
+This is a full working configuration.
+</p>
+<ul>
+<li class="level1"><div class="li"> All traffic from lan_zone is forwarded to wg0_zone</div>
+</li>
+<li class="level2"><div class="li"> Firewall default behevior is DROP. Only necessary traffic is allowed</div>
+</li>
+<li class="level2"><div class="li"> <abbr title="Domain Name System">DNS</abbr> request are forwarded</div>
+</li>
+</ul>
+<pre class="code bash"><span class="co0"># /etc/config/network</span>
+config interface <span class="st_h">'loopback'</span>
+    option device <span class="st_h">'lo'</span>
+    option proto <span class="st_h">'static'</span>
+    option ipaddr <span class="st_h">'127.0.0.1'</span>
+    option netmask <span class="st_h">'255.0.0.0'</span>
+&nbsp;
+config interface <span class="st_h">'wan_int'</span>
+    option proto <span class="st_h">'dhcp'</span>
+    option device <span class="st_h">'eth0'</span>
+&nbsp;
+config interface <span class="st_h">'wg0_int'</span>
+    option proto <span class="st_h">'wireguard'</span>
+    option private_key <span class="st_h">'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'</span>
+    list addresses <span class="st_h">'192.168.3.100/32'</span>
+&nbsp;
+config wireguard_wg0_int
+    option description <span class="st_h">'&lt;Peer_name&gt;'</span>
+    option public_key <span class="st_h">'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'</span>
+    option preshared_key <span class="st_h">'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'</span>
+    list allowed_ips <span class="st_h">'0.0.0.0/0'</span>
+    option route_allowed_ips <span class="st_h">'1'</span>
+    option endpoint_port <span class="st_h">'&lt;Peer_port&gt;'</span>
+    option persistent_keepalive <span class="st_h">'15'</span>
+    option endpoint_host <span class="st_h">'&lt;Peer_IP_or_FQDN&gt;'</span>
+&nbsp;
+config interface <span class="st_h">'lan_int'</span>
+    option proto <span class="st_h">'static'</span>
+    option device <span class="st_h">'eth2'</span>
+    option ipaddr <span class="st_h">'192.168.1.1'</span>
+    option netmask <span class="st_h">'255.255.255.0'</span>
+    option delegate <span class="st_h">'0'</span>
+    option defaultroute <span class="st_h">'0'</span></pre>
+<pre class="code bash"><span class="co0"># /etc/config/firewall</span>
+config defaults
+    option synflood_protect <span class="st_h">'1'</span>
+    option drop_invalid <span class="st_h">'1'</span>
+    option input <span class="st_h">'DROP'</span>
+    option output <span class="st_h">'DROP'</span>
+    option forward <span class="st_h">'DROP'</span>
+&nbsp;
+config zone
+    option name <span class="st_h">'lan_zone'</span>
+    list network <span class="st_h">'lan_int'</span>
+    option forward <span class="st_h">'DROP'</span>
+    option input <span class="st_h">'DROP'</span>
+    option output <span class="st_h">'DROP'</span>
+&nbsp;
+config zone
+    option name <span class="st_h">'wan_zone'</span>
+    option masq <span class="st_h">'1'</span>
+    option mtu_fix <span class="st_h">'1'</span>
+    option forward <span class="st_h">'DROP'</span>
+    option input <span class="st_h">'DROP'</span>
+    list network <span class="st_h">'wan_int'</span>
+    option output <span class="st_h">'DROP'</span>
+&nbsp;
+config rule
+    option name <span class="st_h">'Allow-DHCP-Renew'</span>
+    option src <span class="st_h">'wan_zone'</span>
+    option proto <span class="st_h">'udp'</span>
+    option dest_port <span class="st_h">'68'</span>
+    option target <span class="st_h">'ACCEPT'</span>
+    option family <span class="st_h">'ipv4'</span>
+&nbsp;
+config rule
+    option name <span class="st_h">'Allow-IGMP'</span>
+    option src <span class="st_h">'wan_zone'</span>
+    option proto <span class="st_h">'igmp'</span>
+    option family <span class="st_h">'ipv4'</span>
+    option target <span class="st_h">'ACCEPT'</span>
+&nbsp;
+config include
+    option path <span class="st_h">'/etc/firewall.user'</span>
+&nbsp;
+config zone
+    option name <span class="st_h">'wg0_zone'</span>
+    option input <span class="st_h">'DROP'</span>
+    option forward <span class="st_h">'DROP'</span>
+    list network <span class="st_h">'wg0_int'</span>
+    option masq <span class="st_h">'1'</span>
+    option output <span class="st_h">'DROP'</span>
+&nbsp;
+config rule
+    option name <span class="st_h">'Allow_DNS_IN'</span>
+    option family <span class="st_h">'ipv4'</span>
+    option src <span class="st_h">'lan_zone'</span>
+    option dest_port <span class="st_h">'53'</span>
+    option target <span class="st_h">'ACCEPT'</span>
+&nbsp;
+config rule
+    option name <span class="st_h">'Allow_SSH_OUT'</span>
+    option family <span class="st_h">'ipv4'</span>
+    list proto <span class="st_h">'tcp'</span>
+    option dest <span class="st_h">'lan_zone'</span>
+    option dest_port <span class="st_h">'22'</span>
+    option target <span class="st_h">'ACCEPT'</span>
+&nbsp;
+config forwarding
+    option src <span class="st_h">'lan_zone'</span>
+    option dest <span class="st_h">'wg0_zone'</span>
+&nbsp;
+config rule
+    option name <span class="st_h">'Allow_Wireguard_OUT'</span>
+    option family <span class="st_h">'ipv4'</span>
+    list proto <span class="st_h">'udp'</span>
+    option dest <span class="st_h">'wan_zone'</span>
+    list dest_ip <span class="st_h">'&lt;Wireguard_server_IP&gt;'</span>
+    option dest_port <span class="st_h">'&lt;Wireguard_server_port&gt;'</span>
+    option target <span class="st_h">'ACCEPT'</span>
+&nbsp;
+config rule
+    option name <span class="st_h">'Allow_DHCP_IN'</span>
+    option family <span class="st_h">'ipv4'</span>
+    list proto <span class="st_h">'udp'</span>
+    option dest_port <span class="st_h">'67'</span>
+    option target <span class="st_h">'ACCEPT'</span>
+    option src <span class="st_h">'lan_zone'</span>
+&nbsp;
+config rule
+    option name <span class="st_h">'Allow_DHCP_OUT'</span>
+    option family <span class="st_h">'ipv4'</span>
+    list proto <span class="st_h">'udp'</span>
+    option dest_port <span class="st_h">'68'</span>
+    option target <span class="st_h">'ACCEPT'</span>
+    option dest <span class="st_h">'lan_zone'</span>
+&nbsp;
+config rule
+    option family <span class="st_h">'ipv4'</span>
+    option dest <span class="st_h">'wg0_zone'</span>
+    option target <span class="st_h">'ACCEPT'</span>
+    option name <span class="st_h">'Allow_DNS_OUT'</span>
+    list proto <span class="st_h">'tcp'</span>
+    list proto <span class="st_h">'udp'</span>
+    option dest_port <span class="st_h">'53'</span>
+&nbsp;
+config rule
+    option name <span class="st_h">'Allow_HTTP(S)_OUT'</span>
+    option family <span class="st_h">'ipv4'</span>
+    list proto <span class="st_h">'tcp'</span>
+    option dest <span class="st_h">'wg0_zone'</span>
+    option dest_port <span class="st_h">'80 443'</span>
+    option target <span class="st_h">'ACCEPT'</span>
+&nbsp;
+config rule
+    option name <span class="st_h">'Allow_NTP_OUT'</span>
+    option family <span class="st_h">'ipv4'</span>
+    list proto <span class="st_h">'udp'</span>
+    option dest <span class="st_h">'wg0_zone'</span>
+    option dest_port <span class="st_h">'123'</span>
+    option target <span class="st_h">'ACCEPT'</span></pre>
+<pre class="code bash"> <span class="co0"># /etc/config/dhcp</span>
+config dnsmasq
+    option domainneeded <span class="st_h">'1'</span>
+    option localise_queries <span class="st_h">'1'</span>
+    option rebind_protection <span class="st_h">'1'</span>
+    option rebind_localhost <span class="st_h">'1'</span>
+    option <span class="kw3">local</span> <span class="st_h">'/lan/'</span>
+    option domain <span class="st_h">'lan'</span>
+    option expandhosts <span class="st_h">'1'</span>
+    option authoritative <span class="st_h">'1'</span>
+    option readethers <span class="st_h">'1'</span>
+    option leasefile <span class="st_h">'/tmp/dhcp.leases'</span>
+    option resolvfile <span class="st_h">'/tmp/resolv.conf.d/resolv.conf.auto'</span>
+    option localservice <span class="st_h">'1'</span>
+    option ednspacket_max <span class="st_h">'1232'</span>
+    list server <span class="st_h">'&lt;DNS_server_to_forward_request_to_(peer_internal_wg0_ip)&gt;'</span></pre>
+
+</div>
+
+<h4 id="screenshot_example">Screenshot Example</h4>
+<div class="level4">
+
+<p>
+<a href="/_media/media/wireguard/1.png" class="media" title="media:wireguard:1.png"><img src="/_media/media/wireguard/1.png?w=500&amp;tok=9300dc" class="mediacenter" loading="lazy" alt="" width="500" /></a>
+<a href="/_media/media/wireguard/2.png" class="media" title="media:wireguard:2.png"><img src="/_media/media/wireguard/2.png?w=500&amp;tok=02ca44" class="mediacenter" loading="lazy" alt="" width="500" /></a>
+<a href="/_media/media/wireguard/3.png" class="media" title="media:wireguard:3.png"><img src="/_media/media/wireguard/3.png?w=600&amp;tok=fa9d3c" class="mediacenter" loading="lazy" alt="" width="600" /></a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Example Configuration&quot;,&quot;hid&quot;:&quot;example_configuration&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:8,&quot;range&quot;:&quot;2455-&quot;} -->

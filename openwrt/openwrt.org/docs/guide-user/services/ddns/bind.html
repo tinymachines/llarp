@@ -1,0 +1,152 @@
+
+<h1 class="sectionedit1" id="ddns_with_bind_as_own_dns_server">DDNS with bind as own DNS server</h1>
+<div class="level1">
+
+<p>
+If you have your own domain and are running <code>bind</code> as your primary <abbr title="Domain Name System">DNS</abbr> server, you can use the <a href="/packages/pkgdata/ddns-scripts-nsupdate" class="wikilink1" title="packages:pkgdata:ddns-scripts-nsupdate" data-wiki-id="packages:pkgdata:ddns-scripts-nsupdate">ddns-scripts-nsupdate</a> package to update <code>bind</code>. There are two parts:
+</p>
+<ol>
+<li class="level1"><div class="li"> Configure <code>bind</code> to accept <abbr title="Domain Name System">DNS</abbr> updates using TSIG.</div>
+</li>
+<li class="level1"><div class="li"> Configure OpenWr DDNS client to send updates to <code>bind</code> when the <abbr title="Internet Protocol">IP</abbr> changes.</div>
+</li>
+</ol>
+
+<p>
+In the below example, we will use the following parameters:
+</p>
+<ul>
+<li class="level1"><div class="li"> Domain name: <code>example.org</code></div>
+</li>
+<li class="level1"><div class="li"> <abbr title="Domain Name System">DNS</abbr> Server: <code>ns.example.org</code></div>
+</li>
+<li class="level1"><div class="li"> Router hostname: <code>openwrt.example.org</code></div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="configure_bind">Configure Bind</h4>
+<div class="level4">
+
+<p>
+The first step is to set up <code>bind</code> to allow updates to the <code>A</code> (<abbr title="Internet Protocol version 4">IPv4</abbr>) and <code>AAAA</code> (<abbr title="Internet Protocol version 6">IPv6</abbr>) records for <strong>openwrt.example.org</strong>. To do this, log onto your <abbr title="Domain Name System">DNS</abbr> server and run <code>/usr/sbin/ddns-confgen -s openwrt.example.org</code>. This will generate the key and shared secret that will be used to update <abbr title="Domain Name System">DNS</abbr>. You should see output similar to the following:
+</p>
+<pre class="code">$ /usr/sbin/ddns-confgen -s openwrt.example.org
+# To activate this key, place the following in named.conf, and
+# in a separate keyfile on the system or systems from which nsupdate
+# will be run:
+key &quot;ddns-key.openwrt.example.org&quot; {
+        algorithm hmac-sha256;
+        secret &quot;B1m6Xb1ngrEeNFSExr8homgfzeN8kWIBkJpnoAHF5D8=&quot;;
+};
+
+# Then, in the &quot;zone&quot; statement for the zone containing the
+# name &quot;openwrt.example.org&quot;, place an &quot;update-policy&quot; statement
+# like this one, adjusted as needed for your preferred permissions:
+update-policy {
+          grant ddns-key.openwrt.example.org name openwrt.example.org ANY;
+};
+
+# After the keyfile has been placed, the following command will
+# execute nsupdate using this key:
+nsupdate -k &lt;keyfile&gt;</pre>
+
+<p>
+The two important things to note for the second part of the setup, on openwrt, are:
+</p>
+<ol>
+<li class="level1"><div class="li"> Key Name: <strong>ddns-key.openwrt.example.org</strong></div>
+</li>
+<li class="level1"><div class="li"> Shared Secret (Base64 encoded): <strong>B1m6Xb1ngrEeNFSExr8homgfzeN8kWIBkJpnoAHF5D8=</strong> (yours will differ as it is randomly generated)</div>
+</li>
+</ol>
+
+<p>
+You then need to do as the comments in the output say and put both the <code>key</code> block and the <code>update-policy</code> block in the proper places within your bind configuration file (generally <code>/etc/bind/named.conf.local</code> or <code>/etc/bind/named.conf</code>) and reload/restart bind.
+</p>
+
+<p>
+To test that bind is now properly configured you can run a test as follows:
+</p>
+<pre class="code">$ nsupdate
+server ns.example.org
+key hmac-sha256:ddns-key.openwrt.example.org B1m6Xb1ngrEeNFSExr8homgfzeN8kWIBkJpnoAHF5D8=
+update del openwrt.example.org A
+update add openwrt.example.org 600 A 10.10.10.10
+show
+send
+answer
+quit
+$ dig @ns.example.org openwrt.example.org A</pre>
+
+<p>
+You should see no errors, and the <code>10.10.10.10</code> <abbr title="Internet Protocol version 4">IPv4</abbr> address returned for <strong>openwrt.example.org</strong>. If so, you are ready to move on to the next step which is to configure DDNS on OpenWRT to send updates to bind.
+</p>
+
+<p>
+See also: <a href="https://bind9.readthedocs.io/en/latest/advanced.html#tsig" class="urlextern" title="https://bind9.readthedocs.io/en/latest/advanced.html#tsig" rel="ugc nofollow">BIND 9 Administrator Reference Manual</a>
+</p>
+
+</div>
+
+<h4 id="configure_ddns_client">Configure DDNS client</h4>
+<div class="level4">
+
+<p>
+Using  LuCI Web UI: install <a href="/packages/pkgdata/luci-app-ddns" class="wikilink1" title="packages:pkgdata:luci-app-ddns" data-wiki-id="packages:pkgdata:luci-app-ddns">luci-app-ddns</a> package, then go to <strong>Services</strong> → <strong>Dynamic <abbr title="Domain Name System">DNS</abbr></strong>. In the bottom section, Services, you will see two example configurations: one for <abbr title="Internet Protocol version 4">IPv4</abbr> and one for <abbr title="Internet Protocol version 6">IPv6</abbr>. Click the <strong>Edit</strong> button, and enter the following information (based on the example config from above; but, use your own values):
+</p>
+<ul>
+<li class="level1"><div class="li"> Lookup Hostname: <strong>openwrt.example.org</strong></div>
+</li>
+<li class="level1"><div class="li"> DDNS Service provider: <strong>bind-nsupdate</strong></div>
+</li>
+<li class="level1"><div class="li"> Domain: <strong>openwrt.example.org</strong></div>
+</li>
+<li class="level1"><div class="li"> Username: <strong>hmac-sha256:ddns-key.openwrt.example.org</strong></div>
+</li>
+<li class="level1"><div class="li"> Password: <strong>B1m6Xb1ngrEeNFSExr8homgfzeN8kWIBkJpnoAHF5D8=</strong></div>
+</li>
+<li class="level1"><div class="li"> <abbr title="Domain Name System">DNS</abbr>-Server (on the Advanced Settings tab): <strong>ns.example.org</strong></div>
+</li>
+</ul>
+
+<p>
+Then click <strong>Save</strong>, followed by <strong>Save &amp; Apply</strong>.
+</p>
+
+<p>
+Congratulations, if you did everything right, OpenWrt should now update <abbr title="Domain Name System">DNS</abbr> with the current <abbr title="Internet Protocol">IP</abbr> Address for your router.
+</p>
+
+<p>
+If you are not using LuCI and want to configure manually from the command line, you will need to edit <code>/etc/config/ddns</code> as follows (using the example config from above):
+</p>
+<pre class="file">config ddns &#039;global&#039;
+        option ddns_dateformat &#039;%F %R&#039;
+        option ddns_loglines &#039;250&#039;
+        option ddns_rundir &#039;/var/run/ddns&#039;
+        option ddns_logdir &#039;/var/log/ddns&#039;
+
+config service &#039;myddns_ipv4&#039;
+        option enabled &#039;1&#039;
+        option lookup_host &#039;openwrt.example.org&#039;
+        option use_ipv6 &#039;0&#039;
+        option service_name &#039;bind-nsupdate&#039;
+        option domain &#039;openwrt.example.org&#039;
+        option ip_source &#039;network&#039;
+        option ip_network &#039;wan&#039;
+        option interface &#039;wan&#039;
+        option dns_server &#039;ns.example.org&#039;
+        option use_syslog &#039;2&#039;
+        option check_unit &#039;minutes&#039;
+        option force_unit &#039;minutes&#039;
+        option retry_unit &#039;seconds&#039;
+        option username &#039;hmac-sha256:ddns-key.openwrt.example.org&#039;
+        option password &#039;B1m6Xb1ngrEeNFSExr8homgfzeN8kWIBkJpnoAHF5D8=&#039;</pre>
+
+<p>
+You can then add another stanza for <abbr title="Internet Protocol version 6">IPv6</abbr>, by turning on <code>use_ipv6</code> and changing <code>ip_network</code> and <code>interface</code> to <strong>wan6</strong>.
+</p>
+
+</div>

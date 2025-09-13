@@ -1,0 +1,652 @@
+
+<h1 class="sectionedit1" id="routed_client">Routed Client</h1>
+<div class="level1">
+
+<p>
+In the default configuration, OpenWrt bridges the wireless network to the <abbr title="Local Area Network">LAN</abbr> of the device.
+Most wireless drivers do not support bridging in client mode, therefore the traffic between <abbr title="Local Area Network">LAN</abbr> and the wireless client must be routed.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Routed Client&quot;,&quot;hid&quot;:&quot;routed_client&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-260&quot;} -->
+<h2 class="sectionedit2" id="using_masquerade">Using MASQUERADE</h2>
+<div class="level2">
+
+<p>
+If you have no administrative access (e.g. ability to configure static route entries) to the target Access Point, the local <abbr title="Local Area Network">LAN</abbr> subnet must be <em>masqueraded</em> to ensure proper routing.<br/>
+
+When configuration of the target Access Point is possible, start with the <em>masqueraded</em> configuration below and proceed with the steps in the <a href="#using_routing" title="docs:guide-user:network:routedclient ↵" class="wikilink1">Using routing</a> section to define a fully routed setup.
+</p>
+
+<p>
+<a href="/_detail/doc/howto/802.11-routed-masq.png?id=docs%3Aguide-user%3Anetwork%3Aroutedclient" class="media" title="doc:howto:802.11-routed-masq.png"><img src="/_media/doc/howto/802.11-routed-masq.png" class="media" loading="lazy" title="Masqueraded" alt="Masqueraded" /></a>
+</p>
+
+<p>
+The steps outlined below cover the process of putting the radio into client mode and reusing the existing <abbr title="Wide Area Network">WAN</abbr> interface and its <abbr title="Network Address Translation">NAT</abbr> firewall rules to connect to the target network.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__meta:infobox:howto_links">
+<div class="level2">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap">
+<p>
+This article may contain network configuration that depends on migration to DSA in OpenWrt 21.02
+</p>
+<ul>
+<li class="level1"><div class="li"> Check if your device uses DSA or swconfig as not all devices have been migrated</div>
+</li>
+<li class="level1"><div class="li"> ifname@interface has been moved to device sections</div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/network/dsa/start" class="wikilink1" title="docs:guide-user:network:dsa:start" data-wiki-id="docs:guide-user:network:dsa:start">DSA Networking</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://forum.openwrt.org/t/mini-tutorial-for-dsa-network-config/96998" class="urlextern" title="https://forum.openwrt.org/t/mini-tutorial-for-dsa-network-config/96998" rel="ugc nofollow">Mini tutorial for DSA network config</a> on the forum</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://openwrt.org/releases/21.02/notes-21.02.0#new_network_configuration_syntax_and_boardjson_change" class="urlextern" title="https://openwrt.org/releases/21.02/notes-21.02.0#new_network_configuration_syntax_and_boardjson_change" rel="ugc nofollow">DSA in the 21.02 release notes</a></div>
+</li>
+</ul>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:6,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Using MASQUERADE&quot;,&quot;hid&quot;:&quot;using_masquerade&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;261-1018&quot;} -->
+<h3 class="sectionedit7" id="configuration">Configuration</h3>
+<div class="level3">
+
+<p>
+The changes below assume an OpenWrt default configuration, the relevant files are:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/base-system/basic-networking" class="wikilink1" title="docs:guide-user:base-system:basic-networking" data-wiki-id="docs:guide-user:base-system:basic-networking">/etc/config/network</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/network/wifi/basic" class="wikilink1" title="docs:guide-user:network:wifi:basic" data-wiki-id="docs:guide-user:network:wifi:basic">/etc/config/wireless</a></div>
+</li>
+</ul>
+
+<p>
+Before doing any actual configuration, the wifi interface must be enabled and put into station mode in order to be able to scan for networks in the vicinity:
+</p>
+<pre class="code">uci del wireless.@wifi-device[0].disabled
+uci del wireless.@wifi-iface[0].network
+uci set wireless.@wifi-iface[0].mode=sta
+uci commit wireless
+wifi</pre>
+<ul>
+<li class="level1"><div class="li"> Remove the <em>disable 1</em> option from the wireless configuration</div>
+</li>
+<li class="level1"><div class="li"> Set the <em>mode</em> option to station</div>
+</li>
+<li class="level1"><div class="li"> Save changed configuration file</div>
+</li>
+<li class="level1"><div class="li"> Start wireless using the <em>wifi</em> command</div>
+</li>
+</ul>
+
+<p>
+Now we can issue the <code>iwlist scan</code> command to list networks in range, the required information is highlighted (see scan below).
+</p>
+
+<p>
+Attention - Update according to forum entries
+</p>
+
+<p>
+mk24 wrote:
+Whoever wrote the wiki was using an old Broadcom device. 
+For anything modern, use: 
+</p>
+<pre class="code">iwinfo wlan0 scan</pre>
+
+<p>
+A low level scan (more detailed) can be done directly through iw: 
+</p>
+<pre class="code">iw dev wlan0 scan</pre>
+
+<p>
+And of course on a <strong>dual band router</strong> changing to wlan1 would scan the other band.
+The scan is not necessary if you already know the SSID and encryption type of the <abbr title="Access Point">AP</abbr> that you want to connect to. 
+</p>
+
+<p>
+<code>root@OpenWrt:~# iwlist scan
+wlan0       Scan completed :<br/>
+
+          Cell 01 - Address: 00:1D:19:0E:03:8F<br/>
+
+                    ESSID:“<strong>Vodafone-0E0301</strong>“<br/>
+
+                    Mode:Managed<br/>
+
+                    Channel:<strong>9</strong><br/>
+
+                    Quality:3/5  Signal level:-69 dBm  Noise level:-92 dBm<br/>
+
+                    IE: <strong>IEEE 802.11i/WPA2 Version 1</strong><br/>
+
+                        Group Cipher : TKIP<br/>
+
+                        Pairwise Ciphers (2) : TKIP CCMP<br/>
+
+                        Authentication Suites (1) : PSK<br/>
+
+                       Preauthentication Supported<br/>
+
+                    IE: <strong>WPA Version 1</strong><br/>
+
+                        Group Cipher : TKIP<br/>
+
+                        Pairwise Ciphers (2) : TKIP CCMP<br/>
+
+                        Authentication Suites (1) : PSK<br/>
+
+                    Encryption key:on<br/>
+
+                    Bit Rates:1 Mb/s; 2 Mb/s; 5.5 Mb/s; 6 Mb/s; 9 Mb/s<br/>
+
+                              11 Mb/s; 12 Mb/s; 18 Mb/s; 24 Mb/s; 36 Mb/s<br/>
+
+                              48 Mb/s; 54 Mb/s</code>
+</p>
+<ul>
+<li class="level1"><div class="li"> <em>ESSID</em> is the name of the network</div>
+</li>
+<li class="level1"><div class="li"> <em>Channel</em> specifies at which frequency the corresponding network is operating on</div>
+</li>
+<li class="level1 node"><div class="li"> The lines starting with <em><abbr title="Internet Explorer">IE</abbr>:</em> report which encryption capabilities are supported by the access point:</div>
+<ul>
+<li class="level2"><div class="li"> <em>IEEE 802.11i/WPA2 Version 1</em> indicates WPA2</div>
+</li>
+<li class="level2"><div class="li"> <em>WPA Version 1</em> indicates WPA</div>
+</li>
+<li class="level2"><div class="li"> If both WPA and WPA2 are present, the network is most likely operating in WPA/WPA2 mixed mode</div>
+</li>
+<li class="level2"><div class="li"> If no <em><abbr title="Internet Explorer">IE</abbr>:</em> appears after the scanning, the wireless network could be using WEP mode. </div>
+</li>
+</ul>
+</li>
+</ul>
+<div class="table sectionedit8"><table class="inline">
+	<tr class="row0">
+		<td class="col0"> <img src="/_media/meta/48px-dialog-warning.svg.png" class="media" loading="lazy" alt="" /> </td><td class="col1"> If you see a message like <code>Device or resource busy</code>, a <em>wpa_supplicant</em> instance is most likely locking the interface. In this case kill the running process and repeat the scan: <pre class="code">killall -9 wpa_supplicant
+iwlist scan</pre>
+</td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:8,&quot;range&quot;:&quot;4356-4639&quot;} -->
+</div>
+
+<h4 id="step_1change_the_wan_interface">Step 1: Change the WAN interface</h4>
+<div class="level4">
+
+<p>
+Edit <code>/etc/config/network</code> and change the <abbr title="Wide Area Network">WAN</abbr> interface by editing the existing <code>ifname</code> option:
+</p>
+
+<p>
+<code>config &#039;interface&#039; <strong>&#039;wan&#039;</strong><br/>
+
+        option &#039;proto&#039;      &#039;dhcp&#039; </code>
+</p>
+
+<p>
+Note that the <code>wan</code> network section <strong>must not</strong> contain any <code>ifname</code> option.
+</p>
+
+</div>
+
+<h4 id="step_2change_the_existing_wireless_network">Step 2: Change the existing wireless network</h4>
+<div class="level4">
+
+<p>
+Supposed we want to connect to the network called “Vodafone-0E0301”, the previous scan result revealed the following information:
+</p>
+<ul>
+<li class="level1"><div class="li"> ESSID is <code>Vodafone-0E0301</code></div>
+</li>
+<li class="level1"><div class="li"> Channel is <code>9</code></div>
+</li>
+<li class="level1"><div class="li"> The network uses WPA/WPA2 mixed mode</div>
+</li>
+</ul>
+
+<p>
+In <code>/etc/config/wireless</code>, locate the existing <code>wifi-iface</code> section and change its network option to point to the <abbr title="Wide Area Network">WAN</abbr> interface.
+Change the <code>mode</code> option to <code>sta</code> (Station) and alter the SSID and <a href="/docs/guide-user/network/wifi/encryption" class="wikilink1" title="docs:guide-user:network:wifi:encryption" data-wiki-id="docs:guide-user:network:wifi:encryption">encryption options</a> to match those of the target network. Channel doesn&#039;t necessary have to match.
+</p>
+
+<p>
+<code>config &#039;wifi-device&#039; &#039;wlan0&#039;<br/>
+
+        option &#039;type&#039;       &#039;broadcom&#039;<br/>
+
+        option &#039;channel&#039;    &#039;9&#039;<br/>
+
+<br/>
+
+config &#039;wifi-iface&#039;<br/>
+
+        option &#039;device&#039;     &#039;wlan0&#039;<br/>
+
+        option &#039;network&#039;    <strong>&#039;wan&#039;</strong><br/>
+
+        option &#039;mode&#039;       <strong>&#039;sta&#039;</strong><br/>
+
+        option &#039;ssid&#039;       <strong>&#039;Vodafone-0E0301&#039;</strong><br/>
+
+        option &#039;encryption&#039; <strong>&#039;psk2&#039;</strong><br/>
+
+        <strong>option &#039;key&#039;        &#039;secret-key&#039;</strong> </code>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;1019-6044&quot;} -->
+<h3 class="sectionedit9" id="apply_changes">Apply changes</h3>
+<div class="level3">
+
+<p>
+Reconfigure the wireless network.
+</p>
+<pre class="code">ifup wan
+wifi</pre>
+<div class="table sectionedit10"><table class="inline">
+	<tr class="row0">
+		<td class="col0"> <img src="/_media/meta/48px-dialog-warning.svg.png" class="media" loading="lazy" alt="" /> </td><td class="col1"> If the target network uses the 192.168.1.0/24 subnet, you <strong>must</strong> change the default <abbr title="Local Area Network">LAN</abbr> <abbr title="Internet Protocol">IP</abbr> address to a different subnet, e.g. 192.168.<strong>2</strong>.1 .<br/>
+You can determine the assigned <abbr title="Wide Area Network">WAN</abbr> address with the following command: <pre class="code">. /lib/functions/network.sh; network_get_ipaddr IP_WAN wan; echo $IP_WAN
+192.168.1.30</pre>
+</td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table1&quot;,&quot;secid&quot;:10,&quot;range&quot;:&quot;6135-6504&quot;} -->
+<p>
+At this point, the masqueraded client configuration should be finished. Optionally you can bridge former wan ethernet port to switch, so you will be able to use all ethernet ports as lan clients. Note, that following config works for atheros routers, where wan port is usually eth1, but you should find the correct port name using <strong>ifconfig</strong> command.
+</p>
+<pre class="code">vi /etc/config/network</pre>
+
+<p>
+<code>config interface &#039;lan&#039;<br/>
+
+        <strong>option ifname &#039;eth0 eth1&#039;</strong><br/>
+
+        option type &#039;bridge&#039;<br/>
+
+        option proto &#039;static&#039;<br/>
+
+.<br/>
+
+.
+</code>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Apply changes&quot;,&quot;hid&quot;:&quot;apply_changes&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:9,&quot;range&quot;:&quot;6045-7066&quot;} -->
+<h2 class="sectionedit11" id="using_routing">Using routing</h2>
+<div class="level2">
+
+<p>
+In contrast to <em>masquerading</em>, a fully routed setup allows access from hosts of the Access Point network to hosts in the client network by using the client routers <abbr title="Wide Area Network">WAN</abbr> <abbr title="Internet Protocol">IP</abbr> address as gateway for the client network behind it.
+</p>
+
+<p>
+This kind of network topology is not possible when the client does <abbr title="Network Address Translation">NAT</abbr>, since the addresses behind the <abbr title="Network Address Translation">NAT</abbr> are not reachable from the outside, unless additional measures like port forwardings are configured.
+</p>
+
+<p>
+<a href="/_detail/doc/howto/802.11-routed-client.png?id=docs%3Aguide-user%3Anetwork%3Aroutedclient" class="media" title="doc:howto:802.11-routed-client.png"><img src="/_media/doc/howto/802.11-routed-client.png" class="media" loading="lazy" title="Routed network topology" alt="Routed network topology" /></a>
+</p>
+
+<p>
+This section covers the process of changing the firewall config to allow incoming <abbr title="Wide Area Network">WAN</abbr> traffic and disabling <em>masquerading</em> in the corresponding zone.
+</p>
+<hr />
+<div class="table sectionedit12"><table class="inline">
+	<tr class="row0">
+		<td class="col0"> <img src="/_media/meta/48px-dialog-warning.svg.png" class="media" loading="lazy" alt="" /> </td><td class="col1"> The fully routed client configuration is based on the <a href="#usingmasquerade" title="docs:guide-user:network:routedclient ↵" class="wikilink1">masqueraded config</a> and assumes an already working client setup.<br/>
+<strong>Only proceed with the routed configuration below if you have the ability to reconfigure the remote Access Point!</strong> </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table2&quot;,&quot;secid&quot;:12,&quot;range&quot;:&quot;7754-8063&quot;} --><hr />
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Using routing&quot;,&quot;hid&quot;:&quot;using_routing&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:11,&quot;range&quot;:&quot;7067-8070&quot;} -->
+<h3 class="sectionedit13" id="configuration1">Configuration</h3>
+<div class="level3">
+
+<p>
+In addition to the files in the <a href="#usingmasquerade" title="docs:guide-user:network:routedclient ↵" class="wikilink1">masqueraded setup</a>, the relevant config files are:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/firewall/firewall_configuration" class="wikilink1" title="docs:guide-user:firewall:firewall_configuration" data-wiki-id="docs:guide-user:firewall:firewall_configuration">/etc/config/firewall</a></div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="step_1change_the_firewall_configuration">Step 1: Change the firewall configuration</h4>
+<div class="level4">
+
+<p>
+Edit the <code>/etc/config/firewall</code> file and locate the <abbr title="Wide Area Network">WAN</abbr> <a href="/inbox/firewall/firewall3/fw3_network" class="wikilink2" title="inbox:firewall:firewall3:fw3_network" rel="nofollow" data-wiki-id="inbox:firewall:firewall3:fw3_network">zone</a> definition.
+Disable masquerading and set the incoming traffic policy to ACCEPT:
+</p>
+
+<p>
+<code>config &#039;zone&#039;<br/>
+
+        option &#039;name&#039;       <strong>&#039;wan&#039;</strong><br/>
+
+        option &#039;input&#039;      <strong>&#039;ACCEPT&#039;</strong><br/>
+
+        option &#039;output&#039;     &#039;ACCEPT&#039;<br/>
+
+        option &#039;forward&#039;    &#039;REJECT&#039;<br/>
+
+        option &#039;mtu_fix&#039;    &#039;1&#039;<br/>
+
+        option &#039;masq&#039;       <strong>&#039;0&#039;</strong> </code>
+</p>
+
+<p>
+Proceed with adding a new <a href="/docs/guide-user/firewall/firewall_configuration#forwardings" class="wikilink1" title="docs:guide-user:firewall:firewall_configuration" data-wiki-id="docs:guide-user:firewall:firewall_configuration">forwarding</a> section allowing traffic flow from <abbr title="Wide Area Network">WAN</abbr> to <abbr title="Local Area Network">LAN</abbr>:
+</p>
+
+<p>
+<code>config &#039;forwarding&#039;<br/>
+
+        option &#039;src&#039;        <strong>&#039;wan&#039;</strong><br/>
+
+        option &#039;dest&#039;       &#039;lan&#039; </code>
+</p>
+
+</div>
+
+<h4 id="step_2configure_the_access_point">Step 2: Configure the Access Point</h4>
+<div class="level4">
+
+<p>
+In order to make the local <abbr title="Local Area Network">LAN</abbr> subnet reachable for clients in the Access Point subnet, you need to configure a <em>static route</em> pointing to our <abbr title="Local Area Network">LAN</abbr> network on the <abbr title="Access Point">AP</abbr>.
+How to configure leases and routes on the Access Point differs from model to model. In doubt, consult the operation manual.
+</p>
+
+<p>
+Since static routes need a static gateway to work properly, the <abbr title="Wide Area Network">WAN</abbr> <abbr title="Internet Protocol">IP</abbr> address of the client mode wireless must be fixed, there are two possible ways to achieve that:
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong>Use a static <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> lease</strong> - the <abbr title="Access Point">AP</abbr> will associate the MAC address of the requesting client mode wireless adapter to a fixed <abbr title="Internet Protocol">IP</abbr> address in the <abbr title="Access Point">AP</abbr> network, e.g. 192.168.1.30</div>
+</li>
+<li class="level1"><div class="li"> <strong>Use a fixed <abbr title="Internet Protocol">IP</abbr> on <abbr title="Wide Area Network">WAN</abbr></strong> - the client mode wireless adapter will not request <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> at all but use a fixed <abbr title="Internet Protocol">IP</abbr> configuration instead.</div>
+</li>
+</ul>
+
+<p>
+When using the fixed <abbr title="Internet Protocol">IP</abbr> approach, the <abbr title="Wide Area Network">WAN</abbr> interface in <code>/etc/config/network</code> must be changed from the <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> protocol to <code>static</code>:
+</p>
+
+<p>
+<code>config &#039;interface&#039; <strong>&#039;wan&#039;</strong><br/>
+
+        option &#039;proto&#039;      <strong>&#039;static&#039;</strong><br/>
+
+        <strong>option &#039;ipaddr&#039;     &#039;192.168.1.30&#039;</strong><br/>
+
+        <strong>option &#039;netmask&#039;    &#039;255.255.255.0&#039;</strong> </code>
+<br/>
+
+</p>
+<div class="table sectionedit14"><table class="inline">
+	<tr class="row0">
+		<td class="col0"> <img src="/_media/meta/48px-dialog-warning.svg.png" class="media" loading="lazy" alt="" /> </td><td class="col1"> Make sure that the address range does not overlap with the <abbr title="Local Area Network">LAN</abbr> network.<br/>
+You <strong>must</strong> change the <abbr title="Local Area Network">LAN</abbr> address if it is in the same subnet, e.g. to 192.168.<strong>2</strong>.1 </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table3&quot;,&quot;secid&quot;:14,&quot;range&quot;:&quot;10251-10464&quot;} -->
+<p>
+After fixing the <abbr title="Wide Area Network">WAN</abbr> address, a static route must be added to the Access Point with the following information:
+</p>
+<ul>
+<li class="level1"><div class="li"> <abbr title="Internet Protocol">IP</abbr> address: 192.168.2.1 (<abbr title="Internet Protocol">IP</abbr> address of our <abbr title="Local Area Network">LAN</abbr> interface)</div>
+</li>
+<li class="level1"><div class="li"> Destination <abbr title="Local Area Network">LAN</abbr> NET (required in DD-WRT): 192.168.2.0 (our <abbr title="Local Area Network">LAN</abbr> interface subnet)</div>
+</li>
+<li class="level1"><div class="li"> Netmask: 255.255.255.0 (Netmask of our <abbr title="Local Area Network">LAN</abbr> interface)</div>
+</li>
+<li class="level1"><div class="li"> Gateway: 192.168.1.30 (<abbr title="Internet Protocol">IP</abbr> address of our <abbr title="Wide Area Network">WAN</abbr> interface)</div>
+</li>
+</ul>
+
+<p>
+You may also need to set the policy of the firewall of the Access Point to &#039;ACCEPT&#039; forwarded traffic for the <abbr title="Local Area Network">LAN</abbr> zone, in order for hosts in the Client network to communicate with hosts (other than directly to the router itself) on the Access Point network. E.g. (referring to the diagram) for Client Host 1 to communicate with <abbr title="Local Area Network">LAN</abbr> Host 1.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration1&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:13,&quot;range&quot;:&quot;8071-11185&quot;} -->
+<h3 class="sectionedit15" id="apply_changes1">Apply changes</h3>
+<div class="level3">
+
+<p>
+Reconfigure the wireless network.
+</p>
+<pre class="code">ifup wan
+wifi</pre>
+
+<p>
+Restart the firewall.
+</p>
+<pre class="code">/etc/init.d/firewall restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Apply changes&quot;,&quot;hid&quot;:&quot;apply_changes1&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:15,&quot;range&quot;:&quot;11186-11343&quot;} -->
+<h3 class="sectionedit16" id="after_setup_everything_works_but_client_subnet_cannot_access_internet">After setup everything works BUT client subnet cannot access internet</h3>
+<div class="level3">
+
+<p>
+This is due to the reason that <abbr title="Access Point">AP</abbr> router (in this case 192.168.1.1) does not masquerade client subnet (192.168.2.0/24).
+</p>
+
+<p>
+If you cannot (or don&#039;t want to) modify <abbr title="Access Point">AP</abbr> router&#039;s firewall in deep, you can configure client router (192.168.2.1) in the following way:<br/>
+
+Edit the <code>/etc/config/firewall</code> file and locate the <abbr title="Wide Area Network">WAN</abbr> <a href="/inbox/firewall/firewall3/fw3_network" class="wikilink2" title="inbox:firewall:firewall3:fw3_network" rel="nofollow" data-wiki-id="inbox:firewall:firewall3:fw3_network">zone</a> definition. <br/>
+
+</p>
+<div class="table sectionedit17"><table class="inline">
+	<tr class="row0">
+		<td class="col0"> <code>config &#039;zone&#039;
+        option &#039;name&#039;       <strong>&#039;wan&#039;</strong>
+        option &#039;input&#039;      &#039;ACCEPT&#039;
+        option &#039;output&#039;     &#039;ACCEPT&#039;
+        option &#039;forward&#039;    &#039;REJECT&#039;
+        option &#039;mtu_fix&#039;    &#039;1&#039;
+        option masq_dest    <strong>!192.168.1.0/24</strong>
+        option &#039;masq&#039;       <strong>&#039;1&#039;</strong> </code></td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table4&quot;,&quot;secid&quot;:17,&quot;range&quot;:&quot;11806-12092&quot;} -->
+<p>
+Please note that in this way client router (192.168.2.1) will masquerade everything EXCEPT <abbr title="Access Point">AP</abbr> subnet and <abbr title="Access Point">AP</abbr> router (192.168.1.1) will handle packets from client subnet to internet and vica-versa. <br/>
+
+This is double masquerading which works fine especially if you cannot make it work otherwise. Avoid double NATting whenever possible!!
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;After setup everything works BUT client subnet cannot access internet&quot;,&quot;hid&quot;:&quot;after_setup_everything_works_but_client_subnet_cannot_access_internet&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:16,&quot;range&quot;:&quot;11344-12428&quot;} -->
+<h2 class="sectionedit18" id="using_routingan_alternative_solution">Using routing : an alternative solution</h2>
+<div class="level2">
+
+<p>
+(assumption: you know how to apply the changes)
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Using routing : an alternative solution&quot;,&quot;hid&quot;:&quot;using_routingan_alternative_solution&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:18,&quot;range&quot;:&quot;12429-12529&quot;} -->
+<h3 class="sectionedit19" id="scenario_description">Scenario description</h3>
+<div class="level3">
+
+<p>
+There is a router access point (based on openwrt 12.09 final ) and a router wifi client (based on openwrt 12.09 final). The router access point from now on is called WP (wifi provider) and the router wifi client is called WC (wifi client) The diagram of the network is the following:
+</p>
+<pre class="file">Internet &lt;---wired---&gt; WP &lt;---wireless---&gt; WC</pre>
+
+<p>
+The <strong>WP</strong> is creating a lan network, through wireless and lan ports, using the subnet <code>192.168.10.0/24</code>.
+The <strong>WP</strong> lan interface is configured as follows (file <code>etc/config/network</code> ):
+</p>
+<pre class="file">config interface &#039;lan&#039;
+        option type &#039;bridge&#039;
+        option ifname &#039;eth0.0&#039;
+        option proto &#039;static&#039;
+        option netmask &#039;255.255.255.0&#039;
+        option ipaddr &#039;192.168.10.1&#039;</pre>
+
+<p>
+The <strong>WC</strong> instead, is using the wireless to connect to the <strong>WP</strong> and to create a second wifi network.
+In this case the wireless interface is attached to the network <code>wan</code> as <code>sta</code> mode and is attached to the network <code>lan</code> as <code>ap</code> mode, as follows (file <code>/etc/config/wireless</code> ):
+</p>
+<pre class="file">config wifi-iface
+        option device   radio0
+        option network  lan
+        option mode     ap
+        option ssid     &#039;Second wifi&#039;
+        option encryption       psk2
+        option key      &#039;password.2&#039;
+
+config wifi-iface
+        option device   radio0
+        option network  wan
+        option mode     &#039;sta&#039;
+        option ssid     &#039;Master wifi&#039;
+        option encryption       psk2
+        option key      &#039;password.1&#039;</pre>
+
+<p>
+The second network created by the <strong>WC</strong> is using the subnet <code>192.168.11.0/24</code> and is getting a dhcp <abbr title="Internet Protocol">IP</abbr> on the wan interface, as follows:
+</p>
+<pre class="file">config interface &#039;lan&#039;
+        option ifname &#039;eth0&#039;
+        option type &#039;bridge&#039;
+        option proto &#039;static&#039;
+        option ipaddr &#039;192.168.11.1&#039;
+        option netmask &#039;255.255.255.0&#039;
+        
+config interface &#039;wan&#039;
+        option proto     &#039;dhcp&#039;
+        option hostname  &#039;WC&#039;</pre>
+
+<p>
+Now we want that both networks see each other.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Scenario description&quot;,&quot;hid&quot;:&quot;scenario_description&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:19,&quot;range&quot;:&quot;12530-14529&quot;} -->
+<h3 class="sectionedit20" id="connecting_wc_lan_side_to_the_wp_lan_side_and_to_the_internet">Connecting WC lan side to the WP lan side and to the internet</h3>
+<div class="level3">
+
+<p>
+For the lan side of  <strong>WC</strong> there is not so much problem to reach the <code>192.168.10.0/24</code> provided by the <strong>WP</strong>. Because the latter is seen as wan network, and to reach that network from the lan side of <strong>WC</strong> only the &#039;classic&#039; forwarding lan→wan is needed. This means, in the file <code>/etc/config/firewall</code>, that the following rule is needed:
+</p>
+<pre class="file">config forwarding
+        option src              lan
+        option dest             wan</pre>
+
+<p>
+In this way requests from the <strong>WC</strong> lan side are allowed to reach the <strong>WC</strong> wan side that contains the <strong>WP</strong> lan network.
+</p>
+
+<p>
+But we should not forget about masquerading (explained briefly at least here <a href="/docs/guide-user/base-system/basic-networking" class="wikilink1" title="docs:guide-user:base-system:basic-networking" data-wiki-id="docs:guide-user:base-system:basic-networking">basic-networking</a> ). By default the wan zone has masquerading, but this means that when a computer from the <strong>WC</strong> lan side wants to connect to a computer on the <strong>WP</strong> lan side, its ip will be masqueraded. Therefore we should avoid masquerading when a computer on the <strong>WC</strong> lan side wants to reach an <abbr title="Internet Protocol">IP</abbr> address in the network <code>192.168.10.0/24</code> this is done in this way (file <code>/etc/config/firewall</code> ):
+</p>
+<pre class="file">config zone
+        option name                 wan
+        list   network              &#039;wan&#039;
+        option input                REJECT
+        option output               ACCEPT
+        option forward              REJECT
+        option masq                 1
+        #routed bridged wireless network - start
+        option masq_dest            &#039;!192.168.10.1/24&#039;
+        list comment &#039;(do not with !)&#039;
+        list comment &#039; masquerade what is going to the declared subnet(s)&#039;
+        list comment &#039;remember that is &quot;masq_destination&quot;&#039;
+        #routed bridged wireless network - end
+        option mtu_fix              1</pre>
+
+<p>
+In this way the <strong>WC</strong> lan side is able to reach the <strong>WP</strong> lan side without “obscuration” and the internet side (this with obscuration by masquerading).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Connecting WC lan side to the WP lan side and to the internet&quot;,&quot;hid&quot;:&quot;connecting_wc_lan_side_to_the_wp_lan_side_and_to_the_internet&quot;,&quot;codeblockOffset&quot;:13,&quot;secid&quot;:20,&quot;range&quot;:&quot;14530-16489&quot;} -->
+<h3 class="sectionedit21" id="connecting_wp_lan_side_to_the_wc_lan_side">Connecting WP lan side to the WC lan side</h3>
+<div class="level3">
+
+<p>
+First we should enable the possibility that packets coming on
+the wan side of <strong>WC</strong> could reach the lan side of <strong>WC</strong>. This
+is done through forwarding (see <a href="/docs/guide-user/firewall/start" class="wikilink1" title="docs:guide-user:firewall:start" data-wiki-id="docs:guide-user:firewall:start">Firewall Documentation</a> and <a href="/docs/guide-user/firewall/netfilter-iptables/iptables_and_firewall" class="wikilink2" title="docs:guide-user:firewall:netfilter-iptables:iptables_and_firewall" rel="nofollow" data-wiki-id="docs:guide-user:firewall:netfilter-iptables:iptables_and_firewall">iptables_and_firewall</a> ).
+</p>
+
+<p>
+In particular we want that if a packet coming on the wan side of <strong>WC</strong> has the source in the network
+<code>192.168.10.0/24</code> then it is allowed to go through the device (that is: coming from an interface and going to another interface decided by routing rules). So on <strong>WC</strong> in <code>/etc/config/firewall</code> we add:
+</p>
+<pre class="file">config rule &#039;forward_from_master_net&#039;
+        option src      wan
+        option dest     lan
+        option src_ip   &#039;192.168.10.0/24&#039;
+        option proto    all
+        option target   ACCEPT
+        
+#this means: if a packet, of whatever protocol, is coming on the wan side from a source in 192.168.10.0/24
+#            and the routing rules are sending it towards the lan side, let it pass.</pre>
+
+<p>
+Now it is the turn of configuration on <strong>WP</strong>. First <strong>WP</strong> should know that the <strong>WC</strong> is &#039;a device to ask&#039; about the network <code>192.168.11.0/24</code> and this means a static routing rule. But a static routing rule requires a gateway that is consistently reachable. Since <strong>WC</strong> is using dhcp on lan, we have to assign a static dhcp on the <strong>WP</strong> side for <strong>WC</strong>. So on <strong>WP</strong> we modifiy <code>/etc/config/dhcp</code> adding a reservation for <strong>WC</strong>.
+</p>
+<pre class="file">config host wc
+        option ip       192.168.10.20
+        option mac      &#039;&lt;mac address&gt;&#039;</pre>
+
+<p>
+Now (after we applied the changes on both systems) we have the possibility of defining a static route on <strong>WP</strong> in <code>/etc/config/network</code>:
+</p>
+<pre class="file">config &#039;route&#039; &#039;to_repeater&#039;
+        option &#039;interface&#039; &#039;lan&#039;
+        option &#039;target&#039; &#039;192.168.11.0&#039;
+        option &#039;netmask&#039; &#039;255.255.255.0&#039;
+        option &#039;gateway&#039; &#039;192.168.10.20&#039;
+        list comment &#039;to the wifi repeater&#039;
+        list comment &#039;as routed wireless client&#039;
+        list comment &#039;as exposed in the owrt wiki&#039;</pre>
+
+<p>
+It seems all but it is not. It is a subtle problem of how the networking standards behave (but once you know them, it is ok). On the <strong>WP</strong> the command <code>route -n</code> shows this:
+</p>
+<pre class="file">Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+...lines...
+192.168.10.0    0.0.0.0         255.255.255.0   U     0      0        0 br-lan
+192.168.11.0    192.168.10.20   255.255.255.0   UG    0      0        0 br-lan</pre>
+
+<p>
+So it seems that if a packet is coming from br-lan and wants to go to 192.168.11.0, since it will
+go through the same interface, no problem should occur. And instead not, different routes, even on the
+same interface, create a bit of obstacles. It is like that only packets coming from an interface and going through the same interface, when the source of the packet and the destination of the packet are matched by the same routing rule, do not create any problem.
+</p>
+
+<p>
+In the case that the interface is the same (for input and output) but the source of the packet differs from the destination shown in the routing rule, then the packet is stopped. What do we need then? Seems counter-intuitive but: forwarding.
+</p>
+
+<p>
+On <strong>WP</strong> in <code>/etc/config/firewall</code> we need a rule that says “a packet coming on the lan side can go through the lan side without being stopped”:
+</p>
+<pre class="file">config forwarding
+        option src &#039;lan&#039;
+        option dest &#039;lan&#039;</pre>
+
+<p>
+And with this we have ended our problems. Computer in <code>192.168.10.0/24</code> can communicate with computers in <code>192.168.11.0/24</code> and viceversa using original ip addresses.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Connecting WP lan side to the WC lan side&quot;,&quot;hid&quot;:&quot;connecting_wp_lan_side_to_the_wc_lan_side&quot;,&quot;codeblockOffset&quot;:15,&quot;secid&quot;:21,&quot;range&quot;:&quot;16490-&quot;} -->

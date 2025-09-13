@@ -1,0 +1,149 @@
+
+<h1 class="sectionedit1" id="example3traffic_shaping_and_prioriziting_for_multiple_users_with_hfsc">Example3: traffic shaping and prioriziting for multiple users with HFSC</h1>
+<div class="level1">
+
+<p>
+The default behavior of HFSC is to drop not classified traffic. If it apply (static or dhcp interface for exemple, instead of pppoe), don&#039;t forget to classify ARP packets, or to add a default class (in the following exemple all the non classified traffic will go in the 1:50 class)
+</p>
+<pre class="code bash"><span class="co4">-$</span>TC qdisc add dev <span class="re1">$IF_DSL</span> root       handle  <span class="nu0">1</span>:   hfsc
++<span class="re1">$TC</span> qdisc add dev <span class="re1">$IF_DSL</span> root       handle  <span class="nu0">1</span>:   hfsc default <span class="nu0">50</span></pre>
+<pre class="code bash"><span class="co0">#!/bin/sh</span>
+<span class="co0">#</span>
+<span class="co0"># racTC.sh - 2-Ebenen-traffic shaping with HFSC</span>
+<span class="co0"># Copyright (C) 2010  rac </span>
+<span class="co0"># for use with OpenWrt</span>
+<span class="co0"># License GPLv2</span>
+<span class="co0"># Version 0.4</span>
+&nbsp;
+<span class="co0">##############################################################</span>
+<span class="co0"># Variables</span>
+<span class="re2">TC</span>=<span class="sy0">/</span>usr<span class="sy0">/</span>sbin<span class="sy0">/</span>tc <span class="co0">#-------- location of traffic control</span>
+<span class="re2">IPT</span>=<span class="sy0">/</span>usr<span class="sy0">/</span>sbin<span class="sy0">/</span>iptables <span class="co0">#- location of iptables</span>
+<span class="re2">IF_DSL</span>=pppoe-dsl <span class="co0">#------- interface to dsl</span>
+<span class="re2">UP_RATE</span>=<span class="nu0">576</span> <span class="co0">#------------ 90% of available bandwidth in kilobits/sec</span>
+<span class="re2">DOWN_RATE</span>=<span class="nu0">5400</span>
+<span class="re2">IP_USER1</span>=192.168.10.42
+<span class="re2">IP_USER2</span>=192.168.20.42
+<span class="re2">IP_USER3</span>=192.168.30.42
+<span class="re2">IP_SERVER</span>=192.168.40.42
+<span class="re2">IP_DSL</span>=$<span class="br0">&#40;</span><span class="kw2">ifconfig</span><span class="sy0">|</span><span class="kw2">grep</span> <span class="st_h">'inet addr:84'</span><span class="sy0">|</span><span class="kw2">cut</span> <span class="re5">-d</span><span class="st_h">':'</span> <span class="re5">-f2</span><span class="sy0">|</span><span class="kw2">awk</span> <span class="st_h">'{print $1}'</span><span class="br0">&#41;</span>
+<span class="re2">USER1</span>=$<span class="br0">&#40;</span><span class="br0">&#40;</span><span class="re1">$UP_RATE</span><span class="sy0">/</span><span class="nu0">4</span><span class="br0">&#41;</span><span class="br0">&#41;</span>		<span class="co0"># 25%</span>
+<span class="re2">USER2</span>=$<span class="br0">&#40;</span><span class="br0">&#40;</span><span class="re1">$UP_RATE</span><span class="sy0">/</span><span class="nu0">4</span><span class="br0">&#41;</span><span class="br0">&#41;</span>		<span class="co0"># 25%</span>
+<span class="re2">USER3</span>=$<span class="br0">&#40;</span><span class="br0">&#40;</span><span class="re1">$UP_RATE</span><span class="sy0">/</span><span class="nu0">4</span><span class="br0">&#41;</span><span class="br0">&#41;</span>		<span class="co0"># 25%</span>
+<span class="re2">SERVER</span>=$<span class="br0">&#40;</span><span class="br0">&#40;</span><span class="nu0">1</span><span class="sy0">*</span><span class="re1">$UP_RATE</span><span class="sy0">/</span><span class="nu0">10</span><span class="br0">&#41;</span><span class="br0">&#41;</span>	<span class="co0"># 10%</span>
+<span class="re2">ROUTER</span>=$<span class="br0">&#40;</span><span class="br0">&#40;</span><span class="nu0">1</span><span class="sy0">*</span><span class="re1">$UP_RATE</span><span class="sy0">/</span><span class="nu0">20</span><span class="br0">&#41;</span><span class="br0">&#41;</span>	<span class="co0">#  5%</span>
+&nbsp;
+<span class="re2">MODULES</span>=<span class="st_h">'ipt_TOS ipt_tos ipt_length sch_hfsc sch_ingress'</span>
+&nbsp;
+<span class="co0">##############################################################</span>
+<span class="co0"># status</span>
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="st0">&quot;$1&quot;</span> = <span class="st0">&quot;status&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+	tc <span class="re5">-s</span> qdisc <span class="kw2">ls</span> dev <span class="re1">$IF_DSL</span>
+	tc <span class="re5">-s</span> class <span class="kw2">ls</span> dev <span class="re1">$IF_DSL</span>
+	<span class="kw3">exit</span>
+<span class="kw1">fi</span>
+<span class="co0">##############################################################</span>
+<span class="co0"># Delete existing qdiscs (hide errors)</span>
+<span class="re1">$TC</span> qdisc del dev <span class="re1">$IF_DSL</span> root    <span class="nu0">2</span><span class="sy0">&gt;</span> <span class="sy0">/</span>dev<span class="sy0">/</span>null <span class="sy0">&gt;</span> <span class="sy0">/</span>dev<span class="sy0">/</span>null
+<span class="re1">$TC</span> qdisc del dev <span class="re1">$IF_DSL</span> ingress <span class="nu0">2</span><span class="sy0">&gt;</span> <span class="sy0">/</span>dev<span class="sy0">/</span>null <span class="sy0">&gt;</span> <span class="sy0">/</span>dev<span class="sy0">/</span>null
+<span class="co0">##############################################################</span>
+<span class="co0"># Unload modules</span>
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="st0">&quot;$1&quot;</span> = <span class="st0">&quot;stop&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span> 
+	<span class="kw1">for</span> i <span class="kw1">in</span> <span class="re1">$MODULES</span> ; <span class="kw1">do</span>
+		rmmod <span class="re1">$i</span>
+	<span class="kw1">done</span>
+	<span class="kw3">exit</span>
+<span class="kw1">fi</span>
+<span class="co0">##############################################################</span>
+<span class="co0"># Load modules</span>
+<span class="kw1">for</span> i <span class="kw1">in</span> <span class="re1">$MODULES</span> ; <span class="kw1">do</span>
+        insmod <span class="re1">$i</span>
+<span class="kw1">done</span>
+&nbsp;
+<span class="co0">############################################################################################################################</span>
+<span class="co0"># Manipulating qdiscs</span>
+<span class="re1">$TC</span> qdisc del dev <span class="re1">$IF_DSL</span> root    <span class="nu0">2</span><span class="sy0">&gt;</span> <span class="sy0">/</span>dev<span class="sy0">/</span>null <span class="sy0">&gt;</span> <span class="sy0">/</span>dev<span class="sy0">/</span>null
+<span class="re1">$TC</span> qdisc del dev <span class="re1">$IF_DSL</span> ingress <span class="nu0">2</span><span class="sy0">&gt;</span> <span class="sy0">/</span>dev<span class="sy0">/</span>null <span class="sy0">&gt;</span> <span class="sy0">/</span>dev<span class="sy0">/</span>null
+<span class="co0">###</span>
+<span class="re1">$TC</span> qdisc add dev <span class="re1">$IF_DSL</span> root       handle  <span class="nu0">1</span>:   hfsc
+<span class="re1">$TC</span> class add dev <span class="re1">$IF_DSL</span> parent <span class="nu0">1</span>:  classid <span class="nu0">1</span>:<span class="nu0">1</span>  hfsc sc rate <span class="co1">${UP_RATE}</span>kbit ul rate <span class="co1">${UP_RATE}</span>kbit
+<span class="re1">$TC</span> class add dev <span class="re1">$IF_DSL</span> parent <span class="nu0">1</span>:<span class="nu0">1</span> classid <span class="nu0">1</span>:<span class="nu0">10</span> hfsc <span class="kw2">ls</span> rate <span class="co1">${USER1}</span>kbit   ul rate <span class="co1">${UP_RATE}</span>kbit
+<span class="re1">$TC</span> class add dev <span class="re1">$IF_DSL</span> parent <span class="nu0">1</span>:<span class="nu0">1</span> classid <span class="nu0">1</span>:<span class="nu0">20</span> hfsc <span class="kw2">ls</span> rate <span class="co1">${USER2}</span>kbit   ul rate <span class="co1">${UP_RATE}</span>kbit
+<span class="re1">$TC</span> class add dev <span class="re1">$IF_DSL</span> parent <span class="nu0">1</span>:<span class="nu0">1</span> classid <span class="nu0">1</span>:<span class="nu0">30</span> hfsc <span class="kw2">ls</span> rate <span class="co1">${USER3}</span>kbit   ul rate <span class="co1">${UP_RATE}</span>kbit
+<span class="re1">$TC</span> class add dev <span class="re1">$IF_DSL</span> parent <span class="nu0">1</span>:<span class="nu0">1</span> classid <span class="nu0">1</span>:<span class="nu0">40</span> hfsc sc rate <span class="co1">${SERVER}</span>kbit  ul rate <span class="co1">${UP_RATE}</span>kbit
+<span class="re1">$TC</span> class add dev <span class="re1">$IF_DSL</span> parent <span class="nu0">1</span>:<span class="nu0">1</span> classid <span class="nu0">1</span>:<span class="nu0">50</span> hfsc sc rate <span class="co1">${ROUTER}</span>kbit  ul rate <span class="co1">${UP_RATE}</span>kbit
+<span class="co0">##################################################################################</span>
+<span class="co0"># Zweite Ebene: Priorisierung : Jede User-Klasse hat ihre eigenen 3-5 Sub-Klassen:</span>
+<span class="co0">##################################################################################</span>
+<span class="co0"># echo &quot;User 1:&quot;</span>
+<span class="re1">$TC</span> class add dev <span class="re1">$IF_DSL</span> parent <span class="nu0">1</span>:<span class="nu0">10</span> classid <span class="nu0">1</span>:<span class="nu0">101</span> hfsc rt m1 <span class="co1">${USER1}</span>kbit d  100ms m2 $<span class="br0">&#40;</span><span class="br0">&#40;</span><span class="nu0">5</span><span class="sy0">*</span><span class="re1">$USER1</span><span class="sy0">/</span><span class="nu0">10</span><span class="br0">&#41;</span><span class="br0">&#41;</span>kbit <span class="kw2">ls</span> m1 <span class="co1">${USER1}</span>kbit d 50ms m2 $<span class="br0">&#40;</span><span class="br0">&#40;</span><span class="nu0">7</span><span class="sy0">*</span><span class="re1">$USER1</span><span class="sy0">/</span><span class="nu0">10</span><span class="br0">&#41;</span><span class="br0">&#41;</span>kbit <span class="co0"># real time</span>
+<span class="re1">$TC</span> class add dev <span class="re1">$IF_DSL</span> parent <span class="nu0">1</span>:<span class="nu0">10</span> classid <span class="nu0">1</span>:<span class="nu0">102</span> hfsc sc m1 <span class="nu0">0</span>            d  100ms m2 $<span class="br0">&#40;</span><span class="br0">&#40;</span><span class="nu0">4</span><span class="sy0">*</span><span class="re1">$USER1</span><span class="sy0">/</span><span class="nu0">10</span><span class="br0">&#41;</span><span class="br0">&#41;</span>kbit <span class="co0"># http</span>
+<span class="re1">$TC</span> class add dev <span class="re1">$IF_DSL</span> parent <span class="nu0">1</span>:<span class="nu0">10</span> classid <span class="nu0">1</span>:<span class="nu0">103</span> hfsc sc m1 <span class="nu0">0</span>            d 4000ms m2 $<span class="br0">&#40;</span><span class="br0">&#40;</span><span class="nu0">1</span><span class="sy0">*</span><span class="re1">$USER1</span><span class="sy0">/</span><span class="nu0">10</span><span class="br0">&#41;</span><span class="br0">&#41;</span>kbit <span class="co0"># Bulk</span>
+&nbsp;
+<span class="co0"># echo &quot;User 2:&quot;</span>
+<span class="re1">$TC</span> class add dev <span class="re1">$IF_DSL</span> parent <span class="nu0">1</span>:<span class="nu0">20</span> classid <span class="nu0">1</span>:<span class="nu0">201</span> hfsc rt m1 <span class="co1">${USER2}</span>kbit d  100ms m2 $<span class="br0">&#40;</span><span class="br0">&#40;</span><span class="nu0">5</span><span class="sy0">*</span><span class="re1">$USER2</span><span class="sy0">/</span><span class="nu0">10</span><span class="br0">&#41;</span><span class="br0">&#41;</span>kbit <span class="kw2">ls</span> m1 <span class="co1">${USER2}</span>kbit d 50ms m2 $<span class="br0">&#40;</span><span class="br0">&#40;</span><span class="nu0">7</span><span class="sy0">*</span><span class="re1">$USER2</span><span class="sy0">/</span><span class="nu0">10</span><span class="br0">&#41;</span><span class="br0">&#41;</span>kbit <span class="co0"># real time</span>
+<span class="re1">$TC</span> class add dev <span class="re1">$IF_DSL</span> parent <span class="nu0">1</span>:<span class="nu0">20</span> classid <span class="nu0">1</span>:<span class="nu0">202</span> hfsc sc m1 <span class="nu0">0</span>            d  100ms m2 $<span class="br0">&#40;</span><span class="br0">&#40;</span><span class="nu0">4</span><span class="sy0">*</span><span class="re1">$USER2</span><span class="sy0">/</span><span class="nu0">10</span><span class="br0">&#41;</span><span class="br0">&#41;</span>kbit <span class="co0"># http</span>
+<span class="re1">$TC</span> class add dev <span class="re1">$IF_DSL</span> parent <span class="nu0">1</span>:<span class="nu0">20</span> classid <span class="nu0">1</span>:<span class="nu0">203</span> hfsc sc m1 <span class="nu0">0</span>            d 4000ms m2 $<span class="br0">&#40;</span><span class="br0">&#40;</span><span class="nu0">1</span><span class="sy0">*</span><span class="re1">$USER2</span><span class="sy0">/</span><span class="nu0">10</span><span class="br0">&#41;</span><span class="br0">&#41;</span>kbit <span class="co0"># Bulk</span>
+&nbsp;
+<span class="co0"># echo &quot;User 3:&quot;</span>
+<span class="re1">$TC</span> class add dev <span class="re1">$IF_DSL</span> parent <span class="nu0">1</span>:<span class="nu0">30</span> classid <span class="nu0">1</span>:<span class="nu0">301</span> hfsc rt m1 <span class="co1">${USER3}</span>kbit d  100ms m2 $<span class="br0">&#40;</span><span class="br0">&#40;</span><span class="nu0">5</span><span class="sy0">*</span><span class="re1">$USER3</span><span class="sy0">/</span><span class="nu0">10</span><span class="br0">&#41;</span><span class="br0">&#41;</span>kbit <span class="kw2">ls</span> m1 <span class="co1">${USER3}</span>kbit d 50ms m2 $<span class="br0">&#40;</span><span class="br0">&#40;</span><span class="nu0">7</span><span class="sy0">*</span><span class="re1">$USER3</span><span class="sy0">/</span><span class="nu0">10</span><span class="br0">&#41;</span><span class="br0">&#41;</span>kbit <span class="co0"># real time</span>
+<span class="re1">$TC</span> class add dev <span class="re1">$IF_DSL</span> parent <span class="nu0">1</span>:<span class="nu0">30</span> classid <span class="nu0">1</span>:<span class="nu0">302</span> hfsc sc m1 <span class="nu0">0</span>            d  100ms m2 $<span class="br0">&#40;</span><span class="br0">&#40;</span><span class="nu0">4</span><span class="sy0">*</span><span class="re1">$USER3</span><span class="sy0">/</span><span class="nu0">10</span><span class="br0">&#41;</span><span class="br0">&#41;</span>kbit <span class="co0"># http</span>
+<span class="re1">$TC</span> class add dev <span class="re1">$IF_DSL</span> parent <span class="nu0">1</span>:<span class="nu0">30</span> classid <span class="nu0">1</span>:<span class="nu0">303</span> hfsc sc m1 <span class="nu0">0</span>            d 4000ms m2 $<span class="br0">&#40;</span><span class="br0">&#40;</span><span class="nu0">1</span><span class="sy0">*</span><span class="re1">$USER3</span><span class="sy0">/</span><span class="nu0">10</span><span class="br0">&#41;</span><span class="br0">&#41;</span>kbit <span class="co0"># Bulk</span>
+&nbsp;
+<span class="co0">##################################################################################</span>
+<span class="co0"># Filter für die zweite Ebene</span>
+<span class="co0">##################################################################################</span>
+<span class="co0"># We use iptables with &quot;-j CLASSIFY&quot;, not further filters needed</span>
+&nbsp;
+<span class="co0">#############################################################################</span>
+<span class="co0"># MANGLE</span>
+&nbsp;
+<span class="co0">#================================</span>
+<span class="co0"># POSTROUTING (Policy: ACCEPT)</span>
+<span class="co0">#----------------------------</span>
+<span class="re1">$IPT</span> <span class="re5">-t</span> mangle <span class="re5">-F</span>
+<span class="re1">$IPT</span> <span class="re5">-t</span> mangle <span class="re5">-X</span>
+&nbsp;
+<span class="re2">IPTM</span>=<span class="st0">&quot;<span class="es2">$IPT</span> -t mangle&quot;</span>
+<span class="re2">IPTMOD</span>=<span class="st0">&quot;<span class="es2">$IPT</span> -t mangle -A POSTROUTING -o <span class="es2">$IF_DSL</span>&quot;</span>
+&nbsp;
+<span class="re1">$IPTM</span> <span class="re5">-N</span> TC_USER1
+<span class="re1">$IPTM</span> <span class="re5">-N</span> TC_USER2
+<span class="re1">$IPTM</span> <span class="re5">-N</span> TC_USER3
+&nbsp;
+<span class="co0">##################################################################################</span>
+<span class="co0"># jump to user chain; multiple IPs possible</span>
+<span class="re1">$IPTMOD</span> <span class="re5">-s</span> <span class="re1">$IP_USER1</span>  <span class="re5">-j</span> TC_USER1
+<span class="re1">$IPTMOD</span> <span class="re5">-s</span> <span class="re1">$IP_USER2</span>  <span class="re5">-j</span> TC_USER2
+<span class="re1">$IPTMOD</span> <span class="re5">-s</span> <span class="re1">$IP_USER3</span>  <span class="re5">-j</span> TC_USER3
+<span class="re1">$IPTMOD</span> <span class="re5">-s</span> <span class="re1">$IP_SERVER</span> <span class="re5">-j</span> CLASSIFY <span class="re5">--set-class</span> <span class="nu0">1</span>:<span class="nu0">40</span>
+<span class="re1">$IPTMOD</span> <span class="re5">-s</span> <span class="re1">$IP_DSL</span>    <span class="re5">-j</span> CLASSIFY <span class="re5">--set-class</span> <span class="nu0">1</span>:<span class="nu0">50</span>
+&nbsp;
+<span class="co0"># Link-sharing implemented, thus it is in everyones own interest to not mess with TOS-Flags.</span>
+<span class="co0"># Packets without a classification will be dropped! Make sure to classify all.</span>
+<span class="co0">##################################################################################</span>
+<span class="re1">$IPTM</span> <span class="re5">-A</span> TC_USER1 <span class="re5">-j</span> CLASSIFY <span class="re5">--set-class</span> <span class="nu0">1</span>:<span class="nu0">103</span> <span class="re5">-m</span> tos <span class="re5">--tos</span> Maximize-Throughput <span class="co0">#- BULK</span>
+<span class="re1">$IPTM</span> <span class="re5">-A</span> TC_USER1 <span class="re5">-j</span> CLASSIFY <span class="re5">--set-class</span> <span class="nu0">1</span>:<span class="nu0">103</span> <span class="re5">-m</span> tos <span class="re5">--tos</span> Maximize-Throughput <span class="co0">#- BULK</span>
+<span class="re1">$IPTM</span> <span class="re5">-A</span> TC_USER1 <span class="re5">-j</span> CLASSIFY <span class="re5">--set-class</span> <span class="nu0">1</span>:<span class="nu0">101</span> <span class="re5">-p</span> icmp <span class="co0">#-------------------------- superfluous</span>
+<span class="re1">$IPTM</span> <span class="re5">-A</span> TC_USER1 <span class="re5">-j</span> CLASSIFY <span class="re5">--set-class</span> <span class="nu0">1</span>:<span class="nu0">101</span> <span class="re5">-m</span> tos <span class="re5">--tos</span> Maximize-Reliability
+<span class="re1">$IPTM</span> <span class="re5">-A</span> TC_USER1 <span class="re5">-j</span> CLASSIFY <span class="re5">--set-class</span> <span class="nu0">1</span>:<span class="nu0">101</span> <span class="re5">-m</span> tos <span class="re5">--tos</span> Minimize-Delay
+<span class="re1">$IPTM</span> <span class="re5">-A</span> TC_USER1 <span class="re5">-j</span> CLASSIFY <span class="re5">--set-class</span> <span class="nu0">1</span>:<span class="nu0">101</span> <span class="re5">-p</span> udp <span class="re5">-m</span> length <span class="re5">--length</span> :<span class="nu0">412</span> <span class="co0">#--- small udp</span>
+<span class="re1">$IPTM</span> <span class="re5">-A</span> TC_USER1 <span class="re5">-j</span> CLASSIFY <span class="re5">--set-class</span> <span class="nu0">1</span>:<span class="nu0">101</span> <span class="re5">-p</span> tcp <span class="re5">-m</span> length <span class="re5">--length</span> :<span class="nu0">128</span> <span class="co0">#--- small tcp</span>
+<span class="re1">$IPTM</span> <span class="re5">-A</span> TC_USER1 <span class="re5">-j</span> CLASSIFY <span class="re5">--set-class</span> <span class="nu0">1</span>:<span class="nu0">102</span> <span class="re5">-p</span> tcp <span class="re5">--dport</span> <span class="nu0">1</span>:<span class="nu0">1024</span> <span class="co0">#------------ no better idea</span>
+<span class="re1">$IPTM</span> <span class="re5">-A</span> TC_USER1 <span class="re5">-j</span> CLASSIFY <span class="re5">--set-class</span> <span class="nu0">1</span>:<span class="nu0">103</span> <span class="co0">#---------------------------------- default</span>
+&nbsp;
+<span class="co0">#################################################################################</span>
+<span class="re1">$IPTM</span> <span class="re5">-A</span> TC_USER2 <span class="re5">-j</span> CLASSIFY <span class="re5">--set-class</span> <span class="nu0">1</span>:<span class="nu0">201</span> <span class="re5">-m</span> tos <span class="re5">--tos</span> Minimize-Delay <span class="co0">#------- </span>
+<span class="re1">$IPTM</span> <span class="re5">-A</span> TC_USER2 <span class="re5">-j</span> CLASSIFY <span class="re5">--set-class</span> <span class="nu0">1</span>:<span class="nu0">201</span> <span class="re5">-m</span> tos <span class="re5">--tos</span> Maximize-Reliability <span class="co0">#- </span>
+<span class="re1">$IPTM</span> <span class="re5">-A</span> TC_USER2 <span class="re5">-j</span> CLASSIFY <span class="re5">--set-class</span> <span class="nu0">1</span>:<span class="nu0">202</span> <span class="re5">-m</span> tos <span class="re5">--tos</span> Normal-Service <span class="co0">#-------</span>
+<span class="re1">$IPTM</span> <span class="re5">-A</span> TC_USER2 <span class="re5">-j</span> CLASSIFY <span class="re5">--set-class</span> <span class="nu0">1</span>:<span class="nu0">203</span> <span class="re5">-m</span> tos <span class="re5">--tos</span> Maximize-Throughput <span class="co0">#--</span>
+<span class="re1">$IPTM</span> <span class="re5">-A</span> TC_USER2 <span class="re5">-j</span> CLASSIFY <span class="re5">--set-class</span> <span class="nu0">1</span>:<span class="nu0">203</span> <span class="re5">-m</span> tos <span class="re5">--tos</span> Minimize-Cost <span class="co0">#--------</span>
+&nbsp;
+<span class="co0">#################################################################################</span>
+<span class="re1">$IPTM</span> <span class="re5">-A</span> TC_USER3 <span class="re5">-j</span> CLASSIFY <span class="re5">--set-class</span> <span class="nu0">1</span>:<span class="nu0">301</span> <span class="re5">-m</span> tos <span class="re5">--tos</span> Minimize-Delay <span class="co0">#------- </span>
+<span class="re1">$IPTM</span> <span class="re5">-A</span> TC_USER3 <span class="re5">-j</span> CLASSIFY <span class="re5">--set-class</span> <span class="nu0">1</span>:<span class="nu0">301</span> <span class="re5">-m</span> tos <span class="re5">--tos</span> Maximize-Reliability <span class="co0">#-</span>
+<span class="re1">$IPTM</span> <span class="re5">-A</span> TC_USER3 <span class="re5">-j</span> CLASSIFY <span class="re5">--set-class</span> <span class="nu0">1</span>:<span class="nu0">302</span> <span class="re5">-m</span> tos <span class="re5">--tos</span> Normal-Service <span class="co0">#-------</span>
+<span class="re1">$IPTM</span> <span class="re5">-A</span> TC_USER3 <span class="re5">-j</span> CLASSIFY <span class="re5">--set-class</span> <span class="nu0">1</span>:<span class="nu0">303</span> <span class="re5">-m</span> tos <span class="re5">--tos</span> Maximize-Throughput <span class="co0">#--</span>
+<span class="re1">$IPTM</span> <span class="re5">-A</span> TC_USER3 <span class="re5">-j</span> CLASSIFY <span class="re5">--set-class</span> <span class="nu0">1</span>:<span class="nu0">303</span> <span class="re5">-m</span> tos <span class="re5">--tos</span> Minimize-Cost <span class="co0">#-------- </span></pre>
+
+</div>

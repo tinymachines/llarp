@@ -1,0 +1,100 @@
+
+<h1 class="sectionedit1" id="create_a_cmake_package_in_openwrt">Create a Cmake package in OpenWrt</h1>
+<div class="level1">
+
+<p>
+In the <a href="/docs/guide-developer/creating_a_meson_based_package" class="wikilink1" title="docs:guide-developer:creating_a_meson_based_package" data-wiki-id="docs:guide-developer:creating_a_meson_based_package">Meson tutorial</a>, we learned how to create a Meson package with a detailed guide. Since Cmake and Meson have similar roots, this tutorial will only focus on their differences.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Create a Cmake package in OpenWrt&quot;,&quot;hid&quot;:&quot;create_a_cmake_package_in_openwrt&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-285&quot;} -->
+<h2 class="sectionedit2" id="cmakeliststxt">CMakeLists.txt</h2>
+<div class="level2">
+
+<p>
+To begin, let&#039;s create a CMake project. The <code>main.c</code> file for this project will be the same as the one in the Meson tutorial, which includes a single <code>“Hello, World”</code> program. However, in order to use CMake, we need to include a <code>CMakeLists.txt</code> file. The most basic CMake file is presented here for simplicity.
+</p>
+<pre class="code cmake"><a href="http://www.cmake.org/cmake/help/cmake2.6docs.html#command:cmake_minimum_required"><span class="kw1">cmake_minimum_required</span></a><span class="sy0">(</span><span class="kw3">VERSION</span> 3.1...3.27<span class="sy0">)</span>
+&nbsp;
+<a href="http://www.cmake.org/cmake/help/cmake2.6docs.html#command:project"><span class="kw1">project</span></a><span class="sy0">(</span>
+  hellocmake
+  <span class="kw3">VERSION</span> 1.0
+  LANGUAGES C<span class="sy0">)</span>
+&nbsp;
+<a href="http://www.cmake.org/cmake/help/cmake2.6docs.html#command:add_executable"><span class="kw1">add_executable</span></a><span class="sy0">(</span>hellocmake main.c<span class="sy0">)</span>
+<a href="http://www.cmake.org/cmake/help/cmake2.6docs.html#command:install"><span class="kw1">install</span></a><span class="sy0">(</span>TARGETS hellocmake DESTINATION /usr/bin<span class="sy0">)</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;CMakeLists.txt&quot;,&quot;hid&quot;:&quot;cmakeliststxt&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;286-831&quot;} -->
+<h2 class="sectionedit3" id="makefile">Makefile</h2>
+<div class="level2">
+
+<p>
+The <code>Makefile</code> is very similar to other OpenWrt-based makefiles. The only difference is that it includes <code>cmake.mk</code> instead of <code>meson.mk</code>:
+</p>
+<pre class="code Makefile">include $(TOPDIR)/rules.mk
+&nbsp;
+PKG_NAME:=hellocmake
+PKG_VERSION:=0.1
+PKG_RELEASE:=1
+&nbsp;
+SOURCE_DIR:=/media/workspace/packages/cmakepackages/hellocmake
+PKG_BUILD_DIR:=$(BUILD_DIR)/hellocmake-$(PKG_VERSION)
+&nbsp;
+include $(INCLUDE_DIR)/package.mk
+include $(INCLUDE_DIR)/cmake.mk
+&nbsp;
+define Package/hellocmake
+	CATEGORY:=custom
+	TITLE:=Simple Cmake package
+	#DEPENDS:=+libstdcpp +ixwebsocket +libatomic
+endef
+&nbsp;
+define Package/hellocmake/description
+	hellocmake is a simple application to demonstrate OpenWrt build system with cmake packages
+endef
+&nbsp;
+define Package/hellocmake/install	
+	$(INSTALL_DIR) $(1)/usr/bin
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/hellocmake $(1)/usr/bin/
+endef
+&nbsp;
+$(eval $(call BuildPackage,hellocmake))</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Makefile&quot;,&quot;hid&quot;:&quot;makefile&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;832-1720&quot;} -->
+<h2 class="sectionedit4" id="passing_cmake_options">Passing Cmake options</h2>
+<div class="level2">
+
+<p>
+In order to pass <code>Cmake</code> options, we can use the following syntax in the <code>Makefile</code>
+</p>
+<pre class="code Makefile">CMAKE_OPTIONS+= \
+	-D&lt;OPTION&gt;bool=OFF</pre>
+
+<p>
+For example:
+</p>
+<pre class="code Makefile">CMAKE_OPTIONS+= \
+	-DBUILD_TESTING:bool=OFF</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Passing Cmake options&quot;,&quot;hid&quot;:&quot;passing_cmake_options&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:4,&quot;range&quot;:&quot;1721-1985&quot;} -->
+<h2 class="sectionedit5" id="build">Build</h2>
+<div class="level2">
+
+<p>
+To enable this package, open the configuration menu by typing <code>make menuconfig</code> in the command line. From there, go to <code>custom</code> → <code>hellocmake</code> and select the package.
+</p>
+
+<p>
+If everything goes smoothly, the package that is built will be located in <code>&lt;BIN_DIR&gt;/packages/&lt;target&gt;/cmakepackages/</code>. 
+</p>
+
+<p>
+For instance: 
+</p>
+<pre class="code bash">hellocmake_0.1-<span class="nu0">1</span>_arm_cortex-a7_neon-vfpv4.ipk</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Build&quot;,&quot;hid&quot;:&quot;build&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:5,&quot;range&quot;:&quot;1986-&quot;} -->

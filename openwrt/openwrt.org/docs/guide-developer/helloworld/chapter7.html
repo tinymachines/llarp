@@ -1,0 +1,203 @@
+<div class="docnavbar"><div class="leftnav">← <a href="/docs/guide-developer/helloworld/chapter6" class="wikilink1" title="docs:guide-developer:helloworld:chapter6" data-wiki-id="docs:guide-developer:helloworld:chapter6">Previous Chapter </a>&nbsp;</div><div class="rightnav">&nbsp;<a href="/docs/guide-developer/helloworld/chapter8" class="wikilink1" title="docs:guide-developer:helloworld:chapter8" data-wiki-id="docs:guide-developer:helloworld:chapter8">Next Chapter </a> →</div></div>
+<h1 class="sectionedit1" id="patching_your_applicationadding_new_files">Patching your application: Adding new files</h1>
+<div class="level1">
+
+<p>
+This is the seventh chapter in the “Hello, world!” for OpenWrt article series. At this point, you should&#039;ve already accomplished the following tasks:
+</p>
+<ul>
+<li class="level1"><div class="li"> Commissioned your development environment</div>
+</li>
+<li class="level1"><div class="li"> Prepared, configured and built the tools and the cross-compilation toolchain</div>
+</li>
+<li class="level1"><div class="li"> Configured the PATH environment variable</div>
+</li>
+<li class="level1"><div class="li"> Created a simple “Hello, world!” application using native compilation tools</div>
+</li>
+<li class="level1"><div class="li"> Created a local package feed for your application</div>
+</li>
+<li class="level1"><div class="li"> Created a package manifest file for your application</div>
+</li>
+<li class="level1"><div class="li"> Included your new package feed into the OpenWrt build system</div>
+</li>
+<li class="level1"><div class="li"> Updated the package index, and installed your package from the feed</div>
+</li>
+<li class="level1"><div class="li"> Built, deployed and tested the application on your target device</div>
+</li>
+<li class="level1"><div class="li"> Migrated your application to use GNU make</div>
+</li>
+<li class="level1"><div class="li"> Tested building your application using GNU make</div>
+</li>
+<li class="level1"><div class="li"> Updated the package manifest to use GNU make as a build tool</div>
+</li>
+</ul>
+
+<p>
+If you missed one or more of these steps, review the previous chapters.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Patching your application: Adding new files&quot;,&quot;hid&quot;:&quot;patching_your_applicationadding_new_files&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;128-1151&quot;} -->
+<h2 class="sectionedit2" id="about_patches">About patches</h2>
+<div class="level2">
+
+<p>
+During the life cycle of an application, from the initial design until the application is decommissioned, it often requires changes or fixes to the original source code or associated files in order to operate correctly. Changing the application source code is especially common when using when porting software to run on a different computer architecture. In the OpenWrt build system, this change management is accomplished with a tool called Quilt.
+</p>
+
+<p>
+There is an <a href="/docs/guide-developer/toolchain/use-patches-with-buildsystem" class="wikilink1" title="docs:guide-developer:toolchain:use-patches-with-buildsystem" data-wiki-id="docs:guide-developer:toolchain:use-patches-with-buildsystem">existing page</a> in the OpenWrt wiki describing the tool in more detail. <strong>Please review at least the first section in this page</strong>, as there is crucial information on how the create a <code>.quiltrc</code> file, which ensures that the patches you create follow the established standards of the OpenWrt build system.
+</p>
+
+<p>
+At this point it is a good idea to ensure that Quilt can be found from the PATH environment variable. The OpenWrt build system installs the &#039;quilt&#039; tool into the &#039;bin&#039; directory under the target-independent tools&#039; folder. We added this directory to our path in the <a href="/docs/guide-developer/helloworld/chapter1#adjusting_the_path_variable" class="wikilink1" title="docs:guide-developer:helloworld:chapter1" data-wiki-id="docs:guide-developer:helloworld:chapter1">first chapter</a>. To ensure that you can invoke the tool, you can simply issue:
+</p>
+<pre class="code">quilt --version</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;About patches&quot;,&quot;hid&quot;:&quot;about_patches&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;1152-2457&quot;} -->
+<h2 class="sectionedit3" id="preparing_the_source_code">Preparing the source code</h2>
+<div class="level2">
+
+<p>
+Creating a patch in the OpenWrt build system is very straightforward, but before we can start applying patches, we need to prepare our source code using a special option. We do so with the following commands:
+</p>
+<pre class="code">cd /home/buildbot/source/
+make package/helloworld/{clean,prepare} QUILT=1</pre>
+
+<p>
+Note that when invoking &#039;make&#039; with the <code>QUILT=1</code> argument, the source code is <strong>not</strong> intended for building final packages. The argument creates additional folders and files into the build directory, and these files may confuse the build process.
+</p>
+
+<p>
+Our final preparation step is to navigate into the build directory where the source codes reside, and ensure that all existing patches are applied:
+</p>
+<pre class="code">cd build_dir/target-.../helloworld-1.0/
+quilt push -a</pre>
+
+<p>
+The <code>quilt push</code> command does not do anything at this point, since our application does not yet contain any patches. However, issuing these commands is something you would do each time you start working on a package that has multiple authors, who might&#039;ve submitted patches that you are not aware of.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Preparing the source code&quot;,&quot;hid&quot;:&quot;preparing_the_source_code&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;2458-3568&quot;} -->
+<h2 class="sectionedit4" id="creating_the_first_patch">Creating the first patch</h2>
+<div class="level2">
+
+<p>
+We now begin patching our application. To do so, we must first create a <code>patch context</code> for Quilt:
+</p>
+<pre class="code">quilt new 100-add_module_files.patch</pre>
+
+<p>
+The name of the patch comes from the conventions of the OpenWrt build system. The names usually begin with a free ordinal number, followed by a short description of what they do. The ordinal numbers have a specific meaning in some contexts, but oftentimes you can simply use a numbering starting from &#039;000&#039;.
+</p>
+
+<p>
+The author of this article chose the number &#039;100&#039; to signify that this patch adds new functionality to the existing source code base, and that this functionality has not yet been integrated into the original source code (upstream).
+</p>
+
+<p>
+The output of the command shows that this patch file was created and is now at the top of the Quilt&#039;s <code>patch stack</code>.
+</p>
+
+<p>
+In this patch, we will add new functionality for our “Hello, world!” application. The functionality will be split into two different files, a header file and a C source file. Our first task is to instruct &#039;quilt&#039; to start tracking these files in the current patch context:
+</p>
+<pre class="code">quilt add functions.c
+quilt add functions.h</pre>
+
+<p>
+We then begin editing the files, one by one, using the following commands:
+</p>
+<pre class="code">touch functions.c
+quilt edit functions.c</pre>
+
+<p>
+Write the following content into the new file:
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-developer/helloworld/chapter7?codeblock=6" title="Download Snippet" class="mediafile mf_c">functions.c</a></dt>
+<dd><pre class="code c"><span class="kw4">int</span> add<span class="br0">&#40;</span><span class="kw4">int</span> a<span class="sy0">,</span> <span class="kw4">int</span> b<span class="br0">&#41;</span>
+<span class="br0">&#123;</span>
+    <span class="kw1">return</span> a <span class="sy0">+</span> b<span class="sy0">;</span>
+<span class="br0">&#125;</span></pre>
+</dd></dl>
+
+<p>
+Create the second file and begin modifying it with the following commands:
+</p>
+<pre class="code">touch functions.h
+quilt edit functions.h</pre>
+
+<p>
+Write the following content into the file:
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-developer/helloworld/chapter7?codeblock=8" title="Download Snippet" class="mediafile mf_h">functions.h</a></dt>
+<dd><pre class="code c"><span class="kw4">int</span> add<span class="br0">&#40;</span><span class="kw4">int</span><span class="sy0">,</span> <span class="kw4">int</span><span class="br0">&#41;</span><span class="sy0">;</span></pre>
+</dd></dl>
+
+<p>
+At this point we should review the changes that Quilt has recorded so far by issuing <code>quilt diff</code>. From the command output, we can observe that two completely new files have been added, and their new content is being shown. 
+</p>
+
+<p>
+Since we are satisfied with these changes, we can issue <code>quilt refresh</code> to accept these changes as content of the patch.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Creating the first patch&quot;,&quot;hid&quot;:&quot;creating_the_first_patch&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:4,&quot;range&quot;:&quot;3569-5584&quot;} -->
+<h2 class="sectionedit5" id="including_the_first_patch_into_the_package">Including the first patch into the package</h2>
+<div class="level2">
+
+<p>
+In the OpenWrt build system, patches are created and modified in the source code directory, and then migrated over to the package that they belong to. In order for us to migrate the patch data that we just created into the package proper, we issue the following commands:
+</p>
+<pre class="code bash"><span class="kw3">cd</span> <span class="sy0">/</span>home<span class="sy0">/</span>buildbot<span class="sy0">/</span><span class="kw3">source</span>
+<span class="kw2">make</span> package<span class="sy0">/</span>helloworld<span class="sy0">/</span>update</pre>
+
+<p>
+At this point, we can review our handiwork by checking the content of our package feed folder, and the content of our original source code folder:
+</p>
+<pre class="code bash"><span class="kw2">ls</span> <span class="re5">-la</span> <span class="sy0">/</span>home<span class="sy0">/</span>buildbot<span class="sy0">/</span>mypackages<span class="sy0">/</span>examples<span class="sy0">/</span>helloworld
+<span class="kw2">ls</span> <span class="re5">-la</span> <span class="sy0">/</span>home<span class="sy0">/</span>buildbot<span class="sy0">/</span>helloworld</pre>
+
+<p>
+As we can see, the OpenWrt build system migrated our newly-created patch file into the folder where the package manifest is. The original source code folder remains completely unaware of our changes.
+</p>
+
+<p>
+Now, we need to modify <code>mypackages/examples/helloworld/Makefile</code> to copy the patch to the build directory. The earlier version used the <code>cp</code> command without the <code>-r</code> option. We need to add the <code>-r</code> option to copy directories.
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-developer/helloworld/chapter7?codeblock=11" title="Download Snippet" class="mediafile mf_">Makefile</a></dt>
+<dd><pre class="code make">define Build<span class="sy0">/</span>Prepare
+		mkdir <span class="sy0">-</span>p <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">PKG_BUILD_DIR</span><span class="br0">&#41;</span>
+		cp <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">SOURCE_DIR</span><span class="br0">&#41;</span><span class="sy0">/*</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">PKG_BUILD_DIR</span><span class="br0">&#41;</span> <span class="sy0">-</span>r
+		<span class="sy0">$</span><span class="br0">&#40;</span>Build<span class="sy0">/</span>Patch<span class="br0">&#41;</span>
+endef</pre>
+</dd></dl>
+
+<p>
+We can ensure that our new patch is applied correctly during the build process:
+</p>
+<pre class="code bash"><span class="kw3">cd</span> <span class="sy0">/</span>home<span class="sy0">/</span>buildbot<span class="sy0">/</span><span class="kw3">source</span>
+<span class="kw2">make</span> package<span class="sy0">/</span>helloworld<span class="sy0">/</span><span class="br0">&#123;</span>clean,prepare<span class="br0">&#125;</span>
+<span class="kw2">ls</span> <span class="re5">-la</span> build_dir<span class="sy0">/</span>target-<span class="sy0">&lt;</span><span class="kw2">arch</span><span class="sy0">&gt;</span>_<span class="sy0">&lt;</span>subarch<span class="sy0">&gt;</span>_<span class="sy0">&lt;</span>clib<span class="sy0">&gt;</span>_<span class="sy0">&lt;</span>clibversion<span class="sy0">&gt;/</span></pre>
+
+<p>
+We observe that the patches were applied, and the new files are present in the build directory.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Including the first patch into the package&quot;,&quot;hid&quot;:&quot;including_the_first_patch_into_the_package&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:5,&quot;range&quot;:&quot;5585-7148&quot;} -->
+<h2 class="sectionedit6" id="conclusion">Conclusion</h2>
+<div class="level2">
+
+<p>
+In this chapter, we scratched the surface of the OpenWrt build system&#039;s patching framework. We created a new patch, added two new files into the patch context, added content for the files and updated the patch context to reflect these changes. We then updated the package to migrate the newly-created patch over to the folder where the package manifest file resides.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Conclusion&quot;,&quot;hid&quot;:&quot;conclusion&quot;,&quot;codeblockOffset&quot;:13,&quot;secid&quot;:6,&quot;range&quot;:&quot;7149-&quot;} --><div class="clearer"></div><div class="docnavbar showtoc"><div class="leftnav">← <a href="/docs/guide-developer/helloworld/chapter6" class="wikilink1" title="docs:guide-developer:helloworld:chapter6" data-wiki-id="docs:guide-developer:helloworld:chapter6">Previous Chapter </a>&nbsp;</div><div class="centernav"><a href="/docs/guide-developer/helloworld/start" class="wikilink1" title="docs:guide-developer:helloworld:start" data-wiki-id="docs:guide-developer:helloworld:start">Helloworld overview </a>&nbsp;</div><div class="rightnav">&nbsp;<a href="/docs/guide-developer/helloworld/chapter8" class="wikilink1" title="docs:guide-developer:helloworld:chapter8" data-wiki-id="docs:guide-developer:helloworld:chapter8">Next Chapter </a> →</div></div>

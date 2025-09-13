@@ -1,0 +1,194 @@
+
+<h1 class="sectionedit1" id="darkstat">Darkstat</h1>
+<div class="level1">
+
+<p>
+<a href="https://unix4lyfe.org/darkstat/" class="urlextern" title="https://unix4lyfe.org/darkstat/" rel="ugc nofollow">https://unix4lyfe.org/darkstat/</a>
+</p>
+
+<p>
+Darkstat is a packet sniffer that runs as a background process on a cable/DSL router, gathers all sorts of statistics about network usage, and serves them over <abbr title="Hypertext Transfer Protocol">HTTP</abbr>.  One advantage of darkstat is that it can monitor <abbr title="Internet Protocol version 6">IPv6</abbr> traffic in addition to <abbr title="Internet Protocol version 4">IPv4</abbr> traffic.
+</p>
+
+<p>
+It is a very stable application that runs smoothly and requires no maintenance.
+</p>
+
+<p>
+NOTE: on 2020-06-07 it was reported that darkstat prevent ssh of working due to a change of ownership of the file /tmp/empty that should be own by root for ssh to work.  To correct this, stop darkstat and edit the file /etc.init.d/darkstat to comment the following line:
+</p>
+
+<p>
+chown $USER:$GROUP $RUN_D
+</p>
+
+<p>
+The line should look like this:
+</p>
+
+<p>
+# chown $USER:$GROUP $RUN_D
+</p>
+
+<p>
+and start darkstat again.
+</p>
+
+<p>
+Alternatively, instead of the solution above, edit the following line in the file /etc/init.d/darkstat:
+</p>
+
+<p>
+RUN_D=/var/empty
+</p>
+
+<p>
+to be like that:
+</p>
+
+<p>
+RUN_D=/var/empty/darkstat
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Darkstat&quot;,&quot;hid&quot;:&quot;darkstat&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-957&quot;} -->
+<h2 class="sectionedit2" id="installation">Installation</h2>
+<div class="level2">
+
+<p>
+Installation is very simple:
+</p>
+<pre class="code bash">opkg <span class="kw2">install</span> darkstat
+<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>darkstat <span class="kw3">enable</span>
+<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>darkstat start</pre>
+
+<p>
+You can also install it through luci.
+</p>
+
+<p>
+Then is you open a web browser at the address of the router on port 667, you will see the traffic graphs.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation&quot;,&quot;hid&quot;:&quot;installation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;958-1254&quot;} -->
+<h2 class="sectionedit3" id="configuration">Configuration</h2>
+<div class="level2">
+
+<p>
+In OpenWrt, <strong>darkstat</strong> can use almost all of the regular darkstat parameters.  These are set in the file <em>/etc/config/darkstat
+</em>
+</p>
+<pre class="code bash">config darkstat
+	option interface        <span class="st_h">'lan'</span>
+	option syslog           <span class="kw2">false</span>
+	option verbose          <span class="kw2">false</span>
+	option no_promisc       <span class="kw2">false</span>
+	option no_dns           <span class="kw2">false</span>
+	option no_macs          <span class="kw2">false</span>
+	option no_lastseen      <span class="kw2">false</span>
+	option httpaddr         <span class="st_h">'0.0.0.0'</span>
+<span class="co0">#	option httpport         '667'</span>
+<span class="co0">#	option network_filter   'not (src net 192.168.1 and dst net 192.168.1)'</span>
+<span class="co0">#	option network_netmask  '192.168.1.0/255.255.255.0'</span>
+	option local_only       <span class="kw2">false</span>
+<span class="co0">#	option hosts_max        '1000'</span>
+<span class="co0">#	option hosts_keep       '500'</span>
+<span class="co0">#	option ports_max        '60'</span>
+<span class="co0">#	option ports_keep       '30'</span>
+<span class="co0">#	option highest_port     '65534'</span>
+<span class="co0">#	option export_file      'darkstat_export.log'</span>
+<span class="co0">#	option import_file      'darkstat_export.log'</span>
+<span class="co0">#	option daylog_file	'darkstat_daylog.log'</span></pre>
+
+<p>
+<strong>Note</strong> In OpenWrt/LEDE 17.01 and below, the last 3 parameters are not available.  The config file above is the one currently 18.06 and above (you may need to update the package in 18.06 to have them).  Also, in OpenWrt/LEDE 17.01 and below, the init script in /etc/init.d is not a procd script as in 18.06 and above.
+</p>
+
+<p>
+<strong>Note</strong>: the init script and the config file found in trunk are compatible with the darkstat found in OpenWrt/LEDE 17.01 and below and provides the last 3 parameters.
+</p>
+<div class="table sectionedit4"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Option </th><th class="col1"> Explanation </th><th class="col2"> Default </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0">interface</td><td class="col1">Capture traffic on the specified network interface.  This is the only mandatory argument.</td><td class="col2">&#039;lan&#039;</td>
+	</tr>
+	<tr class="row2">
+		<td class="col0">syslog</td><td class="col1">Errors, warnings, and verbose messages will go to syslog (facility daemon, priority debug) instead of stderr.</td><td class="col2">false</td>
+	</tr>
+	<tr class="row3">
+		<td class="col0">verbose</td><td class="col1">Produce more verbose debugging messages.</td><td class="col2">false</td>
+	</tr>
+	<tr class="row4">
+		<td class="col0">no_promisc</td><td class="col1">Do  not  use  promiscuous  mode  to capture.</td><td class="col2">false</td>
+	</tr>
+	<tr class="row5">
+		<td class="col0">no_dns</td><td class="col1">Do not resolve IPs to host names.  This can significantly reduce memory footprint on small systems as an extra process is created for <abbr title="Domain Name System">DNS</abbr> resolution.</td><td class="col2">false</td>
+	</tr>
+	<tr class="row6">
+		<td class="col0">no_macs</td><td class="col1">Do not display MAC addresses in the hosts table.</td><td class="col2">false</td>
+	</tr>
+	<tr class="row7">
+		<td class="col0">httpaddr</td><td class="col1">Bind the web interface to the specified address.  The default is to listen on all interfaces.</td><td class="col2">&#039;0.0.0.0&#039;</td>
+	</tr>
+	<tr class="row8">
+		<td class="col0">httpport</td><td class="col1">Bind the web interface to the specified port.  The default is 667.</td><td class="col2">Commented out</td>
+	</tr>
+	<tr class="row9">
+		<td class="col0">network_filter</td><td class="col1">Use the specified filter expression when capturing traffic.  The filter syntax is beyond the scope of this wiki page; please refer to the tcpdump documentation.</td><td class="col2">Commented out</td>
+	</tr>
+	<tr class="row10">
+		<td class="col0">network_netmask</td><td class="col1">Define  a “local network” according to the network and netmask addresses.  All traffic entering or leaving this network will be graphed, as opposed to the default behaviour of only graphing traffic to and from the local host.</td><td class="col2">Commented out</td>
+	</tr>
+	<tr class="row11">
+		<td class="col0">local_only</td><td class="col1">Make  the  web interface only display hosts on the “local network.”  This is intended to be used together with the <em class="u">network_netmask</em> argument.</td><td class="col2">false</td>
+	</tr>
+	<tr class="row12">
+		<td class="col0">hosts_max</td><td class="col1">The maximum number of hosts that will be kept in the hosts table.  This is used to limit how  much accounting  data  will  be  kept  in  memory.   The  number  of <em class="u">hosts-max</em>  must be greater than <em class="u">hosts-keep</em>.</td><td class="col2">Commented out</td>
+	</tr>
+	<tr class="row13">
+		<td class="col0">hosts_keep</td><td class="col1">When the hosts table hits <em class="u">hosts-max</em> and traffic is seen from a new host, we clean out the  hosts table, keeping only the top <em class="u">hosts-keep</em> number of hosts, sorted by total traffic.</td><td class="col2">Commented out</td>
+	</tr>
+	<tr class="row14">
+		<td class="col0">ports_max</td><td class="col1">The  maximum  number  of ports that will be tracked for each host.  This is used to limit how much accounting data will be  kept  in  memory.   The  number  of  <em class="u">ports-max</em>  must  be  greater  than <em class="u">ports-keep</em>.</td><td class="col2">Commented out</td>
+	</tr>
+	<tr class="row15">
+		<td class="col0">ports_keep</td><td class="col1">When a ports table fills up, this many ports are kept and the rest are discarded.</td><td class="col2">Commented out</td>
+	</tr>
+	<tr class="row16">
+		<td class="col0">highest_port</td><td class="col1">Ports that are numerically higher than this will not appear in the per-host ports tables, although their traffic will still be accounted for.  This can be used to hide ephemeral ports.  By default, all ports are tracked.</td><td class="col2">Commented out</td>
+	</tr>
+	<tr class="row17">
+		<td class="col0">export_file</td><td class="col1">On shutdown, or upon receiving SIGUSR1 or SIGUSR2, export the  in-memory  database  to  the  named file in the /tmp/empty directory.</td><td class="col2">Commented out</td>
+	</tr>
+	<tr class="row18">
+		<td class="col0">import_file</td><td class="col1">Upon starting, import a darkstat database from the named file in the /tmp/empty directory.</td><td class="col2">Commented out</td>
+	</tr>
+	<tr class="row19">
+		<td class="col0">daylog_file</td><td class="col1">Log  daily  traffic statistics into the named file in the /tmp/empty directory. The daylog format is: localtime time_t bytes_in bytes_out pkts_in pkts_outs. Lines starting with a # are comments stating when logging started and stopped. </td><td class="col2">Commented out</td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;2683-5722&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;1255-5722&quot;} -->
+<h2 class="sectionedit5" id="other_bandwidth_monitoring_applications">Other Bandwidth Monitoring Applications</h2>
+<div class="level2">
+
+<p>
+Darkstat shows the traffic in real time the traffic for different hosts within your network, but it does not show the traffic profile of the various host over time.
+</p>
+
+<p>
+Another application, <a href="/docs/guide-user/services/network_monitoring/bandwidthd" class="wikilink1" title="docs:guide-user:services:network_monitoring:bandwidthd" data-wiki-id="docs:guide-user:services:network_monitoring:bandwidthd">Bandwidthd</a> allows to see the traffic profile of the various host over time.  It also indicate the level of traffic for various type, such as <abbr title="Transmission Control Protocol">TCP</abbr>, <abbr title="User Datagram Protocol">UDP</abbr>, <abbr title="Internet Control Message Protocol">ICMP</abbr>, <abbr title="Hypertext Transfer Protocol">HTTP</abbr>, <abbr title="Simple Mail Transfer Protocol">SMTP</abbr>, <abbr title="File Transfer Protocol">FTP</abbr>.  But it cannot show the <abbr title="Internet Protocol version 6">IPv6</abbr> traffic (maybe one day!!).
+</p>
+
+<p>
+The various application for monitoring bandwidth in OpenWrt can be found in the documentation page about <a href="/docs/guide-user/services/network_monitoring/start" class="wikilink1" title="docs:guide-user:services:network_monitoring:start" data-wiki-id="docs:guide-user:services:network_monitoring:start">Network Monitoring</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Other Bandwidth Monitoring Applications&quot;,&quot;hid&quot;:&quot;other_bandwidth_monitoring_applications&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:5,&quot;range&quot;:&quot;5723-&quot;} -->

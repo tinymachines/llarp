@@ -1,0 +1,213 @@
+
+<h1 class="sectionedit1" id="configuring_kexec">Configuring kexec</h1>
+<div class="level1">
+
+<p>
+I have a working kexeced system on a TP-Link TL-WR741ND.
+After making the USB mod, and additional experimenting, I ended up with a working kexeced system.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuring kexec&quot;,&quot;hid&quot;:&quot;configuring_kexec&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-189&quot;} -->
+<h2 class="sectionedit2" id="prepare_usb_bootable_system">Prepare USB Bootable System</h2>
+<div class="level2">
+<ol>
+<li class="level1"><div class="li"> <strong>Download sources:</strong> <pre class="code bash"><span class="kw2">svn checkout</span> svn:<span class="sy0">//</span>svn.openwrt.org<span class="sy0">/</span>openwrt<span class="sy0">/</span>branches<span class="sy0">/</span>backfire</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> <strong>Change directory to bildroot, then update &amp; install feeds:</strong> <pre class="code bash"><span class="kw3">cd</span> backfire <span class="sy0">&amp;&amp;</span> .<span class="sy0">/</span>scripts<span class="sy0">/</span>feeds update <span class="sy0">&amp;&amp;</span> .<span class="sy0">/</span>scripts<span class="sy0">/</span>feeds <span class="kw2">install</span> <span class="re5">-a</span></pre>
+</div>
+</li>
+<li class="level1 node"><div class="li"> <strong>Create defconfig and enter MenuConfig:</strong> <pre class="code bash"><span class="kw2">make</span> <span class="re2">V</span>=s defconfig <span class="sy0">&amp;&amp;</span> <span class="kw2">make</span> menuconfig</pre>
+</div>
+<ol>
+<li class="level2 node"><div class="li"> <strong>Select the following:</strong></div>
+<ol>
+<li class="level3"><div class="li"> <code>Target System</code> <span class="wrap_em "><span class="wrap_em ">→</span></span> <code>Atheros AR71xx/AR7240/AR913x</code></div>
+</li>
+<li class="level3"><div class="li"> <code>Target Profile</code> <span class="wrap_em ">→</span> <code>TP-LINK TL-WR741ND v1</code></div>
+</li>
+<li class="level3"><div class="li"> <code>Target Images</code> <span class="wrap_em ">→</span> <code>ramdisk</code> <span class="wrap_em ">→</span> <code>Compression</code> <span class="wrap_em ">→</span> <code>lzma</code></div>
+</li>
+<li class="level3"><div class="li"> <code>Target Images</code> <span class="wrap_em ">→</span> <code>tar.gz</code><br/>
+<br/>
+</div>
+</li>
+<li class="level3 node"><div class="li"> <code>Kernel modules</code> <span class="wrap_em ">→</span> <code>Filesystems</code> <span class="wrap_em ">→</span> </div>
+<ol>
+<li class="level4"><div class="li"> <code>kmod-fs-ext2</code></div>
+</li>
+<li class="level4"><div class="li"> <code>kmod-fs-ext3</code><br/>
+<br/>
+</div>
+</li>
+</ol>
+</li>
+<li class="level3 node"><div class="li"> <code>Kernel modules</code> <span class="wrap_em ">→</span> <code>USB Support</code> <span class="wrap_em ">→</span> <code>kmod-usb-core</code></div>
+<ol>
+<li class="level4"><div class="li"> <code>kmod-usb-ohci</code></div>
+</li>
+<li class="level4"><div class="li"> <code>kmod-usb-storage</code><br/>
+<br/>
+</div>
+</li>
+</ol>
+</li>
+<li class="level3"><div class="li"> <code>Utilities</code> <span class="wrap_em ">→</span> <code>kexec tools</code> <span class="wrap_em ">→</span> <code>Configuration</code> <span class="wrap_em ">→</span> <code>(mips) Target name for kexec kernel</code><br/>
+<br/>
+</div>
+</li>
+</ol>
+</li>
+<li class="level2"><div class="li"> <strong>Exit from menu and save configuration</strong><br/>
+<br/>
+</div>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> <pre class="code bash"><span class="kw2">make</span> <span class="re2">V</span>=s</pre>
+</div>
+</li>
+<li class="level1 node"><div class="li"> <strong>Modify:</strong> </div>
+<ol>
+<li class="level2 node"><div class="li"> <strong><code>./build_dir/linux-ar71xx/linux-2.6.32.27/arch/mips/kernel/machine_kexec.c</code></strong></div>
+<ol>
+<li class="level3"><div class="li"> <strong>Change Line 55 to:</strong> <code>kexec_start_address = (unsigned long) phys_to_virt(image<span class="wrap_em ">→</span>start);</code><br/>
+<br/>
+</div>
+</li>
+</ol>
+</li>
+<li class="level2 node"><div class="li"> <strong><code>./build_dir/toolchain-mips_r2_gcc-4.3.3+cs_uClibc-0.9.30.1/linux-2.6.32.27/arch/mips/kernel/machine_kexec.c</code></strong></div>
+<ol>
+<li class="level3"><div class="li"> <strong>Change Line 55 to:</strong> <code>kexec_start_address = (unsigned long) phys_to_virt(image<span class="wrap_em ">→</span>start);</code><br/>
+<br/>
+</div>
+</li>
+</ol>
+</li>
+<li class="level2 node"><div class="li"> <strong>For USB support:</strong></div>
+<ol>
+<li class="level3 node"><div class="li"> <strong><code>./target/linux/ar71xx/files/arch/mips/ar71xx/Kconfig</code></strong></div>
+<ol>
+<li class="level4"><div class="li"> <strong>Add new line 176</strong> <em>(under <code>config AR71XX_MACH_TL_WR741ND</code>)</em><strong>:</strong> <code>select AR71XX_DEV_USB</code><br/>
+<br/>
+</div>
+</li>
+</ol>
+</li>
+<li class="level3 node"><div class="li"> <strong><code>./target/linux/ar71xx/files/arch/mips/ar71xx/mach-tl-wr741nd.c</code></strong></div>
+<ol>
+<li class="level4"><div class="li"> <strong>Add Line 22</strong> <em>(under <code>includes</code>)</em><strong>:</strong> <code>#include “dev-usb.h”</code></div>
+</li>
+<li class="level4"><div class="li"> <strong>Add line 102</strong> <em>(under <code>static void __init tl_wr741nd_setup(void)</code>)</em><strong>:</strong> <code>ar71xx_add_device_usb();</code><br/>
+<br/>
+</div>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li class="level1 node"><div class="li"> <pre class="code bash"><span class="kw2">make</span> kernel_menuconfig</pre>
+</div>
+<ol>
+<li class="level2 node"><div class="li"> <strong>Select the following:</strong></div>
+<ol>
+<li class="level3"><div class="li"> <code>Kernel type</code> <span class="wrap_em ">→</span> <code>Kexec system call</code><br/>
+<br/>
+</div>
+</li>
+<li class="level3 node"><div class="li"> <code>General setup</code> <span class="wrap_em ">→</span> <code>Support initial ramdisks compressed using LZMA</code></div>
+<ol>
+<li class="level4"><div class="li"> <code>Built-in initramfs compression mode</code> <span class="wrap_em ">→</span> <code>LZMA</code><br/>
+<br/>
+</div>
+</li>
+</ol>
+</li>
+<li class="level3 node"><div class="li"> <code>Device Drivers</code> <span class="wrap_em ">→</span> <code>SCSI device support</code> <span class="wrap_em ">→</span> <code>M SCSI device support</code></div>
+<ol>
+<li class="level4"><div class="li"> <code>M SCSI disk support</code></div>
+</li>
+<li class="level4"><div class="li"> <code>Probe all LUNs on each SCSI device</code><br/>
+<br/>
+</div>
+</li>
+</ol>
+</li>
+<li class="level3 node"><div class="li"> <code>Device Drivers</code> <span class="wrap_em ">→</span> <code>USB support</code> <span class="wrap_em ">→</span> <code>M Support for Host-side USB</code></div>
+<ol>
+<li class="level4 node"><div class="li"> <code>M OHCI HCD support</code> <span class="wrap_em ">→</span> <code>USB OHCI support for Atheros AR71xx</code></div>
+<ol>
+<li class="level5"><div class="li"> <code>M USB Mass Storage support</code></div>
+</li>
+<li class="level5"><div class="li"> <code>USB announce new devices</code><br/>
+<br/>
+</div>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li class="level3"><div class="li"> <code>Kernel hacking</code> <span class="wrap_em ">→</span> <code>Default kernel command string</code> <span class="wrap_em ">→</span> <code>rootfstype=ext2 noinitrd console=ttyS0,115200 board=TL-WR741ND</code><br/>
+<br/>
+</div>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li class="level1 node"><div class="li"> <strong>Modify: <code>./package/base-files/files/etc/preinit</code></strong></div>
+<ol>
+<li class="level2"><div class="li"> <strong>Below <code>. /etc/diag.sh</code>, add line:</strong> <code>rootfs=/dev/sda1</code><br/>
+<br/>
+</div>
+</li>
+<li class="level2 node"><div class="li"> <strong>Optionally you can modify: <code>./target/linux/generic-2.6/base-files/init</code></strong></div>
+<ol>
+<li class="level3 node"><div class="li"> <strong>Change line 50 to:</strong> <code>mount $rootfs /mnt -o noatime</code> </div>
+<ul>
+<li class="level4"><div class="li"> <em>Blocks wear out faster if written to every time a file is accessed</em><br/>
+<br/>
+</div>
+</li>
+</ul>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> <pre class="code bash"><span class="kw2">make</span> clean <span class="sy0">&amp;&amp;</span> <span class="kw2">make</span> <span class="re2">V</span>=s</pre>
+</div>
+</li>
+<li class="level1 node"><div class="li"> <strong>Repeat Step 5</strong></div>
+<ul>
+<li class="level2"><div class="li"> <em>Clean operation creates issues,  however it&#039;s necessary for the USB patch to work</em><br/>
+<br/>
+</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> <pre class="code bash"><span class="kw2">make</span> <span class="re2">V</span>=s</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> <strong>Partition external storage, then format first partition as ext2</strong><br/>
+<br/>
+</div>
+</li>
+<li class="level1"><div class="li"> <strong>Extract contents of <code>./bin/ar71xx/openwrt-ar71xx-rootfs.tar.gz</code> to root of file system</strong><br/>
+<br/>
+</div>
+</li>
+<li class="level1"><div class="li"> <strong>Copy <code>./bin/ar71xx/openwrt-ar71xx-vmlinux-initramfs.elf</code> to root of file system</strong></div>
+</li>
+</ol>
+
+<p>
+<em>(to be continued)</em>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Prepare USB Bootable System&quot;,&quot;hid&quot;:&quot;prepare_usb_bootable_system&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;190-&quot;} -->

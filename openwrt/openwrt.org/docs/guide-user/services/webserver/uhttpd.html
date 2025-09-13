@@ -1,0 +1,392 @@
+
+<h1 class="sectionedit1" id="uhttpd_web_server_configuration">uHTTPd Web Server Configuration</h1>
+<div class="level1">
+
+<p>
+The <code>/etc/config/uhttpd</code> configuration is provided by the <a href="/docs/guide-user/services/webserver/http.uhttpd" class="wikilink1" title="docs:guide-user:services:webserver:http.uhttpd" data-wiki-id="docs:guide-user:services:webserver:http.uhttpd">uhttpd</a> web server package.
+This file defines the behavior of the server and default values for certificates generated for <abbr title="Secure Socket Layer">SSL</abbr> operation. uhttpd supports multiple instances (i.e. multiple listen ports, each with its own document root and other features) as well as cgi, php7, perl and lua.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;uHTTPd Web Server Configuration&quot;,&quot;hid&quot;:&quot;uhttpd_web_server_configuration&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-447&quot;} -->
+<h2 class="sectionedit2" id="sections">Sections</h2>
+<div class="level2">
+
+<p>
+There are two sections defined, the section of type <code>uhttpd</code> contains general server settings while the <code>cert</code> one defines the default values for <abbr title="Secure Socket Layer">SSL</abbr> certificates.
+</p>
+
+<p>
+For information on sections and UCI configuration see <a href="/docs/guide-user/base-system/uci" class="wikilink1" title="docs:guide-user:base-system:uci" data-wiki-id="docs:guide-user:base-system:uci">The UCI System</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Sections&quot;,&quot;hid&quot;:&quot;sections&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;448-743&quot;} -->
+<h3 class="sectionedit3" id="server_settings">Server Settings</h3>
+<div class="level3">
+
+<p>
+A minimal <code>uhttpd</code> config section must consist of at least the document root and <abbr title="Hypertext Transfer Protocol">HTTP</abbr> listen options:
+</p>
+<pre class="code bash">config <span class="st_h">'uhttpd'</span> <span class="st_h">'main'</span>
+        option <span class="st_h">'listen_http'</span> <span class="st_h">'80'</span>
+        option <span class="st_h">'home'</span>        <span class="st_h">'/www'</span></pre>
+
+<p>
+The options defined for this section are outlined below.
+</p>
+<div class="table sectionedit4"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Name </th><th class="col1"> Type </th><th class="col2"> Required </th><th class="col3"> Default </th><th class="col4"> Description </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> <code>listen_http</code> </td><td class="col1"> list of port or address:port pairs </td><td class="col2 leftalign"> yes, if <code>&#039;listen_https</code>&#039; is not given  </td><td class="col3"> <em>(none)</em> </td><td class="col4"> Specifies the ports and addresses to listen on for plain <abbr title="Hypertext Transfer Protocol">HTTP</abbr> access. If only a port number is given, the server will attempt to serve both <abbr title="Internet Protocol version 4">IPv4</abbr> and <abbr title="Internet Protocol version 6">IPv6</abbr> requests. Use <code>0.0.0.0:80</code> to bind at port 80 only on <abbr title="Internet Protocol version 4">IPv4</abbr> interfaces or <code>[::]:80</code> to serve only <abbr title="Internet Protocol version 6">IPv6</abbr>. To run on multiple addresses, specifying each, you can list one address (or address:port) per line. You can use <abbr title="Domain Name System">DNS</abbr> or even <a href="/docs/guide-user/services/ddns/client" class="wikilink1" title="docs:guide-user:services:ddns:client" data-wiki-id="docs:guide-user:services:ddns:client">DynDNS</a> domain instead of <abbr title="Internet Protocol">IP</abbr> but note that this is not any kind of virtual hosting </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> <code>listen_https</code> </td><td class="col1"> list of port or address:port pairs </td><td class="col2"> yes, if <code>&#039;listen_http</code>&#039; is not given </td><td class="col3"> <em>(none)</em> </td><td class="col4"> Specifies the ports and addresses to listen on for encrypted <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> access. The format is the same as for <code>listen_http</code>. <strong> Read below for extra details</strong> </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> <code>home</code> </td><td class="col1"> directory path </td><td class="col2"> yes </td><td class="col3"> <code>/www</code> </td><td class="col4"> Defines the server document root </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> <code>cert</code> </td><td class="col1"> file path </td><td class="col2"> yes if <code>listen_https</code> is given, else no </td><td class="col3"> <code>/etc/uhttpd.crt</code> </td><td class="col4"> ASN.1/DER or PEM certificate used to serve <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> connections. If you want to you use an intermediate certificate you concatenate it to one file (PEM only!). Some PEM formats may require the luci-ssl-openssl package. </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0"> <code>key</code> </td><td class="col1"> file path </td><td class="col2"> yes if <code>listen_https</code> is given, else no </td><td class="col3"> <code>/etc/uhttpd.key</code> </td><td class="col4"> ASN.1/DER or PEM private key used to serve <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> connections. Some PEM formats may require the luci-ssl-openssl package. </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0"> <code>cgi_prefix</code> </td><td class="col1"> string </td><td class="col2"> no </td><td class="col3"> <code>/cgi-bin</code> </td><td class="col4"> Defines the prefix for CGI scripts, relative to the document root. CGI support is disabled if this option is missing </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0"> <code>lua_prefix</code> </td><td class="col1"> string </td><td class="col2"> no </td><td class="col3"> <em>(none)</em> </td><td class="col4"> Defines the prefix for dispatching requests to the embedded Lua interpreter, relative to the document root. Lua support is disabled if this option is missing </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0"> <code>lua_handler</code> </td><td class="col1"> file path </td><td class="col2"> yes if <code>lua_prefix</code> is given, else no </td><td class="col3"> <em>(none)</em> </td><td class="col4"> Lua handler script used to initialize the Lua runtime on server start </td>
+	</tr>
+	<tr class="row9">
+		<td class="col0"> <code>script_timeout</code> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> <code>60</code> </td><td class="col4"> Maximum wait time for CGI or Lua requests in seconds. Requested executables are terminated if no output was generated until the timeout expired </td>
+	</tr>
+	<tr class="row10">
+		<td class="col0"> <code>network_timeout</code> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> <code>30</code> </td><td class="col4"> Maximum wait time for network activity. Requested executables are terminated and connection is shut down if no network activity occured for the specified number of seconds </td>
+	</tr>
+	<tr class="row11">
+		<td class="col0"> <code>realm</code> </td><td class="col1"> string </td><td class="col2"> no </td><td class="col3"> <em>local hostname</em> </td><td class="col4"> Basic authentication realm when prompting the client for credentials (<abbr title="Hypertext Transfer Protocol">HTTP</abbr> 400) </td>
+	</tr>
+	<tr class="row12">
+		<td class="col0"> <code>config</code> </td><td class="col1"> file path </td><td class="col2"> no </td><td class="col3"> <code>/etc/httpd.conf</code> </td><td class="col4"> Config file in Busybox httpd format for additional settings (currently only used to specify Basic Auth areas) </td>
+	</tr>
+	<tr class="row13">
+		<td class="col0"> <code>index_file</code> </td><td class="col1"> file name </td><td class="col2"> no </td><td class="col3"> <code>index.html</code>, <code>index.htm,</code> <code>default.html</code>, <code>default.htm</code> </td><td class="col4"> Index file to use for directories, e.g. add index.php when using php </td>
+	</tr>
+	<tr class="row14">
+		<td class="col0"> <code>index_page</code> </td><td class="col1"> file name </td><td class="col2"> no </td><td class="col3"> <code>index.html</code> </td><td class="col4"> Index file to use for directories, e.g. add index.php when using php (last, 20131015, replace index_file ?) should be noted: list index_page “index.html index.htm default.html default.htm index.php” </td>
+	</tr>
+	<tr class="row15">
+		<td class="col0"> <code>error_page</code> </td><td class="col1"> string </td><td class="col2"> no </td><td class="col3"> <em>(none)</em> </td><td class="col4"> Virtual <abbr title="Uniform Resource Locator">URL</abbr> of file or CGI script to handle 404 request.  Must begin with &#039;/&#039; </td>
+	</tr>
+	<tr class="row16">
+		<td class="col0"> <code>no_symlinks</code> </td><td class="col1"> boolean </td><td class="col2"> no </td><td class="col3"> <code>0</code> </td><td class="col4"> Do not follow symbolic links if enabled </td>
+	</tr>
+	<tr class="row17">
+		<td class="col0"> <code>no_dirlists</code> </td><td class="col1"> boolean </td><td class="col2"> no </td><td class="col3"> <code>0</code> </td><td class="col4"> Do not generate directory listings if enabled </td>
+	</tr>
+	<tr class="row18">
+		<td class="col0"> <code>rfc1918_filter</code> </td><td class="col1"> boolean </td><td class="col2"> no </td><td class="col3"> <code>1</code> </td><td class="col4"> Reject requests from <a href="https://en.wikipedia.org/wiki/Private_network" class="urlextern" title="https://en.wikipedia.org/wiki/Private_network" rel="ugc nofollow">RFC1918</a> <abbr title="Internet Protocol">IP</abbr> addresses directed to the servers public IPs. This is a <abbr title="Domain Name System">DNS</abbr> rebinding countermeasure. </td>
+	</tr>
+	<tr class="row19">
+		<td class="col0"> <code>http_keepalive</code> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> <code>20</code> </td><td class="col4"> connection reuse.  Some bugs have been seen, you <em>may</em> wish to disable this by setting to <code>0</code> (BB or later only) </td>
+	</tr>
+	<tr class="row20">
+		<td class="col0"> <code>max_requests</code> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> <code>3</code> </td><td class="col4"> Maximum number of concurrent requests. If this number is exceeded, further requests are queued until the number of running requests drops below the limit again. </td>
+	</tr>
+	<tr class="row21">
+		<td class="col0"> <code>max_connections</code> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> <code>100</code> </td><td class="col4"> Maximum number of concurrent connections. If this number is exceeded, further <abbr title="Transmission Control Protocol">TCP</abbr> connection attempts are queued until the number of active connections drops below the limit again. </td>
+	</tr>
+	<tr class="row22">
+		<td class="col0"> <code>ubus_prefix</code> </td><td class="col1"> string </td><td class="col2"> no </td><td class="col3 leftalign"> <em>(none)</em>  </td><td class="col4"> <abbr title="Uniform Resource Locator">URL</abbr> prefix for <a href="/docs/techref/ubus#access_to_ubus_over_http" class="wikilink1" title="docs:techref:ubus" data-wiki-id="docs:techref:ubus">UBUS via JSON-RPC handler</a> e.g. <code>/ubus</code>. If not specified then UBUS is not enabled. </td>
+	</tr>
+	<tr class="row23">
+		<td class="col0"> <code>ubus_socket</code> </td><td class="col1"> file </td><td class="col2"> no </td><td class="col3 leftalign"> <em>(none)</em>  </td><td class="col4"> Override ubus socket path </td>
+	</tr>
+	<tr class="row24">
+		<td class="col0"> <code>ubus_noauth</code> </td><td class="col1"> boolean </td><td class="col2"> no </td><td class="col3 leftalign"> <code>0</code>  </td><td class="col4"> Do not authenticate JSON-RPC requests against UBUS session api </td>
+	</tr>
+	<tr class="row25">
+		<td class="col0"> <code>ubus_cors</code> </td><td class="col1"> boolean </td><td class="col2"> no </td><td class="col3 leftalign"> <code>0</code>  </td><td class="col4"> Enable CORS <abbr title="Hypertext Transfer Protocol">HTTP</abbr> headers on JSON-RPC api </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;1047-5854&quot;} -->
+<p>
+Multiple sections if the type <code>uhttpd</code> may exist - the init script will launch one webserver instance per section. 
+</p>
+
+<p>
+As specified in the <a href="/docs/guide-user/base-system/uci" class="wikilink1" title="docs:guide-user:base-system:uci" data-wiki-id="docs:guide-user:base-system:uci">The UCI System</a> documentation, each of the <code>uhttpd</code> sections must be named differently.
+</p>
+<pre class="code bash">config <span class="st_h">'uhttpd'</span> <span class="st_h">'main'</span>
+        option <span class="st_h">'listen_http'</span> <span class="st_h">'80'</span>
+        option <span class="st_h">'home'</span>        <span class="st_h">'/www'</span>
+&nbsp;
+config <span class="st_h">'uhttpd'</span> <span class="st_h">'other'</span>
+        option <span class="st_h">'listen_http'</span> <span class="st_h">'8080'</span>
+        option <span class="st_h">'home'</span>        <span class="st_h">'/www/other'</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Server Settings&quot;,&quot;hid&quot;:&quot;server_settings&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;744-6347&quot;} -->
+<h3 class="sectionedit5" id="https_enable_and_certificate_settings_and_creation">HTTPS Enable and Certificate Settings and Creation</h3>
+<div class="level3">
+
+<p>
+In order to speak <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr>/<abbr title="Transport Layer Security">TLS</abbr>, uhttpd needs one of several <a href="/docs/guide-user/services/tls/libs" class="wikilink1" title="docs:guide-user:services:tls:libs" data-wiki-id="docs:guide-user:services:tls:libs">cryptographic libraries</a>. Such <code>libuhttpd-...</code> packages can be installed via opkg, e.g. <code>libuhttpd-mbedtls</code>, <code>libuhttpd-openssl</code> or <code>libuhttpd-wolfssl</code>.
+</p>
+
+<p>
+In the server configuration, the <code>listen_https</code> option needs to be defined as explained above.
+</p>
+
+<p>
+uhttpd requires an X.509 certificate and a private key. You can create and copy them manually to the place specified in the configuration.
+</p>
+
+<p>
+There is an alternative: In this case (as of 10.03.1) you&#039;ll need to install the <code>luci-ssl</code> meta-package which in turn will pull also the <code>px5g</code> script. With this utility the init script will generate the appropriate self signed certificate and key files when the server is started for the first time, either by reboot or by manual restart.
+</p>
+
+<p>
+The <code>/etc/config/uhttpd</code> file contains in the end a section detailing the certificate and key files creation parameters:
+</p>
+<div class="table sectionedit6"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign"> Name              </th><th class="col1 leftalign"> Type     </th><th class="col2 leftalign"> Required  </th><th class="col3 leftalign"> Default                                  </th><th class="col4 leftalign"> Description                                          </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> <code>days</code>          </td><td class="col1 leftalign"> integer  </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <code>730</code>                                  </td><td class="col4 leftalign"> Validity time of the generated certificates in days  </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> <code>bits</code>          </td><td class="col1 leftalign"> integer  </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <code>2048</code>                                 </td><td class="col4 leftalign"> Size of the generated RSA key in bits                </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> <code>country</code>       </td><td class="col1 leftalign"> string   </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <code>ZZ</code>                                   </td><td class="col4 leftalign"> ISO country code of the certificate issuer           </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"> <code>state</code>         </td><td class="col1 leftalign"> string   </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <code>Somewhere</code>                            </td><td class="col4 leftalign"> State of the certificate issuer                      </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 leftalign"> <code>location</code>      </td><td class="col1 leftalign"> string   </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <code>Unknown</code>                              </td><td class="col4 leftalign"> Location/city of the certificate issuer              </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0 leftalign"> <code>commonname</code>    </td><td class="col1 leftalign"> string   </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <code>OpenWrt</code>                              </td><td class="col4 leftalign"> Common name covered by the certificate               </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0 leftalign"> <code>organization</code>  </td><td class="col1 leftalign"> string   </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <em>“OpenWrt” followed by random string</em>  </td><td class="col4 leftalign"> Organization name covered by the certificate         </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table1&quot;,&quot;secid&quot;:6,&quot;range&quot;:&quot;7374-8517&quot;} -->
+<p>
+Those will be needed only once, at the next restart.
+</p>
+
+<p>
+If you are hosting the website to internet you may want to <a href="/docs/guide-user/services/tls/certs" class="wikilink1" title="docs:guide-user:services:tls:certs" data-wiki-id="docs:guide-user:services:tls:certs">obtain LetsEncrypt certificates</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;HTTPS Enable and Certificate Settings and Creation&quot;,&quot;hid&quot;:&quot;https_enable_and_certificate_settings_and_creation&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:5,&quot;range&quot;:&quot;6348-8705&quot;} -->
+<h2 class="sectionedit7" id="basic_authentication_httpdconf">Basic Authentication (httpd.conf)</h2>
+<div class="level2">
+
+<p>
+For backward compatibility reasons, <em>uhttpd</em> uses the old <em>Busybox httpd</em> config file <code>/etc/httpd.conf</code> to define authentication areas and the associated usernames and passwords.
+This configuration file is <strong>not</strong> in UCI format and usually shipped or generated by external packages like <code>webif</code> (X-Wrt).
+</p>
+
+<p>
+Authentication realms are defined in the format <code>prefix:username:password</code> with one entry per line followed by a newline.
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>prefix</code> is the <abbr title="Uniform Resource Locator">URL</abbr> part covered by the realm, e.g. <code>/cgi-bin</code> to request basic auth for any CGI program</div>
+</li>
+<li class="level1"><div class="li"> <code>username</code> specifies the username a client has to login with</div>
+</li>
+<li class="level1"><div class="li"> <code>password</code> defines the secret password required to authenticate</div>
+</li>
+</ul>
+
+<p>
+The password can be either in plain text format, <a href="https://en.wikipedia.org/wiki/Crypt_(Unix)" class="urlextern" title="https://en.wikipedia.org/wiki/Crypt_(Unix)" rel="ugc nofollow">crypt(1) MD5</a> encoded or in the form <code>$p$user</code> where <code>user</code> refers to an account in <code>/etc/shadow</code> or <code>/etc/passwd</code>.
+</p>
+
+<p>
+A plain text password can be converted to MD5 encoding by using the <code>-m</code> switch of the <em>uhttpd</em> executable:
+</p>
+<pre class="code bash"><span class="co0"># uhttpd -m secret</span>
+<span class="re4">$1</span>$<span class="re1">$ysVNzQc4CTMkp5daOdZ</span>.3<span class="sy0">/</span></pre>
+
+<p>
+If the <code>$p$...</code> format is used, <em>uhttpd</em> will compare the client provided password against the one stored in the <code>shadow</code> or <code>passwd</code> database.
+</p>
+
+<p>
+Example:
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-user/services/webserver/uhttpd?codeblock=3" title="Download Snippet" class="mediafile mf_conf">/etc/httpd.conf</a></dt>
+<dd><pre class="code">/dashboard/:admin:$1$$ysVNzQc4CTMkp5daOdZ.3/
+/:root:$p$root
+/:alice:P@$$w0rd</pre>
+</dd></dl>
+<ul>
+<li class="level1"><div class="li"> Here the <code>/dashboard/</code> path is protected but allowed for user <code>admin</code> with the password <code>secret</code> that is hashed with crypt(1) MD5.</div>
+</li>
+<li class="level1"><div class="li"> The root path <code>/</code> is allowd to the user <code>root</code> and it&#039;s password will be taken from <code>/etc/passwd</code></div>
+</li>
+<li class="level1"><div class="li"> Also the <code>/</code> path is allowed for the user <code>alice</code> and shes password is <code>P@$$w0rd</code> which is not hashed and stored in clear text.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Basic Authentication (httpd.conf)&quot;,&quot;hid&quot;:&quot;basic_authentication_httpdconf&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:7,&quot;range&quot;:&quot;8706-10501&quot;} -->
+<h2 class="sectionedit8" id="url_decoding">URL decoding</h2>
+<div class="level2">
+
+<p>
+Like <em>Busybox HTTPd</em>, the <abbr title="Uniform Resource Locator">URL</abbr> decoding of strings on the command line is supported through the <code>-d</code> switch:
+</p>
+<pre class="code bash">root<span class="sy0">@</span>OpenWrt:<span class="sy0">/</span><span class="co0"># uhttpd -d &quot;An%20URL%20encoded%20String%21%0a&quot;</span>
+An URL encoded String<span class="sy0">!</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;URL decoding&quot;,&quot;hid&quot;:&quot;url_decoding&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:8,&quot;range&quot;:&quot;10502-10745&quot;} -->
+<h2 class="sectionedit9" id="using_php7">Using PHP7</h2>
+<div class="level2">
+
+<p>
+A minimal php7 installation includes:
+</p>
+<ul>
+<li class="level1"><div class="li"> php7</div>
+</li>
+<li class="level1"><div class="li"> php7-cgi</div>
+</li>
+</ul>
+
+<p>
+In <code>/etc/php.ini</code> ensure that the doc_root is empty if you are using multiple uhttpd instances (each on its own port). This enables the uhttpd <code>home</code> variable to work for you.
+</p>
+
+<p>
+Ensure that you uncomment the extension interpreter line for PHP in the main section of the uHTTPd config file:
+</p>
+<pre class="code bash">list interpreter <span class="st0">&quot;.php=/usr/bin/php-cgi&quot;</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Using PHP7&quot;,&quot;hid&quot;:&quot;using_php7&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:9,&quot;range&quot;:&quot;10746-11185&quot;} -->
+<h2 class="sectionedit10" id="securing_uhttpd">Securing uHTTPd</h2>
+<div class="level2">
+
+<p>
+By default, uHTTPd is bind to <code>0.0.0.0</code> which also includes the <abbr title="Wide Area Network">WAN</abbr> port of your router. To bind uHTTPd to the <abbr title="Local Area Network">LAN</abbr> port only you have to change the <code>listen_http</code> and <code>listen_https</code> options to your <abbr title="Local Area Network">LAN</abbr> <abbr title="Internet Protocol">IP</abbr> address.
+</p>
+
+<p>
+To get your current <abbr title="Local Area Network">LAN</abbr> <abbr title="Internet Protocol">IP</abbr> address run this command:
+</p>
+<pre class="code bash"><span class="co0"># uci get network.lan.ipaddr</span>
+192.168.1.1</pre>
+
+<p>
+Then edit <code>/etc/config/uhttpd</code> and bind <code>listen_http</code> to specific <code>192.168.1.1</code> <abbr title="Internet Protocol">IP</abbr> instead of <code>0.0.0.0</code> and comment out <abbr title="Internet Protocol version 6">IPv6</abbr> bindings:
+</p>
+<pre class="code bash">config uhttpd main
+        <span class="co0"># HTTP listen addresses, multiple allowed</span>
+        list listen_http        192.168.1.1:<span class="nu0">80</span>
+<span class="co0">#       list listen_http        [::]:80</span>
+&nbsp;
+        <span class="co0"># HTTPS listen addresses, multiple allowed</span>
+        list listen_https       192.168.1.1:<span class="nu0">443</span>
+<span class="co0">#       list listen_https       [::]:443</span></pre>
+
+<p>
+See <a href="/docs/guide-user/luci/luci.secure" class="wikilink1" title="docs:guide-user:luci:luci.secure" data-wiki-id="docs:guide-user:luci:luci.secure">Accessing LuCI web interface securely</a> for more details.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Securing uHTTPd&quot;,&quot;hid&quot;:&quot;securing_uhttpd&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:10,&quot;range&quot;:&quot;11186-12109&quot;} -->
+<h2 class="sectionedit11" id="embedded_lua">Embedded Lua</h2>
+<div class="level2">
+
+<p>
+uHTTPd supports running Lua in-process, which can speed up Lua CGI scripts. Also LuCI works fine with the embedded Lua interpreter. See the next subsection for instructions on how to set it up.
+</p>
+
+<p>
+Here is an example using a test file <code>test.lua</code> to show it works:
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-user/services/webserver/uhttpd?codeblock=8" title="Download Snippet" class="mediafile mf_lua">/root/test.lua</a></dt>
+<dd><pre class="code lua"><span class="kw1">function</span> handle_request<span class="br0">&#40;</span>env<span class="br0">&#41;</span>
+        uhttpd<span class="sy0">.</span>send<span class="br0">&#40;</span><span class="st0">&quot;Status: 200 OK<span class="es1">\r</span><span class="es1">\n</span>&quot;</span><span class="br0">&#41;</span>
+        uhttpd<span class="sy0">.</span>send<span class="br0">&#40;</span><span class="st0">&quot;Content-Type: text/plain<span class="es1">\r</span><span class="es1">\n</span><span class="es1">\r</span><span class="es1">\n</span>&quot;</span><span class="br0">&#41;</span>
+        uhttpd<span class="sy0">.</span>send<span class="br0">&#40;</span><span class="st0">&quot;Hello world.<span class="es1">\n</span>&quot;</span><span class="br0">&#41;</span>
+<span class="kw1">end</span></pre>
+</dd></dl>
+
+<p>
+Now to test it install the <code>uhttpd-mod-lua</code> plugin and configure it:
+</p>
+<pre class="code bash">opkg <span class="kw2">install</span> uhttpd-mod-lua
+uci <span class="kw1">set</span> uhttpd.main.lua_prefix=<span class="sy0">/</span>lua
+uci <span class="kw1">set</span> uhttpd.main.lua_handler=<span class="sy0">/</span>root<span class="sy0">/</span>test.lua
+<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>uhttpd restart
+<span class="kw2">wget</span> <span class="re5">-qO-</span> http:<span class="sy0">//</span>127.0.0.1<span class="sy0">/</span>lua<span class="sy0">/</span>
+<span class="co0"># Hello world.</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Embedded Lua&quot;,&quot;hid&quot;:&quot;embedded_lua&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:11,&quot;range&quot;:&quot;12110-12879&quot;} -->
+<h3 class="sectionedit12" id="luci_with_embedded_lua_interpreter">LuCI with embedded Lua interpreter</h3>
+<div class="level3">
+
+<p>
+You need to install <code>uhttpd-mod-lua</code> and <code>luci-sgi-uhttpd</code> to get it to work:
+</p>
+<pre class="code bash">opkg <span class="kw2">install</span> uhttpd-mod-lua luci-sgi-uhttpd</pre>
+
+<p>
+Since Chaos Calmer 15.05, the <code>luci-sgi-uhttpd</code> package is not needed. The appropriate files are included in <code>luci-base</code>.
+</p>
+
+<p>
+Then uncomment the following lines in <code>/etc/config/uhttpd</code> (or add them if you don&#039;t have them):
+</p>
+<pre class="code bash">        option lua_prefix       <span class="sy0">/</span>luci
+        option lua_handler      <span class="sy0">/</span>usr<span class="sy0">/</span>lib<span class="sy0">/</span>lua<span class="sy0">/</span>luci<span class="sy0">/</span>sgi<span class="sy0">/</span>uhttpd.lua</pre>
+
+<p>
+Then restart the server:
+</p>
+<pre class="code bash"><span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>uhttpd restart</pre>
+
+<p>
+One thing remains to be done. By default <code>/www/index.html</code> redirects you to <code>/cgi-bin/luci</code> which is the default CGI gateway for LuCI. The config above puts LuCI through embedded interpreter under <code>/luci</code> (<code>lua_prefix</code> is what causes it) so you have to change that in <code>/www/index.html</code>. The path appears there twice (one for the <code>meta</code> tag which does the redirect and one for the anchor). You can also copy/paste the code below if you don&#039;t want to meddle with it on your own.
+</p>
+<pre class="code html4strict"><span class="sc2">&lt;?xml <span class="kw3">version</span><span class="sy0">=</span><span class="st0">&quot;1.0&quot;</span> encoding<span class="sy0">=</span><span class="st0">&quot;utf-8&quot;</span>?&gt;</span>
+<span class="sc0">&lt;!DOCTYPE html&gt;</span>
+<span class="sc2">&lt;<a href="http://december.com/html/4/element/html.html"><span class="kw2">html</span></a>&gt;</span>
+<span class="sc2">&lt;<a href="http://december.com/html/4/element/head.html"><span class="kw2">head</span></a>&gt;</span>
+<span class="sc2">&lt;<a href="http://december.com/html/4/element/meta.html"><span class="kw2">meta</span></a> <span class="kw3">http-equiv</span><span class="sy0">=</span><span class="st0">&quot;refresh&quot;</span> <span class="kw3">content</span><span class="sy0">=</span><span class="st0">&quot;0; URL=/luci&quot;</span> <span class="sy0">/</span>&gt;</span>
+<span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/head.html"><span class="kw2">head</span></a>&gt;</span>
+<span class="sc2">&lt;<a href="http://december.com/html/4/element/body.html"><span class="kw2">body</span></a> <span class="kw3">style</span><span class="sy0">=</span><span class="st0">&quot;background-color: black&quot;</span>&gt;</span>
+<span class="sc2">&lt;<a href="http://december.com/html/4/element/a.html"><span class="kw2">a</span></a> <span class="kw3">style</span><span class="sy0">=</span><span class="st0">&quot;color: white; text-decoration: none&quot;</span> <span class="kw3">href</span><span class="sy0">=</span><span class="st0">&quot;/luci&quot;</span>&gt;</span>LuCI - Lua Configuration Interface<span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/a.html"><span class="kw2">a</span></a>&gt;</span>
+<span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/body.html"><span class="kw2">body</span></a>&gt;</span>
+<span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/html.html"><span class="kw2">html</span></a>&gt;</span></pre>
+
+<p>
+Also remember to flush the browser&#039;s cache if you relied on the redirection because otherwise it will probably keep redirecting you to <code>/cgi-bin/luci</code> until the cache expires by itself.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;LuCI with embedded Lua interpreter&quot;,&quot;hid&quot;:&quot;luci_with_embedded_lua_interpreter&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:12,&quot;range&quot;:&quot;12880-&quot;} -->

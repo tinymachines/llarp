@@ -1,0 +1,245 @@
+<div class="table sectionedit1"><table class="inline">
+	<tr class="row0">
+		<td class="col0"><img src="/_media/meta/48px-dialog-warning.svg.png" class="media" loading="lazy" alt="" /> </td><td class="col1">This is not a reference document, it&#039;s an old design document that, at least in part, led to <a href="/docs/techref/procd" class="wikilink1" title="docs:techref:procd" data-wiki-id="docs:techref:procd">procd</a></td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-164&quot;} -->
+<h1 class="sectionedit2" id="bootinit_requirements">Boot/Init Requirements</h1>
+<div class="level1">
+
+<p>
+This article attempts to state what the initscripts must and should do for the new init system being developed for OpenWrt.  The goal is to deal with the race conditions that currently can occur, without losing current functionality.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Boot\/Init Requirements&quot;,&quot;hid&quot;:&quot;bootinit_requirements&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;166-438&quot;} -->
+<h2 class="sectionedit3" id="bootpreinit">Boot/Preinit</h2>
+<div class="level2">
+
+<p>
+The Boot process currently consists of the kernel bootstrap (not discussed here), preinit, and init.  Preinit takes care of things that init can&#039;t function without, while init is responsible for starting up the rest of the system.
+</p>
+
+<p>
+On a Debian desktop system there is an analogue to preinit, which uses initramfs to bring up the system enough to the point init can operate.  Unfortunately initramfs is not an option on openwrt because it wastes too much space.  The binaries and scripts in an initramfs cannot be retained for use in the booted system, unless they are copied to RAM (tmpfs) (if anyone know otherwise and can point out how, please contact the devs), which is why preinit exists.
+</p>
+
+<p>
+Preinit looks to linux like the final boot stage to init on the rootfs.  Preinit then mounts the root file system, does <code>pivot_root</code> to the rootfs, and then use the real init to replace itself.  Basically it transforms intself into the &#039;real&#039; init and rootfs.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Boot\/Preinit&quot;,&quot;hid&quot;:&quot;bootpreinit&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;439-1422&quot;} -->
+<h3 class="sectionedit4" id="goals">Goals</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> Reduce preinit as much as possible so that init does most of the work</div>
+</li>
+<li class="level1"><div class="li"> Maintain failsafe ability, so that if mounting, etc, rootfs fails, or init makes system inaccessible, that there is a way to get into the device and fix it.</div>
+</li>
+<li class="level1"><div class="li"> Not start hotplug at all in preinit ... for that matter no processes except the real init should cross the preinit/init boundary.</div>
+</li>
+<li class="level1"><div class="li"> Be configurable...it should be possible to configure rootfs mount, init start and anything else that can happen after the jffs2 is mounted (and therefore a writable config is available)</div>
+</li>
+<li class="level1"><div class="li"> LED and network message functionality should be available to switchinit (which runs a script to shutdown process and make some other process than the current init PID 1, e.g. for doing a safer sysupgrade, and firstboot (&#039;factory reset&#039;))</div>
+</li>
+<li class="level1"><div class="li"> Support /opt type deployments as well as extroot (that is, extra packages on /opt rather than by replacing the jffs2 rootfs)</div>
+</li>
+<li class="level1"><div class="li"> No open file descriptors/references on the old rootfs when init is executed on the target rootfs (this is why we don&#039;t just mount/pivot in init).</div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="notes">Notes</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> JFFS2 Formatting must be done on a fully booted system, because on some routers (like the Fon with NOR flash), formatting takes a significant amount of time during which the router would be unavailable for use).  That means preinit can&#039;t be where the formatting happens.</div>
+</li>
+<li class="level1"><div class="li"> Ideally the firstboot script will take the router back to state exactly like after flashing without configuration saved), including the needs for formatting jffs2</div>
+</li>
+<li class="level1"><div class="li"> Restoring the configuration needs to be done after the rootfs is mounted, but before most configuration is used (most configuration is used in init or init-launched hotplug).</div>
+</li>
+<li class="level1"><div class="li"> Saving the configuration should save the jffs2 (for squashfs)/or boot rootfs config not the config on external root.  This is because the external root will still be available on the external storage after flashing, but the internal (jff2 or other boot rootfs) won&#039;t.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Goals&quot;,&quot;hid&quot;:&quot;goals&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;1423-3429&quot;} -->
+<h3 class="sectionedit5" id="must-do_s">Must-do&#039;s</h3>
+<div class="level3">
+<ol>
+<li class="level1"><div class="li"> Allow failsafe</div>
+</li>
+<li class="level1"><div class="li"> If initramfs, do initramfs, skip rest of this list</div>
+</li>
+<li class="level1"><div class="li"> For Squashfs: Mount jffs2 (if already formatted)</div>
+</li>
+<li class="level1"><div class="li"> For External Block: Mount swap (so fsck has enough memory)<sup><a href="#fn__1" id="fnt__1" class="fn_top">1)</a></sup> if present</div>
+</li>
+<li class="level1"><div class="li"> For External Block: Mount rootfs (checking first if fsck available) or tmpfs (if no rootfs yet)</div>
+</li>
+<li class="level1"><div class="li"> For External Block: Mount marked fses before init (e.g. for deployments where /opt contains packages/script that need to run early in init)</div>
+</li>
+<li class="level1"><div class="li"> Start init or kexec</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Must-do&#039;s&quot;,&quot;hid&quot;:&quot;must-do_s&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;3430-4058&quot;} -->
+<h3 class="sectionedit6" id="before_failsafe">0) Before failsafe</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> Enable script output to serial before failsafe</div>
+</li>
+<li class="level1"><div class="li"> emit <abbr title="User Datagram Protocol">UDP</abbr> messages with progress of boot, or at the very least failsafe prompt</div>
+</li>
+<li class="level1 node"><div class="li"> Network or Serial access </div>
+<ul>
+<li class="level2"><div class="li"> network kernel modules</div>
+</li>
+</ul>
+</li>
+<li class="level1 node"><div class="li"> LEDs indicator for hit button</div>
+<ul>
+<li class="level2"><div class="li"> kernel modules for gpio and gpio-leds</div>
+</li>
+</ul>
+</li>
+<li class="level1 node"><div class="li"> Button (on any button during failsafe window, enter failsafe)</div>
+<ul>
+<li class="level2"><div class="li"> kernel module for gpio, gpio-buttons or keys-polled, and button-hotplug</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Setting LEDs requires sysfs (/sys)</div>
+</li>
+<li class="level1"><div class="li"> OpenWrt LEDs depend on specific hardware as defined by /proc/cpuinfo, so /proc is needed </div>
+</li>
+<li class="level1"><div class="li"> Obviously /dev is needed</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;0) Before failsafe&quot;,&quot;hid&quot;:&quot;before_failsafe&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;4059-4663&quot;} -->
+<h3 class="sectionedit7" id="allow_failsafe">1) Allow Failsafe</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> LED indicator for failsafe mode</div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="configuration_at_compile-time_not_run-time">Configuration at Compile-time not Run-time</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> failsafe-related items *must not* rely on changing config, only on what is available in the flashed image.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;1) Allow Failsafe&quot;,&quot;hid&quot;:&quot;allow_failsafe&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;4664-4891&quot;} -->
+<h3 class="sectionedit8" id="mount_swap_and_3_mount_rootfs">2) Mount swap and 3) Mount rootfs</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> check if jffs2 formatted</div>
+</li>
+<li class="level1"><div class="li"> if formatted, mount it in a temporary location</div>
+</li>
+<li class="level1"><div class="li"> combine boot rootfs and jffs2 (if present) kernel modules and swap/rootfs config</div>
+</li>
+<li class="level1"><div class="li"> mount should have /proc</div>
+</li>
+<li class="level1"><div class="li"> requires /dev</div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="mount_swap">2) Mount swap</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> load modules needed for swap (if swap configured) (from rootfs or jffs2)</div>
+</li>
+<li class="level1"><div class="li"> run any swap-related scripts from either boot rootfs or jffs2</div>
+</li>
+<li class="level1"><div class="li"> using swap-utils from either boot rootfs or jffs2 (if present) do swapon for configured swap</div>
+</li>
+<li class="level1"><div class="li"> needs swap-utils and blkid (for UUID based config) on bootfs or jffs2</div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="mount_rootfs">3) Mount rootfs</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> load modules needed for rootfs (from rootfs or jffs2)</div>
+</li>
+<li class="level1"><div class="li"> run any rootfs-related scripts (e.g. for mmc) (e.g. mount usbfs)</div>
+</li>
+<li class="level1"><div class="li"> check filesystem for errors if fsck present on boot rootfs or jffs2 (depends on blkid)</div>
+</li>
+<li class="level1"><div class="li"> mount target rootfs (depends on blkid on boot rootfs or jffs2)</div>
+</li>
+<li class="level1"><div class="li"> pivot_root</div>
+</li>
+<li class="level1"><div class="li"> move any fs mounted on old root to new root</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;2) Mount swap and 3) Mount rootfs&quot;,&quot;hid&quot;:&quot;mount_swap_and_3_mount_rootfs&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:8,&quot;range&quot;:&quot;4892-5857&quot;} -->
+<h3 class="sectionedit9" id="mount_marked_fses_other_rootfs">4) Mount marked fses other rootfs</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> load modules needed by fses (if not previously loaded)</div>
+</li>
+<li class="level1"><div class="li"> run any associated scripts (.e.g for mmc/usbfs) (if not previously run)</div>
+</li>
+<li class="level1"><div class="li"> check filesystem for errors if fsck present on rootfs (depends on blkid)</div>
+</li>
+<li class="level1"><div class="li"> mount fs (depends on blkid)</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;4) Mount marked fses other rootfs&quot;,&quot;hid&quot;:&quot;mount_marked_fses_other_rootfs&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:9,&quot;range&quot;:&quot;5858-6146&quot;} -->
+<h3 class="sectionedit10" id="start_init_or_kexec">5) Start Init or Kexec</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> For Init: Configurable PATH and environment variables</div>
+</li>
+<li class="level1"><div class="li"> Either do init or kexec a kernel on the rootfs or other previously mounted storage</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;5) Start Init or Kexec&quot;,&quot;hid&quot;:&quot;start_init_or_kexec&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:10,&quot;range&quot;:&quot;6147-6325&quot;} -->
+<h2 class="sectionedit11" id="init">Init</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Init&quot;,&quot;hid&quot;:&quot;init&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:11,&quot;range&quot;:&quot;6326-6343&quot;} -->
+<h3 class="sectionedit12" id="goals1">Goals</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> Split /etc/init.d into independent chunks</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Goals&quot;,&quot;hid&quot;:&quot;goals1&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:12,&quot;range&quot;:&quot;6344-6407&quot;} -->
+<h3 class="sectionedit13" id="wants">Wants</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> Support betwork rootfs, perhaps by using switchinit with network kept up</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Wants&quot;,&quot;hid&quot;:&quot;wants&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:13,&quot;range&quot;:&quot;6408-&quot;} --><div class="footnotes">
+<div class="fn"><sup><a href="#fnt__1" id="fn__1" class="fn_bot">1)</a></sup> 
+<div class="content">Roughly 1 <abbr title="Megabyte">MB</abbr> of RAM for every 1 <abbr title="Gigabyte">GB</abbr> of disk to successfully fsck the disk. <a href="http://www.openbsd.org/faq/faq14.html#LargeDrive" class="urlextern" title="http://www.openbsd.org/faq/faq14.html#LargeDrive" rel="ugc nofollow">Source</a>.</div></div>
+</div>

@@ -1,0 +1,220 @@
+
+<h2 class="sectionedit1" id="honeypots">Honeypots</h2>
+<div class="level2">
+
+<p>
+Running honeypots on OpenWrt allows for detection of network intrusions and automatically alerting the owner of the incident. It is also possible to automatically isolate the offending device on the WiFi network. Currently <a href="https://opencanary.readthedocs.io/en/latest/" class="urlextern" title="https://opencanary.readthedocs.io/en/latest/" rel="ugc nofollow">OpenCanary</a> has been confirmed working on OpenWrt as a honeypot. It is important to isolate the honeypots from the rest of the network and OpenWrt itself, thus here we document how to deploy it in a separate firewall zone and to run it in a Docker container.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Honeypots&quot;,&quot;hid&quot;:&quot;honeypots&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-553&quot;} -->
+<h2 class="sectionedit2" id="installation">Installation</h2>
+<div class="level2">
+
+<p>
+First, you have to setup <a href="/docs/guide-user/virtualization/docker_host" class="wikilink1" title="docs:guide-user:virtualization:docker_host" data-wiki-id="docs:guide-user:virtualization:docker_host">OpenWrt as a Docker host</a>. Pay particular attention to install <code>dockerd</code> and <code>docker-compose</code> before installing <code>luci-app-dockerman</code>. It is recommended to attach an <a href="/docs/guide-user/storage/usb-drives" class="wikilink1" title="docs:guide-user:storage:usb-drives" data-wiki-id="docs:guide-user:storage:usb-drives">external storage</a> to store your Docker containers, thus after you installed Docker, under the Configuration tab you can specify your external storage as Docker Root Dir.
+</p>
+
+<p>
+While the <code>luci-app-dockerman</code> provides a WebUI to pull Docker images, it is recommended to ssh into OpenWrt and pull the image by running <code>docker pull thinkst/opencanary</code>.
+</p>
+
+<p>
+Now in LuCI navigate to the Containers and click Add. Name the container opencanary and pick <code>thinkst/opencanary:latest</code> as the Docker Image. Under Bind mount add the config from your external storage device to the container, for example <code>/mnt/opencanary/.opencanary.conf:/root/.opencanary.conf</code>, and make sure to click on the + sign next to it! Leave all other options unselected and use the defaults (interactive/tty/exposed ports).
+</p>
+
+<p>
+Once the container is configured you need to create an OpenCanary configuration file at <code>/mnt/opencanary/.opencanary.conf</code> according the <a href="https://opencanary.readthedocs.io/en/latest/starting/configuration.html" class="urlextern" title="https://opencanary.readthedocs.io/en/latest/starting/configuration.html" rel="ugc nofollow">OpenCanary documentation</a>. It is easiest by logging into OpenWrt using <abbr title="Secure Shell">SSH</abbr> and editing the file using nano (<code>opkg install nano</code>). Here is a simple example configuration that enables an <abbr title="File Transfer Protocol">FTP</abbr> honeypot and logs to the stdout of the Docker container:
+</p>
+<pre class="code yaml"><span class="br0">&#123;</span><span class="co3">
+    &quot;device.node_id&quot;</span><span class="sy2">: </span><span class="st0">&quot;openwrt&quot;</span>,<span class="co3">
+    &quot;ip.ignorelist&quot;</span><span class="sy2">: </span><span class="br0">&#91;</span> <span class="br0">&#93;</span>,<span class="co3">
+    &quot;ftp.enabled&quot;</span><span class="sy2">: </span>true,<span class="co3">
+    &quot;ftp.port&quot;</span><span class="sy2">: </span>21,<span class="co3">
+    &quot;ftp.banner&quot;</span><span class="sy2">: </span><span class="st0">&quot;FTP server ready&quot;</span>,<span class="co3">
+    &quot;logger&quot;</span><span class="sy2">: </span><span class="br0">&#123;</span><span class="co3">
+        &quot;class&quot;</span><span class="sy2">: </span><span class="st0">&quot;PyLogger&quot;</span>,<span class="co3">
+        &quot;kwargs&quot;</span><span class="sy2">: </span><span class="br0">&#123;</span><span class="co3">
+            &quot;formatters&quot;</span><span class="sy2">: </span><span class="br0">&#123;</span><span class="co3">
+                &quot;plain&quot;</span><span class="sy2">: </span><span class="br0">&#123;</span><span class="co3">
+                    &quot;format&quot;</span><span class="sy2">: </span><span class="st0">&quot;%(message)s&quot;</span>
+                <span class="br0">&#125;</span>
+            <span class="br0">&#125;</span>,<span class="co3">
+            &quot;handlers&quot;</span><span class="sy2">: </span><span class="br0">&#123;</span><span class="co3">
+                &quot;console&quot;</span><span class="sy2">: </span><span class="br0">&#123;</span><span class="co3">
+                    &quot;class&quot;</span><span class="sy2">: </span><span class="st0">&quot;logging.StreamHandler&quot;</span>,<span class="co3">
+                    &quot;stream&quot;</span><span class="sy2">: </span><span class="st0">&quot;ext://sys.stdout&quot;</span>
+                <span class="br0">&#125;</span>
+            <span class="br0">&#125;</span>
+        <span class="br0">&#125;</span>
+     <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+
+<p>
+At this point you can start the Container through Docker → Containers → select opencanary → Start.
+</p>
+
+<p>
+To control how traffic reaches the Honeypot, edit the firewall rules under Network → Firewall and click on Edit for the docker Zone. Specify Input as Drop, Output as accept, Forward as drop. Select MSS clamping and allow forwarding to the <code>lan</code> zone. Leave everything else with defaults and click Save. Now, under Network → Firewall → Port forwards click on Add. Name the rule “ftp honeypot”, source zone <code>lan</code>, external port 21, destination zone “docker” and write the container&#039;s <abbr title="Internet Protocol">IP</abbr> into the custom field (for example 172.17.0.2). The first time you add a rule for your honeypot the container&#039;s <abbr title="Internet Protocol">IP</abbr> won&#039;t be in the list, in subsequent firewall rules you should be able to find it in the list.
+</p>
+
+<p>
+If you are not sure which <abbr title="Internet Protocol">IP</abbr> is your honeypot&#039;s <abbr title="Internet Protocol">IP</abbr>, go to Docker → Containers → click on Edit next to the opencanary container. Now under the “Inspect” tab you can see the detailed configuration of your container, that will list the <abbr title="Internet Protocol">IP</abbr> (for example, “IPAddress”: “172.17.0.2”).
+</p>
+
+<p>
+You can verify your honeypot is working at this point by try to connect to OpenWrt&#039;s <abbr title="Internet Protocol">IP</abbr> address from the lan on port 21. You can find the containers log at Docker → Containers → click on Edit next to the opencanary container. Under the Logs tab you should see something like “stdout: {“dst_host”: “172.17.0.2”, “dst_port”: 21, “local_time”: “2024-03-14 15:05:16.064212”, “local_time_adjusted”: “2024-03-14 15:05:16.064348”, “logdata”: {“PASSWORD”: “test”, “USERNAME”: “test”}, “logtype”: 2000, “node_id”: “openwrt”, “src_host”: “192.168.1.232”, “src_port”: 30266, “utc_time”: “2024-03-14 15:05:16.064305”}” for every <abbr title="File Transfer Protocol">FTP</abbr> connection that happened to the honeypot.
+</p>
+
+<p>
+OpenCanary has a wide variety of honeypots you can deploy. For each new honeypot you configure make sure you setup the corresponding Port forward rule. It is also recommended to <a href="https://opencanary.readthedocs.io/en/latest/alerts/email.html" class="urlextern" title="https://opencanary.readthedocs.io/en/latest/alerts/email.html" rel="ugc nofollow">configure e-mail alerts</a> in the OpenCanary configuration as checking the docker container logs manually is far from ideal.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation&quot;,&quot;hid&quot;:&quot;installation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;554-4802&quot;} -->
+<h2 class="sectionedit3" id="making_honeypots_appear_on_other_ips">Making honeypots appear on other IPs</h2>
+<div class="level2">
+
+<p>
+So far we&#039;ve deployed honeypot services that appeared as open ports on the router&#039;s <abbr title="Internet Protocol">IP</abbr>. You can also make the OpenCanary honeypots appear on other IPs on your lan so they look more real. To do this you have to configure a new interface to listen to additional <abbr title="Internet Protocol">IP</abbr> addresses. Go to Network → Interfaces → Add new interface. Name it according to the service it will provide, for example honeypot-ftp and under Protocol choose “Static address” and for device “Alias interface @lan”. Click “Create interface”. In the next settings menu specify the <abbr title="Internet Protocol">IP</abbr> Address, for example 192.168.1.22 and netmask 255.255.255.255 (ie. /32). Under firewall settings place this interface into the lan zone.
+</p>
+
+<p>
+Now go to Network → Firewall → Port forwards and create a new rule by clicking Add. Enter the port the honeypot will listen to (for example 21), Source zone is lan and destination zone is docker, destination <abbr title="Internet Protocol">IP</abbr> is the opencanary container&#039;s <abbr title="Internet Protocol">IP</abbr>. Now click on Advanced and under External <abbr title="Internet Protocol">IP</abbr> Address select the new <abbr title="Internet Protocol">IP</abbr> address you created (192.168.1.22 for example). Click Save and then Save &amp; Apply. Now the new <abbr title="Internet Protocol">IP</abbr> will only listen to connections to the honeypots.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Making honeypots appear on other IPs&quot;,&quot;hid&quot;:&quot;making_honeypots_appear_on_other_ips&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;4803-6002&quot;} -->
+<h2 class="sectionedit4" id="dropping_wifi_clients_that_connect_to_honeypots">Dropping WiFi clients that connect to honeypots</h2>
+<div class="level2">
+
+<p>
+It is possible to integrate OpenCanary more tightly with the services OpenWrt provides. For example, we can automatically drop WiFi clients that attempt to connect to honeypot services. OpenCanary provides a WebHook alert capability that can be used to call into OpenWrt&#039;s <a href="/docs/techref/rpcd" class="wikilink1" title="docs:techref:rpcd" data-wiki-id="docs:techref:rpcd">RPC daemon system</a>.
+</p>
+
+<p>
+We&#039;ll create a new rpcd service that listens for OpenCanary WebHooks, look up the offending <abbr title="Internet Protocol">IP</abbr> address and adding it&#039;s MAC address to each WiFi interface&#039;s MAC blacklist. First, go to Network → Wireless and click on Edit for your WiFi interface. Under the MAC filter tab select “Allow all except listed”.
+</p>
+
+<p>
+Now create the file /usr/libexec/rpcd/opencanary with the following content, make sure to change AUTH_TOKEN to something unique:
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-user/services/honeypots?codeblock=1" title="Download Snippet" class="mediafile mf_">/usr/libexec/rpcd/opencanary</a></dt>
+<dd><pre class="code bash"><span class="co0">#!/bin/sh</span>
+&nbsp;
+<span class="re2">AUTH_TOKEN</span>=<span class="st0">&quot;specify_a_unique_string_here&quot;</span>
+&nbsp;
+. <span class="sy0">/</span>lib<span class="sy0">/</span>functions.sh
+. <span class="sy0">/</span>usr<span class="sy0">/</span>share<span class="sy0">/</span>libubox<span class="sy0">/</span>jshn.sh
+&nbsp;
+<span class="kw1">case</span> <span class="st0">&quot;$1&quot;</span> <span class="kw1">in</span>
+        list<span class="br0">&#41;</span>
+                <span class="kw3">echo</span> <span class="st_h">'{ &quot;add&quot;: { &quot;magic&quot;: &quot;str&quot;, &quot;message&quot;: &quot;str&quot; } }'</span>
+        <span class="sy0">;;</span>
+        call<span class="br0">&#41;</span>
+                <span class="kw1">case</span> <span class="st0">&quot;$2&quot;</span> <span class="kw1">in</span>
+                        add<span class="br0">&#41;</span>
+                                <span class="co0"># read the arguments</span>
+                                <span class="kw3">read</span> <span class="re5">-r</span> input;
+                                json_load <span class="st0">&quot;<span class="es2">$input</span>&quot;</span>
+                                json_get_var message <span class="st0">&quot;message&quot;</span>
+                                json_get_var magic <span class="st0">&quot;magic&quot;</span>
+                                json_cleanup
+&nbsp;
+                                <span class="br0">&#91;</span><span class="br0">&#91;</span> <span class="st0">&quot;<span class="es3">${magic}</span>&quot;</span> <span class="sy0">!</span>= <span class="st0">&quot;<span class="es3">${AUTH_TOKEN}</span>&quot;</span> <span class="br0">&#93;</span><span class="br0">&#93;</span> <span class="sy0">&amp;&amp;</span> <span class="kw3">echo</span> <span class="st_h">'{&quot;opencanary&quot;:&quot;denied&quot;}'</span> <span class="sy0">&amp;&amp;</span> <span class="kw3">exit</span> <span class="nu0">0</span>
+                                <span class="br0">&#91;</span><span class="br0">&#91;</span> <span class="re5">-z</span> <span class="st0">&quot;<span class="es3">${message}</span>&quot;</span> <span class="br0">&#93;</span><span class="br0">&#93;</span> <span class="sy0">&amp;&amp;</span> <span class="kw3">echo</span> <span class="st_h">'{&quot;opencanary&quot;:&quot;invalid message&quot;}'</span> <span class="sy0">&amp;&amp;</span> <span class="kw3">exit</span> <span class="nu0">0</span>
+&nbsp;
+                                logger <span class="re5">-t</span> <span class="st0">&quot;opencanary&quot;</span> <span class="st0">&quot;<span class="es2">$message</span>&quot;</span>
+&nbsp;
+                                json_load <span class="st0">&quot;<span class="es2">$message</span>&quot;</span>
+                                json_get_var <span class="kw2">ip</span> <span class="st0">&quot;src_host&quot;</span>
+                                json_cleanup
+&nbsp;
+                                <span class="br0">&#91;</span><span class="br0">&#91;</span> <span class="re5">-z</span> <span class="st0">&quot;<span class="es3">${ip}</span>&quot;</span> <span class="br0">&#93;</span><span class="br0">&#93;</span> <span class="sy0">&amp;&amp;</span> <span class="kw3">exit</span> <span class="nu0">0</span>
+&nbsp;
+                                <span class="re2">mac</span>=$<span class="br0">&#40;</span><span class="kw2">cat</span> <span class="sy0">/</span>proc<span class="sy0">/</span>net<span class="sy0">/</span>arp <span class="sy0">|</span> <span class="kw2">grep</span> <span class="st0">&quot;<span class="es3">${ip}</span> &quot;</span> <span class="sy0">|</span> <span class="kw2">head</span> <span class="re5">-n1</span> <span class="sy0">|</span> <span class="kw2">awk</span> <span class="st_h">'{ print $4 }'</span><span class="br0">&#41;</span>
+&nbsp;
+                                <span class="br0">&#91;</span><span class="br0">&#91;</span> <span class="re5">-z</span> <span class="st0">&quot;<span class="es3">${mac}</span>&quot;</span> <span class="br0">&#93;</span><span class="br0">&#93;</span> <span class="sy0">&amp;&amp;</span> <span class="kw3">echo</span> <span class="st_h">'{&quot;opencanary&quot;:&quot;invalid mac&quot;}'</span> <span class="sy0">&amp;&amp;</span> <span class="kw3">exit</span> <span class="nu0">0</span>
+&nbsp;
+                                <span class="co0"># log the call</span>
+                                logger <span class="re5">-t</span> <span class="st0">&quot;opencanary quarantine&quot;</span> <span class="st0">&quot;<span class="es2">$ip</span>&quot;</span> <span class="st0">&quot;<span class="es2">$mac</span>&quot;</span>
+&nbsp;
+                                <span class="co0"># quarantine the mac</span>
+                                <span class="kw1">for</span> iface <span class="kw1">in</span> default_radio0 default_radio1 <span class="co0"># List all affected wifi-ifaces here</span>
+                                <span class="kw1">do</span>
+                                        uci add_list wireless.<span class="st0">&quot;<span class="es2">$iface</span>&quot;</span>.maclist=<span class="st0">&quot;<span class="es2">$mac</span>&quot;</span>
+                                <span class="kw1">done</span>
+&nbsp;
+                                uci commit wireless
+                                wifi
+                        <span class="sy0">;;</span>
+                <span class="kw1">esac</span>
+        <span class="sy0">;;</span>
+<span class="kw1">esac</span></pre>
+</dd></dl>
+
+<p>
+To make this script accessible through OpenWrt&#039;s <a href="/docs/techref/ubus#access_to_ubus_over_http" class="wikilink1" title="docs:techref:ubus" data-wiki-id="docs:techref:ubus">REST API with UBUS</a> we need to create an authorization so this interface can be called by our container. We can&#039;t easily make OpenCanary authanticate itself according the regular UBUS authentication schemes, so the interface requires a “magic” field to be passed by the caller, which is effectively the authorization token to interact with the interface (the magic &amp; AUTH_TOKEN variables in the previous script).
+</p>
+
+<p>
+Create the file <code>/usr/share/rpcd/acl.d/opencanary.json</code> with the following content:
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-user/services/honeypots?codeblock=2" title="Download Snippet" class="mediafile mf_json">/usr/share/rpcd/acl.d/opencanary.json</a></dt>
+<dd><pre class="code yaml"><span class="br0">&#123;</span><span class="co3">
+        &quot;unauthenticated&quot;</span><span class="sy2">: </span><span class="br0">&#123;</span><span class="co3">
+                &quot;description&quot;</span><span class="sy2">: </span><span class="st0">&quot;Allow access to OpenCanary script&quot;</span>,<span class="co3">
+                &quot;read&quot;</span><span class="sy2">: </span><span class="br0">&#123;</span><span class="co3">
+                        &quot;ubus&quot;</span><span class="sy2">: </span><span class="br0">&#123;</span><span class="co3">
+                                &quot;opencanary&quot;</span><span class="sy2">: </span><span class="br0">&#91;</span> <span class="st0">&quot;add&quot;</span> <span class="br0">&#93;</span>
+                        <span class="br0">&#125;</span>
+                <span class="br0">&#125;</span>
+        <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+</dd></dl>
+
+<p>
+This method allows anyone to call the interface but only with the correct MAGIC tag will the interface do anything. Now add the following to the OpenCanary configuration:
+</p>
+<pre class="code yaml"><span class="co3">    &quot;logger&quot;</span><span class="sy2">: </span><span class="br0">&#123;</span><span class="co3">
+        &quot;class&quot;</span><span class="sy2">: </span><span class="st0">&quot;PyLogger&quot;</span>,<span class="co3">
+        &quot;kwargs&quot;</span><span class="sy2">: </span><span class="br0">&#123;</span><span class="co3">
+            &quot;formatters&quot;</span><span class="sy2">: </span><span class="br0">&#123;</span><span class="co3">
+                &quot;plain&quot;</span><span class="sy2">: </span><span class="br0">&#123;</span><span class="co3">
+                    &quot;format&quot;</span><span class="sy2">: </span><span class="st0">&quot;%(message)s&quot;</span>
+                <span class="br0">&#125;</span>
+            <span class="br0">&#125;</span>,<span class="co3">
+            &quot;handlers&quot;</span><span class="sy2">: </span><span class="br0">&#123;</span><span class="co3">
+                &quot;console&quot;</span><span class="sy2">: </span><span class="br0">&#123;</span><span class="co3">
+                    &quot;class&quot;</span><span class="sy2">: </span><span class="st0">&quot;logging.StreamHandler&quot;</span>,<span class="co3">
+                    &quot;stream&quot;</span><span class="sy2">: </span><span class="st0">&quot;ext://sys.stdout&quot;</span>
+                <span class="br0">&#125;</span>,<span class="co3">
+                &quot;Webhook&quot;</span><span class="sy2">: </span><span class="br0">&#123;</span><span class="co3">
+                        &quot;class&quot;</span><span class="sy2">: </span><span class="st0">&quot;opencanary.logger.WebhookHandler&quot;</span>,<span class="co3">
+                        &quot;url&quot;</span><span class="sy2">: </span><span class="st0">&quot;https://172.17.0.1/ubus&quot;</span>,<span class="co3">
+                        &quot;method&quot;</span><span class="sy2">: </span><span class="st0">&quot;POST&quot;</span>,<span class="co3">
+                        &quot;data&quot;</span><span class="sy2">: </span><span class="br0">&#123;</span> <span class="st0">&quot;jsonrpc&quot;</span><span class="sy2">: </span><span class="st0">&quot;2.0&quot;</span>, <span class="st0">&quot;id&quot;</span><span class="sy2">: </span>1, <span class="st0">&quot;method&quot;</span><span class="sy2">: </span><span class="st0">&quot;call&quot;</span>, <span class="st0">&quot;params&quot;</span><span class="sy2">: </span><span class="br0">&#91;</span><span class="st0">&quot;00000000000000000000000000000000&quot;</span>, <span class="st0">&quot;opencanary&quot;</span>, <span class="st0">&quot;add&quot;</span>,<span class="br0">&#123;</span><span class="st0">&quot;magic&quot;</span>:<span class="st0">&quot;specify_a_unique_string_here&quot;</span>, <span class="st0">&quot;message&quot;</span><span class="sy2">: </span><span class="st0">&quot;%(message)s&quot;</span><span class="br0">&#125;</span><span class="br0">&#93;</span> <span class="br0">&#125;</span>,<span class="co3">
+                        &quot;status_code&quot;</span><span class="sy2">: </span>200,<span class="co3">
+                        &quot;verify&quot;</span><span class="sy2">: </span>false,<span class="co3">
+                        &quot;headers&quot;</span><span class="sy2">: </span><span class="br0">&#123;</span> <span class="st0">&quot;Content-Type&quot;</span><span class="sy2">: </span><span class="st0">&quot;application/json&quot;</span> <span class="br0">&#125;</span>
+                <span class="br0">&#125;</span>
+            <span class="br0">&#125;</span>
+        <span class="br0">&#125;</span>
+    <span class="br0">&#125;</span></pre>
+
+<p>
+Make sure you have OpenWrt&#039;s <abbr title="Internet Protocol">IP</abbr> in the url field as seen from inside the docker container and that you specify the AUTH_TOKEN string you have in the rpcd script in the “magic” field.
+</p>
+
+<p>
+Add a firewall traffic rule under Network → Firewall → Traffic rules. Name: opencanary webhook, Source zone: docker, source address: container&#039;s <abbr title="Internet Protocol">IP</abbr> (for example 172.17.0.2), destination zone: Input, destination <abbr title="Internet Protocol">IP</abbr>: openwrt&#039;s <abbr title="Internet Protocol">IP</abbr> (for example 172.17.0.1), destination port: 443, action: accept.
+</p>
+
+<p>
+Restart rpcd with <code>/etc/init.d/rpcd restart</code> and then restart the OpenCanary container. Now connection attempts to the honeypots will show up in the OpenWrt system log and offending clients from WiFi network will automatically be added to the MAC blacklist.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Dropping WiFi clients that connect to honeypots&quot;,&quot;hid&quot;:&quot;dropping_wifi_clients_that_connect_to_honeypots&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:4,&quot;range&quot;:&quot;6003-&quot;} -->

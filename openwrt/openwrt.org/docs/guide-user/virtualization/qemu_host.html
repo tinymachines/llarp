@@ -1,0 +1,200 @@
+
+<h1 class="sectionedit1" id="openwrt_as_qemukvm_host_server">OpenWrt as QEMU/KVM host server</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;OpenWrt as QEMU\/KVM host server&quot;,&quot;hid&quot;:&quot;openwrt_as_qemukvm_host_server&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-47&quot;} -->
+<h2 class="sectionedit2" id="introduction">Introduction</h2>
+<div class="level2">
+
+<p>
+It&#039;s possible to use OpenWrt as a QEMU host and run guests on it. If you want to run OpenWrt as a QEMU guest itself, see <a href="/docs/guide-user/virtualization/qemu" class="wikilink1" title="docs:guide-user:virtualization:qemu" data-wiki-id="docs:guide-user:virtualization:qemu">OpenWrt in QEMU</a>.
+</p>
+
+<p>
+OpenWrt provides QEMU packages for ARM and x86 platforms. This article focuses on the x86 target, the networking is done via <a href="https://wiki.qemu.org/Features/HelperNetworking" class="urlextern" title="https://wiki.qemu.org/Features/HelperNetworking" rel="ugc nofollow">qemu-bridge-helper</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Introduction&quot;,&quot;hid&quot;:&quot;introduction&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;48-448&quot;} -->
+<h2 class="sectionedit3" id="installing_qemu">Installing QEMU</h2>
+<div class="level2">
+
+<p>
+You need the following packages on your device: <a href="/packages/pkgdata/kmod-tun" class="wikilink1" title="packages:pkgdata:kmod-tun" data-wiki-id="packages:pkgdata:kmod-tun">kmod-tun</a>, <a href="/packages/pkgdata/qemu-bridge-helper" class="wikilink1" title="packages:pkgdata:qemu-bridge-helper" data-wiki-id="packages:pkgdata:qemu-bridge-helper">qemu-bridge-helper</a>. Depending on the guest architecture, install <a href="/packages/pkgdata/qemu-x86_64-softmmu" class="wikilink1" title="packages:pkgdata:qemu-x86_64-softmmu" data-wiki-id="packages:pkgdata:qemu-x86_64-softmmu">qemu-x86_64-softmmu</a> or <a href="/packages/pkgdata/qemu-arm-softmmu" class="wikilink1" title="packages:pkgdata:qemu-arm-softmmu" data-wiki-id="packages:pkgdata:qemu-arm-softmmu">qemu-arm-softmmu</a>. If your hardware supports it, also install <a href="/packages/pkgdata/kmod-kvm-amd" class="wikilink1" title="packages:pkgdata:kmod-kvm-amd" data-wiki-id="packages:pkgdata:kmod-kvm-amd">kmod-kvm-amd</a> or <a href="/packages/pkgdata/kmod-kvm-intel" class="wikilink1" title="packages:pkgdata:kmod-kvm-intel" data-wiki-id="packages:pkgdata:kmod-kvm-intel">kmod-kvm-intel</a> for better performance.
+</p>
+
+<p>
+Example for an Intel system and a x86_64 guest:
+</p>
+<pre class="code">opkg install kmod-tun qemu-bridge-helper qemu-x86_64-softmmu kmod-kvm-intel</pre>
+
+<p>
+After the first installation, reboot your device.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installing QEMU&quot;,&quot;hid&quot;:&quot;installing_qemu&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;449-1148&quot;} -->
+<h2 class="sectionedit4" id="running_a_guest">Running a guest</h2>
+<div class="level2">
+
+<p>
+For the guest <abbr title="Operating System">OS</abbr>, use a distribution that comes with virtio drivers by default (Debian or Fedora for example).
+</p>
+
+<p>
+The following QEMU command uses a physical disk, but you can use a disk image as well. Below are explanations of the networking options.
+</p>
+<pre class="code bash">qemu-system-x86_64 <span class="re5">-enable-kvm</span> <span class="re5">-cpu</span> host <span class="re5">-smp</span> <span class="nu0">2</span> <span class="re5">-m</span> 2G \
+    <span class="re5">-drive</span> <span class="re2">file</span>=<span class="sy0">/</span>dev<span class="sy0">/</span>sda,<span class="re2">cache</span>=none,<span class="re2">if</span>=virtio,<span class="re2">format</span>=raw \
+    <span class="re5">-device</span> virtio-net-pci,<span class="re2">mac</span>=E2:F2:6A:01:9D:C9,<span class="re2">netdev</span>=br0 \
+    <span class="re5">-netdev</span> bridge,<span class="re2">br</span>=br-lan,<span class="re2">id</span>=br0</pre>
+
+<p>
+<strong>Line 3</strong> creates a virtio net device with a fixed MAC address that is told to use the network backend with <code>id=br0</code>, which gets created in <strong>line 4</strong>. The network backend is of type <code>bridge</code> and <code>br=br-lan</code> tells QEMU to connect to the bridge network <code>br-lan</code> of the OpenWrt host. For that <code>qemu-bridge-helper</code> will automatically create the needed TUN/TAP interfaces.
+If your guest uses <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> it should now receive an address by the server running in <code>br-lan</code>.
+</p>
+
+<p>
+You can choose any other bridge interface available on your OpenWrt host as well. See <a href="/docs/guide-user/base-system/basic-networking" class="wikilink1" title="docs:guide-user:base-system:basic-networking" data-wiki-id="docs:guide-user:base-system:basic-networking">Network basics</a> on how to configure networking interfaces.
+If you want to change which networks QEMU is allowed to connect to, you can do so via <code>/etc/qemu/bridge.conf</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Running a guest&quot;,&quot;hid&quot;:&quot;running_a_guest&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:4,&quot;range&quot;:&quot;1149-2441&quot;} -->
+<h2 class="sectionedit5" id="installing_debian_as_guest_os">Installing Debian as guest OS</h2>
+<div class="level2">
+
+<p>
+If you don&#039;t have a prepared disk image, you can install a guest <abbr title="Operating System">OS</abbr> directly on your OpenWrt device. There are several guides available on how to install a Linux distribution on a QEMU image: <a href="https://wiki.debian.org/QEMU#Setting_up_a_stable_system" class="urlextern" title="https://wiki.debian.org/QEMU#Setting_up_a_stable_system" rel="ugc nofollow">Debian</a> for example.
+ A quick way is to install Debian using the kernel and initrd of a Debian netboot installer.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installing Debian as guest OS&quot;,&quot;hid&quot;:&quot;installing_debian_as_guest_os&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:5,&quot;range&quot;:&quot;2442-2848&quot;} -->
+<h3 class="sectionedit6" id="create_a_disk_image">Create a disk image</h3>
+<div class="level3">
+<pre class="code bash">qemu-img create <span class="re5">-f</span> qcow2 debian.img 4G</pre>
+
+<p>
+More details on disk images: <a href="https://en.wikibooks.org/wiki/QEMU/Images" class="urlextern" title="https://en.wikibooks.org/wiki/QEMU/Images" rel="ugc nofollow">https://en.wikibooks.org/wiki/QEMU/Images</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Create a disk image&quot;,&quot;hid&quot;:&quot;create_a_disk_image&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:6,&quot;range&quot;:&quot;2849-3013&quot;} -->
+<h3 class="sectionedit7" id="download_installer_files">Download installer files</h3>
+<div class="level3">
+<pre class="code bash"><span class="kw2">wget</span> https:<span class="sy0">//</span>ftp.debian.org<span class="sy0">/</span>debian<span class="sy0">/</span>dists<span class="sy0">/</span>stable<span class="sy0">/</span>main<span class="sy0">/</span>installer-amd64<span class="sy0">/</span>current<span class="sy0">/</span>images<span class="sy0">/</span>netboot<span class="sy0">/</span>debian-installer<span class="sy0">/</span>amd64<span class="sy0">/</span>linux
+<span class="kw2">wget</span> https:<span class="sy0">//</span>ftp.debian.org<span class="sy0">/</span>debian<span class="sy0">/</span>dists<span class="sy0">/</span>stable<span class="sy0">/</span>main<span class="sy0">/</span>installer-amd64<span class="sy0">/</span>current<span class="sy0">/</span>images<span class="sy0">/</span>netboot<span class="sy0">/</span>debian-installer<span class="sy0">/</span>amd64<span class="sy0">/</span>initrd.gz</pre>
+
+<p>
+Both files can be savely removed after finishing the installation.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Download installer files&quot;,&quot;hid&quot;:&quot;download_installer_files&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:7,&quot;range&quot;:&quot;3014-3382&quot;} -->
+<h3 class="sectionedit8" id="run_the_installer">Run the installer</h3>
+<div class="level3">
+
+<p>
+The following command will launch the Debian installer inside QEMU, <code>debian.img</code> will appear as <code>/dev/vda</code>
+</p>
+<pre class="code bash">qemu-system-x86_64 <span class="re5">-enable-kvm</span> <span class="re5">-cpu</span> host <span class="re5">-smp</span> <span class="nu0">2</span> <span class="re5">-m</span> 2G \
+	<span class="re5">-initrd</span> initrd.gz \
+	<span class="re5">-kernel</span> linux \
+	<span class="re5">-append</span> <span class="st0">&quot;root=/dev/ram console=ttyS0&quot;</span> \
+	<span class="re5">-drive</span> <span class="re2">file</span>=debian.img,<span class="re2">if</span>=virtio \
+	<span class="re5">-device</span> virtio-net-pci,<span class="re2">mac</span>=E2:F2:6A:01:9D:C9,<span class="re2">netdev</span>=br0 \
+	<span class="re5">-netdev</span> bridge,<span class="re2">br</span>=br-lan,<span class="re2">id</span>=br0 \
+	<span class="re5">-nographic</span></pre>
+
+<p>
+Follow the installation instructions and install GRUB on <code>/dev/vda</code>. It&#039;s also useful to install sshd (enabled by default).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Run the installer&quot;,&quot;hid&quot;:&quot;run_the_installer&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:8,&quot;range&quot;:&quot;3383-3945&quot;} -->
+<h3 class="sectionedit9" id="run_the_new_guest">Run the new guest</h3>
+<div class="level3">
+
+<p>
+After finishing the installation, you can launch the new installation with QEMU:
+</p>
+<pre class="code bash">qemu-system-x86_64 <span class="re5">-enable-kvm</span> <span class="re5">-cpu</span> host <span class="re5">-smp</span> <span class="nu0">2</span> <span class="re5">-m</span> 2G \
+	<span class="re5">-drive</span> <span class="re2">file</span>=debian.img,<span class="re2">if</span>=virtio \
+	<span class="re5">-device</span> virtio-net-pci,<span class="re2">mac</span>=E2:F2:6A:01:9D:C9,<span class="re2">netdev</span>=br0 \
+	<span class="re5">-netdev</span> bridge,<span class="re2">br</span>=br-lan,<span class="re2">id</span>=br0 \
+	<span class="re5">-nographic</span></pre>
+
+<p>
+You should now be able to reach the VM via <abbr title="Secure Shell">SSH</abbr> from within <code>br-lan</code>.
+If you want to control the VM using the command line, you have to enable a serial console. To do this, edit the GRUB entry during boot and add <code>console=ttyS0</code> to the kernel command line. After the VM finished booting, edit <code>/etc/default/grub</code> and add <code>console=ttyS0</code> to <code>GRUB_CMDLINE_LINUX_DEFAULT</code> as well. After that run <code>update-grub</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Run the new guest&quot;,&quot;hid&quot;:&quot;run_the_new_guest&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:9,&quot;range&quot;:&quot;3946-4692&quot;} -->
+<h2 class="sectionedit10" id="init_script">Init script</h2>
+<div class="level2">
+
+<p>
+To automatically start the VM at boot and shut it down cleanly using <a href="https://wiki.qemu.org/Documentation/QMP" class="urlextern" title="https://wiki.qemu.org/Documentation/QMP" rel="ugc nofollow">QMP</a>, create an <a href="/docs/techref/initscripts" class="wikilink1" title="docs:techref:initscripts" data-wiki-id="docs:techref:initscripts">init script</a> like the one below.
+</p>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:11,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_center wrap_round wrap_important plugin_wrap" style="width: 60%;">
+<p>
+Be careful with copying the heredoc part. This code block is left unindented on purpose to avoid problems with whitespaces. If you want, you can indent the lines with tabs and use <code>&lt;&lt;-QMP</code> instead of <code>&lt;&lt;QMP</code>, but since tabs are printed as whitespaces in dokuwiki code blocks, this example is used without indentation. You can read more about here documents in the <a href="http://tldp.org/LDP/abs/html/here-docs.html" class="urlextern" title="http://tldp.org/LDP/abs/html/here-docs.html" rel="ugc nofollow">advanced bash-scripting guide</a>
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:12,&quot;range&quot;:&quot;0-&quot;} --><dl class="code">
+<dt><a href="/_export/code/docs/guide-user/virtualization/qemu_host?codeblock=6" title="Download Snippet" class="mediafile mf_d_qemu">/etc/init.d/qemu</a></dt>
+<dd><pre class="code bash"><span class="co0">#!/bin/sh /etc/rc.common</span>
+&nbsp;
+<span class="re2">START</span>=<span class="nu0">99</span>
+<span class="re2">STOP</span>=<span class="nu0">1</span>
+&nbsp;
+<span class="re2">qemu_pidfile</span>=<span class="st0">&quot;/var/run/qemu.pid&quot;</span>
+&nbsp;
+start<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+qemu-system-x86_64 <span class="re5">-enable-kvm</span> <span class="re5">-cpu</span> host <span class="re5">-smp</span> <span class="nu0">2</span> <span class="re5">-m</span> 2G \
+	<span class="re5">-drive</span> <span class="re2">file</span>=<span class="sy0">/</span>dev<span class="sy0">/</span>sda,<span class="re2">cache</span>=none,<span class="re2">if</span>=virtio,<span class="re2">format</span>=raw \
+	<span class="re5">-device</span> virtio-net-pci,<span class="re2">mac</span>=E2:F2:6A:01:9D:C9,<span class="re2">netdev</span>=br0 \
+	<span class="re5">-netdev</span> bridge,<span class="re2">br</span>=br-lan,<span class="re2">id</span>=br0 \
+	<span class="re5">-qmp</span> tcp:127.0.0.1:<span class="nu0">4444</span>,server,nowait \
+	<span class="re5">-daemonize</span> <span class="sy0">&amp;&gt;</span> <span class="sy0">/</span>var<span class="sy0">/</span>log<span class="sy0">/</span>qemu.log
+&nbsp;
+<span class="sy0">/</span>usr<span class="sy0">/</span>bin<span class="sy0">/</span>pgrep qemu-system-x86_64 <span class="sy0">&gt;</span> <span class="re1">$qemu_pidfile</span>
+<span class="kw3">echo</span> <span class="st0">&quot;QEMU: Started VM with PID <span class="es4">$(cat $qemu_pidfile)</span>.&quot;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+stop<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;QEMU: Sending 'system_powerdown' to VM with PID <span class="es4">$(cat $qemu_pidfile)</span>.&quot;</span>
+nc localhost <span class="nu0">4444</span> <span class="sy0">&lt;&lt;</span>QMP 
+<span class="br0">&#123;</span> <span class="st0">&quot;execute&quot;</span>: <span class="st0">&quot;qmp_capabilities&quot;</span> <span class="br0">&#125;</span> 
+<span class="br0">&#123;</span> <span class="st0">&quot;execute&quot;</span>: <span class="st0">&quot;system_powerdown&quot;</span> <span class="br0">&#125;</span> 
+QMP
+&nbsp;
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-e</span> <span class="re1">$qemu_pidfile</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+	<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-e</span> <span class="sy0">/</span>proc<span class="sy0">/</span>$<span class="br0">&#40;</span><span class="kw2">cat</span> <span class="re1">$qemu_pidfile</span><span class="br0">&#41;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+		<span class="kw3">echo</span> <span class="st0">&quot;QEMU: Waiting for VM shutdown.&quot;</span>
+		<span class="kw1">while</span> <span class="br0">&#91;</span> <span class="re5">-e</span> <span class="sy0">/</span>proc<span class="sy0">/</span>$<span class="br0">&#40;</span><span class="kw2">cat</span> <span class="re1">$qemu_pidfile</span><span class="br0">&#41;</span> <span class="br0">&#93;</span>; <span class="kw1">do</span> <span class="kw2">sleep</span> 1s; <span class="kw1">done</span>
+		<span class="kw3">echo</span> <span class="st0">&quot;QEMU: VM Process <span class="es4">$(cat $qemu_pidfile)</span> finished.&quot;</span>
+	<span class="kw1">else</span>
+		<span class="kw3">echo</span> <span class="st0">&quot;QEMU: Error: No VM with PID <span class="es4">$(cat $qemu_pidfile)</span> running.&quot;</span>
+	<span class="kw1">fi</span>
+&nbsp;
+	<span class="kw2">rm</span> <span class="re5">-f</span> <span class="re1">$qemu_pidfile</span>
+<span class="kw1">else</span>
+	<span class="kw3">echo</span> <span class="st0">&quot;QEMU: Error: <span class="es2">$qemu_pidfile</span> doesn't exist.&quot;</span>
+<span class="kw1">fi</span>
+<span class="br0">&#125;</span></pre>
+</dd></dl>
+
+<p>
+Test the the script by running <code>/etc/init.d/qemu start</code> and look for errors in <code>/var/log/qemu.log</code>.
+If the script works as desired, enable it for every boot: <code>/etc/init.d/qemu enable</code>
+</p>
+
+<p>
+<img src="/lib/images/smileys/fixme.svg" class="icon smiley" alt="FIXME" /> This script needs to be ported to <a href="/docs/guide-developer/procd-init-scripts" class="wikilink1" title="docs:guide-developer:procd-init-scripts" data-wiki-id="docs:guide-developer:procd-init-scripts">procd</a>. Problem: <a href="/docs/guide-developer/procd-init-scripts#stopping_services" class="wikilink1" title="docs:guide-developer:procd-init-scripts" data-wiki-id="docs:guide-developer:procd-init-scripts">stop_service() is called after procd killed the service</a>, but we must run it beforehand to let the VM shut down.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Init script&quot;,&quot;hid&quot;:&quot;init_script&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:10,&quot;range&quot;:&quot;4693-&quot;} -->

@@ -1,0 +1,541 @@
+
+<h1 class="sectionedit1" id="attach_functions_to_a_push_button">Attach functions to a push button</h1>
+<div class="level1">
+
+<p>
+There several ways for controlling buttons in OpenWrt.
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="#procd_buttons" title="docs:guide-user:hardware:hardware.button ↵" class="wikilink1"> buttons using procd</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="#hotplug_buttons" title="docs:guide-user:hardware:hardware.button ↵" class="wikilink1">Hotplug buttons</a>, using the hotplug daemon or procd in compatibility mode (hotplug itself was phased out with r36003, circa 2013).</div>
+</li>
+<li class="level1"><div class="li"> <a href="#hid_buttons" title="docs:guide-user:hardware:hardware.button ↵" class="wikilink1">HID buttons</a>, using <em>/dev/input/event</em> with an application like triggerhappy.</div>
+</li>
+</ul>
+<div class="table sectionedit2"><table class="inline">
+	<tr class="row0">
+		<td class="col0"> <img src="/_media/meta/icons/tango/dialog-information.png" class="media" loading="lazy" alt="" /> </td><td class="col1"> <strong>Kernel configuration</strong><br/>
+If a target platform is known to support buttons, appropriate kernel modules are selected by default.<br/>
+If a platform is not known to support buttons, you are required to install various kernel modules yourself such as <code>diag</code>, <code>input-gpio-buttons</code>, <code>gpio-button-hotplug</code>, and others.<br/>
+However, installing various modules will not necessarily yield a successful result. </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;404-864&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Attach functions to a push button&quot;,&quot;hid&quot;:&quot;attach_functions_to_a_push_button&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-865&quot;} -->
+<h2 class="sectionedit3" id="procd_buttons">procd buttons</h2>
+<div class="level2">
+
+<p>
+Native button handling in procd is handled by scripts in <code>/etc/rc.button/*</code>.
+</p>
+
+<p>
+These scripts receive the <strong>same</strong> environment as older style <a href="/docs/guide-user/base-system/hotplug" class="wikilink1" title="docs:guide-user:base-system:hotplug" data-wiki-id="docs:guide-user:base-system:hotplug">hotplug</a> buttons received.  
+</p>
+<div class="table sectionedit4"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Button Action </th><th class="col1"> Script Environment </th><th class="col2"> Script return value </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> Press </td><td class="col1"> ACTION=“pressed” </td><td class="col2"> Seconds before “timeout” </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> Held “timeout” seconds </td><td class="col1"> ACTION=“timeout” SEEN=“&lt;timeout secs&gt;” </td><td class="col2"> n/a </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> Release </td><td class="col1"> ACTION=“released” SEEN=“&lt;seconds held&gt;” </td><td class="col2"> n/a </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table1&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;1104-1354&quot;} -->
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> “released” action is sent on release even if “timeout” has been sent.
+</p>
+
+<p>
+Unfortunately, it is not particularly easy to know the name of the event that a hardware button will trigger. Buttons are mapped to Linux keys in each device’s specific Devicetree (.dts) file, which you can find in the OpenWrt source code repository.
+</p>
+
+<p>
+Then the <code>gpio-button-hotplug</code> kernel module translates those key presses into events that you can act on. The most reliable way is to look in <code>/sys/firmware/devicetree/base/keys</code>, however the key codes you can find there are all in binary.
+You can do something like this:
+</p>
+<pre class="code">find /sys/firmware/devicetree/base/keys -mindepth 1 -type d | while read -r f; do printf &#039;%s: %s\n&#039; $(basename $f) $(hexdump -s2 -e &#039;2/1 &quot;%02x&quot;&quot;\n&quot;&#039; $f/linux,code); done</pre>
+
+<p>
+to list the buttons that your device has together with the hex values for the key codes they send, and then lookup those hex constants in the table below.
+</p>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_round wrap_box plugin_wrap" style="width: 60%;">
+<p>
+Please consider using these kernel codes when adding support for new devices, they&#039;re mapped by the <code>gpio-button-hotplug</code> kernel module:
+</p>
+<div class="table sectionedit7"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Hex value </th><th class="col1"> Kernel code </th><th class="col2"> event </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> <code>0100</code> </td><td class="col1"> BTN_0 </td><td class="col2"> BTN_0 </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> <code>0101</code> </td><td class="col1"> BTN_1 </td><td class="col2"> BTN_1 </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> <code>0102</code> </td><td class="col1"> BTN_2 </td><td class="col2"> BTN_2 </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> <code>0103</code> </td><td class="col1"> BTN_3 </td><td class="col2"> BTN_3 </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0"> <code>0104</code> </td><td class="col1"> BTN_4 </td><td class="col2"> BTN_4 </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0"> <code>0105</code> </td><td class="col1"> BTN_5 </td><td class="col2"> BTN_5 </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0"> <code>0106</code> </td><td class="col1"> BTN_6 </td><td class="col2"> BTN_6 </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0"> <code>0107</code> </td><td class="col1"> BTN_7 </td><td class="col2"> BTN_7 </td>
+	</tr>
+	<tr class="row9">
+		<td class="col0"> <code>0108</code> </td><td class="col1"> BTN_8 </td><td class="col2"> BTN_8 </td>
+	</tr>
+	<tr class="row10">
+		<td class="col0"> <code>0109</code> </td><td class="col1"> BTN_9 </td><td class="col2"> BTN_9 </td>
+	</tr>
+	<tr class="row11">
+		<td class="col0 leftalign">          </td><td class="col1"> KEY_BRIGHTNESS_ZERO </td><td class="col2"> brightness_zero </td>
+	</tr>
+	<tr class="row12">
+		<td class="col0 leftalign">          </td><td class="col1"> KEY_CONFIG </td><td class="col2"> config </td>
+	</tr>
+	<tr class="row13">
+		<td class="col0 leftalign">          </td><td class="col1"> KEY_COPY </td><td class="col2"> copy </td>
+	</tr>
+	<tr class="row14">
+		<td class="col0 leftalign">          </td><td class="col1"> KEY_EJECTCD </td><td class="col2"> eject </td>
+	</tr>
+	<tr class="row15">
+		<td class="col0 leftalign">          </td><td class="col1"> KEY_HELP </td><td class="col2"> help </td>
+	</tr>
+	<tr class="row16">
+		<td class="col0"> <code>021e</code> </td><td class="col1"> KEY_LIGHTS_TOGGLE </td><td class="col2"> lights_toggle </td>
+	</tr>
+	<tr class="row17">
+		<td class="col0 leftalign">          </td><td class="col1"> KEY_PHONE </td><td class="col2"> phone </td>
+	</tr>
+	<tr class="row18">
+		<td class="col0"> <code>0074</code> </td><td class="col1"> <strong>KEY_POWER</strong> </td><td class="col2"> <strong>power</strong> </td>
+	</tr>
+	<tr class="row19">
+		<td class="col0"> <code>0164</code> </td><td class="col1"> <strong>KEY_POWER2</strong> </td><td class="col2"> <strong>reboot</strong> </td>
+	</tr>
+	<tr class="row20">
+		<td class="col0"> <code>0198</code> </td><td class="col1"> <strong>KEY_RESTART</strong> </td><td class="col2"> <strong>reset</strong> </td>
+	</tr>
+	<tr class="row21">
+		<td class="col0"> <code>00f7</code> </td><td class="col1"> <strong>KEY_RFKILL</strong> </td><td class="col2"> <strong>rfkill</strong> </td>
+	</tr>
+	<tr class="row22">
+		<td class="col0 leftalign">          </td><td class="col1"> KEY_VIDEO </td><td class="col2"> video </td>
+	</tr>
+	<tr class="row23">
+		<td class="col0 leftalign">          </td><td class="col1"> KEY_VOLUMEDOWN </td><td class="col2"> volume_down </td>
+	</tr>
+	<tr class="row24">
+		<td class="col0 leftalign">          </td><td class="col1"> KEY_VOLUMEUP </td><td class="col2"> volume_up </td>
+	</tr>
+	<tr class="row25">
+		<td class="col0 leftalign">          </td><td class="col1"> KEY_WIMAX </td><td class="col2"> wwan </td>
+	</tr>
+	<tr class="row26">
+		<td class="col0"> <code>00ee</code> </td><td class="col1"> KEY_<abbr title="Wireless Local Area Network">WLAN</abbr> </td><td class="col2"> wlan </td>
+	</tr>
+	<tr class="row27">
+		<td class="col0"> <code>0211</code> </td><td class="col1"> KEY_WPS_BUTTON </td><td class="col2"> wps </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table2&quot;,&quot;secid&quot;:7,&quot;range&quot;:&quot;2454-3432&quot;} --></div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:6,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;procd buttons&quot;,&quot;hid&quot;:&quot;procd_buttons&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;866-3442&quot;} -->
+<h2 class="sectionedit8" id="hotplug_buttons">Hotplug Buttons</h2>
+<div class="level2">
+<div class="table sectionedit9"><table class="inline">
+	<tr class="row0">
+		<td class="col0"> <img src="/_media/meta/icons/tango/48px-outdated.svg.png" class="media" loading="lazy" alt="" /> </td><td class="col1"> Note that after the introduction of <strong><code><a href="/docs/techref/procd" class="wikilink1" title="docs:techref:procd" data-wiki-id="docs:techref:procd">procd</a></code></strong> into OpenWrt in <a href="https://dev.openwrt.org/changeset/37132" class="urlextern" title="https://dev.openwrt.org/changeset/37132" rel="ugc nofollow">r37132</a> the package <code>hotplug2</code> has been removed from the default packages. However at the time of writing, <a href="https://dev.openwrt.org/changeset/37336" class="urlextern" title="https://dev.openwrt.org/changeset/37336" rel="ugc nofollow">r37336: procd: make old button hotplug rules work until all packages are migrated</a> is still in effect. See also <a href="#procdbuttons" title="docs:guide-user:hardware:hardware.button ↵" class="wikilink1">procd.buttons</a> </td>
+	</tr>
+	<tr class="row1">
+		<td class="col0"> <img src="/lib/images/smileys/fixme.svg" class="icon smiley" alt="FIXME" /> </td><td class="col1"> Please read the articles <a href="/docs/guide-user/network/wifi/wifitoggle" class="wikilink1" title="docs:guide-user:network:wifi:wifitoggle" data-wiki-id="docs:guide-user:network:wifi:wifitoggle">wifitoggle</a>, <a href="/toh/tp-link/tl-wr741nd#buttons" class="wikilink1" title="toh:tp-link:tl-wr741nd" data-wiki-id="toh:tp-link:tl-wr741nd">buttons</a> and <a href="/toh/linksys/nslu2/nslu2.hardware.button" class="wikilink1" title="toh:linksys:nslu2:nslu2.hardware.button" data-wiki-id="toh:linksys:nslu2:nslu2.hardware.button">nslu2.hardware.button</a> and eventually merge them into this one article </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table3&quot;,&quot;secid&quot;:9,&quot;range&quot;:&quot;3471-4149&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Hotplug Buttons&quot;,&quot;hid&quot;:&quot;hotplug_buttons&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:8,&quot;range&quot;:&quot;3443-4150&quot;} -->
+<h3 class="sectionedit10" id="preliminary_steps">Preliminary steps</h3>
+<div class="level3">
+
+<p>
+The first step is to find out the internal name of the button you want to use: some images use generic names such as <code>BTN_1</code>, <code>BTN_2</code>, others have more specific ones like <code>reset</code>, <code>wps</code>, etc.
+Run the following:
+</p>
+<pre class="code bash">opkg update
+opkg <span class="kw2">install</span> kmod-button-hotplug
+&nbsp;
+<span class="kw2">mkdir</span> <span class="re5">-p</span> <span class="sy0">/</span>etc<span class="sy0">/</span>hotplug.d<span class="sy0">/</span>button
+&nbsp;
+<span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>hotplug.d<span class="sy0">/</span>button<span class="sy0">/</span>buttons
+logger <span class="st0">&quot;the button was <span class="es3">${BUTTON}</span> and the action was <span class="es3">${ACTION}</span>&quot;</span>
+EOF</pre>
+
+<p>
+Now press the button you want to use, then run <code>logread</code>.
+</p>
+<pre class="code bash">Jan <span class="nu0">1</span> 00:01:<span class="nu0">15</span> OpenWrt user.notice root: BTN_1
+Jan <span class="nu0">1</span> 00:01:<span class="nu0">15</span> OpenWrt user.notice root: pressed
+Jan <span class="nu0">1</span> 00:01:<span class="nu0">16</span> OpenWrt user.notice root: BTN_1
+Jan <span class="nu0">1</span> 00:01:<span class="nu0">16</span> OpenWrt user.notice root: released</pre>
+
+<p>
+<code>BTN_1</code> is the name of the button you want to use.
+If you want or need to use another button, replace every instance of <code>BTN_1</code> in the rest of this document with the correct text.
+From now on, there are several possible approaches: the first uses the <code>00-button</code> script from the <code>atheros</code> target, the other a simpler shell script.
+</p>
+
+<p>
+If you want to run programs from hotplug&#039;s scripts you need to be sure <code>PATH</code> and the like are initialized properly, scripts invoked by hotplug only have a default env.
+Especially if you install stuff into nonstandard locations like /opt/usr/bin.
+</p>
+<pre class="code bash"><span class="kw3">source</span> <span class="sy0">/</span>etc<span class="sy0">/</span>profile</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Preliminary steps&quot;,&quot;hid&quot;:&quot;preliminary_steps&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:10,&quot;range&quot;:&quot;4151-5515&quot;} -->
+<h3 class="sectionedit11" id="using_atheros_00-button_uci">Using Atheros&#039; 00-button + UCI</h3>
+<div class="level3">
+<pre class="code bash"><span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>hotplug.d<span class="sy0">/</span>button<span class="sy0">/</span>00-button
+<span class="kw3">source</span> <span class="sy0">/</span>lib<span class="sy0">/</span>functions.sh
+&nbsp;
+do_button <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw3">local</span> button
+    <span class="kw3">local</span> action
+    <span class="kw3">local</span> handler
+    <span class="kw3">local</span> min
+    <span class="kw3">local</span> max
+&nbsp;
+    config_get button <span class="st0">&quot;<span class="es3">${1}</span>&quot;</span> button
+    config_get action <span class="st0">&quot;<span class="es3">${1}</span>&quot;</span> action
+    config_get handler <span class="st0">&quot;<span class="es3">${1}</span>&quot;</span> handler
+    config_get min <span class="st0">&quot;<span class="es3">${1}</span>&quot;</span> min
+    config_get max <span class="st0">&quot;<span class="es3">${1}</span>&quot;</span> max
+&nbsp;
+    <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es3">${ACTION}</span>&quot;</span> = <span class="st0">&quot;<span class="es3">${action}</span>&quot;</span> <span class="re5">-a</span> <span class="st0">&quot;<span class="es3">${BUTTON}</span>&quot;</span> = <span class="st0">&quot;<span class="es3">${button}</span>&quot;</span> <span class="re5">-a</span> <span class="re5">-n</span> <span class="st0">&quot;<span class="es3">${handler}</span>&quot;</span> <span class="br0">&#93;</span> <span class="sy0">&amp;&amp;</span> <span class="br0">&#123;</span>
+        <span class="br0">&#91;</span> <span class="re5">-z</span> <span class="st0">&quot;<span class="es3">${min}</span>&quot;</span> <span class="re5">-o</span> <span class="re5">-z</span> <span class="st0">&quot;<span class="es3">${max}</span>&quot;</span> <span class="br0">&#93;</span> <span class="sy0">&amp;&amp;</span> <span class="kw3">eval</span> <span class="co1">${handler}</span>
+        <span class="br0">&#91;</span> <span class="re5">-n</span> <span class="st0">&quot;<span class="es3">${min}</span>&quot;</span> <span class="re5">-a</span> <span class="re5">-n</span> <span class="st0">&quot;<span class="es3">${max}</span>&quot;</span> <span class="br0">&#93;</span> <span class="sy0">&amp;&amp;</span> <span class="br0">&#123;</span>
+            <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es3">${min}</span>&quot;</span> <span class="re5">-le</span> <span class="st0">&quot;<span class="es3">${SEEN}</span>&quot;</span> <span class="re5">-a</span> <span class="st0">&quot;<span class="es3">${max}</span>&quot;</span> <span class="re5">-ge</span> <span class="st0">&quot;<span class="es3">${SEEN}</span>&quot;</span> <span class="br0">&#93;</span> <span class="sy0">&amp;&amp;</span> <span class="kw3">eval</span> <span class="co1">${handler}</span>
+        <span class="br0">&#125;</span>
+    <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+config_load system
+config_foreach do_button button
+EOF
+&nbsp;
+uci add system button
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.button=<span class="st0">&quot;BTN_1&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.action=<span class="st0">&quot;pressed&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.handler=<span class="st0">&quot;logger BTN_1 pressed&quot;</span>
+uci commit system </pre>
+
+<p>
+<code>button</code> is the name as the button, <code>action</code> is the event (two values: <code>pressed</code> and <code>released</code>), handler contains the command line to be run when the event is detected (can be a script as well).
+</p>
+
+<p>
+You may need to reboot the router the make the change effective (mine would work with the simple shell script just fine but wouldn&#039;t budge when using the 00-button script --- <em>Frex 2011/03/25 22:29</em>).
+If this works, you can change the handler to something more useful, and add more button handlers.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Using Atheros&#039; 00-button + UCI&quot;,&quot;hid&quot;:&quot;using_atheros_00-button_uci&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:11,&quot;range&quot;:&quot;5516-6957&quot;} -->
+<h3 class="sectionedit12" id="examples">Examples</h3>
+<div class="level3">
+
+<p>
+<strong>Example 1:</strong> <em>Toggle Wi-Fi radio with a button press</em>
+</p>
+<pre class="code bash">uci add system button
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.button=<span class="st0">&quot;wps&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.action=<span class="st0">&quot;pressed&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.handler=<span class="st0">&quot;uci set wireless.@wifi-device[0].disabled='1' &amp;&amp; wifi&quot;</span>
+uci commit system</pre>
+
+<p>
+<strong>Example 2:</strong> <em>Assign two different functions to the same button: short press VS long press.
+This relies on tracking the </em>released<em> event rather than the </em>pressed<em> event.</em>
+</p>
+<pre class="code bash">uci add system button
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.button=<span class="st0">&quot;BTN_1&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.action=<span class="st0">&quot;released&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.handler=<span class="st0">&quot;logger timed pressed: 0-3s&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.min=<span class="st0">&quot;0&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.max=<span class="st0">&quot;3&quot;</span>
+uci add system button
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.button=<span class="st0">&quot;BTN_1&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.action=<span class="st0">&quot;released&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.handler=<span class="st0">&quot;logger timed pressed: 8-10s&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.min=<span class="st0">&quot;8&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.max=<span class="st0">&quot;10&quot;</span>
+uci commit system</pre>
+
+<p>
+<strong>Example 3:</strong> <em>Unmount USB storage using a long-ish press</em>
+</p>
+<pre class="code bash">uci add system button
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.button=<span class="st0">&quot;BTN_1&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.action=<span class="st0">&quot;released&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.handler=<span class="st0">&quot;for i in <span class="es1">\$</span>(mount | awk '/dev\/sd[b-z]/{print <span class="es1">\$</span>1}'); do umount <span class="es1">\$</span>{i}; done&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.min=<span class="st0">&quot;5&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.max=<span class="st0">&quot;10&quot;</span>
+uci commit system</pre>
+
+<p>
+<strong>Example 4:</strong> <em>Restore defaults</em>
+</p>
+<pre class="code bash">uci add system button
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.button=<span class="st0">&quot;reset&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.action=<span class="st0">&quot;released&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.handler=<span class="st0">&quot;firstboot &amp;&amp; reboot&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.min=<span class="st0">&quot;5&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.max=<span class="st0">&quot;30&quot;</span>
+uci commit system</pre>
+
+<p>
+<strong>Example 5:</strong> <em>Toggle Wi-Fi using a script</em>
+</p>
+<pre class="code bash">uci add system button
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.button=<span class="st0">&quot;wps&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.action=<span class="st0">&quot;released&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.handler=<span class="st0">&quot;/usr/bin/wifionoff&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.min=<span class="st0">&quot;0&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.max=<span class="st0">&quot;3&quot;</span>
+uci commit system
+&nbsp;
+<span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>usr<span class="sy0">/</span>bin<span class="sy0">/</span>wifionoff
+<span class="co0">#!/bin/sh</span>
+<span class="br0">&#91;</span> <span class="st0">&quot;<span class="es3">${BUTTON}</span>&quot;</span> = <span class="st0">&quot;BTN_1&quot;</span> <span class="br0">&#93;</span> <span class="sy0">&amp;&amp;</span> <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es3">${ACTION}</span>&quot;</span> = <span class="st0">&quot;pressed&quot;</span> <span class="br0">&#93;</span> <span class="sy0">&amp;&amp;</span> <span class="br0">&#123;</span>
+    <span class="re2">SW</span>=<span class="st0">&quot;<span class="es4">$(uci -q get wireless.@wifi-device[0].disabled)</span>&quot;</span>
+    <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es3">${SW}</span>&quot;</span> = <span class="st0">&quot;1&quot;</span> <span class="br0">&#93;</span> \
+        <span class="sy0">&amp;&amp;</span> uci <span class="kw1">set</span> wireless.<span class="sy0">@</span>wifi-device<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.disabled=<span class="st0">&quot;0&quot;</span> \
+        <span class="sy0">||</span> uci <span class="kw1">set</span> wireless.<span class="sy0">@</span>wifi-device<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.disabled=<span class="st0">&quot;1&quot;</span>
+    wifi
+<span class="br0">&#125;</span>
+EOF
+<span class="kw2">chmod</span> u+x <span class="sy0">/</span>usr<span class="sy0">/</span>bin<span class="sy0">/</span>wifionoff</pre>
+
+<p>
+Another option for wifionoff is this script (doesn&#039;t store the state in uci, so it remains what is set in the configuration)
+You can also call this script e.g. from cron, to switch off your wifi at night.
+</p>
+<pre class="code bash"><span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>usr<span class="sy0">/</span>bin<span class="sy0">/</span>wifionoff
+<span class="co0">#!/bin/sh</span>
+<span class="re2">STATEFILE</span>=<span class="st0">&quot;/tmp/wifionoff.state&quot;</span>
+&nbsp;
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es3">${#}</span>&quot;</span> <span class="re5">-eq</span> <span class="nu0">1</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+    <span class="kw1">case</span> <span class="st0">&quot;<span class="es3">${1}</span>&quot;</span> <span class="kw1">in</span>
+        <span class="st0">&quot;up&quot;</span><span class="sy0">|</span><span class="st0">&quot;on&quot;</span><span class="br0">&#41;</span> <span class="re2">GOAL</span>=<span class="st0">&quot;on&quot;</span> <span class="sy0">;;</span>
+        <span class="st0">&quot;down&quot;</span><span class="sy0">|</span><span class="st0">&quot;off&quot;</span><span class="br0">&#41;</span> <span class="re2">GOAL</span>=<span class="st0">&quot;off&quot;</span> <span class="sy0">;;</span>
+    <span class="kw1">esac</span>
+<span class="kw1">else</span>
+    <span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-e</span> <span class="st0">&quot;<span class="es3">${STATEFILE}</span>&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+	<span class="re2">GOAL</span>=<span class="st0">&quot;on&quot;</span>
+    <span class="kw1">else</span>
+        <span class="co0"># if the statefile doesn't exist, turn wifi off</span>
+        <span class="re2">GOAL</span>=<span class="st0">&quot;off&quot;</span>
+    <span class="kw1">fi</span>
+<span class="kw1">fi</span>
+&nbsp;
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es3">${GOAL}</span>&quot;</span> = <span class="st0">&quot;off&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+    <span class="sy0">/</span>sbin<span class="sy0">/</span>wifi down
+    <span class="kw2">touch</span> <span class="st0">&quot;<span class="es3">${STATEFILE}</span>&quot;</span>
+<span class="kw1">else</span>
+    <span class="sy0">/</span>sbin<span class="sy0">/</span>wifi up
+    <span class="co0"># file may not exist if we're given args</span>
+    <span class="kw2">rm</span> <span class="st0">&quot;<span class="es3">${STATEFILE}</span>&quot;</span> <span class="nu0">2</span><span class="sy0">&gt;</span> <span class="sy0">/</span>dev<span class="sy0">/</span>null <span class="sy0">||</span> <span class="kw2">true</span>
+<span class="kw1">fi</span>
+EOF
+<span class="kw2">chmod</span> u+x <span class="sy0">/</span>usr<span class="sy0">/</span>bin<span class="sy0">/</span>wifionoff</pre>
+
+<p>
+<strong>Example 5-bis:</strong> <em>Toggle only a Wireless Network using a script without disabling the entire Wi-Fi module</em>
+</p>
+
+<p>
+This solution is heavily based on example 5. You need to figure out the name of your Wi-Fi Network configuration to make it work and replace the 3 occurrences of “default_radio0” in the script by the name of your wireless network configuration (eg. “cfg033579”). “default_radio0” is the configuration name of the initial default wireless network that existed “out of the box” (on the DIR-610-a1 at least).
+</p>
+
+<p>
+One way to find out your Wireless Network configuration name in LuCi is to navigate to the “Wireless Overview” page (Network &gt; Wireless) and edit the wireless network configuration you need to toggle. For example, change temporarily the ESSID value and then click “SAVE” (and <em class="u">NOT</em> “SAVE &amp; APPLY”). You will then see the button “UNSAVED CHANGES” in the upper right corner of the interface. Click on it and you should be able to find an entry such as “uci set wireless.cfg033579.ssid=&#039;My-Own-Wi-Fi-test&#039;” where “cfg033579” stands for your configuration name that you need to change in the following script.
+</p>
+<pre class="code bash">uci add system button
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.button=<span class="st0">&quot;wps&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.action=<span class="st0">&quot;released&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.handler=<span class="st0">&quot;/usr/bin/wifinetonoff&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.min=<span class="st0">&quot;0&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.max=<span class="st0">&quot;3&quot;</span>
+uci commit system
+&nbsp;
+<span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>usr<span class="sy0">/</span>bin<span class="sy0">/</span>wifinetonoff
+<span class="co0">#!/bin/sh</span>
+<span class="br0">&#123;</span>
+    <span class="re2">SW</span>=<span class="st0">&quot;<span class="es4">$(uci -q get wireless.default_radio0.disabled)</span>&quot;</span>
+    <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es3">${SW}</span>&quot;</span> = <span class="st0">&quot;1&quot;</span> <span class="br0">&#93;</span> \
+        <span class="sy0">&amp;&amp;</span> uci del wireless.default_radio0.disabled \
+        <span class="sy0">||</span> uci <span class="kw1">set</span> wireless.default_radio0.disabled=<span class="st_h">'1'</span>
+    wifi
+<span class="br0">&#125;</span>
+EOF
+<span class="kw2">chmod</span> u+x <span class="sy0">/</span>usr<span class="sy0">/</span>bin<span class="sy0">/</span>wifinetonoff</pre>
+
+<p>
+<strong>Example 6:</strong> <em>Set transmission-daemon alt-speed, enable or disable.Short press will activate alt-speed or longer press will deactivate alt-speed and also turns on qss led about speed status on tl-wr1043nd</em>
+</p>
+
+<p>
+Edit your alt-speed limits from transmission-daemon , <em>settings.json</em> file.To execute script, you need to install <em>transmission-remote</em> package from opkg.
+</p>
+<pre class="code bash">uci add system button
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.button=<span class="st0">&quot;BTN_1&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.action=<span class="st0">&quot;pressed&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.handler=<span class="st0">&quot;transmission-remote -as&quot;</span>
+uci add system button
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.button=<span class="st0">&quot;BTN_1&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.action=<span class="st0">&quot;pressed&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.handler=<span class="st0">&quot;echo 1 &gt; /sys/class/leds/tl-wr1043nd:green:qss/brightness&quot;</span>
+uci add system button
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.button=<span class="st0">&quot;BTN_1&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.action=<span class="st0">&quot;released&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.handler=<span class="st0">&quot;transmission-remote -AS&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.min=<span class="st0">&quot;1&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.max=<span class="st0">&quot;4&quot;</span>
+uci add system button
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.button=<span class="st0">&quot;BTN_1&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.action=<span class="st0">&quot;released&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.handler=<span class="st0">&quot;echo 0 &gt; /sys/class/leds/tl-wr1043nd:green:qss/brightness&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.min=<span class="st0">&quot;1&quot;</span>
+uci <span class="kw1">set</span> system.<span class="sy0">@</span>button<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.max=<span class="st0">&quot;4&quot;</span>
+uci commit system</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Examples&quot;,&quot;hid&quot;:&quot;examples&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:12,&quot;range&quot;:&quot;6958-13132&quot;} -->
+<h3 class="sectionedit13" id="tl-wr1043nd_v1x">TL-WR1043ND v1.x</h3>
+<div class="level3">
+
+<p>
+If you decide to use the <code>wifitoggle</code> package, you will need to change a few things on the default configuration.
+The following will work and make the QSS led blink “slowly” when wifi is on:
+</p>
+<pre class="code bash">uci add wifitoggle wifitoggle
+uci <span class="kw1">set</span> wifitoggle.<span class="sy0">@</span>wifitoggle<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.led_enable_trigger=<span class="st0">&quot;timer&quot;</span>
+uci <span class="kw1">set</span> wifitoggle.<span class="sy0">@</span>wifitoggle<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.persistent=<span class="st0">&quot;1&quot;</span>
+uci <span class="kw1">set</span> wifitoggle.<span class="sy0">@</span>wifitoggle<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.button=<span class="st0">&quot;BTN_1&quot;</span>
+uci <span class="kw1">set</span> wifitoggle.<span class="sy0">@</span>wifitoggle<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.led_sysfs=<span class="st0">&quot;tl-wr1043nd:green:qss&quot;</span>
+uci <span class="kw1">set</span> wifitoggle.<span class="sy0">@</span>wifitoggle<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.led_enable_delayon=<span class="st0">&quot;2000&quot;</span>
+uci <span class="kw1">set</span> wifitoggle.<span class="sy0">@</span>wifitoggle<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.led_disable_default=<span class="st0">&quot;1&quot;</span>
+uci <span class="kw1">set</span> wifitoggle.<span class="sy0">@</span>wifitoggle<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.led_enable_delayoff=<span class="st0">&quot;3000&quot;</span>
+uci <span class="kw1">set</span> wifitoggle.<span class="sy0">@</span>wifitoggle<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.timer=<span class="st0">&quot;0&quot;</span>
+uci commit wifitoggle</pre>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> <em>You can probably get similar behaviour with <a href="/docs/guide-user/base-system/led_configuration#wifiactivity" class="wikilink1" title="docs:guide-user:base-system:led_configuration" data-wiki-id="docs:guide-user:base-system:led_configuration">phy0tpt</a> trigger.</em>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;TL-WR1043ND v1.x&quot;,&quot;hid&quot;:&quot;tl-wr1043nd_v1x&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:13,&quot;range&quot;:&quot;13133-14010&quot;} -->
+<h2 class="sectionedit14" id="hid_buttons">HID buttons</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;HID buttons&quot;,&quot;hid&quot;:&quot;hid_buttons&quot;,&quot;codeblockOffset&quot;:13,&quot;secid&quot;:14,&quot;range&quot;:&quot;14011-14034&quot;} -->
+<h3 class="sectionedit15" id="triggerhappy">triggerhappy</h3>
+<div class="level3">
+
+<p>
+To manage the router buttons and also other <strong>HID buttons</strong> (i.e pad buttons or keys of an USB device) we can use an application like triggerhappy.
+</p>
+<pre class="code bash"><span class="co0"># Install packages</span>
+opkg update
+opkg <span class="kw2">install</span> triggerhappy kmod-hid
+&nbsp;
+<span class="co0"># List your available buttons</span>
+thd <span class="re5">--dump</span> <span class="sy0">/</span>dev<span class="sy0">/</span>input<span class="sy0">/</span>event<span class="sy0">*</span>
+&nbsp;
+<span class="co0"># Press your buttons</span>
+EV_KEY  KEY_WPS_BUTTON  <span class="nu0">1</span>       <span class="sy0">/</span>dev<span class="sy0">/</span>input<span class="sy0">/</span>event0
+<span class="co0"># KEY_WPS_BUTTON        1       command</span>
+EV_KEY  KEY_WPS_BUTTON  <span class="nu0">0</span>       <span class="sy0">/</span>dev<span class="sy0">/</span>input<span class="sy0">/</span>event0
+<span class="co0"># KEY_WPS_BUTTON        0       command</span>
+EV_KEY  KEY_VOLUMEDOWN  <span class="nu0">1</span>       <span class="sy0">/</span>dev<span class="sy0">/</span>input<span class="sy0">/</span>event1
+<span class="co0"># KEY_VOLUMEDOWN        1       command</span>
+EV_KEY  KEY_VOLUMEDOWN  <span class="nu0">0</span>       <span class="sy0">/</span>dev<span class="sy0">/</span>input<span class="sy0">/</span>event1
+<span class="co0"># KEY_VOLUMEDOWN        0       command</span>
+&nbsp;
+<span class="co0"># Associate your buttons to commands or scripts</span>
+<span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>triggerhappy<span class="sy0">/</span>triggers.d<span class="sy0">/</span>example.conf
+KEY_WPS_BUTTON <span class="nu0">1</span> <span class="sy0">/</span>etc<span class="sy0">/</span>mywifiscript.sh
+KEY_VOLUMEUP <span class="nu0">1</span> amixer <span class="re5">-q</span> <span class="kw1">set</span> Speaker <span class="nu0">3</span><span class="sy0">%</span>+
+KEY_VOLUMEDOWN <span class="nu0">1</span> amixer <span class="re5">-q</span> <span class="kw1">set</span> Speaker <span class="nu0">3</span><span class="sy0">%</span>-
+EOF
+&nbsp;
+<span class="co0"># Restart services</span>
+service triggerhappy restart</pre>
+
+<p>
+Notes:
+</p>
+<ul>
+<li class="level1"><div class="li"> triggerhappy repeats commands twice: see bug <a href="https://dev.openwrt.org/ticket/14995" class="urlextern" title="https://dev.openwrt.org/ticket/14995" rel="ugc nofollow">https://dev.openwrt.org/ticket/14995</a></div>
+</li>
+<li class="level1"><div class="li"> kernel modules: <strong>kmod-hid</strong> and <strong>kmod-hid-generic</strong> both should be installed<br/>
+The <strong>kmod-hid-generic</strong> and supposedly also <strong>kmod-usb-hid</strong> kernel module must be installed for buttons on USB devices such as USB sound cards to work in OpenWrt trunk. Only then the /dev/input/event0 node for the buttons was created on the DIR-505 router with attached USB sound card.</div>
+</li>
+</ul>
+<pre class="code">[   31.720000] input: C-Media USB Headphone Set   as /devices/platform/ehci-platform/usb1/1-1/1-1:1.3/input/input0
+[   31.760000] hid-generic 0003:0D8C:000C.0001: input,hidraw0: USB HID v1.00 Device [C-Media USB Headphone Set  ] on usb-ehci-platform-1/input3
+[   31.800000] usbcore: registered new interface driver usbhid
+[   31.800000] usbhid: USB HID core driver</pre>
+
+<p>
+This is also noted in <a href="https://dev.openwrt.org/ticket/12631" class="urlextern" title="https://dev.openwrt.org/ticket/12631" rel="ugc nofollow">https://dev.openwrt.org/ticket/12631</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;triggerhappy&quot;,&quot;hid&quot;:&quot;triggerhappy&quot;,&quot;codeblockOffset&quot;:13,&quot;secid&quot;:15,&quot;range&quot;:&quot;14035-15924&quot;} -->
+<h3 class="sectionedit16" id="cmdpad">cmdpad</h3>
+<div class="level3">
+
+<p>
+Another simpler application to manage buttons.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;cmdpad&quot;,&quot;hid&quot;:&quot;cmdpad&quot;,&quot;codeblockOffset&quot;:15,&quot;secid&quot;:16,&quot;range&quot;:&quot;15925-15989&quot;} -->
+<h2 class="sectionedit17" id="sliding_switches">Sliding switches</h2>
+<div class="level2">
+
+<p>
+Some routers, for example the <a href="/toh/tp-link/tl-mr3020" class="wikilink1" title="toh:tp-link:tl-mr3020" data-wiki-id="toh:tp-link:tl-mr3020">TP-Link TL-MR3020</a>, have a sliding switch with three positions.
+These are usually implemented using two GPIOs, meaning OpenWrt interprets a switch like this as two separate push buttons.
+</p>
+
+<p>
+The <code>slide-switch</code> package (in the packages repo) monitors these push buttons and translates the button states into switch position presses and releases.
+Buttons scripts, in either procd or hotplug format, can be written for switch positions directly.
+See the package&#039;s <a href="https://github.com/jefferyto/openwrt-slide-switch" class="urlextern" title="https://github.com/jefferyto/openwrt-slide-switch" rel="ugc nofollow">GitHub page</a> for more details.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Sliding switches&quot;,&quot;hid&quot;:&quot;sliding_switches&quot;,&quot;codeblockOffset&quot;:15,&quot;secid&quot;:17,&quot;range&quot;:&quot;15990-&quot;} -->

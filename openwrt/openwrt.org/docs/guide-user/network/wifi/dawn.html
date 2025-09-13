@@ -1,0 +1,269 @@
+
+<h1 class="sectionedit1" id="setting_up_dawn_and_band-steering">Setting up DAWN and band-steering</h1>
+<div class="level1">
+
+<p>
+<a href="https://github.com/berlin-open-wireless-lab/DAWN" class="urlextern" title="https://github.com/berlin-open-wireless-lab/DAWN" rel="ugc nofollow">DAWN</a> is a “Decentralized Wifi Controller” which can be used for band-steering in OpenWrt.
+</p>
+
+<p>
+This can be useful for improved WiFi performance when you have a network with multiple APs. Especially on EAP networks, it is highly recommended to set up <a href="/docs/guide-user/network/wifi/basic#fast_bss_transition_options_80211r" class="wikilink1" title="docs:guide-user:network:wifi:basic" data-wiki-id="docs:guide-user:network:wifi:basic">802.11r</a> also.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Setting up DAWN and band-steering&quot;,&quot;hid&quot;:&quot;setting_up_dawn_and_band-steering&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-437&quot;} -->
+<h2 class="sectionedit2" id="wifi_roaming">WiFi Roaming</h2>
+<div class="level2">
+
+<p>
+An summary of WiFi roaming technologies can be found on the <a href="/docs/guide-user/network/wifi/roaming" class="wikilink1" title="docs:guide-user:network:wifi:roaming" data-wiki-id="docs:guide-user:network:wifi:roaming">roaming</a> page.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;WiFi Roaming&quot;,&quot;hid&quot;:&quot;wifi_roaming&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;438-571&quot;} -->
+<h2 class="sectionedit3" id="prerequisites">Prerequisites</h2>
+<div class="level2">
+
+<p>
+The following items are required to setup DAWN:
+</p>
+<ul>
+<li class="level1"><div class="li"> One or more OpenWrt based APs (and routers).</div>
+</li>
+<li class="level1"><div class="li"> install the full version of wpad</div>
+</li>
+<li class="level1"><div class="li"> install and configure required packages for DAWN</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Prerequisites&quot;,&quot;hid&quot;:&quot;prerequisites&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;572-787&quot;} -->
+<h2 class="sectionedit4" id="setting_up_dawn">Setting up DAWN</h2>
+<div class="level2">
+
+<p>
+To setup DAWN:
+</p>
+<ul>
+<li class="level1"><div class="li"> configure 802.11k and 802.11v on all WiFi <abbr title="Access Point">AP</abbr>-nodes.</div>
+</li>
+<li class="level1"><div class="li"> install and configure required packages for DAWN</div>
+</li>
+<li class="level1"><div class="li"> reboot all nodes (or just restart the network if no wpad packages have been changed).</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Setting up DAWN&quot;,&quot;hid&quot;:&quot;setting_up_dawn&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;788-1032&quot;} -->
+<h3 class="sectionedit5" id="configure_80211k_and_80211v_on_all_ap-nodes">Configure 802.11k and 802.11v on all AP-nodes</h3>
+<div class="level3">
+
+<p>
+<abbr title="Secure Shell">SSH</abbr> into each of your wifi/<abbr title="Access Point">AP</abbr> nodes and add the following config-lines in <code>/etc/config/wireless</code> to each of your SSIDs:
+</p>
+<pre class="code">      option bss_transition &#039;1&#039;
+      option ieee80211k &#039;1&#039;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configure 802.11k and 802.11v on all AP-nodes&quot;,&quot;hid&quot;:&quot;configure_80211k_and_80211v_on_all_ap-nodes&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;1033-1277&quot;} -->
+<h3 class="sectionedit6" id="install_and_configure_required_packages">Install and configure required packages</h3>
+<div class="level3">
+
+<p>
+We need to install DAWN and umdns. Note in OpenWrt 21.02 (older releases) none of these packages works out of the box, and need fixing before we can use them.
+</p>
+
+<p>
+First of all, <abbr title="Secure Shell">SSH</abbr> into all the <abbr title="Access Point">AP</abbr>-nodes in your network and install the required packages. If you have a dedicated router (without <abbr title="Access Point">AP</abbr> functionality enabled) and you would like to get DAWN dashboards in Luci there too, you need to install these packages here as well:
+</p>
+<pre class="code"> opkg update &amp;&amp; opkg install dawn</pre>
+
+<p>
+umdns is a dependency of dawn and will be installed automatically too.
+</p>
+
+<p>
+At this point you have all the packages you need, but they may be in need of additional configuration.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Install and configure required packages&quot;,&quot;hid&quot;:&quot;install_and_configure_required_packages&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;1278-1969&quot;} -->
+<h3 class="sectionedit7" id="configure_umdns_optional">Configure umdns (Optional)</h3>
+<div class="level3">
+
+<p>
+If you have a setup that doesn&#039;t use “lan” as the interface being used by umdns, it is necessary to update the /etc/config/umdns file with the correct interface name.
+</p>
+
+<p>
+For instance, if your interface name is called “VLAN10”, the configuration file would look like this
+</p>
+<pre class="code">config umdns
+      option jail 1
+      list network VLAN10</pre>
+
+<p>
+Refer to <a href="/docs/guide-developer/mdns" class="wikilink1" title="docs:guide-developer:mdns" data-wiki-id="docs:guide-developer:mdns">mdns</a> for more information on umdns.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configure umdns (Optional)&quot;,&quot;hid&quot;:&quot;configure_umdns_optional&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;1970-2415&quot;} -->
+<h3 class="sectionedit8" id="fixing_umdns_openwrt_2102_only">Fixing umdns (OpenWrt 21.02 only)</h3>
+<div class="level3">
+
+<p>
+Since dawn in network mode 2 (umdns + tcp) depends on umdns, ensure umdns is working correctly first. On all nodes where you installed dawn, try the following command:
+</p>
+<pre class="code"> /etc/init.d/umdns restart</pre>
+
+<p>
+If this command completes without error, umdns is working correctly. If it fails, we can disable the umdns seccomp profile:
+</p>
+<pre class="code"> mv /etc/seccomp/umdns.json /etc/seccomp/umdns.json.disable</pre>
+
+<p>
+Restarting or starting umdns should now succeed.
+</p>
+
+<p>
+Do this for all nodes in your “DAWN”-netwwrk.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Fixing umdns (OpenWrt 21.02 only)&quot;,&quot;hid&quot;:&quot;fixing_umdns_openwrt_2102_only&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:8,&quot;range&quot;:&quot;2416-2944&quot;} -->
+<h3 class="sectionedit9" id="configuring_dawn">Configuring DAWN</h3>
+<div class="level3">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:10,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap" style="width: 100%;">
+<p>
+<strong>Warning!</strong> This is NOT needed if you stick to the default “network_option” of 2 (umdns + tcp). It is recommended to stick with the defaults and ignore this section due to issues with the other <abbr title="User Datagram Protocol">UDP</abbr>-based network mode options offered by DAWN as it sends packets that are larger interface <abbr title="Maximum Transmission Unit">MTU</abbr> causing corrupted data to be received on the other end.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:11,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+dawn&#039;s config-file /etc/config/dawn specifies which subnet is used for broadcasts to discover other nodes. By default this is specified as “10.0.0.255”. If your OpenWrt has a default 192.168.1.x <abbr title="Local Area Network">LAN</abbr>-subnet, you will need to change this file.
+</p>
+
+<p>
+In /etc/config/dawn, change this line:
+</p>
+<pre class="code">  option broadcast_ip &#039;10.0.0.255&#039;</pre>
+
+<p>
+To this line:
+</p>
+<pre class="code">  option broadcast_ip &#039;192.168.1.255&#039;</pre>
+
+<p>
+Also, consider changing the default password to something else, but make sure the same password is used on all nodes!
+</p>
+
+<p>
+After making this change, restart dawn:
+</p>
+<pre class="code">  /etc/init.d/dawn restart</pre>
+
+<p>
+Again, do this on all nodes in your “DAWN”-network.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuring DAWN&quot;,&quot;hid&quot;:&quot;configuring_dawn&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:9,&quot;range&quot;:&quot;2945-3969&quot;} -->
+<h3 class="sectionedit12" id="configuration_tips">Configuration Tips</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="using_rssi_weight_and_rssi_center_for_improved_target_selection">Using &quot;rssi_weight&quot; and &quot;rssi_center&quot; for Improved Target Selection</h4>
+<div class="level4">
+
+<p>
+Two key parameters, “rssi_weight” and “rssi_center,” helps in fine tuning DAWN in kick method 1 (RSSI Comparison) or 3 (default, RSSI Comparison and Absolute RSSI).
+</p>
+
+<p>
+In kick methods 1 and 3, adjusting default scoring parameters like “ht_support,” “vht_support,” “rssi,” “low_rssi,” “chan_util,” and “max_chan_util” to 0 is recommended. This will allow for a completely dynamic scoring calculation based solely on the RSSI reducing complexity and chance of misconfiguration, this means the calculation will solely become:
+</p>
+
+<p>
+<code>new_score = initial_score + (rssi - rssi_center) * rssi_weight</code>
+</p>
+
+<p>
+For instance, if the initial score is 100, rssi is -47, rssi_weight is 2, and rssi_center is -20, the new score would be 46. Experimenting with these parameters in a spreadsheet can help.
+</p>
+
+<p>
+The benefit of this approach lies in avoiding fixed values in parameters like “rssi” and “low_rssi” that are based solely on the threshold defined in “rssi_val” and “low_rssi_val.” In scenarios where two APs are in close proximity, but one has a 20 RSSI difference, the dynamic scoring prevents identical scores, ensuring the selection of the superior <abbr title="Access Point">AP</abbr>. This might not be the case if those two APs happen to both classify as within the “low_rssi_val” threshold, for instance.
+</p>
+
+</div>
+
+<h4 id="kick_method_considerations">Kick Method Considerations</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> <strong>Kick Method 2 and 3:</strong> Special attention is required when selecting “rssi_center” as it serves as the threshold for client kicks, disregarding the score and RSSI comparison with other APs. For this reason, kick method 1 (RSSI Comparison) is generally preferred, while kick method 2 (Absolute RSSI) and kick method 3 (Both RSSI Comparison and Absolute RSSI) are to be avoided.</div>
+</li>
+<li class="level1"><div class="li"> <strong>Default Kicking Method Consideration:</strong> The default kicking method may not be suitable, as it may continue to kick clients below the “rssi_center” even when there is no alternative <abbr title="Access Point">AP</abbr> the client may connect to. Kick method 1 is often more appropriate as it considers other APs when making such decisions and wouldn&#039;t kick if no better option exists for the client.</div>
+</li>
+<li class="level1"><div class="li"> <strong>Misconception Clarification:</strong> There is a common misconception on forums that kick method 3 requires both RSSI comparison and absolute RSSI to be satisfied. However, a closer look at the code shows that this is not the case: <a href="https://github.com/berlin-open-wireless-lab/DAWN/blob/e036905ae3a5d079f899bbe46461fc78b4566349/src/storage/datastorage.c#L509-L543" class="urlextern" title="https://github.com/berlin-open-wireless-lab/DAWN/blob/e036905ae3a5d079f899bbe46461fc78b4566349/src/storage/datastorage.c#L509-L543" rel="ugc nofollow">https://github.com/berlin-open-wireless-lab/DAWN/blob/e036905ae3a5d079f899bbe46461fc78b4566349/src/storage/datastorage.c#L509-L543</a> </div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="increasing_frequency_of_kicking">Increasing Frequency of Kicking</h4>
+<div class="level4">
+
+<p>
+DAWN decides to kick a client at every <code>update_client</code> interval. This means that reducing this number to “1” from the default “20,” would cause DAWN to make its calculations on whether to kick a client every 1 second (with <code>min_number_to_kick</code> still being considered as usual).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration Tips&quot;,&quot;hid&quot;:&quot;configuration_tips&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:12,&quot;range&quot;:&quot;3970-6810&quot;} -->
+<h3 class="sectionedit13" id="optional_dashboard">Optional (Dashboard)</h3>
+<div class="level3">
+
+<p>
+You may also optionally install “luci-app-dawn”. luci-app-dawn provides a network overview inside Luci, and can be useful to ensure your setup works correctly.
+</p>
+
+<p>
+You can install it on any node you like, <em>including your main router, even if that does not provide wifi</em>.
+</p>
+
+<p>
+Installing it on all nodes can be useful, as it lets you verify that you get the same DAWN information on all nodes, and thus that they are communicating together correctly.
+</p>
+
+<p>
+On the nodes where you want a DAWN dashboard in luci, enter the following command:
+</p>
+<pre class="code">  opkg install luci-app-dawn</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Optional (Dashboard)&quot;,&quot;hid&quot;:&quot;optional_dashboard&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:13,&quot;range&quot;:&quot;6811-7404&quot;} -->
+<h3 class="sectionedit14" id="restarting_network_on_all_nodes">Restarting (network on) all nodes</h3>
+<div class="level3">
+
+<p>
+After making these changes you need to restart networking on all nodes to make changes effective.
+</p>
+
+<p>
+You can either reboot/power-cycle the device, or just <abbr title="Secure Shell">SSH</abbr> into the node and issue:
+</p>
+<pre class="code">  /etc/init.d/network restart</pre>
+
+<p>
+Once this has been done on all nodes, you should be able to get a nice dashboard in luci showing you your network topology:
+</p>
+
+<p>
+<img src="/_media/media/dawn.png?w=600&amp;tok=ec6987" class="media" loading="lazy" alt="" width="600" />
+</p>
+
+<p>
+Mission accomplished!
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Restarting (network on) all nodes&quot;,&quot;hid&quot;:&quot;restarting_network_on_all_nodes&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:14,&quot;range&quot;:&quot;7405-&quot;} -->

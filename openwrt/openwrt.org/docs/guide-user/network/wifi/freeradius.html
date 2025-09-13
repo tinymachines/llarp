@@ -1,0 +1,1088 @@
+
+<h1 class="sectionedit1" id="freeradius">FreeRADIUS</h1>
+<div class="level1">
+
+<p>
+<a href="https://freeradius.org" class="urlextern" title="https://freeradius.org" rel="ugc nofollow">FreeRADIUS</a> is one of the top open source <strong>RADIUS</strong> servers. FreeRADIUS can be used as an Authentication Server in <a href="/docs/guide-user/network/wifi/wireless.security.8021x" class="wikilink1" title="docs:guide-user:network:wifi:wireless.security.8021x" data-wiki-id="docs:guide-user:network:wifi:wireless.security.8021x">802.1X</a> and therefore for WPA/WPA2/WPA3 Enterprise setup. More information about IEEE 802.1X and WPA Enterprise you can find in <a href="https://tldp.org/HOWTO/html_single/8021X-HOWTO/" class="urlextern" title="https://tldp.org/HOWTO/html_single/8021X-HOWTO/" rel="ugc nofollow">802.1X Port-Based Authentication HOWTO</a>. FreeRADIUS can be set up rather easily with the default configuration and minimal changes.
+</p>
+
+<p>
+This guide will cover FreeRADIUS 3 (OpenWrt package version freeradius3_3_0_21-1) installation on OpenWrt 19.07.4 and configuration for WPA2 Enterprise.
+The described configuration was tested on <a href="/toh/hwdata/lemaker/lemaker_bananapi" class="wikilink1" title="toh:hwdata:lemaker:lemaker_bananapi" data-wiki-id="toh:hwdata:lemaker:lemaker_bananapi">Banana Pi M1</a> as a FreeRADIUS server and <a href="/toh/hwdata/zyxel/zyxel_keenetic" class="wikilink1" title="toh:hwdata:zyxel:zyxel_keenetic" data-wiki-id="toh:hwdata:zyxel:zyxel_keenetic">ZyXEL Keenetic</a> as a Wireless Access Point. FreeRADIUS should also work on devices with significantly less flash and RAM, for example <a href="/toh/tp-link/td-w8980_v1" class="wikilink1" title="toh:tp-link:td-w8980_v1" data-wiki-id="toh:tp-link:td-w8980_v1">TP-Link TD-W8980 V1</a> running OpenWrt v18.06.1.
+</p>
+
+<p>
+Notes:
+</p>
+<ul>
+<li class="level1"><div class="li"> It is <a href="https://forum.openwrt.org/t/using-wpad-as-radius-server/54625/4" class="urlextern" title="https://forum.openwrt.org/t/using-wpad-as-radius-server/54625/4" rel="ugc nofollow">possible</a> to configure WPA/WPA2/WPA3 Enterprise only using <code>hostapd</code>, but at the moment this is not feasible using standard OpenWrt methods.</div>
+</li>
+<li class="level1"><div class="li"> If you are looking for <strong>FreeRADIUS 2</strong> you may find <a href="http://www.blog.10deam.com/2015/01/08/install-freeradius2-on-a-openwrt-router-for-eap-authentication/" class="urlextern" title="http://www.blog.10deam.com/2015/01/08/install-freeradius2-on-a-openwrt-router-for-eap-authentication/" rel="ugc nofollow">this blog post</a> helpful.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;FreeRADIUS&quot;,&quot;hid&quot;:&quot;freeradius&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1470&quot;} -->
+<h2 class="sectionedit2" id="installation">Installation</h2>
+<div class="level2">
+
+<p>
+To install FreeRADIUS 3 on OpenWrt, which can run its default configuration, simply run:
+</p>
+<pre class="code"># opkg update &amp;&amp; opkg install freeradius3-default</pre>
+
+<p>
+You can also install the <code>freeradius3-utils</code> package for basic testing and monitoring of FreeRADIUS:
+</p>
+<pre class="code"># opkg install freeradius3-utils</pre>
+
+<p>
+Of course, you can install the main <code>freeradius3</code> package and only those <code>freeradius3-mod*</code> packages that are used by your modified configuration files.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation&quot;,&quot;hid&quot;:&quot;installation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;1471-1955&quot;} -->
+<h3 class="sectionedit3" id="older_openwrt_releases">Older OpenWrt releases</h3>
+<div class="level3">
+
+<p>
+If meta-package <code>freeradius3-default</code> is not present in your OpenWrt release, install the packages one by one:
+</p>
+<pre class="code">opkg update
+opkg install freeradius3 freeradius3-common freeradius3-democerts freeradius3-mod-always freeradius3-mod-attr-filter freeradius3-mod-chap freeradius3-mod-detail freeradius3-mod-digest freeradius3-mod-eap freeradius3-mod-eap-gtc freeradius3-mod-eap-leap freeradius3-mod-eap-md5 freeradius3-mod-eap-mschapv2 freeradius3-mod-eap-peap freeradius3-mod-eap-tls freeradius3-mod-eap-ttls freeradius3-mod-exec freeradius3-mod-expiration freeradius3-mod-expr freeradius3-mod-files freeradius3-mod-ldap freeradius3-mod-logintime freeradius3-mod-mschap freeradius3-mod-pap freeradius3-mod-passwd freeradius3-mod-preprocess freeradius3-mod-radutmp freeradius3-mod-realm freeradius3-mod-unix freeradius3-utils</pre>
+
+<p>
+Or you can also just install all of the above with another command but this is not recommended:
+</p>
+<pre class="code">eval $(opkg find freeradius3* | sed &#039;s/ - .*//&#039; | sed &#039;s/^/opkg install /&#039;)</pre>
+
+<p>
+Note:
+</p>
+<ul>
+<li class="level1"><div class="li"> In rare occasions, while installing the above packages, you may encounter an error saying that the same file is being provided by two packages. If this happens, delete the offending file and look for the yet-not-installed package due to the error and install it again.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Older OpenWrt releases&quot;,&quot;hid&quot;:&quot;older_openwrt_releases&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:3,&quot;range&quot;:&quot;1956-3290&quot;} -->
+<h2 class="sectionedit4" id="configuration">Configuration</h2>
+<div class="level2">
+
+<p>
+<a href="http://deployingradius.com/documents/configuration/setup.html" class="urlextern" title="http://deployingradius.com/documents/configuration/setup.html" rel="ugc nofollow">According</a> to the authors of FreeRADIUS, the default configuration is designed to work everywhere, and to perform nearly every authentication method. They recommend using a revision control system such as git or Mercurial on the configuration files and testing the configuration after each change. For a small installation, using a revision control system is an overkill. However, it is helpful to comment on the changes you made in the configuration files so that you can then easily find <em>what</em> you changed and <em>why</em>.
+</p>
+
+<p>
+Please make sure you have terminal access to your OpenWrt device via <abbr title="Secure Shell">SSH</abbr> or serial connection, because this will be necessary for this guide to work. You can also use WinSCP for Windows to edit files easily.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:4,&quot;range&quot;:&quot;3291-4115&quot;} -->
+<h3 class="sectionedit5" id="terms">Terms</h3>
+<div class="level3">
+
+<p>
+This and the next section are mainly based on the PDF guides from <a href="https://networkradius.com/technology/freeradius/" class="urlextern" title="https://networkradius.com/technology/freeradius/" rel="ugc nofollow">here</a>.
+</p>
+
+<p>
+A glossary of some of the terms used below.
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong>AAA</strong> - Authentication, Authorization, and Accounting - a security architecture for distributed systems that provides control over user access to services and resources and tracks user activities.</div>
+</li>
+<li class="level1"><div class="li"> <strong>RADIUS</strong> - Remote Authentication Dial In User Service - a network protocol for remote user authentication and accounting.</div>
+</li>
+<li class="level1"><div class="li"> <strong>FreeRADIUS</strong> - a modular, high performance, open source variant of RADIUS server. Can be used as an Authentication Server.</div>
+</li>
+<li class="level1"><div class="li"> <strong>Authentication Server</strong> - processes authentication requests from the NAS. Optionally requests user and configuration information from the database or directory. May return configuration parameters to the NAS, for example <code>Access-Accept</code> or <code>Access-Reject</code>. Receives accounting information from the NAS. The server has no way of knowing if the NAS has received its response, or if the NAS is obeying the instructions in that response.</div>
+</li>
+<li class="level1"><div class="li"> <strong>Supplicant</strong> - a user&#039;s device or its component that is responsible for responding to Authenticator data that will establish its credentials.</div>
+</li>
+<li class="level1"><div class="li"> <strong>NAS</strong> - Network Access Server, also <strong>Authenticator</strong> - provides or blocks access to the network for the user/device (Supplicant). Typically the Authenticator is a part of wireless access points such as the Linksys WRT54G, network switches and dial-up equipment. NAS acts as a client to a RADIUS server. EAPOL is used between the Supplicant and the Authenticator; and, between the Authenticator and the Authentication Server, RADIUS is used. During the authentication process, the Authenticator just relays all messages between the Supplicant and the Authentication Server. </div>
+</li>
+<li class="level1"><div class="li"> <strong>PAP</strong> - Password Authentication Protocol - an authentication protocol that uses an unencrypted <abbr title="American Standard Code for Information Interchange">ASCII</abbr> password.</div>
+</li>
+<li class="level1"><div class="li"> <strong>CHAP</strong> - Challenge-Handshake Authentication Protocol - a protocol that authenticates network users. Client creates a random string, called the challenge, and performs a weak<sup><a href="#fn__1" id="fnt__1" class="fn_top">1)</a></sup> MD5 hash to combine the challenge with the password.</div>
+</li>
+<li class="level1"><div class="li"> <strong>MS-CHAPv1</strong> and <strong>MS-CHAPv2</strong> - the Microsoft (MS) CHAP mechanisms are similar to the CHAP method. Has known weaknesses<sup><a href="#fn__2" id="fnt__2" class="fn_top">2)</a></sup>.</div>
+</li>
+<li class="level1"><div class="li"> <strong>EAP</strong> - Extensible Authentication Protocol - an authentication framework. Variants like EAP-TTLS and EAP-<abbr title="Transport Layer Security">TLS</abbr> add the Transport Layer Security protocol.</div>
+</li>
+<li class="level1"><div class="li"> <strong>EAPOL</strong> - EAP encapsulation over <abbr title="Local Area Network">LAN</abbr>.</div>
+</li>
+<li class="level1"><div class="li"> <strong>EAP-MD5</strong> - CHAP wrapped in EAP.</div>
+</li>
+<li class="level1"><div class="li"> <strong>EAP-MSCHAPv2</strong> - MS-CHAPv2 wrapped in EAP.</div>
+</li>
+<li class="level1"><div class="li"> <strong>EAP-<abbr title="Transport Layer Security">TLS</abbr></strong> - the Transport Layer Security (<abbr title="Transport Layer Security">TLS</abbr>) authentication method provides a <abbr title="Transport Layer Security">TLS</abbr> tunnel between the Supplicant and RADIUS server. It requires server and client certificates to operate.</div>
+</li>
+<li class="level1"><div class="li"> <strong>EAP-TTLS</strong> - the Tunneled <abbr title="Transport Layer Security">TLS</abbr> (TTLS) method is similar to EAP-<abbr title="Transport Layer Security">TLS</abbr>. However, in this case, client certificates are not necessary. Instead, the <abbr title="Transport Layer Security">TLS</abbr> tunnel is used to transport additional authentication data such as PAP, CHAP, MS-CHAP or other.</div>
+</li>
+<li class="level1"><div class="li"> <strong>PEAP</strong> - Protected Extensible Authentication Protocol - a Microsoft created protocol that encapsulates EAP in an encrypted and authenticated <abbr title="Transport Layer Security">TLS</abbr> tunnel. It is broadly similar to EAP-TTLS, but the difference is that the authentication method carried inside of the <abbr title="Transport Layer Security">TLS</abbr> tunnel in PEAP is identical to MS-CHAPv2.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Terms&quot;,&quot;hid&quot;:&quot;terms&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:5,&quot;range&quot;:&quot;4116-7574&quot;} -->
+<h3 class="sectionedit6" id="key_freeradius_configuration_files">Key FreeRADIUS configuration files</h3>
+<div class="level3">
+
+<p>
+In OpenWrt, FreeRADIUS stores its configuration in the <code>/etc/freeradius3</code> directory. In the official FreeRADIUS documentation, the configuration directory is named <code><strong>raddb</strong></code>.
+</p>
+
+<p>
+The configuration files themselves contain enormous amounts of documentation. Each example has comments describing what it does, when it should be used, and how to configure it. 
+Please note that due to the <a href="/docs/guide-developer/package-policies#feature_considerations" class="wikilink1" title="docs:guide-developer:package-policies" data-wiki-id="docs:guide-developer:package-policies">OpenWrt packaging policy</a>, FreeRADIUS distribution in OpenWrt does not include many files, such as readmes, scripts and examples. You can find them by installing FreeRADIUS on a full-sized Unix-like distribution like Ubuntu or Fedora, or in the FreeRADIUS source code. This full-featured FreeRADIUS installation can also be useful for tests and certificates generation which are described below.
+</p>
+<ul>
+<li class="level1"><div class="li"> <code><strong>radiusd.conf</strong></code> - the main configuration file. It includes references to all of the other configuration files.</div>
+</li>
+<li class="level1"><div class="li"> <code><strong>clients.conf</strong></code> - defines information necessary to communicate with the RADIUS clients (NAS), including <abbr title="Internet Protocol">IP</abbr> addresses and shared secrets.</div>
+</li>
+<li class="level1"><div class="li"> <code><strong>sites-enabled/default</strong></code> - this is the default virtual server. This file configures the handling of authentication and accounting requests. It contains a configuration designed to work with the largest number of authentication protocols.</div>
+</li>
+<li class="level1"><div class="li"> <code><strong>sites-enabled/inner-tunnel</strong></code> - this virtual server handles authentication methods that are carried inside of a <abbr title="Transport Layer Security">TLS</abbr> tunnel, as part of PEAP or EAP-TTLS authentication.</div>
+</li>
+<li class="level1"><div class="li"> <code><strong>mods-config/files/authorize</strong></code> - the traditional RADIUS configuration file which contains usernames and passwords. In previous FreeRADIUS releases this file was <code>raddb/users</code>.</div>
+</li>
+<li class="level1"><div class="li"> <code><strong>certs/</strong></code> - this sub-directory stores <abbr title="Transport Layer Security">TLS</abbr> certificates.</div>
+</li>
+<li class="level1"><div class="li"> <code><strong>sites-available/</strong></code> - a directory to store virtual servers that administrators can enable. Each virtual server encapsulates one logical set of functionality.</div>
+</li>
+<li class="level1"><div class="li"> <code><strong>sites-enabled/</strong></code> - a directory to store active virtual servers. These are usually symbolic links to files in the <code>sites-available/</code> directory.</div>
+</li>
+<li class="level1"><div class="li"> <code><strong>mods-available/</strong></code> - a directory to store module configurations files that network administrators can enable on an optional basis. Each module is configured in a different file in the directory.</div>
+</li>
+<li class="level1"><div class="li"> <code><strong>mods-enabled/</strong></code> - a directory to store active module configuration files. These are usually symbolic links to files in the <code>mods-available/</code> directory.</div>
+</li>
+<li class="level1"><div class="li"> <code><strong>mods-config/</strong></code> - module-specific configuration files.</div>
+</li>
+</ul>
+
+<p>
+Note:
+</p>
+<ul>
+<li class="level1"><div class="li">You can view contents of a configuration file without comments using command <pre class="code bash"><span class="kw2">grep</span> <span class="re5">-v</span> <span class="re5">-e</span> <span class="st_h">'^\s*#'</span> <span class="re5">-e</span> <span class="st_h">'^$'</span> <span class="sy0">/</span>etc<span class="sy0">/</span>freeradius3<span class="sy0">/</span>radiusd.conf <span class="sy0">|</span> <span class="kw2">less</span></pre>
+</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Key FreeRADIUS configuration files&quot;,&quot;hid&quot;:&quot;key_freeradius_configuration_files&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:6,&quot;range&quot;:&quot;7575-10334&quot;} -->
+<h3 class="sectionedit7" id="set_up_freeradius_for_initial_testing">Set up FreeRADIUS for initial testing</h3>
+<div class="level3">
+
+<p>
+Let&#039;s check that FreeRADIUS can run properly in debugging mode and authenticate a test user via the simplest PAP. In debugging mode, the server prints its configuration to the current terminal window, and then details of every request. This is especially useful when you are trying to understand how the server works.
+The chapter is based on <a href="http://deployingradius.com/documents/configuration/pap.html" class="urlextern" title="http://deployingradius.com/documents/configuration/pap.html" rel="ugc nofollow">this</a> HOWTO.
+</p>
+
+<p>
+If you just installed FreeRADIUS, it will start running automatically. It&#039;s better to stop it before changing config for the first time:
+</p>
+
+<p>
+1. Find out if FreeRADIUS is running:
+</p>
+<pre class="code"># ps | grep [r]adiusd</pre>
+
+<p>
+2. If there is some output, stop FreeRADIUS:
+</p>
+<pre class="code"># /etc/init.d/radiusd stop</pre>
+
+<p>
+The default configuration contains a user <code>bob</code> with password <code>hello</code>, but it needs to be uncommented before it can be used.
+Edit the <code>authorize</code> file in <code>/etc/freeradius3/mods-config/files/</code> and uncomment the lines below. If you cannot find the lines, add them to the top of the file.
+</p>
+<pre class="code">bob	Cleartext-Password := &quot;hello&quot;
+	Reply-Message := &quot;Hello, %{User-Name}&quot;</pre>
+
+<p>
+Please make sure, you insert an indent after the name of the person with a &#039;Tab&#039; (space should also work). The tab-indented <code>Reply-Message</code> option is not mandatory and can be omitted.
+</p>
+
+<p>
+If you have installed the <code>freeradius3-utils</code> package containing the <code>radtest</code> utility along with <code>freeradius3</code>, then the preparation for the test is complete.
+</p>
+<hr />
+
+<p>
+If, for some reason, this package and the utility are not installed, you can run a test from a machine accessible over the network with FreeRADIUS and <code>radtest</code> installed. Additionally, you need to define this machine as a client (NAS) to your RADIUS server.
+With the default <code>clients.conf</code> configuration, the server is ready to accept connections only from NAS which has <abbr title="Internet Protocol">IP</abbr> <code>127.0.0.1</code> (loopback) and <code>secret = testing123</code>. Edit the <code>/etc/freeradius3/clients.conf</code> file to add your machine and add the following lines to the end of the file:
+</p>
+<pre class="code bash"><span class="co0"># my laptop</span>
+client laptop <span class="br0">&#123;</span>                  <span class="co0"># name 'laptop' can be anything</span>
+	ipaddr = 192.168.1.101   <span class="co0"># change it according to the IP address of your test machine</span>
+	secret = testing123      <span class="co0"># you will need it for testing purposes</span>
+<span class="br0">&#125;</span></pre>
+<hr />
+
+</div>
+
+<h4 id="starting_freeradius_in_debugging_mode">Starting FreeRADIUS in debugging mode</h4>
+<div class="level4">
+
+<p>
+Once you have completed the config, it&#039;s time to start FreeRADIUS. In order to see whether the server is working properly, you need to start it in debugging mode. Open a terminal session via <abbr title="Secure Shell">SSH</abbr> or serial connection to the OpenWrt device and start <code>radiusd</code> in debugging mode, as user root:
+</p>
+<pre class="code"># radiusd -X</pre>
+
+<p>
+After executing the command, if the server is installed and configured correctly, the screen will show a large amount of text that ends with the message <strong><code>Ready to process requests</code></strong>. If the server does not start up correctly, the debug output will tell you why. Please make sure to correct any errors before proceeding.
+You may stop radiusd by pressing <code>Ctrl-C</code>.
+</p>
+<hr />
+
+<p>
+In older OpenWrt releases and freeradius3 packages, the command may be:
+</p>
+<pre class="code">LD_LIBRARY_PATH=/usr/lib/freeradius3 radiusd -X</pre>
+
+<p>
+Note:
+</p>
+<ul>
+<li class="level1"><div class="li"> Setting <code>LD_LIBRARY_PATH</code> is important as documented on <a href="https://github.com/openwrt/packages/issues/7667" class="urlextern" title="https://github.com/openwrt/packages/issues/7667" rel="ugc nofollow">GitHub</a> because <code>radiusd</code> normally looks for it&#039;s modules in <code>/etc/lib</code> directory but in OpenWrt these are located in <code>/etc/lib/freeradius3</code> and this is why you first need to set the variable.</div>
+</li>
+</ul>
+<hr />
+
+</div>
+
+<h4 id="pap_testing">PAP testing</h4>
+<div class="level4">
+
+<p>
+Now your FreeRADIUS server is running and it&#039;s time to send a test request and view the response.
+Start another terminal session to your OpenWrt device (or use your machine with <code>radtest</code>, if you set up it previously) and run the following command.
+Do not forget to change <code>localhost</code> to the actual <abbr title="Internet Protocol">IP</abbr> address of your OpenWrt device, if you test from a separate machine.
+</p>
+<pre class="code bash">radtest bob hello localhost <span class="nu0">0</span> testing123
+<span class="co0"># bob is username.</span>
+<span class="co0"># hello is password.</span>
+<span class="co0"># localhost is the DNS name or IP address of your OpenWrt device where the radiusd is running.</span>
+<span class="co0"># 0 is the NAS-port-number. It really doesn't matter what you put here.</span>
+<span class="co0"># testing123 is the secret for client.</span></pre>
+
+<p>
+In some configurations, it may be necessary to run <code>radtest</code> with all parameters specified:
+</p>
+<pre class="code">radtest -t pap bob hello 127.0.0.1 0 testing123 0 localhost</pre>
+
+<p>
+If all goes well, you should see the server returning an <code>Access-Accept</code> message, and the window with <code>radtest</code> should print text similar to the following:
+</p>
+<pre class="code">Sent Access-Request Id 141 from 0.0.0.0:55063 to 127.0.0.1:1812 length 73
+	User-Name = &quot;bob&quot;
+	User-Password = &quot;hello&quot;
+	NAS-IP-Address = 127.0.0.1
+	NAS-Port = 0
+	Message-Authenticator = 0x00
+	Cleartext-Password = &quot;hello&quot;
+Received Access-Accept Id 141 from 127.0.0.1:1812 to 127.0.0.1:55063 length 20</pre>
+
+<p>
+At the same time, you will see text flowing through in the terminal where <code>radiusd -X</code> is running. At the end <code>radiusd</code> will show something like <code>Sent Access-Accept Id 141 from 127.0.0.1:1812 to 127.0.0.1:55063 length 0</code>
+</p>
+
+<p>
+If you get any other output, it means something is wrong and you have not configured your FreeRADIUS server properly. Therefore, you need to check the output for errors and fix them. In most cases, the debugging data tells you which file is causing the problem and on which line.
+</p>
+
+</div>
+
+<h4 id="peapms-chapv2_testing">PEAP/MS-CHAPv2 testing</h4>
+<div class="level4">
+
+<p>
+The <code>radtest</code> utility does not know how to work with the secure protocols EAP-<abbr title="Transport Layer Security">TLS</abbr>, PEAP, and EAP-TTLS. For such testing, you <a href="http://deployingradius.com/scripts/eapol_test/" class="urlextern" title="http://deployingradius.com/scripts/eapol_test/" rel="ugc nofollow">can</a> use the <code>eapol_test</code> program from <a href="https://w1.fi/wpa_supplicant/" class="urlextern" title="https://w1.fi/wpa_supplicant/" rel="ugc nofollow">wpa_supplicant</a>. <code>eapol_test</code> utility integrates IEEE 802.1X Authenticator (normally, an access point) and IEEE 802.1X Supplicant (normally, a wireless client) together to generate a single program that can be used to test EAP methods without having to setup an access point and a wireless client.
+You can find <code>eapol_test</code> in OpenWrt distribution and in some full-featured Unix-like distributions, for example, Fedora.
+Alternatively, you can compile it from the wpa_supplicant sources using the following instructions:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="https://w1.fi/wpa_supplicant/devel/testing_tools.html#eapol_test" class="urlextern" title="https://w1.fi/wpa_supplicant/devel/testing_tools.html#eapol_test" rel="ugc nofollow">wpa_supplicant documentation</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://deployingradius.com/scripts/eapol_test/" class="urlextern" title="http://deployingradius.com/scripts/eapol_test/" rel="ugc nofollow">FreeRADIUS documentation</a></div>
+</li>
+</ul>
+
+<p>
+Note:
+</p>
+<ul>
+<li class="level1"><div class="li"> Further instructions assume that <code>eapol_test</code> will be installed and used on the same OpenWrt device that is running FreeRADIUS. If it is installed on a separate machine, correct the <abbr title="Internet Protocol">IP</abbr> addresses and define this machine as a client (NAS) to your FreeRADIUS server as described above.</div>
+</li>
+</ul>
+
+<p>
+Install <code>eapol_test</code> in OpenWrt.
+</p>
+<pre class="code"># opkg install eapol-test-openssl</pre>
+
+<p>
+Create configuration file for <code>eapol_test</code> with the settings for PEAP-MSCHAPv2. You can copy the following text and save it in <code>peap-mschapv2.conf</code> file in your home directory on your OpenWrt device.
+You can find this and other configuration files for several authentication methods <a href="http://deployingradius.com/scripts/eapol_test/#Testing" class="urlextern" title="http://deployingradius.com/scripts/eapol_test/#Testing" rel="ugc nofollow">here</a>.
+</p>
+<pre class="code bash"><span class="co0">#</span>
+<span class="co0">#   eapol_test -c peap-mschapv2.conf -a 127.0.0.1 -s testing123</span>
+<span class="co0">#</span>
+<span class="re2">network</span>=<span class="br0">&#123;</span>
+	<span class="re2">ssid</span>=<span class="st0">&quot;example&quot;</span>
+	<span class="re2">key_mgmt</span>=WPA-EAP
+	<span class="re2">eap</span>=PEAP
+	<span class="re2">identity</span>=<span class="st0">&quot;bob&quot;</span>
+	<span class="re2">anonymous_identity</span>=<span class="st0">&quot;anonymous&quot;</span> <span class="co0"># This text will be visible as a login outside the encrypted TLS channel. Not actually used for authentication.</span>
+	<span class="re2">password</span>=<span class="st0">&quot;hello&quot;</span>
+	<span class="re2">phase2</span>=<span class="st0">&quot;auth=MSCHAPV2&quot;</span>
+&nbsp;
+	<span class="co0">#</span>
+	<span class="co0">#  Uncomment the following to perform server certificate validation.</span>
+<span class="co0">#	ca_cert=&quot;/etc/freeradius3/certs/ca.pem&quot;</span>
+<span class="br0">&#125;</span></pre>
+
+<p>
+Check that FreeRADIUS is running in debugging mode, then in another terminal session to your OpenWrt device run the following command.
+</p>
+<pre class="code">eapol_test -c peap-mschapv2.conf -a 127.0.0.1 -s testing123</pre>
+
+<p>
+If all goes well, you will see a lot of text in the terminal window where you can find the <code>Access-Accept</code> message and something like the following at the end:
+</p>
+<pre class="code">CTRL-EVENT-EAP-SUCCESS EAP authentication completed successfully
+WPA: EAPOL processing complete
+eapol_sm_cb: result=1
+No EAP-Key-Name received from server
+MPPE keys OK: 1  mismatch: 0
+SUCCESS</pre>
+
+<p>
+At the same time, you will see text flowing through in the terminal where <code>radiusd -X</code> is running. At the end <code>radiusd</code> will show something like:
+</p>
+<pre class="code">Sent Access-Accept Id 10 from 127.0.0.1:1812 to 127.0.0.1:51046 length 0
+  MS-MPPE-Recv-Key = 0x54398b461b47f974834e81d9f9b320fd6f9a0e7da32c249e609fe7f05a37673d
+  MS-MPPE-Send-Key = 0x5b7dc906a59b6ee737a99b86294b4fde5ee13ed55998ef09abac53061b0d74ca</pre>
+
+<p>
+The MS-MPPE-Recv-Key (<a href="https://tools.ietf.org/html/rfc2548" class="urlextern" title="https://tools.ietf.org/html/rfc2548" rel="ugc nofollow">RFC2548 section 2.4.3</a>) contains the Pairwise Master Key (PMK) destined to the Authenticator (access point), encrypted with the weak<sup><a href="#fn__3" id="fnt__3" class="fn_top">3)</a></sup> <a href="https://tools.ietf.org/html/rfc3078" class="urlextern" title="https://tools.ietf.org/html/rfc3078" rel="ugc nofollow">MPPE</a> Protocol, using the shared secret between the Authenticator and Authentication Server as key. The Supplicant derives the same PMK from Master Key, as described in <a href="https://tldp.org/HOWTO/html_single/8021X-HOWTO/#Key" class="urlextern" title="https://tldp.org/HOWTO/html_single/8021X-HOWTO/#Key" rel="ugc nofollow">Key Management section of 8021X HOWTO</a>. PMK then is used to derive keys for WPA.
+</p>
+
+<p>
+EAP-MD5-Challenge, EAP-GTC, EAP-OTP methods <a href="https://tools.ietf.org/html/rfc4017" class="urlextern" title="https://tools.ietf.org/html/rfc4017" rel="ugc nofollow">can not be used</a> for wireless authentication environment because they do not support any of the mandatory requirements, including key derivation and mutual authentication.
+</p>
+
+<p>
+If the NAS and FreeRADIUS server are not on the same host, it is recommended to move the RADIUS traffic into a separate technological <abbr title="Virtual Local Area Network">VLAN</abbr> or use <a href="https://tools.ietf.org/html/rfc6614" class="urlextern" title="https://tools.ietf.org/html/rfc6614" rel="ugc nofollow">RadSec (or RADIUS over TLS)</a> where possible, since MD5 encryption using the secret cannot be considered secure.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Set up FreeRADIUS for initial testing&quot;,&quot;hid&quot;:&quot;set_up_freeradius_for_initial_testing&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:7,&quot;range&quot;:&quot;10335-20035&quot;} -->
+<h3 class="sectionedit8" id="configuring_freeradius">Configuring FreeRADIUS</h3>
+<div class="level3">
+
+<p>
+Let&#039;s modify the configuration to achieve the following goals:
+</p>
+<ul>
+<li class="level1"><div class="li"> configure FreeRADIUS to work as Authentication Server for WPA2 Enterprise with PEAP/MS-CHAPv2 authentication method</div>
+</li>
+<li class="level1"><div class="li"> store usernames and passwords in a text file</div>
+</li>
+<li class="level1"><div class="li"> disable insecure authentication protocols</div>
+</li>
+<li class="level1"><div class="li"> disable some unused functionality from the default configuration</div>
+</li>
+<li class="level1"><div class="li"> display a list of currently authorized users</div>
+</li>
+<li class="level1"><div class="li"> use examples from FreeRADIUS distribution and documentation as much as possible</div>
+</li>
+</ul>
+
+<p>
+All subsequent actions, unless otherwise noted, are performed in a terminal session on your OpenWrt device in <code>/etc/freeradius3/</code> directory.
+</p>
+
+</div>
+
+<h4 id="generating_certificates">Generating certificates</h4>
+<div class="level4">
+
+<p>
+Digital certificates are required to do <abbr title="Transport Layer Security">TLS</abbr>-based EAP methods, such as EAP-<abbr title="Transport Layer Security">TLS</abbr>, PEAP, and EAP-TTLS.
+</p>
+
+<p>
+You can find <strong>test</strong> certificates <code>ca.pem</code> (a self-signed certificate authority, i.e. root CA) and <code>server.pem</code> (a server certificate combined with an encrypted private key and signed by the CA) in the <code>certs/</code> directory immediately after installing the <code>freeradius3-democerts</code> OpenWrt package. It is suggested that new installations use the test certificates for initial tests (as many other users have exactly the same certificates and private keys), and then create real certificates to use for normal user authentication. See the instructions below for how to create the various certificates. The old test certificates can be deleted. You may continue to use <code>dh</code> parameters file from the package.
+</p>
+
+</div>
+
+<h5 id="preparation">Preparation</h5>
+<div class="level5">
+
+<p>
+At the moment, the FreeRADIUS distribution for OpenWrt does not contain a convenient toolkit for generating certificates and keys.
+Such tools are present in full-featured FreeRADIUS distributions, it is easier to use them. The description can be found in the file <a href="https://github.com/FreeRADIUS/freeradius-server/blob/v3.0.x/raddb/certs/README" class="urlextern" title="https://github.com/FreeRADIUS/freeradius-server/blob/v3.0.x/raddb/certs/README" rel="ugc nofollow">raddb/certs/README</a> and <a href="http://deployingradius.com/documents/configuration/certificates.html" class="urlextern" title="http://deployingradius.com/documents/configuration/certificates.html" rel="ugc nofollow">here</a>.
+</p>
+
+<p>
+You may also view <code>openssl</code> commands being executed in the <a href="https://github.com/FreeRADIUS/freeradius-server/blob/v3.0.x/raddb/certs/Makefile" class="urlextern" title="https://github.com/FreeRADIUS/freeradius-server/blob/v3.0.x/raddb/certs/Makefile" rel="ugc nofollow">raddb/certs/Makefile</a> and run them on an OpenWrt host, but this has not been tested. You will need to install the <code>openssl-util</code> OpenWrt package. See also:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="https://github.com/FreeRADIUS/freeradius-server/blob/v3.0.x/raddb/certs/bootstrap" class="urlextern" title="https://github.com/FreeRADIUS/freeradius-server/blob/v3.0.x/raddb/certs/bootstrap" rel="ugc nofollow">raddb/certs/bootstrap</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/FreeRADIUS/freeradius-server/blob/v3.0.x/raddb/certs/xpextensions" class="urlextern" title="https://github.com/FreeRADIUS/freeradius-server/blob/v3.0.x/raddb/certs/xpextensions" rel="ugc nofollow">raddb/certs/xpextensions</a></div>
+</li>
+</ul>
+
+<p>
+Further steps are described using freeradius 3.0.16 on Ubuntu 18.04.
+</p>
+
+<p>
+Open a terminal window, become a <code>root</code>, install FreeRADIUS, then go to the <code>certs</code> directory.
+</p>
+<pre class="code">$ sudo -i
+# apt update &amp;&amp; apt install freeradius
+# cd /etc/freeradius/3.0/certs</pre>
+
+<p>
+Notes:
+</p>
+<ul>
+<li class="level1"><div class="li"> In Ubuntu <code>raddb</code> is <code>/etc/freeradius/3.0</code> and <code>radiusd</code> binary is <code>freeradius</code>.</div>
+</li>
+<li class="level1"><div class="li"> You may safely stop and disable the newly installed FreeRADIUS. The daemon is not required for subsequent actions.</div>
+</li>
+</ul>
+
+</div>
+
+<h5 id="make_a_root_certificate">Make a root certificate</h5>
+<div class="level5">
+
+<p>
+Open file <code>ca.cnf</code> in your favorite text editor.
+</p>
+<pre class="code"># vim ca.cnf</pre>
+<ul>
+<li class="level1"><div class="li"> Edit the <code>default_days</code> field in <code>[ CA_default ]</code> section. Set it to some high value (for example, <code>1825</code> for 5 years) if you don&#039;t want to re-create your certificates too often.</div>
+</li>
+<li class="level1"><div class="li"> Edit the <code>input_password</code> and <code>output_password</code> fields in <code>[ req ]</code> section to be the password for the CA private key. For example, <code>MySecureCAPassword</code>.</div>
+</li>
+<li class="level1"><div class="li"> Edit the <code>[certificate_authority]</code> section to correct the values for your country, state, etc. <code>countryName</code> should be a two-letter <a href="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2" class="urlextern" title="https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2" rel="ugc nofollow">country code</a>, other fields may contain arbitrary information, at your option.</div>
+</li>
+</ul>
+
+<p>
+The following step creates:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>ca.key</code> - the encrypted CA private key. This file is only required for signing new certificates, not for FreeRADIUS to work.</div>
+</li>
+<li class="level1"><div class="li"> <code>ca.pem</code> - CA public certificate in PEM format.</div>
+</li>
+<li class="level1"><div class="li"> <code>ca.der</code> - CA public certificate in DER format. DER can be imported into Windows.</div>
+</li>
+</ul>
+<pre class="code"># make ca.der</pre>
+
+</div>
+
+<h5 id="make_a_server_certificate">Make a server certificate</h5>
+<div class="level5">
+
+<p>
+Open file <code>server.cnf</code> in your favorite text editor.
+</p>
+<pre class="code"># vim server.cnf</pre>
+<ul>
+<li class="level1"><div class="li"> Edit the <code>default_days</code> field in <code>[ CA_default ]</code> section. Set it to some high value (for example, <code>1825</code> for 5 years) if you don&#039;t want to re-create your certificates too often.</div>
+</li>
+<li class="level1"><div class="li"> Edit the <code>input_password</code> and <code>output_password</code> fields in <code>[ req ]</code> section to be the password for the server private key. For example, <code>MySecureServerPassword</code>. This password must then be specified in the FreeRADIUS configuration on your OpenWrt device (see chapter below).</div>
+</li>
+<li class="level1"><div class="li"> Edit the <code>[server]</code> section to correct the values for your country, state, etc. Be sure that the <code>commonName</code> field here is different from the <code>commonName</code> for the CA certificate.</div>
+</li>
+</ul>
+
+<p>
+The following step creates:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>server.key</code> - the encrypted server private key.</div>
+</li>
+<li class="level1"><div class="li"> <code>server.crt</code> - signed by the CA public certificate for your server.</div>
+</li>
+<li class="level1"><div class="li"> <code>server.pem</code> - concatenated <code>server.key</code> and <code>server.crt</code>.</div>
+</li>
+<li class="level1"><div class="li"> <code>server.p12</code> - combined <code>server.key</code> and <code>server.crt</code> in PKCS#12 format.</div>
+</li>
+<li class="level1"><div class="li"> <code>server.csr</code> - server certificate signing request. Intermediate file that was used to sign the certificate.</div>
+</li>
+</ul>
+<pre class="code"># make server.pem</pre>
+
+</div>
+
+<h5 id="generate_diffie-hellman_parameters">Generate Diffie-Hellman parameters</h5>
+<div class="level5">
+
+<p>
+Generate new Diffie-Hellman parameters (if you want):
+</p>
+<pre class="code"># make dh</pre>
+
+</div>
+
+<h5 id="copy_files_to_openwrt_device">Copy files to OpenWrt device</h5>
+<div class="level5">
+
+<p>
+Copy the following files to your OpenWrt device to <code>/etc/freeradius3/certs</code> directory:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>ca.pem</code></div>
+</li>
+<li class="level1"><div class="li"> <code>server.pem</code></div>
+</li>
+<li class="level1"><div class="li"> <code>dh</code> (if you want)</div>
+</li>
+</ul>
+
+<p>
+Now go back to your OpenWrt device.
+</p>
+
+</div>
+
+<h4 id="adjust_config">Adjust config</h4>
+<div class="level4">
+
+</div>
+
+<h5 id="check_file_permissions">Check file permissions</h5>
+<div class="level5">
+
+<p>
+Check that the files with private keys are inaccessible to the others. If they are world-accessible, adjust the permissions.
+</p>
+<pre class="code"># chmod o= certs/server.pem</pre>
+
+</div>
+
+<h5 id="set_password_for_the_server_private_key_in_eap_configurations_file">Set password for the server private key in EAP configurations file</h5>
+<div class="level5">
+
+<p>
+Edit the <code>private_key_password</code> field in the <code>mods-enabled/eap</code> file. Set in it the password for the server private key, which was specified above in the chapter <a href="#make_a_server_certificate" title="docs:guide-user:network:wifi:freeradius ↵" class="wikilink1">Make a server certificate</a> in the <code>[req]</code> section in the <code>output_password</code> field.
+</p>
+<pre class="code bash"><span class="co0">#my: file: mods-enabled/eap</span>
+<span class="co0">#my: section: eap {</span>
+<span class="co0">#my: sub-section: tls-config tls-common {</span>
+<span class="co0">#my: update 'private_key_password = whatever' with real password</span>
+<span class="co0">#		private_key_password = whatever</span>
+		private_key_password = MySecurePassword</pre>
+
+</div>
+
+<h5 id="bind_to_the_correct_ip">Bind to the correct IP</h5>
+<div class="level5">
+
+<p>
+Edit file <code>sites-enabled/default</code>.
+</p>
+
+<p>
+Listen for authentication packets only on the desired <abbr title="Internet Protocol">IP</abbr> address. Set <code>ipaddr</code> to <code>127.0.0.1</code> if your Access Point is running the FreeRADIUS server.
+</p>
+<pre class="code bash"><span class="co0">#my: file: sites-enabled/default</span>
+<span class="co0">#my: section: listen {</span>
+<span class="co0">#my: listen type = auth</span>
+<span class="co0">#my: change 'ipaddr = *' to myaddress</span>
+<span class="co0">#	ipaddr = *</span>
+	ipaddr = 192.168.1.1 </pre>
+
+<p>
+The same for accounting packets.
+</p>
+<pre class="code bash"><span class="co0">#my: file: sites-enabled/default</span>
+<span class="co0">#my: section: listen {</span>
+<span class="co0">#my: listen type = acct</span>
+<span class="co0">#my: change 'ipaddr = *' to myaddress</span>
+<span class="co0">#	ipaddr = *</span>
+	ipaddr = 192.168.1.1</pre>
+
+<p>
+<abbr title="Internet Protocol version 6">IPv6</abbr> versions of the above. Comment out the entire sections, if you are not using <abbr title="Internet Protocol version 6">IPv6</abbr>.
+</p>
+<pre class="code bash"><span class="co0">#my: file: sites-enabled/default</span>
+<span class="co0">#my: section: listen {</span>
+<span class="co0">#my: listen type = auth</span>
+<span class="co0">#my: comment out the entire section</span>
+<span class="co0">#listen {</span>
+<span class="co0">#	type = auth</span>
+<span class="co0">#	ipv6addr = ::</span>
+<span class="co0">#	...</span>
+<span class="co0">#}</span>
+<span class="co0">#</span>
+<span class="co0">#my: section: listen {</span>
+<span class="co0">#my: listen type = acct</span>
+<span class="co0">#my: comment out the entire section</span>
+<span class="co0">#listen {</span>
+<span class="co0">#	ipv6addr = ::</span>
+<span class="co0">#	port = 0</span>
+<span class="co0">#	type = acct</span>
+<span class="co0">#	...</span>
+<span class="co0">#}</span></pre>
+
+</div>
+
+<h4 id="disable_insecure_authentication_protocols">Disable insecure authentication protocols</h4>
+<div class="level4">
+
+<p>
+Now let&#039;s disable insecure authorization protocols on the server side. Although this will not prevent Supplicants from starting authentication using an insecure protocol, during which their credentials can be intercepted by an attacker.
+Note that any authorization protocol can be used securely inside an encrypted PEAP or EAP-TTLS tunnel.
+</p>
+
+</div>
+
+<h5 id="disable_non-eap_protocols">Disable non-EAP protocols</h5>
+<div class="level5">
+
+<p>
+Edit the file <code>sites-enabled/default</code>.
+</p>
+<pre class="code bash"><span class="co0">#my: file: sites-enabled/default</span>
+<span class="co0">#my: section: authorize {</span>
+<span class="co0">#my: comment 'chap'</span>
+<span class="co0">#	chap</span>
+<span class="co0">#</span>
+<span class="co0">#my: comment 'mschap'</span>
+<span class="co0">#	mschap</span>
+<span class="co0">#</span>
+<span class="co0">#my: comment 'digest'</span>
+<span class="co0">#	digest</span>
+<span class="co0">#</span>
+<span class="co0">#my: comment 'pap'</span>
+<span class="co0">#	pap</span></pre>
+
+</div>
+
+<h5 id="disable_insecure_eap_protocols">Disable insecure EAP protocols</h5>
+<div class="level5">
+
+<p>
+Edit the file <code>mods-enabled/eap</code>.
+</p>
+<pre class="code bash"><span class="co0">#my: file: mods-enabled/eap</span>
+<span class="co0">#my: section: eap {</span>
+<span class="co0">#my: comment out 'md5' section</span>
+<span class="co0">#	md5 {</span>
+<span class="co0">#	}</span>
+<span class="co0">#</span>
+<span class="co0">#my: comment out 'leap' section</span>
+<span class="co0">#	leap {</span>
+<span class="co0">#	}</span>
+<span class="co0">#</span>
+<span class="co0">#my: comment out 'gtc' section</span>
+<span class="co0">#	gtc {</span>
+<span class="co0">#	...</span>
+<span class="co0">#	}</span></pre>
+
+</div>
+
+<h5 id="set_peap_as_default_eap_type">Set PEAP as default EAP type</h5>
+<div class="level5">
+
+<p>
+Edit the file <code>mods-enabled/eap</code>.
+</p>
+<pre class="code bash"><span class="co0">#my: file: mods-enabled/eap</span>
+<span class="co0">#my: section: eap {</span>
+<span class="co0">#my: change 'default_eap_type =  md5' to peap</span>
+<span class="co0">#       default_eap_type = md5</span>
+        default_eap_type = peap</pre>
+
+</div>
+
+<h5 id="disable_eap-mschapv2_outside_of_eap-ttls_and_peap">Disable EAP-MSCHAPv2 outside of EAP-TTLS and PEAP</h5>
+<div class="level5">
+
+<p>
+Exclude insecure EAP-MSCHAPv2 from the methods available outside the EAP-TTLS or PEAP tunnel.
+<code>mods-enabled/eap</code> is referenced by <code>sites-enabled/default</code> and <code>sites-enabled/inner-tunnel</code>. So comment out the mschapv2 configuration from <code>mods-enabled/eap</code>.
+To continue using EAP-MSCHAPv2 in <code>sites-enabled/inner-tunnel</code>, use an <a href="https://networkradius.com/doc/current/raddb/syntax/config_names.html" class="urlextern" title="https://networkradius.com/doc/current/raddb/syntax/config_names.html" rel="ugc nofollow">instance</a> of the eap module with a different configuration and with an instance-name <code>inner-eap</code>.
+</p>
+
+<p>
+While the <code>inner-eap</code> module is not included in FreeRADIUS distribution in OpenWrt, copy its contents from <a href="https://github.com/FreeRADIUS/freeradius-server/blob/v3.0.x/raddb/mods-available/inner-eap" class="urlextern" title="https://github.com/FreeRADIUS/freeradius-server/blob/v3.0.x/raddb/mods-available/inner-eap" rel="ugc nofollow">source</a> or from the minimal configuration below:
+</p>
+<pre class="code">eap inner-eap {
+	default_eap_type = mschapv2
+	timer_expire = 60
+	max_sessions = ${max_requests}
+	mschapv2 {
+		}
+}</pre>
+
+<p>
+Save this code in file <code>mods-available/inner-eap</code>.
+Set file permissions:
+</p>
+<pre class="code"># chmod u=rw,g=r,o= /etc/freeradius3/mods-available/inner-eap</pre>
+
+<p>
+Then create a symbolic link in <code>mods-enabled/</code> directory:
+</p>
+<pre class="code"># cd /etc/freeradius3/mods-enabled
+# ln -s ../mods-available/inner-eap
+# cd /etc/freeradius3/</pre>
+
+<p>
+Consider appending the line <code>/etc/freeradius3/mods-available/inner-eap</code> to the <code>/etc/sysupgrade.conf</code> file to back up this mod with the standard <code>sysupgrade</code> utility.
+</p>
+
+<p>
+Add <code>inner-eap</code> section and comment out <code>eap</code> section in the file <code>sites-enabled/inner-tunnel</code>.
+</p>
+<pre class="code bash"><span class="co0">#my: file: sites-enabled/inner-tunnel</span>
+<span class="co0">#my: section: authorize {</span>
+<span class="co0">#my: add 'inner-eap' section; comment out 'eap' section</span>
+	inner-eap <span class="br0">&#123;</span>
+		ok = <span class="kw3">return</span>
+	<span class="br0">&#125;</span>
+<span class="co0">#	eap {</span>
+<span class="co0">#		ok = return</span>
+<span class="co0">#	}</span>
+<span class="co0">#</span>
+<span class="co0">#my: section: authenticate {</span>
+<span class="co0">#my: add 'inner-eap' section; comment out 'eap' section</span>
+	inner-eap
+<span class="co0">#	eap</span></pre>
+
+<p>
+Now you can comment out <code>mschapv2</code> section in the file <code>mods-enabled/eap</code>.
+</p>
+<pre class="code bash"><span class="co0">#my: file: mods-enabled/eap</span>
+<span class="co0">#my: section: eap {</span>
+<span class="co0">#my: comment out 'mschapv2' section; eap-mschapv2 is now in mods-enabled/inner-eap</span>
+<span class="co0">#	mschapv2 {</span>
+<span class="co0">#	...</span>
+<span class="co0">#	}</span></pre>
+
+</div>
+
+<h4 id="disable_some_unused_functionality">Disable some unused functionality</h4>
+<div class="level4">
+
+<p>
+This will help free up some RAM.
+</p>
+
+</div>
+
+<h5 id="disable_sql_module_completely">Disable SQL module completely</h5>
+<div class="level5">
+
+<p>
+Although the <code>sql</code> module is configured using the <code>-sql</code> construct, i.e. <a href="https://github.com/FreeRADIUS/freeradius-server/blob/v3.0.x/raddb/mods-available/README.rst" class="urlextern" title="https://github.com/FreeRADIUS/freeradius-server/blob/v3.0.x/raddb/mods-available/README.rst" rel="ugc nofollow">conditionally loaded</a> only if it is configured, let&#039;s comment it out.
+</p>
+
+<p>
+Edit the file <code>sites-enabled/default</code>.
+</p>
+<pre class="code bash"><span class="co0">#my: file: sites-enabled/default</span>
+<span class="co0">#my: section: authorize {</span>
+<span class="co0">#my: comment out '-sql'</span>
+<span class="co0">#	-sql</span>
+<span class="co0">#</span>
+<span class="co0">#my: section: accounting {</span>
+<span class="co0">#my: comment out '-sql'</span>
+<span class="co0">#	-sql</span>
+<span class="co0">#</span>
+<span class="co0">#my: section: post-auth {</span>
+<span class="co0">#my: comment out '-sql'</span>
+<span class="co0">#	-sql</span>
+<span class="co0">#</span>
+<span class="co0">#my: section: post-auth { </span>
+<span class="co0">#my: sub-section: Post-Auth-Type REJECT {</span>
+<span class="co0">#my: comment out '-sql'</span>
+<span class="co0">#		-sql</span></pre>
+
+<p>
+And in the same way the file <code>sites-enabled/inner-tunnel</code>.
+</p>
+<pre class="code bash"><span class="co0">#my: file: sites-enabled/inner-tunnel</span>
+<span class="co0">#my: section: authorize {</span>
+<span class="co0">#my: comment out '-sql'</span>
+<span class="co0">#	-sql</span>
+<span class="co0">#</span>
+<span class="co0">#my: section: post-auth {</span>
+<span class="co0">#my: comment out '-sql'</span>
+<span class="co0">#	-sql</span>
+<span class="co0">#</span>
+<span class="co0">#my: section: post-auth {</span>
+<span class="co0">#my: sub-section: Post-Auth-Type REJECT {</span>
+<span class="co0">#my: comment out '-sql'</span>
+<span class="co0">#		-sql</span></pre>
+
+</div>
+
+<h5 id="disable_ldap_module_completely">Disable LDAP module completely</h5>
+<div class="level5">
+
+<p>
+Although the <code>ldap</code> module is configured using the <code>-ldap</code> construct, i.e. <a href="https://github.com/FreeRADIUS/freeradius-server/blob/v3.0.x/raddb/mods-available/README.rst" class="urlextern" title="https://github.com/FreeRADIUS/freeradius-server/blob/v3.0.x/raddb/mods-available/README.rst" rel="ugc nofollow">conditionally loaded</a> only if it is configured, let&#039;s comment it out.
+</p>
+
+<p>
+Edit the file <code>sites-enabled/default</code>.
+</p>
+<pre class="code bash"><span class="co0">#my: file: sites-enabled/default</span>
+<span class="co0">#my: section: authorize {</span>
+<span class="co0">#my: comment out '-ldap'</span>
+<span class="co0">#	-ldap</span></pre>
+
+<p>
+And in the same way the file <code>sites-enabled/inner-tunnel</code>.
+</p>
+<pre class="code bash"><span class="co0">#my: file: sites-enabled/inner-tunnel</span>
+<span class="co0">#my: section: authorize {</span>
+<span class="co0">#my: comment out '-ldap'</span>
+<span class="co0">#	-ldap</span></pre>
+
+</div>
+
+<h5 id="do_not_create_a_detail_ed_log_of_the_packets">Do not create a &#039;detail&#039;ed log of the packets</h5>
+<div class="level5">
+
+<p>
+Comment out the <code>detail</code> module in the <code>accounting</code> section in file <code>sites-enabled/default</code>. Request packets will not be logged in <code>/var/db/radacct/</code>. This will save several hundred KB in RAM.
+</p>
+<pre class="code bash"><span class="co0">#my: file: sites-enabled/default</span>
+<span class="co0">#my: section: accounting {</span>
+<span class="co0">#my: comment out 'detail' to save some space in tmpfs</span>
+<span class="co0">#	detail</span></pre>
+
+</div>
+
+<h5 id="turn_proxying_off">Turn proxying off</h5>
+<div class="level5">
+
+<p>
+Our system will not proxy requests to other servers, then turn proxying off in the file <code>radiusd.conf</code>.
+This will <a href="https://networkradius.com/doc/current/raddb/radiusd.html" class="urlextern" title="https://networkradius.com/doc/current/raddb/radiusd.html" rel="ugc nofollow">save</a> a small amount of resources on the server.
+To disable proxying, change <code>proxy_requests</code> value from <code>yes</code> to <code>no</code>, and comment out the <code>$INCLUDE proxy.conf</code> line.
+</p>
+<pre class="code bash"><span class="co0">#my: file: radiusd.conf</span>
+<span class="co0">#my: change 'proxy_requests = yes' to no; comment out '$INCLUDE proxy.conf' as not used</span>
+proxy_requests  = no
+<span class="co0">#$INCLUDE proxy.conf</span></pre>
+
+</div>
+
+<h4 id="add_production_nas_s_and_users">Add production NAS&#039;s and users</h4>
+<div class="level4">
+
+</div>
+
+<h5 id="add_nas_s">Add NAS&#039;s</h5>
+<div class="level5">
+
+<p>
+Edit the <code>clients.conf</code> file.
+</p>
+<ol>
+<li class="level1"><div class="li"> Comment out the test client section if you added it in <a href="#set_up_freeradius_for_initial_testing" title="docs:guide-user:network:wifi:freeradius ↵" class="wikilink1">Set up FreeRADIUS for initial testing</a>.</div>
+</li>
+<li class="level1"><div class="li"> Add each of your Access Points to the end:</div>
+</li>
+</ol>
+<pre class="code bash"><span class="co0"># Access Point 1</span>
+client ap1 <span class="br0">&#123;</span>                     <span class="co0"># name 'ap1' can be anything</span>
+	ipaddr = 192.168.1.11    <span class="co0"># change it according to the IP address of your AP1</span>
+	secret = SecretForAP1    <span class="co0"># you must configure the same secret on the Access Point 1.</span>
+<span class="br0">&#125;</span>
+<span class="co0"># Access Point 2</span>
+client ap2 <span class="br0">&#123;</span>
+	ipaddr = 192.168.1.12
+	secret = SecretForAP2
+<span class="br0">&#125;</span>
+<span class="co0"># Access Point N</span>
+<span class="co0"># ...</span></pre>
+
+</div>
+
+<h5 id="add_users">Add users</h5>
+<div class="level5">
+
+<p>
+Edit the file <code>mods-config/files/authorize</code>.
+</p>
+<ol>
+<li class="level1"><div class="li"> Comment out the test user <code>bob</code>, that was enabled earlier in <a href="#set_up_freeradius_for_initial_testing" title="docs:guide-user:network:wifi:freeradius ↵" class="wikilink1">Set up FreeRADIUS for initial testing</a>.</div>
+</li>
+<li class="level1"><div class="li"> Add <em>logins</em> and <em>passwords</em> for all your users to the beginning of the file.</div>
+</li>
+</ol>
+<pre class="code bash"><span class="co0"># User 1</span>
+user1	Cleartext-Password := <span class="st0">&quot;password1&quot;</span>
+<span class="co0"># User 2</span>
+user2	Cleartext-Password := <span class="st0">&quot;password2&quot;</span>
+<span class="co0"># User N</span>
+<span class="co0"># ...</span></pre>
+
+</div>
+
+<h4 id="settings_for_displaying_a_list_of_authorized_users">Settings for displaying a list of authorized users</h4>
+<div class="level4">
+
+<p>
+Configure FreeRADIUS to maintain a file about logged in users. Edit the file <code>sites-enabled/default</code>. Accounting must not be disabled.
+</p>
+<pre class="code bash"><span class="co0">#my: file: sites-enabled/default</span>
+<span class="co0">#my: section: accounting {</span>
+<span class="co0">#my: uncomment 'radutmp'</span>
+	radutmp</pre>
+
+<p>
+Inform the NAS about the real user name. The NAS will return this name to the server in accounting packages. Edit the file <code>sites-enabled/inner-tunnel</code>.
+</p>
+<pre class="code bash"><span class="co0">#my: file: sites-enabled/inner-tunnel</span>
+<span class="co0">#my: section: post-auth {</span>
+<span class="co0">#my: uncomment 'update outer.session-state' section</span>
+	update outer.session-state <span class="br0">&#123;</span>
+		User-Name := <span class="sy0">&amp;</span>User-Name
+	<span class="br0">&#125;</span></pre>
+
+<p>
+Now you can run the command <code>radwho</code> from <code>freeradius3-utils</code> package and see the list of logged in users. Unfortunately, the documentation says that due to packet losses in the network, the data here may be incorrect.
+</p>
+
+<p>
+OpenWrt does not provide the <code>last</code> command. Therefore, the <code>radlast</code> command is not available for displaying a list of the last authorized users.
+However, you can copy the <code>/var/log/radwtmp</code> file to another machine where the <code>last</code> command is available. There you can view the contents of the <code>radwtmp</code> file:
+</p>
+<pre class="code bash"><span class="kw2">last</span> <span class="re5">-f</span> <span class="sy0">/</span>path<span class="sy0">/</span>to<span class="sy0">/</span>downloaded<span class="sy0">/</span>radwtmp</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuring FreeRADIUS&quot;,&quot;hid&quot;:&quot;configuring_freeradius&quot;,&quot;codeblockOffset&quot;:19,&quot;secid&quot;:8,&quot;range&quot;:&quot;20036-35672&quot;} -->
+<h3 class="sectionedit9" id="run_freeradius">Run FreeRADIUS</h3>
+<div class="level3">
+
+<p>
+When the configuration is complete and successfully tested in debugging mode, start the daemon in standard way.
+</p>
+<pre class="code">/etc/init.d/radiusd start</pre>
+
+<p>
+Note:
+</p>
+<ul>
+<li class="level1"><div class="li"> You must stop the <code>radiusd</code> server and start it again after you modified the configuration files.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Run FreeRADIUS&quot;,&quot;hid&quot;:&quot;run_freeradius&quot;,&quot;codeblockOffset&quot;:49,&quot;secid&quot;:9,&quot;range&quot;:&quot;35673-35960&quot;} -->
+<h2 class="sectionedit10" id="configure_wireless_access_point">Configure Wireless Access Point</h2>
+<div class="level2">
+
+<p>
+802.1x authentication is only available with full <code>wpad</code> package, <code>wpad-mini</code> does not have the required modules in it. So install <code>wpad</code> and remove <code>wpad-mini</code> with 
+</p>
+<pre class="code"># opkg remove wpad-mini ; opkg install wpad</pre>
+
+<p>
+If there is not enough space on the flash memory, try to build the modified firmware with the necessary packages using the <a href="/docs/guide-user/additional-software/imagebuilder" class="wikilink1" title="docs:guide-user:additional-software:imagebuilder" data-wiki-id="docs:guide-user:additional-software:imagebuilder">image builder</a>.
+</p>
+
+<p>
+Configuration of the <code>wifi-iface</code> section in file <a href="/docs/guide-user/network/wifi/basic" class="wikilink1" title="docs:guide-user:network:wifi:basic" data-wiki-id="docs:guide-user:network:wifi:basic">/etc/config/wireless</a> on Wireless Access Point should be similar to the following:
+</p>
+<pre class="code bash">config wifi-iface <span class="st_h">'default_radio0'</span>
+	option device <span class="st_h">'radio0'</span>
+	option network <span class="st_h">'lan'</span>
+	option mode <span class="st_h">'ap'</span>
+	option ssid <span class="st_h">'OpenWrt'</span>
+	option encryption <span class="st_h">'wpa2'</span>		<span class="co0"># 'wpa2' for WPA2 Enterprise instead of 'psk2' for WPA2 Personal (PSK).</span>
+	option server <span class="st_h">'192.168.1.1'</span>		<span class="co0"># RADIUS server IP. Set to 127.0.0.1 if your Access Point runs the FreeRADIUS server itself. In older OpenWrt releases, this option may be named 'auth_server'.</span>
+	option key <span class="st_h">'SecretForAP1'</span>		<span class="co0"># the 'key' must match the 'secret' for the corresponding client from the file '/etc/freeradius3/clients.conf'. In older OpenWrt releases, this option may be named 'auth_secret'</span>
+	option acct_server <span class="st_h">'192.168.1.1'</span>	<span class="co0"># Configure this option to enable accounting.</span>
+	option acct_secret <span class="st_h">'SecretForAP1'</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configure Wireless Access Point&quot;,&quot;hid&quot;:&quot;configure_wireless_access_point&quot;,&quot;codeblockOffset&quot;:50,&quot;secid&quot;:10,&quot;range&quot;:&quot;35961-37354&quot;} -->
+<h2 class="sectionedit11" id="configure_user_devices">Configure user devices</h2>
+<div class="level2">
+
+<p>
+When configuring a user device (Supplicant), specify the following values:
+</p>
+<ul>
+<li class="level1"><div class="li"> Security: WPA &amp; WPA2 Enterprise</div>
+</li>
+<li class="level1"><div class="li"> Authentication: Protected EAP (PEAP)</div>
+</li>
+<li class="level1"><div class="li"> Anonymous identity: anonymous</div>
+</li>
+<li class="level1"><div class="li"> CA certificate: (import and select root certificate <code>ca.pem</code> or <code>ca.der</code>)</div>
+</li>
+<li class="level1"><div class="li"> Inner authentication: MSCHAPv2</div>
+</li>
+<li class="level1"><div class="li"> Username: user1</div>
+</li>
+<li class="level1"><div class="li"> Password: password1</div>
+</li>
+</ul>
+
+<p>
+Note:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/network/wifi/atheroswds" class="wikilink1" title="docs:guide-user:network:wifi:atheroswds" data-wiki-id="docs:guide-user:network:wifi:atheroswds">WDS</a> config does not work, if you want to extend Wireless coverage with multiple APs, you will need <a href="/docs/guide-user/network/wifi/relay_configuration" class="wikilink1" title="docs:guide-user:network:wifi:relay_configuration" data-wiki-id="docs:guide-user:network:wifi:relay_configuration">Wifi Extender through relayd</a> config instead. The discussion for this can be found on OpenWrt Forum <a href="https://forum.openwrt.org/t/wds-client-with-802-1x/27994" class="urlextern" title="https://forum.openwrt.org/t/wds-client-with-802-1x/27994" rel="ugc nofollow">here</a>.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configure user devices&quot;,&quot;hid&quot;:&quot;configure_user_devices&quot;,&quot;codeblockOffset&quot;:52,&quot;secid&quot;:11,&quot;range&quot;:&quot;37355-38110&quot;} -->
+<h2 class="sectionedit12" id="conclusion">Conclusion</h2>
+<div class="level2">
+
+<p>
+In case you have any problems configuring or installing, create a topic at OpenWrt Forum and mention username <strong>ahmar16</strong>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Conclusion&quot;,&quot;hid&quot;:&quot;conclusion&quot;,&quot;codeblockOffset&quot;:52,&quot;secid&quot;:12,&quot;range&quot;:&quot;38111-38257&quot;} -->
+<h2 class="sectionedit13" id="useful_resources">Useful Resources</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Online FreeRADIUS documentation <a href="https://networkradius.com/doc/current/" class="urlextern" title="https://networkradius.com/doc/current/" rel="ugc nofollow">https://networkradius.com/doc/current/</a></div>
+</li>
+<li class="level1"><div class="li"> Collection of official FreeRADIUS PDFs: Technical Guide, PAP Authentication, EAP Authentication, etc. <a href="https://networkradius.com/technology/freeradius/" class="urlextern" title="https://networkradius.com/technology/freeradius/" rel="ugc nofollow">https://networkradius.com/technology/freeradius/</a></div>
+</li>
+<li class="level1"><div class="li"> Number of FreeRADIUS “Howto” documents <a href="http://deployingradius.com/" class="urlextern" title="http://deployingradius.com/" rel="ugc nofollow">http://deployingradius.com/</a></div>
+</li>
+<li class="level1"><div class="li"> FreeRADIUS Documentation <a href="https://freeradius.org/documentation/" class="urlextern" title="https://freeradius.org/documentation/" rel="ugc nofollow">https://freeradius.org/documentation/</a></div>
+</li>
+<li class="level1"><div class="li"> FreeRADIUS source code on GitHub <a href="https://github.com/FreeRADIUS/freeradius-server" class="urlextern" title="https://github.com/FreeRADIUS/freeradius-server" rel="ugc nofollow">https://github.com/FreeRADIUS/freeradius-server</a></div>
+</li>
+<li class="level1"><div class="li"> 802.1X Port-Based Authentication HOWTO <a href="https://tldp.org/HOWTO/html_single/8021X-HOWTO/" class="urlextern" title="https://tldp.org/HOWTO/html_single/8021X-HOWTO/" rel="ugc nofollow">https://tldp.org/HOWTO/html_single/8021X-HOWTO/</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Useful Resources&quot;,&quot;hid&quot;:&quot;useful_resources&quot;,&quot;codeblockOffset&quot;:52,&quot;secid&quot;:13,&quot;range&quot;:&quot;38258-&quot;} --><div class="footnotes">
+<div class="fn"><sup><a href="#fnt__1" id="fn__1" class="fn_bot">1)</a></sup> 
+<div class="content"><a href="https://www.kb.cert.org/vuls/id/836068" class="urlextern" title="https://www.kb.cert.org/vuls/id/836068" rel="ugc nofollow">https://www.kb.cert.org/vuls/id/836068</a></div></div>
+<div class="fn"><sup><a href="#fnt__2" id="fn__2" class="fn_bot">2)</a></sup> 
+<div class="content"><a href="https://www.schneier.com/wp-content/uploads/2015/12/paper-pptpv2.pdf" class="urlextern" title="https://www.schneier.com/wp-content/uploads/2015/12/paper-pptpv2.pdf" rel="ugc nofollow">https://www.schneier.com/wp-content/uploads/2015/12/paper-pptpv2.pdf</a></div></div>
+<div class="fn"><sup><a href="#fnt__3" id="fn__3" class="fn_bot">3)</a></sup> 
+<div class="content"><a href="https://www.sans.org/security-resources/malwarefaq/pptp-vpn" class="urlextern" title="https://www.sans.org/security-resources/malwarefaq/pptp-vpn" rel="ugc nofollow">https://www.sans.org/security-resources/malwarefaq/pptp-vpn</a></div></div>
+</div>

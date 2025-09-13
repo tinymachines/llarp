@@ -1,0 +1,96 @@
+
+<h1 class="sectionedit1" id="flashing_openwrt_with_wi-fi_enabled_on_first_boot">Flashing OpenWrt with Wi-Fi enabled on first boot</h1>
+<div class="level1">
+
+<p>
+OpenWrt is configured to have Wi-Fi disabled on first boot.
+Some upgrade scenarios require that wireless connection is enabled by default, though.
+There are two sections in this guide: one for upgrading an OpenWrt image, the other is suited for flashing OpenWrt from stock (vendor) firmware.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Flashing OpenWrt with Wi-Fi enabled on first boot&quot;,&quot;hid&quot;:&quot;flashing_openwrt_with_wi-fi_enabled_on_first_boot&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-357&quot;} -->
+<h2 class="sectionedit2" id="upgrading_openwrt_with_wi-fi_enabled_on_first_boot">Upgrading OpenWrt with Wi-Fi enabled on first boot</h2>
+<div class="level2">
+
+<p>
+We use <code>sysupgrade</code> cli tool with a specially prepared restore configuration file.
+The method can be used for any OpenWrt image.
+You need to have an OpenWrt already running on the router.
+It will not work with a vendor ROM.
+</p>
+
+<p>
+To flash an OpenWrt image with Wi-Fi enabled:
+</p>
+<ol>
+<li class="level1"><div class="li"> upload the upgrade image to the <code>/tmp</code> directory</div>
+</li>
+<li class="level1"><div class="li"> paste the code to the command line: <pre class="code bash"><span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>uci-defaults<span class="sy0">/</span>xxx_config
+uci <span class="kw1">set</span> wireless.<span class="sy0">@</span>wifi-device<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.disabled=<span class="st0">&quot;0&quot;</span>
+uci <span class="kw1">set</span> wireless.<span class="sy0">@</span>wifi-iface<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.disabled=<span class="st0">&quot;0&quot;</span>
+uci <span class="kw1">set</span> wireless.<span class="sy0">@</span>wifi-iface<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.ssid=<span class="st0">&quot;OpenWrt&quot;</span>
+uci <span class="kw1">set</span> wireless.<span class="sy0">@</span>wifi-iface<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.key=<span class="st0">&quot;changemeplox&quot;</span>
+uci <span class="kw1">set</span> wireless.<span class="sy0">@</span>wifi-iface<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.encryption=<span class="st0">&quot;psk2&quot;</span>
+uci commit wireless
+EOF</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> This sets the initial name to <code>OpenWrt</code> and password to <code>changemeplox</code> for default interface on the first radio. You are strongly encouraged to change this password in the above file or at the very least after the first boot.</div>
+</li>
+<li class="level1"><div class="li"> change directory to <code>/tmp</code></div>
+</li>
+<li class="level1"><div class="li"> run <code>tar -czvf config.tar.gz /etc/uci-defaults/</code> to create a config file for <code>sysupgrade</code></div>
+</li>
+<li class="level1"><div class="li"> run <code>rm /etc/uci-defaults/xxx_config</code> to remove this configuration file from the current image in case it is a dual boot device or sysupgrade fails</div>
+</li>
+<li class="level1"><div class="li"> run <code>sysupgrade -n -f config.tar.gz image.bin</code> to flash. Note that it will not save the current configuration.</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Upgrading OpenWrt with Wi-Fi enabled on first boot&quot;,&quot;hid&quot;:&quot;upgrading_openwrt_with_wi-fi_enabled_on_first_boot&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;358-1752&quot;} -->
+<h2 class="sectionedit3" id="flashing_openwrt_with_wi-fi_enabled_on_first_boot_from_vendor_rom">Flashing OpenWrt with Wi-Fi enabled on first boot from vendor ROM</h2>
+<div class="level2">
+
+<p>
+For this you need to build your own image.
+Follow the <a href="/docs/guide-developer/toolchain/beginners-build-guide" class="wikilink1" title="docs:guide-developer:toolchain:beginners-build-guide" data-wiki-id="docs:guide-developer:toolchain:beginners-build-guide">beginners guide to building your own firmware</a>.
+Before <code>make</code> put the <code>xxx_config</code> from the above section in <code>files/etc/uci-defaults</code> directory.
+</p>
+<ol>
+<li class="level1"><div class="li"> Create <code>files/etc/uci-defaults</code> relative to the main build dir. <pre class="code bash"><span class="kw2">mkdir</span> <span class="re5">-p</span> files<span class="sy0">/</span>etc<span class="sy0">/</span>uci-defaults</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> use your favourite editor to create <code>xxx_config</code> <pre class="code bash"><span class="kw2">vi</span> files<span class="sy0">/</span>etc<span class="sy0">/</span>uci-defaults<span class="sy0">/</span>xxx_config</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Build - also make sure you read guidelines how to speed up the build process (download all before build and build with <code>-jx</code>) <pre class="code bash"><span class="kw2">make</span></pre>
+</div>
+</li>
+<li class="level1"><div class="li"> use <code>factory.img</code> to flash your router</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Flashing OpenWrt with Wi-Fi enabled on first boot from vendor ROM&quot;,&quot;hid&quot;:&quot;flashing_openwrt_with_wi-fi_enabled_on_first_boot_from_vendor_rom&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;1753-2525&quot;} -->
+<h2 class="sectionedit4" id="additional_information">Additional Information</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <a href="/docs/techref/sysupgrade" class="wikilink1" title="docs:techref:sysupgrade" data-wiki-id="docs:techref:sysupgrade">Sysupgrade – Technical Reference</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-developer/uci-defaults" class="wikilink1" title="docs:guide-developer:uci-defaults" data-wiki-id="docs:guide-developer:uci-defaults">UCI defaults</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/additional-software/imagebuilder" class="wikilink1" title="docs:guide-user:additional-software:imagebuilder" data-wiki-id="docs:guide-user:additional-software:imagebuilder">Using the Image Builder</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-developer/toolchain/use-buildsystem" class="wikilink1" title="docs:guide-developer:toolchain:use-buildsystem" data-wiki-id="docs:guide-developer:toolchain:use-buildsystem">Build system – Usage</a></div>
+</li>
+</ul>
+
+<p>
+The same method can be used for any other configuration you need on the first boot.
+For example MAC address override on Wan interface.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Additional Information&quot;,&quot;hid&quot;:&quot;additional_information&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:4,&quot;range&quot;:&quot;2526-&quot;} -->

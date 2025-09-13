@@ -1,0 +1,157 @@
+
+<h1 class="sectionedit1" id="mounting_block_devices">Mounting Block Devices</h1>
+<div class="level1">
+
+<p>
+This pages discuses the advanced details and underlying operation.  For general usage, see <a href="/docs/guide-user/storage/fstab" class="wikilink1" title="docs:guide-user:storage:fstab" data-wiki-id="docs:guide-user:storage:fstab">fstab</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Mounting Block Devices&quot;,&quot;hid&quot;:&quot;mounting_block_devices&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-164&quot;} -->
+<h2 class="sectionedit2" id="overview">Overview</h2>
+<div class="level2">
+
+<p>
+The mounting of block devices is handled by the <code>block-mount</code> source package, which contains the <code>block-mount</code> and <code>block-hotplug</code> packages.  <code>block-mount</code> contains the code that does the actual mounting, and the mounting via <code>/etc/init.d/fstab</code> (i.e. on boot rather than when device is hotplugged), and <code>block-hotplug</code> takes care of mounting devices when the device is recognized by the system (.e.g. when modules are loaded and the partition detected).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Overview&quot;,&quot;hid&quot;:&quot;overview&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;165-653&quot;} -->
+<h2 class="sectionedit3" id="block-mount_binary_package">block-mount (binary package)</h2>
+<div class="level2">
+
+<p>
+<del>The <code>block-mount</code> binary package (i.e. the one you actually install, rather than the source package containing <code>block-mount</code> and <code>block-hotplug</code>), contains three library scripts (in addition to <code>/etc/init.d/fstab</code> and the sample config file <code>/etc/config/fstab</code>).  These three scripts are: <code>block.sh</code>, <code>mount.sh</code>, and <code>fsck.sh</code>.
+</del>
+</p>
+<div class="table sectionedit4"><table class="inline">
+	<tr class="row0">
+		<td class="col0"> <img src="/_media/meta/icons/tango/48px-outdated.svg.png" class="media" loading="lazy" alt="" /> </td><td class="col1 leftalign"> As of <a href="https://dev.openwrt.org/changeset/26314/trunk" class="urlextern" title="https://dev.openwrt.org/changeset/26314/trunk" rel="ugc nofollow">r26314</a> <code>block-extroot</code> and <code>block-hotplug</code> have been merged with <code>block-mount</code>.  That means that once you install <code>block-mount</code> the scripts for <a href="/docs/guide-user/additional-software/extroot_configuration" class="wikilink1" title="docs:guide-user:additional-software:extroot_configuration" data-wiki-id="docs:guide-user:additional-software:extroot_configuration">extroot</a> mounting and  hotplug mounting are installed. With <a href="https://dev.openwrt.org/changeset/36988" class="urlextern" title="https://dev.openwrt.org/changeset/36988" rel="ugc nofollow">r36988</a> the original package <code>block-mount</code> was removed. Technically, the new package <code><a href="/docs/techref/ubox" class="wikilink1" title="docs:techref:ubox" data-wiki-id="docs:techref:ubox">ubox</a></code> replaced its functionality. For <a href="/docs/guide-user/storage/fstab" class="wikilink1" title="docs:guide-user:storage:fstab" data-wiki-id="docs:guide-user:storage:fstab">Fstab configuration</a>, the new block-mount package now contains the executable <code>block</code> which facilitates this. You can run <code>block &lt;info|mount|umount|detect&gt;</code>. See <a href="/docs/guide-user/storage/fstab" class="wikilink1" title="docs:guide-user:storage:fstab" data-wiki-id="docs:guide-user:storage:fstab">Fstab configuration</a>.  </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;1052-1880&quot;} -->
+<p>
+With the new block mount mechanism you can run <code>block info</code> to get the same output that blkid delivered (however it only returns info for filesystems it supports). You can do “block mount” to mount all devices (same as what <code>/etc/init.d/fstab restart</code> used to do. If you run “<code>block detect</code>” you will get a sample uci file for the currently attached block devices. That way you can do “<code>block detect | uci import fstab</code>” to store it
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> block info cannot detect btrfs (added <a href="https://dev.openwrt.org/changeset/43868/trunk" class="urlextern" title="https://dev.openwrt.org/changeset/43868/trunk" rel="ugc nofollow">r43868</a>), xfs , jfs, ntfs, exfat, and some other FS. Use manual scripting to mount them.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> For ntfs mount <a href="https://forum.openwrt.org/t/block-mount-ntfs-not-a-tty/64350" class="urlextern" title="https://forum.openwrt.org/t/block-mount-ntfs-not-a-tty/64350" rel="ugc nofollow">read here</a>
+</p>
+<pre class="code">root@OpenWrt:~# blkid
+/dev/sda1: TYPE=&quot;ext2&quot; 
+/dev/sda2: UUID=&quot;890c87d4-e276-4fb0-a34a-296db408d792&quot; TYPE=&quot;ext4&quot; 
+/dev/sdb1: LABEL=&quot;OPENWRT-BTRFS&quot; UUID=&quot;2412e056-a1d8-4710-bf0e-d54b8ff0662f&quot; UUID_SUB=&quot;edd04b0f-ccf6-4978-9d76-1fa17921fe58&quot; TYPE=&quot;btrfs&quot; 
+root@OpenWrt:~# block info
+/dev/sda1: VERSION=&quot;1.0&quot; TYPE=&quot;ext2&quot;
+/dev/sda2: UUID=&quot;890c87d4-e276-4fb0-a34a-296db408d792&quot; VERSION=&quot;1.0&quot; TYPE=&quot;ext4&quot;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;block-mount (binary package)&quot;,&quot;hid&quot;:&quot;block-mount_binary_package&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;654-3015&quot;} -->
+<h3 class="sectionedit5" id="the_new_block-mount_in_barrier_breaker">The new block-mount in Barrier Breaker</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="usageblock_info_mount_umount_detect">Usage: block &lt;info|mount|umount|detect&gt;</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> <strong>info</strong> → get the same output that blkid delivered (including mtdblock)</div>
+</li>
+</ul>
+<pre class="code">/dev/mtdblock2: UUID=&quot;0906f1b4-51688c99-666b11b5-71d70575&quot; VERSION=&quot;4.0&quot; TYPE=&quot;squashfs&quot;
+/dev/mtdblock3: TYPE=&quot;jffs2&quot;
+/dev/sda1: UUID=&quot;e81a771e-249f-4f9e-ab30-b2fb73789744&quot; LABEL=&quot;overlay&quot; NAME=&quot;EXT_JOURNAL&quot; VERSION=&quot;1.0&quot; TYPE=&quot;ext4&quot;
+/dev/sda2: UUID=&quot;090b67fa-afbb-4771-8efd-7a515c742c18&quot; LABEL=&quot;swap&quot; VERSION=&quot;2&quot; TYPE=&quot;swap&quot;
+/dev/sda5: UUID=&quot;91f1-f7ed&quot; LABEL=&quot;TRANSPORT&quot; VERSION=&quot;FAT32&quot; TYPE=&quot;vfat&quot;
+/dev/sda6: UUID=&quot;b01791a5-647a-4ab0-9adf-5b626ee5407c&quot; LABEL=&quot;daten&quot; NAME=&quot;EXT_JOURNAL&quot; VERSION=&quot;1.0&quot; TYPE=&quot;ext4&quot;
+/dev/sda7: UUID=&quot;9f822714-fb75-40c3-9382-f1df42343229&quot; LABEL=&quot;rest&quot; NAME=&quot;EXT_JOURNAL&quot; VERSION=&quot;1.0&quot; TYPE=&quot;ext4&quot;</pre>
+<ul>
+<li class="level1"><div class="li"> <strong>mount</strong> → mount all devices listed in fstab</div>
+</li>
+<li class="level1"><div class="li"> <strong>umount</strong> → unmount all devices listed in fstab</div>
+</li>
+<li class="level1"><div class="li"> <strong>detect</strong> → get a sample uci file for the currently attached block devices</div>
+</li>
+</ul>
+<pre class="code">config &#039;global&#039;
+	option	anon_swap	&#039;0&#039;
+	option	anon_mount	&#039;0&#039;
+	option	auto_swap	&#039;1&#039;
+	option	auto_mount	&#039;1&#039;
+	option	delay_root	&#039;5&#039;
+	option	check_fs	&#039;0&#039;
+
+config &#039;mount&#039;
+	option	target	&#039;/mnt/sda1&#039;
+	option	uuid	&#039;e81a771e-249f-4f9e-ab30-b2fb73789744&#039;
+	option	enabled	&#039;0&#039;
+
+config &#039;swap&#039;
+	option	uuid	&#039;090b67fa-afbb-4771-8efd-7a515c742c18&#039;
+	option	enabled	&#039;0&#039;
+
+config &#039;mount&#039;
+	option	target	&#039;/mnt/sda5&#039;
+	option	uuid	&#039;91f1-f7ed&#039;
+	option	enabled	&#039;0&#039;
+
+config &#039;mount&#039;
+	option	target	&#039;/mnt/sda6&#039;
+	option	uuid	&#039;b01791a5-647a-4ab0-9adf-5b626ee5407c&#039;
+	option	enabled	&#039;0&#039;
+
+config &#039;mount&#039;
+	option	target	&#039;/mnt/sda7&#039;
+	option	uuid	&#039;9f822714-fb75-40c3-9382-f1df42343229&#039;
+	option	enabled	&#039;0&#039;
+	option	options	&#039;lazytime,noatime,background_gc=off,gc_merge&#039;
+</pre>
+
+<p>
+you can do “<code>block detect | uci import fstab</code>” to store it as a sample config file (already with UUID <img src="/lib/images/smileys/wink.svg" class="icon smiley" alt=";-)" /> )
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;The new block-mount in Barrier Breaker&quot;,&quot;hid&quot;:&quot;the_new_block-mount_in_barrier_breaker&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:5,&quot;range&quot;:&quot;3016-4874&quot;} -->
+<h3 class="sectionedit6" id="workingnot_working_in_barrier_breaker_as_of_20150130">working/not working in Barrier Breaker as of 2015/01/30</h3>
+<div class="level3">
+<div class="table sectionedit7"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> </th><th class="col1"> info </th><th class="col2"> detect </th><th class="col3"> on boot </th><th class="col4"> on plug </th><th class="col5"> mount/umount<sup><a href="#fn__1" id="fnt__1" class="fn_top">1)</a></sup> </th><th class="col6"> needs </th><th class="col7"> and </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0">ext4</td><td class="col1 centeralign" bgcolor=lightgreen>✔  </td><td class="col2 centeralign" bgcolor=lightgreen>✔  </td><td class="col3 centeralign" bgcolor=lightgreen>✔  </td><td class="col4 centeralign" bgcolor=lightgreen>✔  </td><td class="col5 centeralign" bgcolor=lightgreen>✔  </td><td class="col6"> kmod-fs-ext4 </td><td class="col7"> libext2fs, <img src="/lib/images/smileys/question.svg" class="icon smiley" alt=":?:" /> kmod-fs-autofs4 </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0">swap</td><td class="col1 centeralign" bgcolor=lightgreen>✔  </td><td class="col2 centeralign" bgcolor=lightgreen>✔  </td><td class="col3 centeralign">  ?  </td><td class="col4 centeralign">  ?  </td><td class="col5 centeralign">  ?  </td><td class="col6"> ??? </td><td class="col7"> swap-utils </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0">vfat</td><td class="col1 centeralign" bgcolor=lightgreen>✔  </td><td class="col2 centeralign" bgcolor=lightgreen>✔  </td><td class="col3 centeralign" bgcolor=lightgreen>✔  </td><td class="col4 centeralign" bgcolor=lightgreen>✔  </td><td class="col5 centeralign" bgcolor=lightgreen>✔  </td><td class="col6"> kmod-fs-vfat </td><td class="col7"> kmod-nls-base, kmod-nls-cp437, kmod-nls-iso8859-1, kmod-nls-utf8 </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0">btrfs</td><td class="col1 centeralign" bgcolor=red>✘<sup><a href="#fn__2" id="fnt__2" class="fn_top">2)</a></sup>  </td><td class="col2 centeralign" bgcolor=red>✘  </td><td class="col3 centeralign" bgcolor=red>✘  </td><td class="col4 centeralign" bgcolor=red>✘  </td><td class="col5 centeralign" bgcolor=red>✘  </td><td class="col6"> kmod-fs-btrfs </td><td class="col7"> btrfs-progs </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table1&quot;,&quot;secid&quot;:7,&quot;range&quot;:&quot;4941-5636&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;working\/not working in Barrier Breaker as of 2015\/01\/30&quot;,&quot;hid&quot;:&quot;workingnot_working_in_barrier_breaker_as_of_20150130&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:6,&quot;range&quot;:&quot;4875-5637&quot;} -->
+<h2 class="sectionedit8" id="block-hotplug_binary_package">block-hotplug (binary package)</h2>
+<div class="level2">
+
+<p>
+Block hotplug consists of three scripts, <code>10-swap</code>, <code>20-fsck</code>, and <code>40-mount</code>.  When a block devices is added these scripts are executed in the order listed.  So, first the device is checked for being a <code>swap</code> section, or to attempt to mount as swap, if it is not a defined section for swap or mount (this is known as <code>anon_swap</code> or anonymous swap).  Then <code>20-fsck</code> checks if the device is listed as <code>enabled_fsck</code> and if so, attempts to check/repair the filesystem, and, finally, we check if the device should be mounted, either named, or anonymously (i.e. not listed in any section).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;block-hotplug (binary package)&quot;,&quot;hid&quot;:&quot;block-hotplug_binary_package&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:8,&quot;range&quot;:&quot;5638-&quot;} --><div class="footnotes">
+<div class="fn"><sup><a href="#fnt__1" id="fn__1" class="fn_bot">1)</a></sup> 
+<div class="content">with the mount command instead of block mount/block umount</div></div>
+<div class="fn"><sup><a href="#fnt__2" id="fn__2" class="fn_bot">2)</a></sup> 
+<div class="content">use btrfs-show to get the UUID</div></div>
+</div>

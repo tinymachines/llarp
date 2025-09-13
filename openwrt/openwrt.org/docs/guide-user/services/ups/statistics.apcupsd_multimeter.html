@@ -1,0 +1,187 @@
+
+<h1 class="sectionedit1" id="how_to_add_data_from_a_tp9605bt_multimeter_to_apcupsd_rrd_and_graphs">How to add data from a TP9605BT multimeter to apcupsd rrd and graphs.</h1>
+<div class="level1">
+
+<p>
+<strong>WARNING: All liability is yours: this procedure involves handling of potentially lethal electrical currents.</strong>
+</p>
+
+<p>
+This describes how to add Voltage Output data to the apcupsd RRD database.<br/>
+
+I did this because the APC BackUps ES-500 I have does not report a value I was interested in: 
+“OUTPUTV - The voltage the UPS is supplying to your equipment” ( <a href="http://www.apcupsd.org/manual/manual.pdf" class="urlextern" title="http://www.apcupsd.org/manual/manual.pdf" rel="ugc nofollow">http://www.apcupsd.org/manual/manual.pdf</a> ).
+</p>
+
+<p>
+The plan was simple:
+</p>
+<ul>
+<li class="level1"><div class="li"> Get a multimeter that could output voltage readings to my router.</div>
+</li>
+<li class="level1"><div class="li"> Add the readings to the apcupsd RRD database.</div>
+</li>
+<li class="level1"><div class="li"> Verify the readings appear in the appropriate graph.</div>
+</li>
+</ul>
+
+<p>
+I found a multimeter that worked and was cheap enough, the <a href="http://amzn.to/2reiCzk" class="urlextern" title="http://amzn.to/2reiCzk" rel="ugc nofollow">Tekpower TP9605BT</a>
+( This an affiliate link from Louis Rossmann&#039;s work with this meter at: 
+<a href="https://mailin.repair/blog/multimeter-overlay-in-obs-making-the-readings-show-on-screen-for-recordings" class="urlextern" title="https://mailin.repair/blog/multimeter-overlay-in-obs-making-the-readings-show-on-screen-for-recordings" rel="ugc nofollow">Multimeter Overlay in OBS</a> ).
+</p>
+
+<p>
+The physical attachment of the multimeter involved:
+</p>
+<ul>
+<li class="level1"><div class="li"> Connecting the meter&#039;s USB cable to the router USB, which further required a small USB hub.</div>
+</li>
+<li class="level1 node"><div class="li"> Experimenting until I found the correct button-press combination that put the meter into always-on mode.  </div>
+<ul>
+<li class="level2"><div class="li"> The documentation had an incorrect sequence. </div>
+</li>
+<li class="level2"><div class="li"> The correct sequence is: hold down the [Range] button while turning on the meter. </div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Switching to probes that would stay in a mains socket</div>
+</li>
+<li class="level1"><div class="li"> Cobbling up a 9 volt battery eliminator.  </div>
+</li>
+<li class="level1"><div class="li"> Making sure I used the same circuit on the battery-backed-up side of the UPS for both the meter probes, and the battery eliminator.  This minimizes the chances of a ground loop destroying the multimeter.</div>
+</li>
+</ul>
+
+<p>
+The next step was to establish communication between the meter and the router:
+</p>
+<ul>
+<li class="level1"><div class="li"> opkg install kmod-usb-serial-ch341</div>
+</li>
+<li class="level1"><div class="li"> Make sure the communication worked.</div>
+</li>
+<li class="level1"><div class="li"> Write some code that periodically took a value from the meter, and dumped it in the apcupsd RRD database.</div>
+</li>
+</ul>
+
+<p>
+From looking at logread, I determined that the meter&#039;s port is on /dev/ttyUSB0.
+So, I did:
+</p>
+<pre class="code"># cat /dev/ttyUSB0</pre>
+
+<p>
+and got some very reasonable results:
+</p>
+<pre class="code">+1227 3)�
+
++1227 3)�</pre>
+
+<p>
+Now, came the analysis part.   The “)?” characters tell us what range the meter is set to.  This didn&#039;t matter to me in this application, because I already knew the settings.
+</p>
+<ul>
+<li class="level1"><div class="li"> “+1227” are the numbers on the meter display.</div>
+</li>
+<li class="level1"><div class="li"> “3” is where to put the decimal point.</div>
+</li>
+<li class="level1"><div class="li"> So, “+1227 3)�” = 122.7 Volts AC.</div>
+</li>
+</ul>
+
+<p>
+Below is some code I whipped up.  I&#039;m sure it can be improved.  Note that it has custom locations for the RRD files, and the port for the meter.
+</p>
+
+<p>
+I added these lines to the crontabs/root:
+</p>
+<pre class="code"># get AC Volts from the multimeter once every minute
+*/1 * * * * /usr/share/bobvolts_TP9605BT_usb.sh</pre>
+
+<p>
+This runs the program every minute, and seems to work well when I look at the graph:
+ <a href="/_detail/media/doc/howtos/statistics_apcups_multimeter_graph.png?id=docs%3Aguide-user%3Aservices%3Aups%3Astatistics.apcupsd_multimeter" class="media" title="media:doc:howtos:statistics_apcups_multimeter_graph.png"><img src="/_media/media/doc/howtos/statistics_apcups_multimeter_graph.png" class="media" loading="lazy" alt="" /></a>
+</p>
+
+<p>
+Now for some cleanup.  Add this line to /etc/sysupgrade.conf, which preserves this new script across upgrades:
+</p>
+<pre class="code">/usr/share/bobvolts_TP9605BT_usb.sh</pre>
+
+<p>
+And, here is the script, to add to /usr/share/bobvolts_TP9605BT_usb.sh:
+</p>
+<pre class="code">##!/bin/bash
+
+# bobvolts_TP9605BT_usb.sh, Copyright 2017 Bob Meizlik, license: CC Attribution-Noncommercial-Share Alike 3.0.
+# All liability is yours: this code presumes handling of dangerous tools and electricity.
+#
+# Purpose:
+# Collect and store AC Voltage Output readings, when your UPS does not. 
+#
+# Usage:
+# Connect your meter appropriately, to the output AC of the UPS, and the (USB or RS232 or Bluetooth) of your computer or access point.
+# Hold down RANGE button, and turn meter on, to defeat the auto-power-off timer.
+# Set meter range to Volts, AC.
+# Set meter to RS232 output (this enables, RS232, USB and Bluetooth)
+# Install drivers 
+# Set this script to run periodically, perhaps with a cron script, or a daemon.
+#
+# Code Process:
+# Get AC Voltage readings from a TekPower TP9605BT multimeter, and 
+# send them to the apcups, collectd RRD file meant for these readings.
+# 
+# get the latest voltage reading from a TekPower TP9605BT multimeter
+# set to AC Volts range
+# set to RS232 output
+#
+# We get 4 readings per second.
+# each reading is 14 bytes long
+# the lines look like this: 2b 31 32 31 38 20 33 29  20 20 80 20 0a 0a 2b 31  |+1218 3)  . ..+1|
+# if we start in the middle of a line, ignore the line, and go to the next line, which is presumably complete.
+# the x0a characters look like new lines in this processing, resulting in a data line that is 12 bytes long.
+#
+# Known issues:
+# The input will hang, when there is no device at /dev/ttyUSB0.
+# The input will hang, when the meter is turned off.
+
+inputfile=&quot;/dev/ttyUSB0&quot;
+
+rrdfile=&quot;/mnt/share/tmp/mydigitemp.rrd&quot;
+rrdfile=&quot;/mnt/share/stats/rrd/g70outside/apcups/voltage-output.rrd&quot;
+# todo: get the rrdfile name from /etc/config/luci-statistics option DataDir &#039;/mnt/share/stats/rrd&#039;
+
+# translate 0 to space, because the length is our checksum
+dat=$(dd bs=1 count=50 if=$inputfile | tr \\000 \\040 )
+
+line1=$(echo -en &quot;$dat&quot; | sed --quiet &#039;1p&#039;)
+line2=$(echo -en &quot;$dat&quot; | sed --quiet &#039;2p&#039;)
+line3=$(echo -en &quot;$dat&quot; | sed --quiet &#039;3p&#039;)
+
+line1len=${#line1} 
+line2len=${#line2}
+line3len=${#line3}
+
+# todo, this would be nicer if it was a loop
+if [ 12 -eq &quot;$line1len&quot; ]; then
+   theline=$line1
+else
+   theline=$line3 
+fi
+
+# extract the data from the line, and convert it to a form that rrd can use.
+set -- junk $theline
+val=$2 # the value, like +1234
+
+dec=`expr &quot;$3&quot; : &#039;\([0-9]\)&#039;` # the decimal place, like 3
+decp1=`expr 1 + $dec`         # add 1 to get past the sign
+theValue=${val:0:$decp1}.${val:$decp1} # put the value together with the decimal place
+
+# generate and run a line like: rrdtool update .rrd $(date +%s):+122.5 
+theSeconds=$(date +%s)
+rrdcmd=&#039;rrdtool update &#039;$rrdfile&#039; &#039;&#039;N:&#039;$theValue   
+$rrdcmd</pre>
+
+</div>

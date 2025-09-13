@@ -1,0 +1,84 @@
+
+<h1 class="sectionedit1" id="terminate_uart_console">Terminate UART Console</h1>
+<div class="level1">
+<ul>
+<li class="level1 node"><div class="li"> <strong>Related Documentation:</strong></div>
+<ul>
+<li class="level2"><div class="li"> <a href="/docs/techref/hardware/port.serial" class="wikilink1" title="docs:techref:hardware:port.serial" data-wiki-id="docs:techref:hardware:port.serial">Serial Console</a><br/>
+<br/>
+</div>
+</li>
+<li class="level2"><div class="li"> <a href="https://dev.openwrt.org/ticket/11243" class="urlextern" title="https://dev.openwrt.org/ticket/11243" rel="ugc nofollow">Cannot Disable Serial Console on AR71xx</a></div>
+</li>
+<li class="level2"><div class="li"> <a href="http://web.cecs.pdx.edu/~jrb/ui/linux/driver4.txt" class="urlextern" title="http://web.cecs.pdx.edu/~jrb/ui/linux/driver4.txt" rel="ugc nofollow">Debugging Techniques</a></div>
+</li>
+<li class="level2"><div class="li"> <a href="https://www.networksecuritytoolkit.org/nst/docs/user/ch11s02.html" class="urlextern" title="https://www.networksecuritytoolkit.org/nst/docs/user/ch11s02.html" rel="ugc nofollow">Monitoring Session - Using Basic Linux Utility Programs</a><br/>
+<br/>
+</div>
+</li>
+</ul>
+</li>
+<li class="level1 node"><div class="li"> <strong>Forum Discussion:</strong></div>
+<ul>
+<li class="level2"><div class="li"> <a href="https://forum.openwrt.org/viewtopic.php?id=47723" class="urlextern" title="https://forum.openwrt.org/viewtopic.php?id=47723" rel="ugc nofollow">Disable UART Console (without recompiling the patched firmware)</a></div>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Terminate UART Console&quot;,&quot;hid&quot;:&quot;terminate_uart_console&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-588&quot;} -->
+<h2 class="sectionedit2" id="wo_kernel_rebuild">w/o Kernel Rebuild</h2>
+<div class="level2">
+
+<p>
+If needing to utilize the terminal for RAW data/Modem data, reconfigure <code>/dev/tty</code> via the <strong><a href="/packages/pkgdata/coreutils-stty" class="wikilink1" title="packages:pkgdata:coreutils-stty" data-wiki-id="packages:pkgdata:coreutils-stty">coreutils-stty</a></strong> module.
+</p>
+<ol>
+<li class="level1"><div class="li"> <strong>Add</strong> <code>kernel.printk = <strong>0</strong> 4 1 7</code> <strong>to</strong> <code>/etc/sysctl.d/</code><strong>:</strong> <pre class="code bash"> <span class="kw3">echo</span> <span class="st0">&quot;kernel.printk = 0 4 1 7&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>sysctl.d<span class="sy0">/</span><span class="nu0">10</span>-printk.conf</pre>
+</div>
+</li>
+<li class="level1 node"><div class="li"> <strong>Edit</strong> <code>/etc/inittab</code><strong>:</strong></div>
+<ol>
+<li class="level2"><div class="li"> Comment out lines starting with <code>ttyS0:*</code>, <code>ttyATH0:*</code> and <code>::askconsole:*</code> <pre class="code bash"><span class="kw2">sed</span> <span class="re5">-i</span> <span class="re5">-r</span> <span class="re5">-e</span> <span class="st0">&quot;s/^((ttyS0|ttyATH0|::askconsole):.*)/#\0/&quot;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>inittab</pre>
+</div>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> <strong>Reboot</strong></div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;w\/o Kernel Rebuild&quot;,&quot;hid&quot;:&quot;wo_kernel_rebuild&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;589-1160&quot;} -->
+<h2 class="sectionedit3" id="with_kernel_rebuild">With Kernel Rebuild</h2>
+<div class="level2">
+<ol>
+<li class="level1 node"><div class="li"> <strong>Modify Kernel config in</strong> <code>&lt;buildroot&gt;/target/linux/ar71xx/config-</code><em><code>x.xx</code></em><strong>:</strong> <sup>(<em><code>x.xx</code></em> <span class="wrap_em ">=</span> kernel version)</sup></div>
+<ol>
+<li class="level2 node"><div class="li">  <strong>Terminates Kernel console output early:</strong></div>
+<ol>
+<li class="level3"><div class="li"> Add <code>CONFIG_MESSAGE_LOGLEVEL_DEFAULT=0</code><br/>
+<br/>
+</div>
+</li>
+</ol>
+</li>
+<li class="level2 node"><div class="li"> <strong>Terminates Kernel console output later in boot process:</strong></div>
+<ol>
+<li class="level3"><div class="li"> Add <code>loglevel=0</code> to <code>CONFIG_CMDLINE=“rootfstype=squashfs,jffs2 noinitrd”</code> <pre class="code bash"><span class="kw2">sed</span> <span class="re5">-i</span> <span class="re5">-r</span> <span class="re5">-e</span> <span class="st_h">'s/(CONFIG_CMDLINE=&quot;.*)(&quot;)/\1 loglevel=0\2/'</span> target<span class="sy0">/</span>linux<span class="sy0">/</span>ar71xx<span class="sy0">/</span>config-x.xx</pre>
+</div>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> <strong>Recompile Kernel:</strong> <pre class="code bash"><span class="kw2">make</span> target<span class="sy0">/</span>linux<span class="sy0">/</span><span class="br0">&#123;</span>clean,prepare<span class="br0">&#125;</span> <span class="re2">V</span>=s <span class="re2">QUILT</span>=<span class="nu0">1</span> <span class="sy0">&amp;&amp;</span> <span class="kw2">make</span> <span class="re2">V</span>=s</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> <strong>Flash recompiled image</strong></div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;With Kernel Rebuild&quot;,&quot;hid&quot;:&quot;with_kernel_rebuild&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:3,&quot;range&quot;:&quot;1161-&quot;} -->

@@ -1,0 +1,554 @@
+
+<h1 class="sectionedit1" id="led_configuration">LED Configuration</h1>
+<div class="level1">
+
+<p>
+The LED configuration is located in <strong>system</strong> uci subsystem, and written in the <strong><em>/etc/config/system</em></strong> file.
+</p>
+
+<p>
+Basic led configuration is available via LuCI on the System &gt; LED Configuration page.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;LED Configuration&quot;,&quot;hid&quot;:&quot;led_configuration&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-234&quot;} -->
+<h2 class="sectionedit2" id="led_section">Led section</h2>
+<div class="level2">
+
+<p>
+The led section contains settings that apply to non-default leds.<br/>
+
+Default leds are usually power on, ethernet port activity, usb port activity, and wifi radio activity.
+</p>
+
+<p>
+This is an example of leds on a tp-link router with usb port.
+</p>
+<pre class="code">root@lede:/# uci show system | grep &quot;system.led&quot;
+system.led_usb=led
+system.led_usb.name=&#039;USB&#039;
+system.led_usb.sysfs=&#039;tp-link:green:usb&#039;
+system.led_usb.trigger=&#039;usbdev&#039;
+system.led_usb.interval=&#039;50&#039;
+system.led_usb.dev=&#039;1-1&#039;
+system.led_wlan=led
+system.led_wlan.name=&#039;WLAN&#039;
+system.led_wlan.sysfs=&#039;tp-link:green:wlan&#039;
+system.led_wlan.trigger=&#039;phy0tpt&#039;</pre>
+<pre class="code">root@lede:/# cat /etc/config/system
+config led &#039;led_usb&#039;
+        option name &#039;USB&#039;
+        option sysfs &#039;tp-link:green:usb&#039;
+        option trigger &#039;usbdev&#039;
+        option interval &#039;50&#039;
+        option dev &#039;1-1&#039;
+
+config led &#039;led_wlan&#039;
+        option name &#039;WLAN&#039;
+        option sysfs &#039;tp-link:green:wlan&#039;
+        option trigger &#039;phy0tpt&#039;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Led section&quot;,&quot;hid&quot;:&quot;led_section&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;235-1203&quot;} -->
+<h2 class="sectionedit3" id="how_to_add_leds_to_this_section">How to add Leds to this section</h2>
+<div class="level2">
+
+<p>
+All LEDs are represented by entries in the <em>sys</em> filesystem. You can check which LEDs are available in the <strong><em>/sys/class/leds</em></strong> directory.<br/>
+
+</p>
+
+<p>
+The name of an entry typically consists of the name of the hardware providing the LED (the router model), the color of the LED, and it’s designation (usually the label on the case).<br/>
+
+Some LEDs can show different colors. In this case, you will find one entry per color.
+</p>
+<pre class="code">root@lede:/# ls /sys/class/leds/
+tp-link:green:qss     tp-link:green:usb
+tp-link:green:system  tp-link:green:wlan</pre>
+
+<p>
+The LED can be controlled by various events in the system, which is selected by the <em>trigger</em> option. Depending on the trigger, additional options must be specified.
+First of all, you need to know which triggers are available for a led, to do that simply look at the <em>trigger</em> file of that led. Example:
+</p>
+<pre class="code">root@lede:/# cat /sys/class/leds/tp-link:green:qss/trigger
+[none] switch0 timer default-on netdev usbdev phy0rx phy0tx phy0assoc phy0radio phy0tpt </pre>
+
+<p>
+If we wanted to (temporarily) assign a <strong>default-on</strong> trigger to the led, we would write
+</p>
+<pre class="code">root@lede: echo &quot;default-on&quot; &gt; /sys/class/leds/tp-link:green:qss/trigger</pre>
+
+<p>
+You can confirm that you changed this by using cat again, you will see it has changed and the selected trigger is highlighted.
+</p>
+<pre class="code">root@lede:/# cat /sys/class/leds/tp-link:green:qss/trigger
+none switch0 timer [default-on] netdev usbdev phy0rx phy0tx phy0assoc phy0radio phy0tpt </pre>
+
+<p>
+Now, this change will be lost on reboot, if you want to make a permanent change, you need to add the trigger in uci configuration.
+</p>
+
+<p>
+If you have already a section in uci configuration that shows the led you want to set up, you just need to add the trigger.
+</p>
+
+<p>
+For example, if you want change the trigger assigned to tp-link:green:wlan into “default-on” and you already have a block of options for it like this when you write <strong>uci show system | grep “system.led”</strong> (you can have more or less, it may also not have a trigger already assigned).
+</p>
+<pre class="code">system.led_wlan=led
+system.led_wlan.name=&#039;WLAN&#039;
+system.led_wlan.sysfs=&#039;tp-link:green:wlan&#039;
+system.led_wlan.trigger=&#039;phy0tpt&#039;</pre>
+
+<p>
+then you can write 
+</p>
+<pre class="code">uci set system.led_wlan.trigger=&#039;default-on&#039;
+uci commit</pre>
+
+<p>
+If you don&#039;t have any configuration for it, you can add it and the trigger by editing the following example text (that sets wps led as “default-on” and then copy-pasting it whole in the terminal window.
+</p>
+<pre class="code">rule_name=$(uci add system led_wps) 
+uci batch &lt;&lt;EOF set system.$rule_name.name=&#039;WPS&#039;
+set system.$rule_name.sysfs=&#039;tp-link:green:wps&#039;
+set system.$rule_name.trigger=&#039;default-on&#039;
+EOF
+uci commit</pre>
+
+<p>
+You can confirm the changes by running <code>service led restart</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;How to add Leds to this section&quot;,&quot;hid&quot;:&quot;how_to_add_leds_to_this_section&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:3,&quot;range&quot;:&quot;1204-3968&quot;} -->
+<h2 class="sectionedit4" id="led_triggers">Led triggers</h2>
+<div class="level2">
+
+<p>
+Now we explain in detail what each trigger does.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Led triggers&quot;,&quot;hid&quot;:&quot;led_triggers&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:4,&quot;range&quot;:&quot;3969-4043&quot;} -->
+<h3 class="sectionedit5" id="none">None</h3>
+<div class="level3">
+
+<p>
+The LED is always in default state. Unlisted LEDs are default OFF, so this is only useful to declare an LED to be always ON.
+</p>
+<div class="table sectionedit6"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign">Name       </th><th class="col1 leftalign">Type   </th><th class="col2">Required</th><th class="col3 leftalign">Default   </th><th class="col4 leftalign">Description                                                 </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"><em>default</em></td><td class="col1">integer</td><td class="col2 leftalign">no      </td><td class="col3 leftalign">0         </td><td class="col4">LED state before trigger: <em>0</em> means OFF and <em>1</em> means ON</td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"><em>sysfs</em>  </td><td class="col1">string </td><td class="col2 leftalign">yes     </td><td class="col3"><em>(none)</em></td><td class="col4 leftalign">LED device name                                             </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"><em>trigger</em></td><td class="col1">string </td><td class="col2 leftalign">yes     </td><td class="col3"><em>(none)</em></td><td class="col4 leftalign"><em>none</em>                                                    </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:6,&quot;range&quot;:&quot;4185-4596&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;None&quot;,&quot;hid&quot;:&quot;none&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:5,&quot;range&quot;:&quot;4044-4597&quot;} -->
+<h3 class="sectionedit7" id="switch_connectivity">Switch Connectivity</h3>
+<div class="level3">
+
+<p>
+The LED is on if a link on one of the configured switch ports is established. 
+</p>
+<div class="table sectionedit8"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign">Name         </th><th class="col1 leftalign">Type   </th><th class="col2">Required</th><th class="col3 leftalign">Default   </th><th class="col4 leftalign">Description                                                    </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"><em>default</em>  </td><td class="col1">integer</td><td class="col2 leftalign">no      </td><td class="col3 leftalign">0         </td><td class="col4 leftalign">LED state before trigger: <em>0</em> means OFF and <em>1</em> means ON   </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"><em>sysfs</em>    </td><td class="col1">string </td><td class="col2 leftalign">yes     </td><td class="col3"><em>(none)</em></td><td class="col4 leftalign">LED device name                                                </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"><em>port_mask</em></td><td class="col1">integer</td><td class="col2 leftalign">no      </td><td class="col3 leftalign">0         </td><td class="col4 leftalign">Hexadecimal bit mask that encodes the regarded switch ports    </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"><em>speed_mask</em></td><td class="col1">integer </td><td class="col2 leftalign">no    </td><td class="col3"><em>(none)</em></td><td class="col4 leftalign">Hexadecimal bit mask that filters ethernet speeds              </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 leftalign"><em>trigger</em>  </td><td class="col1">string </td><td class="col2 leftalign">yes     </td><td class="col3"><em>(none)</em></td><td class="col4 leftalign"><em>switch0</em>                                                    </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table1&quot;,&quot;secid&quot;:8,&quot;range&quot;:&quot;4708-5355&quot;} -->
+<p>
+Consider for example a <code>port_mask</code> of <code>0x1e</code>, which is <code>00011110</code> in binary. From right to left, this excludes CPU, includes four switch ports and sets the remaining bits to 0 to exclude further ports (e.g. because there are no more physical ports).
+</p>
+
+<p>
+<code>speed_mask</code> assigns a bit for standard BASE-T speeds. With this it&#039;s possible to trigger an LED only on specific speeds, for example amber for 100mbps and green for gigabit.
+</p>
+
+<p>
+Bit assignments for <code>speed_mask</code> are as follows:
+</p>
+<ul>
+<li class="level1"><div class="li"> [0] 0x01 - Unknown speed or cable/link problem</div>
+</li>
+<li class="level1"><div class="li"> [1] 0x02 - 10BASE-T</div>
+</li>
+<li class="level1"><div class="li"> [2] 0x04 - 100BASE-T</div>
+</li>
+<li class="level1"><div class="li"> [3] 0x08 - 1000BASE-T</div>
+</li>
+<li class="level1"><div class="li"> bits 4-7 reserved for future expansion and dont do anything.</div>
+</li>
+</ul>
+
+<p>
+For example a <code>speed_mask</code> of <code>0x0C</code>, which is <code>00001100</code> in binary, will only trigger the LED when the speed is 100BASE-T or 1000BASE-T. We can then apply the inverse <code>0x03</code> (binary <code>00000011</code>) to another LED, effectively getting different colors/leds to flash depending on the connection speed.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Switch Connectivity&quot;,&quot;hid&quot;:&quot;switch_connectivity&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:7,&quot;range&quot;:&quot;4598-6341&quot;} -->
+<h3 class="sectionedit9" id="timer">Timer</h3>
+<div class="level3">
+
+<p>
+The LED blinks with the configured on/off frequency.<br/>
+
+If not installed already, install it with:
+</p>
+<pre class="code">root@lede:/# opkg install kmod-ledtrig-timer</pre>
+<div class="table sectionedit10"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign">Name        </th><th class="col1 leftalign">Type   </th><th class="col2">Required</th><th class="col3 leftalign">Default   </th><th class="col4 leftalign">Description                                                 </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"><em>default</em> </td><td class="col1">integer</td><td class="col2 leftalign">no      </td><td class="col3 leftalign">0         </td><td class="col4">LED state before trigger: <em>0</em> means OFF and <em>1</em> means ON</td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"><em>delayoff</em></td><td class="col1">integer</td><td class="col2 leftalign">yes     </td><td class="col3"><em>(none)</em></td><td class="col4 leftalign">How long (in milliseconds) the LED should be off.           </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"><em>delayon</em> </td><td class="col1">integer</td><td class="col2 leftalign">yes     </td><td class="col3"><em>(none)</em></td><td class="col4 leftalign">How long (in milliseconds) the LED should be on.            </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"><em>sysfs</em>   </td><td class="col1">string </td><td class="col2 leftalign">yes     </td><td class="col3"><em>(none)</em></td><td class="col4 leftalign">LED device name                                             </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0"><em>trigger</em> </td><td class="col1">string </td><td class="col2 leftalign">yes     </td><td class="col3"><em>(none)</em></td><td class="col4 leftalign"><em>timer</em>                                                   </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table2&quot;,&quot;secid&quot;:10,&quot;range&quot;:&quot;6515-7138&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Timer&quot;,&quot;hid&quot;:&quot;timer&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:9,&quot;range&quot;:&quot;6342-7139&quot;} -->
+<h3 class="sectionedit11" id="default-on">Default-on</h3>
+<div class="level3">
+
+<p>
+The LED is ON. Deprecated, use default=1 trigger=none instead. 
+If not installed already, install it with:
+</p>
+<pre class="code">root@lede:/# opkg install kmod-ledtrig-default-on </pre>
+<div class="table sectionedit12"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign">Name       </th><th class="col1 leftalign">Type   </th><th class="col2">Required</th><th class="col3 leftalign">Default   </th><th class="col4 leftalign">Description                                                 </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"><em>default</em></td><td class="col1">integer</td><td class="col2 leftalign">no      </td><td class="col3 leftalign">0         </td><td class="col4">LED state before trigger: <em>0</em> means OFF and <em>1</em> means ON</td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"><em>sysfs</em>  </td><td class="col1">string </td><td class="col2 leftalign">yes     </td><td class="col3"><em>(none)</em></td><td class="col4 leftalign">LED device name                                             </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"><em>trigger</em></td><td class="col1">string </td><td class="col2 leftalign">yes     </td><td class="col3"><em>(none)</em></td><td class="col4 leftalign"><em>default-on</em>                                              </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table3&quot;,&quot;secid&quot;:12,&quot;range&quot;:&quot;7333-7744&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Default-on&quot;,&quot;hid&quot;:&quot;default-on&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:11,&quot;range&quot;:&quot;7140-7745&quot;} -->
+<h3 class="sectionedit13" id="heartbeat">Heartbeat</h3>
+<div class="level3">
+
+<p>
+The LED flashes to simulate actual heart beat <em>thump-thump-pause</em>. The frequency is in direct proportion to 1-minute average CPU load. 
+If not installed already, install it with:
+</p>
+<pre class="code">root@lede:/# opkg install kmod-ledtrig-heartbeat</pre>
+<div class="table sectionedit14"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign">Name       </th><th class="col1 leftalign">Type   </th><th class="col2">Required</th><th class="col3 leftalign">Default   </th><th class="col4 leftalign">Description                                                 </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"><em>default</em></td><td class="col1">integer</td><td class="col2 leftalign">no      </td><td class="col3 leftalign">0         </td><td class="col4">LED state before trigger: <em>0</em> means OFF and <em>1</em> means ON</td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"><em>sysfs</em>  </td><td class="col1">string </td><td class="col2 leftalign">yes     </td><td class="col3"><em>(none)</em></td><td class="col4 leftalign">LED device name                                             </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"><em>trigger</em></td><td class="col1">string </td><td class="col2 leftalign">yes     </td><td class="col3"><em>(none)</em></td><td class="col4 leftalign"><em>heartbeat</em>                                               </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table4&quot;,&quot;secid&quot;:14,&quot;range&quot;:&quot;8010-8421&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Heartbeat&quot;,&quot;hid&quot;:&quot;heartbeat&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:13,&quot;range&quot;:&quot;7746-8422&quot;} -->
+<h3 class="sectionedit15" id="flash_writes">Flash Writes</h3>
+<div class="level3">
+
+<p>
+The LED flashes as data is written to flash memory.
+</p>
+<div class="table sectionedit16"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign">Name       </th><th class="col1 leftalign">Type   </th><th class="col2">Required</th><th class="col3 leftalign">Default   </th><th class="col4 leftalign">Description                                                 </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"><em>default</em></td><td class="col1">integer</td><td class="col2 leftalign">no      </td><td class="col3 leftalign">0         </td><td class="col4">LED state before trigger: <em>0</em> means OFF and <em>1</em> means ON</td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"><em>sysfs</em>  </td><td class="col1">string </td><td class="col2 leftalign">yes     </td><td class="col3"><em>(none)</em></td><td class="col4 leftalign">LED device name                                             </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"><em>trigger</em></td><td class="col1">string </td><td class="col2 leftalign">yes     </td><td class="col3"><em>(none)</em></td><td class="col4 leftalign"><em>nand-disk</em>                                               </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table5&quot;,&quot;secid&quot;:16,&quot;range&quot;:&quot;8499-8910&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Flash Writes&quot;,&quot;hid&quot;:&quot;flash_writes&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:15,&quot;range&quot;:&quot;8423-8911&quot;} -->
+<h3 class="sectionedit17" id="network_activity">Network Activity</h3>
+<div class="level3">
+
+<p>
+The LED flashes with link status and/or send and receive activity on the configured interface. 
+If not installed already, install it with:
+</p>
+<pre class="code">root@lede:/# opkg install kmod-ledtrig-netdev</pre>
+<div class="table sectionedit18"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign">Name       </th><th class="col1 leftalign">Type   </th><th class="col2">Required</th><th class="col3 leftalign">Default   </th><th class="col4 leftalign">Description                                                    </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"><em>default</em></td><td class="col1">integer</td><td class="col2 leftalign">no      </td><td class="col3 leftalign">0         </td><td class="col4 leftalign">LED state before trigger: <em>0</em> means OFF and <em>1</em> means ON   </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"><em>dev</em>    </td><td class="col1">string </td><td class="col2 leftalign">yes     </td><td class="col3"><em>(none)</em></td><td class="col4">Name of the network interface which status should be reflected </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"><em>mode</em>   </td><td class="col1">string </td><td class="col2 leftalign">yes     </td><td class="col3"><em>(none)</em></td><td class="col4">One or more of <em>link</em>, <em>tx</em>, or <em>rx</em>, seperated by spaces</td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"><em>sysfs</em>  </td><td class="col1">string </td><td class="col2 leftalign">yes     </td><td class="col3"><em>(none)</em></td><td class="col4 leftalign">LED device name                                                </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0"><em>trigger</em></td><td class="col1">string </td><td class="col2 leftalign">yes     </td><td class="col3"><em>(none)</em></td><td class="col4 leftalign"><em>netdev</em>                                                     </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0"><em>interval</em></td><td class="col1">integer</td><td class="col2 leftalign">no     </td><td class="col3"><em>(none)</em></td><td class="col4">The duration of the LED blink in milliseconds. For example: <em>50</em></td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table6&quot;,&quot;secid&quot;:18,&quot;range&quot;:&quot;9138-9882&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Network Activity&quot;,&quot;hid&quot;:&quot;network_activity&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:17,&quot;range&quot;:&quot;8912-9883&quot;} -->
+<h3 class="sectionedit19" id="wifi_activity_triggers">WiFi Activity triggers</h3>
+<div class="level3">
+
+<p>
+The LED flashes on events triggered in physical interface, rather than in software network interface. Besides <em>phy</em> triggers have more events, it also provides possibility of static LED setup in case you want to monitor your 2.4 <abbr title="Gigahertz">GHz</abbr> radio (<em>phy0</em> usually) and 5 <abbr title="Gigahertz">GHz</abbr> radio (<em>phy1</em> usually) separately. <em>netdev</em> can’t guarantee this distinguishing since <em>wlan0</em> may be referring to 2.4 <abbr title="Gigahertz">GHz</abbr> or 5 <abbr title="Gigahertz">GHz</abbr> radio based on current network setup.
+</p>
+<div class="table sectionedit20"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign">Name       </th><th class="col1 leftalign">Type   </th><th class="col2">Required</th><th class="col3 leftalign">Default   </th><th class="col4 leftalign">Description                                                        </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"><em>default</em></td><td class="col1">integer</td><td class="col2 leftalign">no      </td><td class="col3 leftalign">0         </td><td class="col4 leftalign">LED state before trigger: <em>0</em> means OFF and <em>1</em> means ON       </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"><em>sysfs</em>  </td><td class="col1">string </td><td class="col2 leftalign">yes     </td><td class="col3"><em>(none)</em></td><td class="col4 leftalign">LED device name                                                    </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"><em>trigger</em></td><td class="col1">string </td><td class="col2 leftalign">yes     </td><td class="col3"><em>(none)</em></td><td class="col4"><em>phy0rx</em>, <em>phy0tx</em>, <em>phy0assoc</em>, <em>phy0radio</em> or <em>phy0tpt</em></td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table7&quot;,&quot;secid&quot;:20,&quot;range&quot;:&quot;10365-10804&quot;} --><ul>
+<li class="level1"><div class="li"> <strong>phy0rx</strong> - flashes on reception.</div>
+</li>
+<li class="level1"><div class="li"> <strong>phy0tx</strong> - flashes on transmission.</div>
+</li>
+<li class="level1"><div class="li"> <strong>phy0assoc</strong> - flashes on client association.</div>
+</li>
+<li class="level1"><div class="li"> <strong>phy0radio</strong> - (unknown, this option did nothing on my tl-wr1043nd)</div>
+</li>
+<li class="level1"><div class="li"> <strong>phy0tpt</strong> - flashes slowly and steadily on network activity.in comparison to energetic flashes of tx and rx modes</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;WiFi Activity triggers&quot;,&quot;hid&quot;:&quot;wifi_activity_triggers&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:19,&quot;range&quot;:&quot;9884-11131&quot;} -->
+<h3 class="sectionedit21" id="usb_device">USB Device</h3>
+<div class="level3">
+
+<p>
+The LED turns ON if USB device is connected. 
+If not installed already, install it with:
+</p>
+<pre class="code">root@lede:/# opkg install kmod-ledtrig-usbdev </pre>
+<div class="table sectionedit22"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign">Name        </th><th class="col1 leftalign">Type   </th><th class="col2">Required</th><th class="col3 leftalign">Default   </th><th class="col4 leftalign">Description                                                 </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> <em>default</em>    </td><td class="col1 leftalign"> integer   </td><td class="col2 leftalign"> no    </td><td class="col3 leftalign"> 0            </td><td class="col4 leftalign"> LED state before trigger: <em>0</em> means OFF and <em>1</em> means ON   </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> <em>dev</em>        </td><td class="col1 leftalign"> string    </td><td class="col2 leftalign"> yes   </td><td class="col3 leftalign"> <em>(none)</em>   </td><td class="col4 leftalign"> Name of USB device to monitor (in this example <em>1-1</em>).       </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> <em>interval</em>   </td><td class="col1 leftalign"> integer   </td><td class="col2 leftalign"> yes   </td><td class="col3 leftalign"> <em>(none)</em>   </td><td class="col4 leftalign"> Interval in ms when device is active.                          </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"> <em>sysfs</em>      </td><td class="col1 leftalign"> string    </td><td class="col2 leftalign"> yes   </td><td class="col3 leftalign"> <em>(none)</em>   </td><td class="col4 leftalign"> LED device name                                                </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 leftalign"> <em>trigger</em>    </td><td class="col1 leftalign"> string    </td><td class="col2 leftalign"> yes   </td><td class="col3 leftalign"> <em>(none)</em>   </td><td class="col4 leftalign"> <em>usbdev -- <strong><em>This may be <code>usbport</code> (March 2019)</em></strong></em>     </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table8&quot;,&quot;secid&quot;:22,&quot;range&quot;:&quot;11303-12001&quot;} -->
+<p>
+To find out device name use <em>logread</em> to search for it or list <em>/sys/bus/usb/devices</em> (for this example, there would be <em>/sys/bus/usb/devices/1-1</em> device). <br/>
+
+Within lets say <em>/sys/bus/usb/devices/1-1</em>, you should have a <strong>manufacturer</strong> and <strong>product</strong> files, simply use <code>cat</code> to reveal their contents, which will help identify the device.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;USB Device&quot;,&quot;hid&quot;:&quot;usb_device&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:21,&quot;range&quot;:&quot;11132-12354&quot;} -->
+<h3 class="sectionedit23" id="gpio">GPIO</h3>
+<div class="level3">
+
+<p>
+Allows LEDs to be controlled by gpio events. 
+If not installed already, install it with:
+</p>
+<pre class="code">root@lede:/# opkg install kmod-ledtrig-gpio</pre>
+<div class="table sectionedit24"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign">Name       </th><th class="col1 leftalign">Type   </th><th class="col2">Required</th><th class="col3">Default</th><th class="col4 leftalign">Description                                                 </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"><em>default</em></td><td class="col1">integer</td><td class="col2 leftalign">no      </td><td class="col3 leftalign">0      </td><td class="col4">LED state before trigger: <em>0</em> means OFF and <em>1</em> means ON</td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table9&quot;,&quot;secid&quot;:24,&quot;range&quot;:&quot;12517-12716&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;GPIO&quot;,&quot;hid&quot;:&quot;gpio&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:23,&quot;range&quot;:&quot;12355-12717&quot;} -->
+<h3 class="sectionedit25" id="net_filter">Net filter</h3>
+<div class="level3">
+
+<p>
+Flash LEDs when a particular packets passing through your machine.
+If not installed already, install it with:
+</p>
+<pre class="code">root@lede:/# opkg install kmod-ipt-led</pre>
+
+<p>
+<a href="https://git.lede-project.org/?p=source.git;a=commit;h=168adaefc29ca33f043a5f65bd560cf81daf0611" class="urlextern" title="https://git.lede-project.org/?p=source.git;a=commit;h=168adaefc29ca33f043a5f65bd560cf81daf0611" rel="ugc nofollow">According to this, the package was named kmod-ledtrig-netfilter in older versions</a>
+</p>
+
+<p>
+For example to create an LED trigger for incoming <abbr title="Secure Shell">SSH</abbr> traffic: 
+</p>
+<pre class="code">root@lede:/# iptables -A INPUT -p tcp --dport 22 -j LED --led-trigger-id ssh --led-delay 1000</pre>
+
+<p>
+Then attach the new trigger to an LED on your system:
+</p>
+<pre class="code">root@lede:/# echo netfilter-ssh &gt; /sys/class/leds/&lt;ledname&gt;/trigger </pre>
+<div class="table sectionedit26"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign">Name       </th><th class="col1 leftalign">Type   </th><th class="col2">Required</th><th class="col3">Default</th><th class="col4 leftalign">Description                                                 </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"><em>default</em></td><td class="col1">integer</td><td class="col2 leftalign">no      </td><td class="col3 leftalign">0      </td><td class="col4">LED state before trigger: <em>0</em> means OFF and <em>1</em> means ON</td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table10&quot;,&quot;secid&quot;:26,&quot;range&quot;:&quot;13393-13592&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Net filter&quot;,&quot;hid&quot;:&quot;net_filter&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:25,&quot;range&quot;:&quot;12718-13593&quot;} -->
+<h2 class="sectionedit27" id="examples">Examples</h2>
+<div class="level2">
+
+<p>
+Please remember to change the <em>sysfs</em> option to LEDs that are actually present on your router.<br/>
+
+This can be done easily through LuCI. Following examples are from <em>/etc/config/system</em> file:
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Examples&quot;,&quot;hid&quot;:&quot;examples&quot;,&quot;codeblockOffset&quot;:15,&quot;secid&quot;:27,&quot;range&quot;:&quot;13594-13810&quot;} -->
+<h3 class="sectionedit28" id="heartbeat_led">Heartbeat led</h3>
+<div class="level3">
+<pre class="code">config &#039;led&#039;
+	option &#039;sysfs&#039;		&#039;wrt160nl:amber:wps&#039;
+	option &#039;trigger&#039;	&#039;heartbeat&#039;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Heartbeat led&quot;,&quot;hid&quot;:&quot;heartbeat_led&quot;,&quot;codeblockOffset&quot;:15,&quot;secid&quot;:28,&quot;range&quot;:&quot;13811-13931&quot;} -->
+<h3 class="sectionedit29" id="wlan_led">WLAN led</h3>
+<div class="level3">
+<pre class="code">config &#039;led&#039; &#039;wlan_led&#039;
+	option &#039;name&#039;           &#039;WLAN&#039;
+	option &#039;sysfs&#039;          &#039;tl-wr1043nd:green:wlan&#039;
+	option &#039;trigger&#039;        &#039;netdev&#039;
+	option &#039;dev&#039;            &#039;wlan0&#039;
+	option &#039;mode&#039;           &#039;link tx rx&#039;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;WLAN led&quot;,&quot;hid&quot;:&quot;wlan_led&quot;,&quot;codeblockOffset&quot;:16,&quot;secid&quot;:29,&quot;range&quot;:&quot;13932-14177&quot;} -->
+<h3 class="sectionedit30" id="g_led">3G led</h3>
+<div class="level3">
+
+<p>
+This led lights up when an USB-dongle properly registers with the 3G/EDGE/GPRS network. 
+</p>
+<pre class="code">config &#039;led&#039;
+	option &#039;name&#039;           &#039;3G&#039;
+	option &#039;sysfs&#039;          &#039;asus:blue:3g&#039;
+	option &#039;trigger&#039;        &#039;netdev&#039;
+	option &#039;dev&#039;            &#039;3g-wan&#039;
+	option &#039;mode&#039;           &#039;link&#039;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;3G led&quot;,&quot;hid&quot;:&quot;g_led&quot;,&quot;codeblockOffset&quot;:17,&quot;secid&quot;:30,&quot;range&quot;:&quot;14178-14482&quot;} -->
+<h3 class="sectionedit31" id="timer_led_-_500ms_on_2000ms_off">Timer led - 500ms ON, 2000ms OFF</h3>
+<div class="level3">
+<pre class="code">config &#039;led&#039;
+	option &#039;sysfs&#039;		&#039;wrt160nl:blue:wps&#039;
+	option &#039;trigger&#039;	&#039;timer&#039;
+	option &#039;delayon&#039;	&#039;500&#039;
+	option &#039;delayoff&#039;	&#039;2000&#039;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Timer led - 500ms ON, 2000ms OFF&quot;,&quot;hid&quot;:&quot;timer_led_-_500ms_on_2000ms_off&quot;,&quot;codeblockOffset&quot;:18,&quot;secid&quot;:31,&quot;range&quot;:&quot;14483-&quot;} -->

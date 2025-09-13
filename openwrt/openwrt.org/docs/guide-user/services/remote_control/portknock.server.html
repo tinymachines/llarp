@@ -1,0 +1,437 @@
+
+<h1 class="sectionedit1" id="port_knocking_server_knockd">Port knocking server knockd</h1>
+<div class="level1">
+
+<p>
+Knockd is a port knocking daemon, a program that listens for specific packets on specific ports, and will run a command when it hears the correct sequence.  It is used to hide ports from public view for better privacy/security.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Port knocking server knockd&quot;,&quot;hid&quot;:&quot;port_knocking_server_knockd&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-271&quot;} -->
+<h2 class="sectionedit2" id="preparation">Preparation</h2>
+<div class="level2">
+
+<p>
+Read <a href="http://www.portknocking.org/" class="urlextern" title="http://www.portknocking.org/" rel="ugc nofollow">http://www.portknocking.org/</a> (<a href="https://web.archive.org/web/20190710115023/http://www.portknocking.org/" class="urlextern" title="https://web.archive.org/web/20190710115023/http://www.portknocking.org/" rel="ugc nofollow">archive.org 20190710</a>) for background on the process of port forwarding.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Preparation&quot;,&quot;hid&quot;:&quot;preparation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;272-479&quot;} -->
+<h3 class="sectionedit3" id="required_packages">Required Packages</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="server_openwrt">Server (OpenWrt)</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"><strong><code>knockd</code></strong></div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="client_your_pc">Client (your PC)</h4>
+<div class="level4">
+
+<p>
+Choice of port knocking is left to the reader, it can be a full application or even as simple as a few netcat commands in a shell script.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Required Packages&quot;,&quot;hid&quot;:&quot;required_packages&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;480-715&quot;} -->
+<h2 class="sectionedit4" id="installation">Installation</h2>
+<div class="level2">
+
+<p>
+<a href="/docs/guide-user/additional-software/opkg" class="wikilink1" title="docs:guide-user:additional-software:opkg" data-wiki-id="docs:guide-user:additional-software:opkg">opkg</a>
+</p>
+<pre class="code bash">opkg <span class="kw2">install</span> knockd</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation&quot;,&quot;hid&quot;:&quot;installation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;716-826&quot;} -->
+<h2 class="sectionedit5" id="configuration">Configuration</h2>
+<div class="level2">
+
+<p>
+knockd is configured in /etc/knockd.conf
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:5,&quot;range&quot;:&quot;827-894&quot;} -->
+<h3 class="sectionedit6" id="server_configuration">Server configuration</h3>
+<div class="level3">
+
+<p>
+Here is the default knockd configuration.
+</p>
+<pre class="code">[options]
+	logfile = /var/log/knockd.log
+
+[openSSH]
+	sequence    = 7000,8000,9000
+	seq_timeout = 5
+	command     = /usr/sbin/iptables -A INPUT -s %IP% -p tcp --dport 22 -j ACCEPT
+	tcpflags    = syn
+
+[closeSSH]
+	sequence    = 9000,8000,7000
+	seq_timeout = 5
+	command     = /usr/sbin/iptables -D INPUT -s %IP% -p tcp --dport 22 -j ACCEPT
+	tcpflags    = syn</pre>
+
+<p>
+knockd automatically replaces %<abbr title="Internet Protocol">IP</abbr>% with the <abbr title="Internet Protocol">IP</abbr> address of the client that sent the knock, so you can open the port only to the authorized client.
+</p>
+
+<p>
+This controls access to port 22 on the router, but it&#039;s not compatible with OpenWRT&#039;s iptables setup, and I don&#039;t want to <abbr title="Secure Shell">SSH</abbr> into the router, I want to use it to enable port forwarding to an <abbr title="Secure Shell">SSH</abbr> server inside my network.
+</p>
+
+<p>
+Using it to manage port forwards is a bit more complicated.  It requires several iptables rules to be enabled.  I made a script that puts all the necessary commands together:
+</p>
+<pre class="code">#!/bin/sh
+
+PORT=$1
+SRC_IP=$2
+DST_IP=$3
+ACTION=$4
+. /lib/functions/network.sh; network_get_ipaddr WAN_IP wan
+
+iptables $ACTION nat_reflection_in -s 192.168.1.0/24 -d $WAN_IP/32 -p tcp -m tcp --dport $PORT -m comment --comment &quot;wan&quot; -j DNAT --to-destination $DST_IP:$PORT -t nat
+iptables $ACTION nat_reflection_out -s 192.168.1.0/24 -d $DST_IP/32 -p tcp -m tcp --dport $PORT -m comment --comment &quot;wan&quot; -j SNAT --to-source 192.168.1.1 -t nat
+iptables $ACTION zone_wan_prerouting -p tcp -m tcp -s $SRC_IP --dport $PORT -j DNAT --to-destination $DST_IP:$PORT -t nat
+iptables $ACTION nat_reflection_fwd -s 192.168.1.0/24 -d $DST_IP/32 -p tcp -m tcp --dport $PORT -m comment --comment &quot;wan&quot; -j ACCEPT 
+iptables $ACTION zone_wan_forward -d $DST_IP/32 -p tcp -m tcp --dport $PORT -j ACCEPT</pre>
+
+<p>
+The command can be used as follows, where xxx.xxx.xxx.xxx is the <abbr title="Internet Protocol">IP</abbr> address of your ssh server you want to forward to and %<abbr title="Internet Protocol">IP</abbr>% is the <abbr title="Internet Protocol">IP</abbr> of the client you want to allow:
+</p>
+<pre class="code">./forward.sh 22 %IP% xxx.xxx.xxx.xxx -I</pre>
+
+<p>
+to create a port forward
+</p>
+<pre class="code">./forward.sh 22 %IP% xxx.xxx.xxx.xxx -D</pre>
+
+<p>
+to disable a port forward.
+</p>
+
+<p>
+This script was developed for OpenWRT Attitude Adjustment.  The iptables commands may be different in other versions due to changes in structure.  To figure out the necessary commands I created a port forward using the web <abbr title="Graphical User Interface">GUI</abbr> and used the iptables-save command to list the iptables rules that each forward generates.  I had to add -t nat to the end of some of them.  Also, I can&#039;t guarantee that this is the preferred or most elegant solution, but it works for me.
+</p>
+
+<p>
+I have created script that creates port forwards and port open using standard uci command. This creates rules that are visible in luci but do have somewhat cryptic names. For this you need to use uciknockd.sh and second knockd.conf sample.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Server configuration&quot;,&quot;hid&quot;:&quot;server_configuration&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:6,&quot;range&quot;:&quot;895-3720&quot;} -->
+<h3 class="sectionedit7" id="client_configuration">Client configuration</h3>
+<div class="level3">
+
+<p>
+There are plenty of different port knocking clients available for all platforms, including Windows, Linux, OSX, and even Android.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Client configuration&quot;,&quot;hid&quot;:&quot;client_configuration&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:7,&quot;range&quot;:&quot;3721-3882&quot;} -->
+<h2 class="sectionedit8" id="examples">Examples</h2>
+<div class="level2">
+
+<p>
+Here&#039;s an example knockd.conf using the forward.sh script:
+</p>
+<pre class="code">[options]
+	logfile = /var/log/knockd.log
+	interface = eth1
+
+[OpenPort]
+	sequence    = 123,456,789
+	seq_timeout = 5
+	command     = /path/to/forward.sh 22 %IP% 192.168.1.99 -I
+	cmd_timeout = 3600
+	stop_command= /path/to/forward.sh 22 %IP% 192.168.1.99 -D
+	tcpflags    = syn
+	
+[ClosePort]
+	sequence    = 789,456,123
+	seq_timeout = 5
+	command     = /path/to/forward.sh 22 %IP% 192.168.1.99 -D
+	tcpflags    = syn</pre>
+
+<p>
+And here&#039;s an example knockd.conf using the uciknockd.sh script (you will find it after this sample):
+</p>
+<pre class="code">[options]
+	logfile = /var/log/knockd.log
+	interface = eth0.2
+
+[openSSH]
+	sequence    = 12345,34512,54321
+	seq_timeout = 5
+	command     = /etc/uciknockd.sh open-port KnockdSSH  %IP% 22
+	tcpflags    = syn
+
+[closeSSH]
+	sequence    = 54321,12345,11123
+	seq_timeout = 5
+	command     = /etc/uciknockd.sh close-port KnockdSSH  %IP% 22
+	tcpflags    = syn 
+
+[openFORWARD]
+        sequence    = 1455,3244,1000
+        seq_timeout = 5
+        command     = /etc/uciknockd.sh forward-port KnockdFW %IP% 81 192.168.1.99 80
+        tcpflags    = syn
+
+
+[closeFORWARD]
+        sequence    = 3244,1455,1001
+        seq_timeout = 5
+        command     = /etc/uciknockd.sh remove-forward-port KnockdFW %IP% 81 
+        tcpflags    = syn </pre>
+
+<p>
+This script, uciknockd.sh, will create forwarding and port open rules in uci configuration so you will be able to see from luci which ports are open. If you trigger openSSH from ip 1.1.1.1 in luci you will have rule with name KnockdSSH_1.1.1.1_22, etc. CloseSSH rule deletes it from uci and iptables. uciknockd.sh and knockd.conf scripts should be placed in /etc directory. Don&#039;t forget to make uciknockd.sh executable <em>chmod 755 /etc/uciknockd.sh</em>.
+</p>
+<pre class="code">#!/bin/sh 
+# This is uciknockd.sh script, place it in /etc directory
+
+. /lib/functions.sh
+
+# callback for config_foreach
+handle_delete()
+{
+  local config=&quot;$1&quot;
+  local option=&quot;$2&quot;
+  local value=&quot;$3&quot;
+  local optionVal=&quot;&quot;
+  config_get optionVal &quot;$config&quot; &quot;$option&quot;
+  if [ &quot;$optionVal&quot; == &quot;$value&quot; ]; then
+    uci delete firewall.$config
+	return 1
+  fi
+}
+
+# to delete firewall.@rule[x].name=&quot;test&quot;
+# delete_rule firewall rule name test
+#
+delete_rule()
+{
+  local config=&quot;$1&quot;
+  local section=&quot;$2&quot;
+  local name=&quot;$3&quot;
+  local value=&quot;$4&quot;
+  config_load $config
+  config_foreach handle_delete $section $name $value
+}
+
+# Opening ports
+# This example enables machines on the internet to use SSH to access your router. 
+#
+#config rule
+#        option src              wan
+#        option dest_port        22
+#        option target           ACCEPT
+#        option proto            tcp
+
+open_port()
+{
+  local name=$1
+  local src_ip=$2
+  local dest_port=$3
+
+  uci batch &lt;&lt;EOF
+	add firewall rule
+	set firewall.@rule[-1].name=$name
+	set firewall.@rule[-1].src=&#039;wan&#039;
+	set firewall.@rule[-1].src_ip=$src_ip
+	set firewall.@rule[-1].dest_port=$dest_port
+	set firewall.@rule[-1].target=&#039;ACCEPT&#039;
+	set firewall.@rule[-1].proto=&#039;tcp&#039;
+EOF
+
+  uci commit firewall
+  /etc/init.d/firewall restart
+}
+
+close_port()
+{
+  local name=$1
+  delete_rule firewall rule name $name
+
+   uci commit firewall
+  /etc/init.d/firewall restart
+}
+		
+# Forwarding ports (Destination NAT/DNAT)
+# This example forwards one arbitrary port that you define to a box running ssh. 
+#
+#config &#039;redirect&#039;
+#        option &#039;name&#039; &#039;ssh&#039;
+#        option &#039;src&#039; &#039;wan&#039;
+#        option &#039;proto&#039; &#039;tcp udp&#039;
+#        option &#039;src_dport&#039; &#039;5555&#039;
+#        option &#039;dest_ip&#039; &#039;192.168.1.100&#039;
+#        option &#039;dest_port&#039; &#039;22&#039;
+#        option &#039;target&#039; &#039;DNAT&#039;
+#        option &#039;dest&#039; &#039;lan&#039;
+
+forward_port()
+{
+  local name=$1
+  local src_ip=$2
+  local src_dport=$3
+  local dest_ip=$4
+  local dest_port=$5
+
+  uci batch &lt;&lt;EOF
+	add firewall redirect
+	set firewall.@redirect[-1].name=$name
+	set firewall.@redirect[-1].src=&#039;wan&#039;
+	set firewall.@redirect[-1].src_ip=$src_ip
+	set firewall.@redirect[-1].proto=&#039;tcp&#039;
+	set firewall.@redirect[-1].src_dport=$src_dport
+	set firewall.@redirect[-1].dest_ip=$dest_ip
+	set firewall.@redirect[-1].dest_port=$dest_port
+	set firewall.@redirect[-1].target=&#039;DNAT&#039;
+	set firewall.@redirect[-1].dest=&#039;lan&#039;
+EOF
+
+  uci commit firewall
+  /etc/init.d/firewall restart
+}
+
+remove_forward_port()
+{
+  local name=$1
+  delete_rule firewall redirect name $name
+  uci commit firewall
+  /etc/init.d/firewall restart
+}
+	
+case &quot;$1&quot; in
+open-port)
+	#name=$1
+	#src_ip=$2
+	#dest_port=$3
+	name=&quot;$2_$3_$4&quot;
+    open_port $name $3 $4
+    ;;
+close-port)
+	name=&quot;$2_$3_$4&quot;
+    close_port $name $3 $4
+    ;;
+forward-port)
+	#name=$1
+	#src_ip=$2
+	#src_dport=$3
+	#dest_ip=$4
+	#dest_port=$5
+	name=&quot;$2_$3_$4&quot;
+    forward_port $name $3 $4 $5 $6
+    ;;
+remove-forward-port)
+	name=&quot;$2_$3_$4&quot;
+    remove_forward_port $name $3 $4
+    stop
+    ;;
+*)
+    echo &quot;Usage:&quot;
+    echo &quot;  $0 open-port namePrefix src_ip dest_port&quot;
+    echo &quot;  $0 close-port namePrefix src_ip dest_port&quot;
+    echo &quot;  $0 forward-port namePrefix src_ip src_dport dest_ip dest_port&quot;
+    echo &quot;  $0 remove-forward-port namePrefix src_ip src_dport&quot;
+    exit 1
+esac
+
+exit 0 </pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Examples&quot;,&quot;hid&quot;:&quot;examples&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:8,&quot;range&quot;:&quot;3883-8933&quot;} -->
+<h2 class="sectionedit9" id="start_on_boot">Start on boot</h2>
+<div class="level2">
+
+<p>
+You should be able to put the command knockd -d into /etc/rc.local using the webGUI (System tab → Startup tab → rc.local section).
+</p>
+
+<p>
+Or create file /etc/init.d/knockd with following content:
+</p>
+<pre class="code sh">#!/bin/sh /etc/rc.common
+# This goes to /etc/init.d/
+&nbsp;
+START=88
+USE_PROCD=1
+&nbsp;
+start_service() {        
+	procd_open_instance
+	procd_set_param command /usr/sbin/knockd -d
+	procd_set_param respawn 
+	procd_set_param file /etc/knockd.conf 
+	procd_close_instance		
+}</pre>
+
+<p>
+In some cases the respawn can result in multiple running instances. If that happens remove the line.
+</p>
+
+<p>
+Make sure you enable service afterwards. 
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Start on boot&quot;,&quot;hid&quot;:&quot;start_on_boot&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:9,&quot;range&quot;:&quot;8934-9575&quot;} -->
+<h2 class="sectionedit10" id="administration">Administration</h2>
+<div class="level2">
+
+<p>
+TODO
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Administration&quot;,&quot;hid&quot;:&quot;administration&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:10,&quot;range&quot;:&quot;9576-9608&quot;} -->
+<h2 class="sectionedit11" id="troubleshooting">Troubleshooting</h2>
+<div class="level2">
+
+<p>
+Check the knockd log at /var/log/knockd.log to see if you are knocking successfully, and to see what the command returns.
+</p>
+
+<p>
+If you get something like this when running forward.sh:
+</p>
+<pre class="code">Try `iptables -h&#039; or &#039;iptables --help&#039; for more information.</pre>
+
+<p>
+then you probably don&#039;t have the right commands in the script.  Try creating a forward in the WebGUI with a distinctive port number (say 5555) and run 
+</p>
+<pre class="code">iptables-save | grep 5555</pre>
+
+<p>
+ to find the right commands.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Troubleshooting&quot;,&quot;hid&quot;:&quot;troubleshooting&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:11,&quot;range&quot;:&quot;9609-10110&quot;} -->
+<h2 class="sectionedit12" id="notes">Notes</h2>
+<div class="level2">
+
+<p>
+OpenWrt 18.06.4 appears to lack the knock/knockd package describe above; however, there are efforts to provide this package for the v18.06 (and hopefully beyond).  Links to those Github repos from those folks are as follows:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="https://github.com/milaq/openwrt_knockd" class="urlextern" title="https://github.com/milaq/openwrt_knockd" rel="ugc nofollow">milaq/openwrt_knockd</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/superice119/openwrt_knockd" class="urlextern" title="https://github.com/superice119/openwrt_knockd" rel="ugc nofollow">superice119/openwrt_knockd</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/TDFKAOlli/openwrt_knockd" class="urlextern" title="https://github.com/TDFKAOlli/openwrt_knockd" rel="ugc nofollow">TDFKAOlli/openwrt_knockd</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Notes&quot;,&quot;hid&quot;:&quot;notes&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:12,&quot;range&quot;:&quot;10111-&quot;} -->

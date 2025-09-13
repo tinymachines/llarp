@@ -1,0 +1,190 @@
+
+<h1 class="sectionedit1" id="wire_bus">1-wire Bus</h1>
+<div class="level1">
+
+<p>
+To provide <a href="https://en.wikipedia.org/wiki/1-Wire" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/1-Wire"> 1-Wire Bus Connections</a> between various 1-Wire- and Hostdevices different connection methods can be used. They can be connected to a Host using a bus converter. USB, RS-232 serial port interfaces are popular solutions for connecting 1-Wire Devices to the Hostdevice. 
+But 1-Wire devices can also be interfaced directly to Controllers from various vendors using a GPIO Pin.
+</p>
+
+<p>
+This guide will only cover 1-Wire Bus Connections  (as of Sep 13, 2019) up to the stable release v19.07.8. For newer Kernels (since v21.02.0) the Package “kmod-w1-gpio-custom” is no longer available.
+Therefore the Installation is a bit more extensive.  
+The Device which got tested was a <strong>OrangePI PC+</strong> (a different method is recommended for the Raspberry Pi!). 
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;1-wire Bus&quot;,&quot;hid&quot;:&quot;wire_bus&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-792&quot;} -->
+<h2 class="sectionedit2" id="installation_up_to_v19078">Installation up to v19.07.8</h2>
+<div class="level2">
+
+<p>
+In order to use a GPIO for the 1-Wire bus, i.e. for using <a href="https://datasheets.maximintegrated.com/en/ds/DS18B20.pdf" class="urlextern" title="https://datasheets.maximintegrated.com/en/ds/DS18B20.pdf" rel="ugc nofollow">DS18B20 Sensors</a> it is necessary to install several additional packages:
+</p>
+<pre class="code">opkg update
+opkg install kmod-w1 kmod-w1-master-gpio kmod-w1-gpio-custom kmod-w1-slave-therm</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation up to v19.07.8&quot;,&quot;hid&quot;:&quot;installation_up_to_v19078&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;793-1134&quot;} -->
+<h2 class="sectionedit3" id="configuration_up_to_v19078">Configuration up to v19.07.8</h2>
+<div class="level2">
+
+<p>
+Configure the GPIO pin connected to the data line of the sensor.  
+The Section “Software” in <a href="/docs/techref/hardware/port.gpio" class="wikilink1" title="docs:techref:hardware:port.gpio" data-wiki-id="docs:techref:hardware:port.gpio">this howto</a> describes how to determine the GPIO.
+</p>
+
+<p>
+Create/Edit /etc/modules.d/55-w1-gpio-custom, replace 19 with the GPIO which you determined in the last step. 
+You can include several bus definitions up to a maximum of four, i.e.:
+</p>
+<pre class="code">echo &quot;w1-gpio-custom bus0=0,19,0 bus1=1,20,0&quot; &gt; /etc/modules.d/55-w1-gpio-custom</pre>
+
+<p>
+The last Zero of the sequence means “not open-drain” and should be set to “0”.
+</p>
+
+<p>
+After modifying the file /etc/modules.d restart, so that the kernel can load the modules.
+</p>
+
+<p>
+When the 1-Wire bus is successfully set up, you should see in /sys/devices a directory called “w1_bus_master1”. A second bus will appear as “w1_bus_master2” and so on. 
+Within this directory you will find a number of files including “w1_master_slaves_count” which shows the number of detected devices connected to the 1-Wire bus, and “w1_master_slaves” which contains a list of the device identifiers.
+</p>
+
+<p>
+In case, it is a Sunxi Device and you like to connect e.g. Pin 29 (=PA7) <a href="https://linux-sunxi.org/GPIO" class="urlextern" title="https://linux-sunxi.org/GPIO" rel="ugc nofollow">Sunxi</a> says:
+</p>
+<pre class="code">(position of letter in alphabet - 1) * 32 + pin number</pre>
+
+<p>
+so the GPIO for PA7 would be ( 1 - 1) * 32 + 7 = 0 + 7 = 7 (since &#039;a&#039; is the first letter).
+</p>
+
+<p>
+(Or you take a look with
+</p>
+<pre class="code">cat /sys/kernel/debug/pinctrl/1c20800.pinctrl/pins</pre>
+
+<p>
+for the mappings...)
+</p>
+
+<p>
+This results in the following configuration
+</p>
+<pre class="code">echo &quot;w1-gpio-custom bus0=0,7,0&quot; &gt; /etc/modules.d/55-w1-gpio-custom</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration up to v19.07.8&quot;,&quot;hid&quot;:&quot;configuration_up_to_v19078&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;1135-2732&quot;} -->
+<h2 class="sectionedit4" id="installation_as_of_v21020">Installation as of v21.02.0</h2>
+<div class="level2">
+
+<p>
+There are several possible Ways to install.
+The Way described here assumes, that an Image has been installed on a <a href="/docs/guide-user/installation/installation_methods/sd_card" class="wikilink1" title="docs:guide-user:installation:installation_methods:sd_card" data-wiki-id="docs:guide-user:installation:installation_methods:sd_card">SD card</a>. 
+</p>
+
+<p>
+<strong>This Description again refers to an Orange Pi PC+, Pin “PA3” is to be used as W1 port conected with DS18B20 Sensors.</strong>
+</p>
+
+<p>
+First install the necessary several additional packages:
+</p>
+<pre class="code">opkg update
+opkg install kmod-w1 kmod-w1-master-gpio kmod-w1-slave-therm</pre>
+
+<p>
+As of v21.02.0 the Configuration of the Driver is done via the <a href="/docs/guide-developer/defining-firmware-partitions" class="wikilink1" title="docs:guide-developer:defining-firmware-partitions" data-wiki-id="docs:guide-developer:defining-firmware-partitions">Device Tree</a>. 
+On your Computer you need a Device-Tree-Compiler installed. Several Linux Distributions have it available in the Repositys.
+</p>
+
+<p>
+The Device Tree can be changed as follows:
+</p>
+<ul>
+<li class="level1"><div class="li"> Connect the SD Card to your Computer and look at lsblk or dmesg to identify it. In most Cases, it would be something like /dev/sdX.</div>
+</li>
+<li class="level1"><div class="li"> Mount and open the “20M” Boot Partition.</div>
+</li>
+<li class="level1"><div class="li"> there are 3 Files in the Partition: boot.scr, dtb, uImage</div>
+</li>
+<li class="level1"><div class="li"> Copy the File “dtb” to your Computer</div>
+</li>
+<li class="level1"><div class="li"> decompile</div>
+</li>
+</ul>
+<pre class="code">dtc dtb  -O dts -I dtb -o OPi.dts</pre>
+<ul>
+<li class="level1"><div class="li"> You get a File named “OPi.dts”. Edit the File. </div>
+</li>
+<li class="level1"><div class="li"> Inside the Section “pinctrl@1c20800” (the selected Pin “PA3” is within this range) you have to insert </div>
+</li>
+</ul>
+<pre class="code">  w1-pins {
+        pins = &quot;PA3&quot;;
+        function = &quot;gpio_out&quot;;
+        phandle = &lt;0x2f&gt;;
+    	};</pre>
+
+<p>
+ and at the end of the file (<strong>but before the last bracket!</strong>) add:
+</p>
+<pre class="code">w1-gpio {
+	compatible = &quot;w1-gpio&quot;;
+	label = &quot;w1-gpio&quot;;
+	pinctrl-names = &quot;default&quot;;
+	pinctrl-0 = &lt;0x2f&gt;;
+	gpios = &lt;0xa 0x0 0x3 0x6&gt;;
+	status = &quot;okay&quot;;
+	};  </pre>
+
+<p>
+Notice:
+</p>
+<ol>
+<li class="level1"><div class="li">  phandle: you have to use a hex number following the highest number of phandle used in the file.</div>
+</li>
+<li class="level1"><div class="li">  gpios: the “0xa” ist the phandle of the used pinctrl, the “0x0” is the used Bank (0 = A...), the “0x3” is the hex number of the used Pin inside the bank, the “0x6” ist the Configuration of the Pin.</div>
+</li>
+</ol>
+<ul>
+<li class="level1"><div class="li"> compile</div>
+</li>
+</ul>
+<pre class="code">dtc OPi.dts  -O dtb -I dts -o dtb</pre>
+<ul>
+<li class="level1"><div class="li"> copy the new “dtb” to the SD Card (overwrite the old “dtb”)</div>
+</li>
+<li class="level1"><div class="li"> Check the output of “dmesg” for (error) messages</div>
+</li>
+</ul>
+<pre class="code">...
+kern.info kernel: [    7.610839] Driver for 1-wire Dallas network protocol.
+...
+kern.info kernel: [    7.688174] w1_master_driver w1_bus_master1: Attaching one wire slave 28.0416a43244ff crc be
+...</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation as of v21.02.0&quot;,&quot;hid&quot;:&quot;installation_as_of_v21020&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:4,&quot;range&quot;:&quot;2733-5117&quot;} -->
+<h2 class="sectionedit5" id="electrical_configuration">electrical Configuration</h2>
+<div class="level2">
+
+<p>
+To connect 1Wire Devices to a Host it is necessary to connect a Pullup Resistor of 4.7 kOhm between the Bus Line and the 3.3V VCC Line.
+On the Internet, other values ​​are given also, here it works well with 4.7kOhm and six DS18B20 Sensors.
+</p>
+
+<p>
+<a href="/_media/media/doc/howtos/w1-ds18b20.png" class="media" title="media:doc:howtos:w1-ds18b20.png"><img src="/_media/media/doc/howtos/w1-ds18b20.png" class="media" loading="lazy" alt="" /></a>
+</p>
+
+<p>
+It is also possible to operate the 1-Wire Bus with just the Gnd and Bus Lines, with the Sensors deriving power “parasitically” from the Bus Line. For further information, read the datasheet of the device.
+For longer cables, the use of an insulator such as ADUM1201 is recommended.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;electrical Configuration&quot;,&quot;hid&quot;:&quot;electrical_configuration&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:5,&quot;range&quot;:&quot;5118-&quot;} -->

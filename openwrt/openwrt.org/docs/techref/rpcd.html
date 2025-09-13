@@ -1,0 +1,115 @@
+
+<h1 class="sectionedit1" id="rpcdopenwrt_ubus_rpc_daemon_for_backend_server">rpcd: OpenWrt ubus RPC daemon for backend server</h1>
+<div class="level1">
+
+<p>
+In OpenWrt we commonly use <a href="/docs/techref/ubus" class="wikilink1" title="docs:techref:ubus" data-wiki-id="docs:techref:ubus">ubus</a> for all kinds of communication. It can provide info from various software as well as request various actions. Nevertheless, not every part of OpenWrt has a daemon that can register itself using <code>ubus</code>. For an example <code>uci</code> and <code>opkg</code> are command-line tools without any background process running all the time.
+</p>
+
+<p>
+It would be not efficient to write a daemon for every software like this and run them independently. This is why <code>rpcd</code> was developed. It’s a tiny daemon with support for plugins using trivial <abbr title="Application Programming Interface">API</abbr>. It loads library <code>.so</code> files and calls init function of each of them.
+</p>
+
+<p>
+The code is published under <a href="https://en.wikipedia.org/wiki/ISC_license" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/ISC_license">ISC license</a> and can be found via git at  <a href="https://git.openwrt.org/project/rpcd.git" class="urlextern" title="https://git.openwrt.org/project/rpcd.git" rel="ugc nofollow">https://git.openwrt.org/project/rpcd.git</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;rpcd: OpenWrt ubus RPC daemon for backend server&quot;,&quot;hid&quot;:&quot;rpcdopenwrt_ubus_rpc_daemon_for_backend_server&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-848&quot;} -->
+<h3 class="sectionedit2" id="default_plugins">Default plugins</h3>
+<div class="level3">
+
+<p>
+There are few small plugins distributed with the <code>rpcd</code> sources. Two of them (<code>session</code> and <code>uci</code>) are built-in, others are optional and have to be build as separated <code>.so</code> libraries. Apart from that there are other projects providing their own plugins.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Default plugins&quot;,&quot;hid&quot;:&quot;default_plugins&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;849-1141&quot;} -->
+<h2 class="sectionedit3" id="plugin_executables">plugin executables</h2>
+<div class="level2">
+
+<p>
+It is possible to expose shell script functionality over ubus by using <code>rpcd</code> plugin executables functionality. Executables stored in <code>/usr/libexec/rpcd/</code> directory will be run by <code>rpcd</code>. Lets look at the following example:
+</p>
+<pre class="code bash"><span class="kw2">mkdir</span> <span class="re5">-p</span> <span class="sy0">/</span>usr<span class="sy0">/</span>libexec<span class="sy0">/</span>rpcd
+<span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>usr<span class="sy0">/</span>libexec<span class="sy0">/</span>rpcd<span class="sy0">/</span>foo
+<span class="co0">#!/bin/sh</span>
+&nbsp;
+<span class="kw1">case</span> <span class="st0">&quot;$1&quot;</span> <span class="kw1">in</span>
+	list<span class="br0">&#41;</span>
+		<span class="kw3">echo</span> <span class="st_h">'{ &quot;bar&quot;: { &quot;arg1&quot;: true, &quot;arg2&quot;: 32, &quot;arg3&quot;: &quot;str&quot; }, &quot;toto&quot;: { }, &quot;failme&quot;: {} }'</span>
+	<span class="sy0">;;</span>
+	call<span class="br0">&#41;</span>
+		<span class="kw1">case</span> <span class="st0">&quot;$2&quot;</span> <span class="kw1">in</span>
+			bar<span class="br0">&#41;</span>
+				<span class="co0"># read the arguments</span>
+				<span class="kw3">read</span> input;
+&nbsp;
+				<span class="co0"># optionally log the call</span>
+				logger <span class="re5">-t</span> <span class="st0">&quot;foo&quot;</span> <span class="st0">&quot;call&quot;</span> <span class="st0">&quot;$2&quot;</span> <span class="st0">&quot;<span class="es2">$input</span>&quot;</span>
+&nbsp;
+				<span class="co0"># return json object or an array</span>
+				<span class="kw3">echo</span> <span class="st_h">'{ &quot;hello&quot;: &quot;world&quot; }'</span>
+			<span class="sy0">;;</span>
+			toto<span class="br0">&#41;</span>
+				<span class="co0"># return json object</span>
+				<span class="kw3">echo</span> <span class="st_h">'{ &quot;something&quot;: &quot;somevalue&quot; }'</span>
+			<span class="sy0">;;</span>
+                        failme<span class="br0">&#41;</span>
+                                <span class="co0"># return invalid</span>
+                                <span class="kw3">echo</span> <span class="st_h">'{asdf/3454'</span>
+                        <span class="sy0">;;</span>
+		<span class="kw1">esac</span>
+	<span class="sy0">;;</span>
+<span class="kw1">esac</span>
+EOF
+<span class="kw2">chmod</span> +x <span class="sy0">/</span>usr<span class="sy0">/</span>libexec<span class="sy0">/</span>rpcd<span class="sy0">/</span>foo
+service rpcd restart</pre>
+
+<p>
+This will create new ubus functions which then can be used (after restarting rpcd):
+</p>
+<pre class="code bash">$ ubus <span class="re5">-v</span> list foo
+<span class="st_h">'foo'</span> <span class="sy0">@</span>a9482c5b
+	<span class="st0">&quot;bar&quot;</span>:<span class="br0">&#123;</span><span class="st0">&quot;arg1&quot;</span>:<span class="st0">&quot;Boolean&quot;</span>,<span class="st0">&quot;arg2&quot;</span>:<span class="st0">&quot;Integer&quot;</span>,<span class="st0">&quot;arg3&quot;</span>:<span class="st0">&quot;String&quot;</span><span class="br0">&#125;</span>
+	<span class="st0">&quot;toto&quot;</span>:<span class="br0">&#123;</span><span class="br0">&#125;</span>
+	<span class="st0">&quot;failme&quot;</span>:<span class="br0">&#123;</span><span class="br0">&#125;</span>
+&nbsp;
+$ ubus <span class="re5">-S</span> call foo bar <span class="st_h">'{&quot;arg1&quot;: true }'</span>
+<span class="br0">&#123;</span><span class="br0">&#123;</span><span class="st0">&quot;hello&quot;</span>:<span class="st0">&quot;world&quot;</span><span class="br0">&#125;</span><span class="br0">&#125;</span>
+&nbsp;
+$ ubus <span class="re5">-S</span> call foo toto
+<span class="br0">&#123;</span><span class="st0">&quot;something&quot;</span>:<span class="st0">&quot;somevalue&quot;</span><span class="br0">&#125;</span>
+&nbsp;
+$ ubus <span class="re5">-S</span> call foo failme
+&nbsp;
+$ <span class="kw3">echo</span> <span class="re4">$?</span>
+<span class="nu0">2</span></pre>
+
+<p>
+On startup rpcd will call all executables in <code>/usr/libexec/rpcd/</code> with <code>argv[1]</code> set to “list”. For a plugin, which responds with a valid list of methods and signatures, ubus method with appropriate arguments will be created. When a method provided by the plugin is about to be invoked, <code>rpcd</code> calls the binary with <code>argv[1]</code> set to <code>call</code> and <code>argv[2]</code> set to the invoked method name.
+</p>
+
+<p>
+<strong>The actual data is then sent by the <code>ubus</code> client via <code>stdin</code>.</strong> I.e. if you&#039;re testing the script itself, you need to use 
+</p>
+<pre class="code bash"><span class="kw3">echo</span> <span class="st_h">'{&quot;arg1&quot;: 42}'</span> <span class="sy0">|</span> yourscript call yourmethod</pre>
+
+<p>
+You <em>cannot</em> simply use <code>yourscript call yourmethod &#039;{“arg1”: 42}</code>&#039; as you might have expected.
+</p>
+
+<p>
+The method signature is a simple object containing <code>key:value</code> pairs. The argument type is inferred from the value. If the value is a string (regardless of the contents) it is registered as string, if the value is a bool true or false, its registered as bool, if the value is an integer, it is registered as either int8, int16, int32 or int64 depending on the value i.e. <code>“foo”: 16</code> will be <code>INT16</code>, <code>“foo”: 64</code> will be <code>INT64</code>, <code>“foo”: 8</code> will be <code>INT8</code> and everything else will be <code>INT32</code>.
+</p>
+
+<p>
+It is enough to issue <code>service rpcd reload</code> to make it pick up new plugin executables, that way one does not lose active sessions.
+</p>
+
+<p>
+<strong>NOTE:</strong> At least on CC builds, reload is <em>not</em> enough, and you must <code>restart</code> to pickup new plugins and changes to existing plugins.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;plugin executables&quot;,&quot;hid&quot;:&quot;plugin_executables&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;1142-&quot;} -->

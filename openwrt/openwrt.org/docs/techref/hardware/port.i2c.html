@@ -1,0 +1,94 @@
+
+<h1 class="sectionedit1" id="i2c">I2C</h1>
+<div class="level1">
+
+<p>
+This gives an overview for running <a href="https://en.wikipedia.org/wiki/I²C" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/I²C">I²C</a> on your router. There are a few other OpenWrt I2C projects out there and they really helped me getting this up and running. In contrast to the other projects this one
+</p>
+<ul>
+<li class="level1"><div class="li"> uses 2 <a href="/docs/techref/hardware/port.gpio" class="wikilink1" title="docs:techref:hardware:port.gpio" data-wiki-id="docs:techref:hardware:port.gpio">GPIOs</a> of the router</div>
+</li>
+<li class="level1"><div class="li"> does not need any external circuit</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;I2C&quot;,&quot;hid&quot;:&quot;i2c&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-318&quot;} -->
+<h2 class="sectionedit2" id="hardware">Hardware</h2>
+<div class="level2">
+
+<p>
+I2C is bi-directional and needs pull-up resistors on both lines (10k is recommended). Most devices operate at 3.3V but some need 5V.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Hardware&quot;,&quot;hid&quot;:&quot;hardware&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;319-473&quot;} -->
+<h3 class="sectionedit3" id="i2c_over_gpio">I2C over GPIO</h3>
+<div class="level3">
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> <strong>This no longer works on current versions of OpenWRT (removed in 21.02) due to changes in the Linux kernel.</strong> For more current methods, see <a href="https://www.kernel.org/doc/Documentation/devicetree/bindings/i2c/i2c-gpio.txt" class="urlextern" title="https://www.kernel.org/doc/Documentation/devicetree/bindings/i2c/i2c-gpio.txt" rel="ugc nofollow">Linux kernel device tree bindings for i2c-gpio.</a> TODO: detailed tutorial.
+</p>
+
+<p>
+You need 2 GPIO ports to add a 3.3V I2C interface to your router. Check if your router has some spare GPIOs available. The <a href="/toh/tp-link/tl-mr3020" class="wikilink1" title="toh:tp-link:tl-mr3020" data-wiki-id="toh:tp-link:tl-mr3020">TP-Link MR3020</a> has 2 unused GPIO ports at R15 and R17. Otherwise you can use GPIOs used for LEDs. To avoid any influence from the old components disconnect the LEDs from those GPIOs (by removing the resistors.
+</p>
+
+<p>
+Add a 10k pull-up resistor between GPIO ports and 3.3V. On the MR3020 GPIO 7 would be SDA and the GPIO 29 would be SCL.
+</p>
+
+<p>
+Install and load the kernel module:
+</p>
+<pre class="code"># opkg update
+# opkg install kmod-i2c-gpio-custom kmod-i2c-core
+# insmod i2c-dev
+# insmod i2c-gpio-custom bus0=0,7,29
+# dmesg | grep gpio
+Mar 23 09:01:23 openwrt kern.info kernel: [   52.910000] Custom GPIO-based I2C driver version 0.1.1
+Mar 23 09:01:23 openwrt kern.info kernel: [   52.910000] i2c-gpio i2c-gpio.0: using pins 7 (SDA) and 29 (SCL)</pre>
+
+<p>
+When loading the kernel module replace the values 7 and 29 with the GPIO-Pins you have chosen. If the GPIO-Ports are used as LED you may have to unload the kernel module for the LEDs:
+</p>
+<pre class="code"># rmmod leds-gpio</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;I2C over GPIO&quot;,&quot;hid&quot;:&quot;i2c_over_gpio&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;474-1885&quot;} -->
+<h3 class="sectionedit4" id="i2c_with_33v_and_5v_devices">I2C with 3.3V and 5V devices</h3>
+<div class="level3">
+
+<p>
+If some of your devices need 5V I2C bus you can use a <a href="http://www.hobbytronics.co.uk/mosfet-voltage-level-converter" class="urlextern" title="http://www.hobbytronics.co.uk/mosfet-voltage-level-converter" rel="ugc nofollow">simple level shifter</a> with 2 n-channel MOSFETs like the 2N7000. Connect the source-pins of the MOSFET to the 3.3V line, the gate pin to 3.3V and the drain pin to the 5V line. You also need the 10k-pull ups on the 5V-line.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;I2C with 3.3V and 5V devices&quot;,&quot;hid&quot;:&quot;i2c_with_33v_and_5v_devices&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:4,&quot;range&quot;:&quot;1886-2265&quot;} -->
+<h2 class="sectionedit5" id="old_wiki">Old Wiki</h2>
+<div class="level2">
+
+<p>
+In the oldwiki there are following contents, please <a href="/docs/techref/hardware/meta/migrating" class="wikilink2" title="docs:techref:hardware:meta:migrating" rel="nofollow" data-wiki-id="docs:techref:hardware:meta:migrating">migrate</a> them:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="https://oldwiki.archive.openwrt.org/oldwiki/port.i2c" class="urlextern" title="https://oldwiki.archive.openwrt.org/oldwiki/port.i2c" rel="ugc nofollow">https://oldwiki.archive.openwrt.org/oldwiki/port.i2c</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://oldwiki.archive.openwrt.org/oldwiki/port.i2c.rtc" class="urlextern" title="https://oldwiki.archive.openwrt.org/oldwiki/port.i2c.rtc" rel="ugc nofollow">https://oldwiki.archive.openwrt.org/oldwiki/port.i2c.rtc</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://oldwiki.archive.openwrt.org/oldwiki/port.i2c.source_code" class="urlextern" title="https://oldwiki.archive.openwrt.org/oldwiki/port.i2c.source_code" rel="ugc nofollow">https://oldwiki.archive.openwrt.org/oldwiki/port.i2c.source_code</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Old Wiki&quot;,&quot;hid&quot;:&quot;old_wiki&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:5,&quot;range&quot;:&quot;2266-2573&quot;} -->
+<h2 class="sectionedit6" id="devices">Devices</h2>
+<div class="level2">
+
+<p>
+The list of related devices:
+<a href="/tag/i2c?do=showtag&amp;tag=i2c" class="wikilink1 tag label label-default mx-1" title="tag:i2c" rel="tag"><span class="iconify"  data-icon="mdi:tag-text-outline"></span> i2c</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Devices&quot;,&quot;hid&quot;:&quot;devices&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:6,&quot;range&quot;:&quot;2574-&quot;} -->

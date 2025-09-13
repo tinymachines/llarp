@@ -1,0 +1,542 @@
+
+<h1 class="sectionedit1" id="extending_the_router_ports_with_a_managed_switch_with_vlans">Extending the router ports with a managed switch with VLANs</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Extending the router ports with a managed switch with VLANs&quot;,&quot;hid&quot;:&quot;extending_the_router_ports_with_a_managed_switch_with_vlans&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-74&quot;} -->
+<h2 class="sectionedit2" id="prerequired_knowledge">Prerequired knowledge</h2>
+<div class="level2">
+
+<p>
+See <em>Switch documentation</em> and <em>Network documentation</em>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__meta:infobox:howto_links">
+<div class="level2">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap">
+<p>
+This article may contain network configuration that depends on migration to DSA in OpenWrt 21.02
+</p>
+<ul>
+<li class="level1"><div class="li"> Check if your device uses DSA or swconfig as not all devices have been migrated</div>
+</li>
+<li class="level1"><div class="li"> ifname@interface has been moved to device sections</div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/network/dsa/start" class="wikilink1" title="docs:guide-user:network:dsa:start" data-wiki-id="docs:guide-user:network:dsa:start">DSA Networking</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://forum.openwrt.org/t/mini-tutorial-for-dsa-network-config/96998" class="urlextern" title="https://forum.openwrt.org/t/mini-tutorial-for-dsa-network-config/96998" rel="ugc nofollow">Mini tutorial for DSA network config</a> on the forum</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://openwrt.org/releases/21.02/notes-21.02.0#new_network_configuration_syntax_and_boardjson_change" class="urlextern" title="https://openwrt.org/releases/21.02/notes-21.02.0#new_network_configuration_syntax_and_boardjson_change" rel="ugc nofollow">DSA in the 21.02 release notes</a></div>
+</li>
+</ul>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:6,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Prerequired knowledge&quot;,&quot;hid&quot;:&quot;prerequired_knowledge&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;75-260&quot;} -->
+<h2 class="sectionedit7" id="explanation_of_the_need">Explanation of the need</h2>
+<div class="level2">
+
+<p>
+You have a powerful machine running OpenWrt. 
+<em>Powerful</em> here means: a device able to process the amount of network packets created by your activities by a big margin.
+Like you create a flow of 50 Mbit and your device is able to process until 800 Mbit.
+</p>
+
+<p>
+The problem is: somehow you have several <abbr title="Wide Area Network">WAN</abbr> connections (maybe using mwan3), or several internal connections for whatever reasons and the device does not have enough Ethernet ports.
+</p>
+
+<p>
+You can extend the Ethernet ports of the device using a managed switch (and it means that you have a bit of money/resources and you are in a homeoffice or small office scenario).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Explanation of the need&quot;,&quot;hid&quot;:&quot;explanation_of_the_need&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;261-916&quot;} -->
+<h2 class="sectionedit8" id="configuring_a_managed_switch_with_vlans">Configuring a managed switch with VLANs</h2>
+<div class="level2">
+
+<p>
+The technology that enables an OpenWrt based device to be extended in terms of ports is <abbr title="Virtual Local Area Network">VLAN</abbr>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuring a managed switch with VLANs&quot;,&quot;hid&quot;:&quot;configuring_a_managed_switch_with_vlans&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:8,&quot;range&quot;:&quot;917-1063&quot;} -->
+<h3 class="sectionedit9" id="notes">Notes</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> Most devices only use one <abbr title="Virtual Local Area Network">VLAN</abbr> by default (<abbr title="Virtual Local Area Network">VLAN</abbr> ID 1). The instructions that follow assume this is the case. Double check before proceeding.</div>
+</li>
+<li class="level1"><div class="li"> <abbr title="Virtual Local Area Network">VLAN</abbr> IDs match the virtual interfaces listed by ifconfig, i.e. a <abbr title="Virtual Local Area Network">VLAN</abbr> with ID 3 will show as ethX.3 (where X is your real interface, e.g. eth0).</div>
+</li>
+<li class="level1"><div class="li"> <abbr title="Virtual Local Area Network">VLAN</abbr> IDs should be identical across all network devices.</div>
+</li>
+<li class="level1"><div class="li"> A port can have three states: Off (not part of a specific <abbr title="Virtual Local Area Network">VLAN</abbr>), Untagged (when part of the default <abbr title="Virtual Local Area Network">VLAN</abbr>, or of more than one <abbr title="Virtual Local Area Network">VLAN</abbr>), Tagged (when part of two or more VLANs).</div>
+</li>
+<li class="level1"><div class="li"> For a lot of switches, a port that is part of multiple VLANs needs to be set to Tagged in every single <abbr title="Virtual Local Area Network">VLAN</abbr> it is part of. Make sure to check whether your hardware supports mixing tagged/untagged on the same port and confirm you can recover from faulty configurations if needed (e.g. OpenWrt failsafe or recovery).</div>
+</li>
+<li class="level1"><div class="li"> Every <abbr title="Virtual Local Area Network">VLAN</abbr> should also include the CPU (tagged by default).</div>
+</li>
+<li class="level1"><div class="li"> The <abbr title="Virtual Local Area Network">VLAN</abbr> definitions use <strong>internal port numbers</strong>. Make sure you have identified the ports correctly. Quite a few devices (e.g. the <a href="/toh/netgear/wndr3700" class="wikilink1" title="toh:netgear:wndr3700" data-wiki-id="toh:netgear:wndr3700">Netgear WNDR3700 v1</a>) number their internal ports differently from the numbers on the enclosure! Tagged ports are clearly visible as such in the UI, in the configuration file they&#039;re marked by a <strong>t</strong> behind the port number.</div>
+</li>
+<li class="level1"><div class="li"> Creating a new <abbr title="Virtual Local Area Network">VLAN</abbr> with port X already part of another <abbr title="Virtual Local Area Network">VLAN</abbr> means port X should be set to tagged <strong>in all the existing <abbr title="Virtual Local Area Network">VLAN</abbr>(s) it is part of. Failure to do so may render your switch inoperable.</strong> We cannot stress this enough! Only certain switches support ports being untagged in one and tagged in another <abbr title="Virtual Local Area Network">VLAN</abbr> at the same time.</div>
+</li>
+<li class="level1"><div class="li"> For a guest <abbr title="Wireless Local Area Network">WLAN</abbr>, only the port(s) connecting a network device to another one should be part of the <abbr title="Virtual Local Area Network">VLAN</abbr>. In practice, this means that in a router - access point setup, on each device only the port connecting to the other network device goes into the <abbr title="Virtual Local Area Network">VLAN</abbr>.</div>
+</li>
+</ul>
+
+<p>
+Some tips (normally a decent explanation of how the <abbr title="Virtual Local Area Network">VLAN</abbr> works is included in the switch&#039;s manufacturer manual):
+</p>
+
+<p>
+An <strong>untagged</strong> port, with VID X, in a switch assign the <abbr title="Virtual Local Area Network">VLAN</abbr> tag X to incoming packets. 
+When the packet is leaving the untagged port, and was tagged with the VID X, the <abbr title="Virtual Local Area Network">VLAN</abbr> tag is removed.
+This helps, for example, to communicate between tagged and untagged ports.
+A packet without VID, going inside an untagged port, gets the VID X and can be routed out other ports belonging to the same VID (apart from bridged ports).
+</p>
+
+<p>
+A <strong>tagged</strong> port, with VID Y, accepts only packets tagged with the VID Y in input, while let packets tagged with VID Y going out to the port. Note that one port could be untagged only once, while can be tagged with several VID.
+</p>
+
+<p>
+With a brief schema you have:
+</p>
+<pre class="code">internal stack of the switch  +  External network                                                                                                        
+                              |                                                                                                                          
+                              |                                                                                                                          
+                              |                                                           internal stack of the switch  +  External network              
+                              |                                                                                         |                                
+                              | Tagged port with VID Y, X and Z                                                         |                                
+                              |                                                                                         |                                
+ packet with VID Y            |                                                                                         | Untagged port with VID W       
+                              |                                                                                         |                                
+             +---------------------------------------&gt;                                      gets the VID W afterwards   |           packet with no VID   
+                              |                                                                        &lt;--------------------------------------+          
+ packet with VID X            |                                                                                         |                                
+                              |                                                                                         |                                
+             +---------------------------------------&gt;                                     packet with VID W            |                                
+                              |                                                                                         |        No VID afterwards       
+ packet with VID Z            |                                                                 +--------------------------------------------&gt;           
+                              |                                                                                         |                                
+             +---------------------------------------&gt;                                                                  |                                
+                              |                                                                 keep the VID            |               packet with VID W
+                              |           packet with VID Y                                      &lt;----------------------------------------------+        
+             &lt;--------------------------------------+                                                                   +                                
+                              |                                                                                                                          
+                              |           packet with VID X                                                                                              
+             &lt;--------------------------------------+                                                                                                    
+                              |                                                                                                                          
+                              |           packet with VID Z                                                                                              
+             &lt;--------------------------------------+                                                                                                    
+                              |                                                                                                                          
+                              |                                                                                                                          
+ packet with VID W            |                                                                                                                          
+                           XX |                                                                                                                          
+      +--------------------XX |                                                                                                                          
+                           XX |                                                                                                                          
+                              |                                                                                                                          
+                              |  XX           packet with VID W                                                                                          
+                              |  XX-------------------+                                                                                                  
+                              +  XX                                                                                                                      
+</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Notes&quot;,&quot;hid&quot;:&quot;notes&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:9,&quot;range&quot;:&quot;1064-9490&quot;} -->
+<h3 class="sectionedit10" id="configuration">Configuration</h3>
+<div class="level3">
+
+<p>
+So, imagine to have a 16 ports switch, we want to extend our router with 8 ports. We choose the first 8.
+</p>
+
+<p>
+So the ports 9-16 of the switch will retain the VID 1, and be untagged, with the VID 1 used also for management.
+</p>
+
+<p>
+Then we create the VID 100 to assign it to trunks or hybrid ports (a <strong>trunk</strong> is a port that is assigned to all the <abbr title="Virtual Local Area Network">VLAN</abbr> IDs, and <strong>hybrid</strong> port is a port assigned to some VIDs).
+</p>
+
+<p>
+Then we assign:
+</p>
+<ol>
+<li class="level1"><div class="li"> The port 1 to the VID 101 untagged.</div>
+</li>
+<li class="level1"><div class="li"> The port 2 to the VID 102 untagged.</div>
+</li>
+<li class="level1"><div class="li"> ...</div>
+</li>
+<li class="level1"><div class="li"> The port 7 to the VID 107 untagged.</div>
+</li>
+<li class="level1"><div class="li"> The port 8 to the VID 100 untagged and VID 101 to 107 tagged.</div>
+</li>
+</ol>
+
+<p>
+This because we want that the packets coming from the port 1 to the port 7 can pass through the port 8, and the <strong>tagged</strong> packets coming from the port 8 can pass through the ports 1 to 7, without tag (because other devices could not recognize the tag or reject the packet if tagged).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:10,&quot;range&quot;:&quot;9491-10413&quot;} -->
+<h2 class="sectionedit11" id="configuring_an_openwrt_router">Configuring an OpenWrt router</h2>
+<div class="level2">
+
+<p>
+Now we want to make use of this. For example, let&#039;s say that we connect to the port 1 of the switch the modem for the wan connection &#039;wan&#039;, and on the port 2 the modem for the wan connection &#039;wan2&#039;.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuring an OpenWrt router&quot;,&quot;hid&quot;:&quot;configuring_an_openwrt_router&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:11,&quot;range&quot;:&quot;10414-10655&quot;} -->
+<h3 class="sectionedit12" id="with_programmable_switch">With programmable switch</h3>
+<div class="level3">
+
+<p>
+On a TP-Link <a href="/toh/tp-link/tl-wdr3600_v1" class="wikilink1" title="toh:tp-link:tl-wdr3600_v1" data-wiki-id="toh:tp-link:tl-wdr3600_v1">TL-WDR3600</a> we have something like this:
+</p>
+<pre class="code bash"><span class="co0"># /etc/config/network</span>
+&nbsp;
+...
+&nbsp;
+config switch
+        option name  <span class="st_h">'eth0'</span>
+        option reset <span class="st_h">'1'</span>
+        option enable_vlan <span class="st_h">'1'</span>
+&nbsp;
+<span class="co0">## Port: internet</span>
+config disabled_switch_vlan
+        option device <span class="st_h">'eth0'</span>
+        option vlan   <span class="st_h">'1'</span>
+        option ports  <span class="st_h">'0t 1'</span>
+        list comment  <span class="st_h">'port internet, eth0.1'</span>
+        list comment  <span class="st_h">'we cannot have an untagged port'</span>
+&nbsp;
+config switch_vlan
+        option device <span class="st_h">'eth0'</span>
+        option vlan   <span class="st_h">'101'</span>
+        option ports  <span class="st_h">'0t 1t'</span>
+        list comment  <span class="st_h">'port internet, eth0.101'</span>
+&nbsp;
+config switch_vlan
+        option device <span class="st_h">'eth0'</span>
+        option vlan   <span class="st_h">'102'</span>
+        option ports  <span class="st_h">'0t 1t'</span>
+        list comment  <span class="st_h">'port internet, eth0.102'</span>
+&nbsp;
+...
+&nbsp;
+config interface <span class="st_h">'wan'</span>
+        option ifname           eth0.101
+        option proto            <span class="st_h">'dhcp'</span>
+        option disabled_type    <span class="st_h">'bridge'</span>
+        list comment            <span class="st_h">'mwan3 does not like bridges, as far as the documentation goes'</span>
+        option peerdns          <span class="nu0">0</span>
+        option metric           <span class="nu0">10</span>
+&nbsp;
+config interface <span class="st_h">'wan2'</span>
+        option ifname           eth0.102
+        option proto            <span class="st_h">'dhcp'</span>
+        option disabled_type    <span class="st_h">'bridge'</span>
+        list comment            <span class="st_h">'mwan3 does not like bridges, as far as the documentation goes'</span>
+        option peerdns          <span class="nu0">0</span>
+        option metric           <span class="nu0">20</span>
+&nbsp;
+...</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;With programmable switch&quot;,&quot;hid&quot;:&quot;with_programmable_switch&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:12,&quot;range&quot;:&quot;10656-12111&quot;} -->
+<h3 class="sectionedit13" id="without_programmable_switch">Without programmable switch</h3>
+<div class="level3">
+
+<p>
+On a routerOS metarouter or a x86 device with have something similar to this.
+</p>
+<pre class="code bash"><span class="co0"># /etc/config/network</span>
+&nbsp;
+...
+&nbsp;
+config interface <span class="st_h">'wan'</span>
+        option ifname           eth0.101
+        option proto            <span class="st_h">'dhcp'</span>
+        option disabled_type    <span class="st_h">'bridge'</span>
+        list comment            <span class="st_h">'mwan3 does not like bridges, as far as the documentation goes'</span>
+        option peerdns          <span class="nu0">0</span>
+        option metric           <span class="nu0">10</span>
+&nbsp;
+config interface <span class="st_h">'wan2'</span>
+        option ifname           eth0.102
+        option proto            <span class="st_h">'dhcp'</span>
+        option disabled_type    <span class="st_h">'bridge'</span>
+        list comment            <span class="st_h">'mwan3 does not like bridges, as far as the documentation goes'</span>
+        option peerdns          <span class="nu0">0</span>
+        option metric           <span class="nu0">20</span>
+&nbsp;
+...</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Without programmable switch&quot;,&quot;hid&quot;:&quot;without_programmable_switch&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:13,&quot;range&quot;:&quot;12112-12917&quot;} -->
+<h2 class="sectionedit14" id="conclusion">Conclusion</h2>
+<div class="level2">
+
+<p>
+In this way you have your extended router with way more ports, overcoming the limits of the table of hardware that actually does not offer any device with more than 5 gigabit ports easy to install (the Mikrotik ones are a bit complicated to install).
+</p>
+
+<p>
+The limits to take care of are: how much traffic will pass through a port, normally for SOHO even combining multiple WANs it should not exceed 200-300 Mbit, and the processing power of the device itself (that will be under stress already for checking the vlan tag) with OpenWrt (that sometimes cannot use hardware acceleration),
+</p>
+
+<p>
+But this could enable the usage of very powerful devices with just 2 ports, for example.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Conclusion&quot;,&quot;hid&quot;:&quot;conclusion&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:14,&quot;range&quot;:&quot;12918-13612&quot;} -->
+<h2 class="sectionedit15" id="practical_applications_for_productive_work">Practical applications for productive work</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Practical applications for productive work&quot;,&quot;hid&quot;:&quot;practical_applications_for_productive_work&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:15,&quot;range&quot;:&quot;13613-13667&quot;} -->
+<h3 class="sectionedit16" id="how_to_configure_the_managed_switch_with_vlan_allowed">How to configure the managed switch with VLAN allowed</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="reserving_and_grouping_ports_in_rows_or_nibbles">Reserving and grouping ports in rows or &#039;nibbles&#039;</h4>
+<div class="level4">
+
+<p>
+So the idea is to reserve some ports in a managed switch with VLANs to configure them as extension for a OpenWrt based gateway. 
+A point that should not be underestimated is how to choose and reserve ports for specific roles. For now we can decide to divide the role of the ports in two main groups: <em>external connection</em> and <em>internal connections</em>.
+This because if we do not reserve enough ports, in case of small expansion of the network needs, we end up on a switch that has a minefield (and no clear structure) of VLANs. Furthermore consider that we are going to use one gigabit port as connection to the router, therefore we expect that the traffic on every port is way less than one gigabit, else we have congestion.
+In our case the traffic generated between logical networks is less than 50 Mbit on average, even if a gigabit port has to channel several logical networks
+it will be enough.
+Of course the solution is not extremely scalable but for small networks (the ones covered by us), it is way enough.
+</p>
+
+<p>
+So for example &#039;external connections&#039; are the <abbr title="Wide Area Network">WAN</abbr> connections, and currently we can assume that is unlikely that we will deploy more than 3 wan connections (mostly we deploy 2 wan, and in the case we upgrade the single wan connection). 
+Therefore we can define 4 ports for the wan connections.
+Why 4? Three ports are needed for connecting Ethernet cables to the modem provided by the <abbr title="Internet Service Provider">ISP</abbr>, one port will be the port that will send the data to the gateway, the port will be either a trunk or a hybrid port.
+</p>
+
+<p>
+The same applies for internal connections. We should see the port on the switch as &#039;managed ports&#039; by the router (through VLANs), so even internal network ports should be defined. For internal networks the number of assigned port should be a bit &#039;expansion proof&#039; since internal necessities can arise and we want to have a standard that does not change every moment.
+</p>
+
+<p>
+The internal logical network that is likely that could be covered are: voip, lan, lan2 (another company or an old network), wifi. So mostly 4.
+We can put a bit of margin, because creating an internal need is way more cheap than creating another contract for wan connection, so let&#039;s extend to 7, so we have 8 port used (one has to go to the router).
+</p>
+
+<p>
+Now it is about grouping. Mostly we will use switches with 16 ports until 48, and those normally have 2 rows of Ethernet ports.
+One way is to use rows, one way is to use nibbles (that are rectangular grouping).
+We will see later how to use nibbles, because using a row of N contiguous ports it is the simpler way.
+</p>
+
+</div>
+
+<h4 id="assigning_vlans">Assigning VLANS</h4>
+<div class="level4">
+
+<p>
+We decide to assign to external ports <abbr title="Virtual Local Area Network">VLAN</abbr> PVID starting from 101 to 199 (consider that we have until 4095),
+while we can assign 201 to 299 for internal ports. While the hybrid/trunk ports will have 100 or 200.
+</p>
+
+<p>
+With a 24 port switch like an <strong>hp 1810-24 j9803A</strong> we can use 12 ports like this (note that we assign the logical network numbers following the numbers of the device for easy of maintenance. This is one of the small factor in our &#039;parametric standard&#039;):
+</p>
+<div class="table sectionedit17"><table class="inline">
+	<tr class="row0">
+		<td class="col0" bgcolor=yellow>port 1 - wan1<br/>
+PVID 101 </td><td class="col1" bgcolor=yellow>port 3 - wan3<br/>
+PVID 103 </td><td class="col2" bgcolor=#80FF00>port 5 - lan1<br/>
+PVID 201 </td><td class="col3" bgcolor=#80FF00>port 7 - lan3<br/>
+PVID 203 </td><td class="col4" bgcolor=#80FF00>port 9 - lan5<br/>
+PVID 205 </td><td class="col5" bgcolor=#80FF00>port 11 - lan7<br/>
+PVID 207 </td>
+	</tr>
+	<tr class="row1">
+		<td class="col0" bgcolor=yellow>port 2 - wan2<br/>
+PVID 102 </td><td class="col1 leftalign" bgcolor=#AEB404>port 4 to the wan &#039;collector&#039; port on the router<br/>
+PVID 100<br/>
+tagged VID 101,102,103  </td><td class="col2" bgcolor=#80FF00>port 6 - lan2<br/>
+PVID 202 </td><td class="col3" bgcolor=#80FF00>port 8 - lan4<br/>
+PVID 204 </td><td class="col4" bgcolor=#80FF00>port 10 - lan6<br/>
+PVID 206 </td><td class="col5" bgcolor=#74DF00>port 12 to the <abbr title="Local Area Network">LAN</abbr> &#039;collector&#039; port on the router<br/>
+PVID 200<br/>
+tagged VID 201,202,203,204,205,206,207 </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:17,&quot;range&quot;:&quot;16840-17412&quot;} -->
+<p>
+You can see the rectangular grouping called also &#039;nibble&#039;.
+An advantage of not using &#039;trunk&#039; ports over &#039;hybrid&#039; is that we separated neatly the groupings and we do not risk that a port is sending data also to an unwanted port.
+</p>
+
+</div>
+
+<h4 id="example_configuration">Example configuration</h4>
+<div class="level4">
+
+<p>
+An example of configuration to use part of the managed switch configuration.
+</p>
+<pre class="code bash"><span class="co0"># Copyright (C) 2006 OpenWrt.org</span>
+&nbsp;
+config interface loopback
+        option ifname   lo
+        option proto    static
+        option ipaddr   127.0.0.1
+        option netmask  255.0.0.0
+&nbsp;
+<span class="co0">#eth0 lan1</span>
+<span class="co0">#eth1 lan2</span>
+<span class="co0">#eth2 lan3</span>
+&nbsp;
+config interface rescue
+        option ifname   eth0
+        option <span class="kw3">type</span>     bridge
+        option proto    static
+        option ipaddr   192.168.1.1
+        option netmask  255.255.255.0
+        list comment <span class="st_h">'for rescuing and management operations'</span>
+&nbsp;
+config interface wan
+        option ifname   eth1.101
+        option no_type_with_mwan3       <span class="nu0">1</span>
+        option <span class="st_h">'proto'</span>          <span class="st_h">'static'</span>
+        option <span class="st_h">'ipaddr'</span>         <span class="st_h">'1.2.3.4'</span>
+        option <span class="st_h">'netmask'</span>        <span class="st_h">'255.255.255.248'</span>
+        option <span class="st_h">'gateway'</span>        <span class="st_h">'1.2.3.3'</span>
+        option metric           <span class="nu0">10</span>
+&nbsp;
+config interface wan2
+        option ifname   eth1.102
+        option no_type_with_mwan3       <span class="nu0">1</span>
+        option <span class="st_h">'proto'</span>          <span class="st_h">'static'</span>
+        option <span class="st_h">'ipaddr'</span>         <span class="st_h">'1.2.3.5'</span>
+        option <span class="st_h">'netmask'</span>        <span class="st_h">'255.255.255.248'</span>
+        option <span class="st_h">'gateway'</span>        <span class="st_h">'1.2.3.6'</span>
+        option metric           <span class="nu0">20</span>
+&nbsp;
+config interface wan3
+        option ifname   eth1.103
+        option proto    dhcp
+        option metric   <span class="nu0">30</span>
+&nbsp;
+config interface lan
+        option ifname   eth2.201
+        option proto    static
+        option ipaddr   172.18.21.9
+        option netmask  255.255.255.0
+&nbsp;
+config interface lan_gw
+        option ifname   eth2.201
+        option proto    static
+        option ipaddr   172.18.21.1
+        option netmask  255.255.255.0
+&nbsp;
+config interface lan_gw2
+        option ifname   eth2.201
+        option proto    static
+        option ipaddr   172.18.21.253
+        option netmask  255.255.255.0
+&nbsp;
+config interface lan_old
+        option ifname   eth2.201
+        option proto    static
+        option ipaddr   10.200.1.9
+        option netmask  255.255.255.0
+&nbsp;
+config interface lan_old_g
+        option ifname   eth2.201
+        option proto    static
+        option ipaddr   10.200.1.253
+        option netmask  255.255.255.0
+&nbsp;
+config interface voip
+        option ifname   eth2.202
+        option proto    static
+        option ipaddr   172.18.22.9
+        option netmask  255.255.255.0
+&nbsp;
+config interface voip_gw
+        option ifname   eth2.202
+        option proto    static
+        option ipaddr   172.18.22.1
+        option netmask  255.255.255.0
+&nbsp;
+config interface wlan
+        option ifname   eth2.203
+        option <span class="kw3">type</span>     bridge
+        option proto    static
+        option ipaddr   172.18.24.9
+        option netmask  255.255.255.0
+&nbsp;
+config interface wlan_gw
+        option ifname   eth2.203
+        option proto    static
+        option ipaddr   172.18.24.253
+        option netmask  255.255.255.0
+&nbsp;
+config interface vpn0
+        option ifname   tun0
+        option proto    none
+&nbsp;
+config interface vpn1
+        option ifname   tun1
+        option proto    none
+&nbsp;
+config interface vpn2
+        option ifname   tun2
+        option proto    none
+&nbsp;
+config interface vpn3
+        option ifname   tun3
+        option proto    none
+&nbsp;
+config interface vpn4
+        option ifname   tun4
+        option proto    none
+&nbsp;
+config interface vpn5
+        option ifname   tun5
+        option proto    none
+&nbsp;
+config route
+        list comment <span class="st_h">'routing all possible private addresses to VPN server'</span>
+        list comment <span class="st_h">'with different metric'</span>
+        option interface        lan
+        option target           10.0.0.0
+        option netmask          255.0.0.0
+        option gateway          172.18.21.4
+        option metric           <span class="nu0">100</span>
+&nbsp;
+config route
+        list comment <span class="st_h">'routing all possible private addresses to VPN server'</span>
+        list comment <span class="st_h">'with different metric'</span>
+        option interface        lan
+        option target           172.16.0.0
+        option netmask          255.240.0.0
+        option gateway          172.18.21.4
+        option metric           <span class="nu0">100</span>
+&nbsp;
+config route
+        list comment <span class="st_h">'routing all possible private addresses to VPN server'</span>
+        list comment <span class="st_h">'with different metric'</span>
+        option interface        lan
+        option target           192.168.0.0
+        option netmask          255.255.0.0
+        option gateway          172.18.21.4
+        option metric           <span class="nu0">100</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;How to configure the managed switch with VLAN allowed&quot;,&quot;hid&quot;:&quot;how_to_configure_the_managed_switch_with_vlan_allowed&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:16,&quot;range&quot;:&quot;13668-&quot;} -->

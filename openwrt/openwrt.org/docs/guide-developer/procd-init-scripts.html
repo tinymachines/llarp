@@ -1,0 +1,537 @@
+
+<h1 class="sectionedit1" id="procd_init_scripts">Procd Init Scripts</h1>
+<div class="level1">
+
+<p>
+A procd init script is similiar to an old init script, but with a few differences:
+</p>
+<ul>
+<li class="level1"><div class="li"> procd expects services to start as if they were to  <strong>run in the foreground</strong>, but of course procd runs them the background from the user&#039;s perspective.</div>
+</li>
+<li class="level1"><div class="li"> Different shebang line: <code>#!/bin/sh /etc/rc.common</code></div>
+</li>
+<li class="level1"><div class="li"> procd expects that shell variable (not environment variable) <code>initscript</code> is set to the path of the script that invoked it</div>
+</li>
+<li class="level1"><div class="li"> Explicitly use procd <code>USE_PROCD=1</code></div>
+</li>
+</ul>
+
+<p>
+Example:
+</p>
+<pre class="code bash"><span class="co0">#!/bin/sh /etc/rc.common</span>
+&nbsp;
+<span class="re2">START</span>=<span class="nu0">90</span>
+<span class="re2">STOP</span>=01
+<span class="re2">USE_PROCD</span>=<span class="nu0">1</span>
+&nbsp;
+service_data<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+	<span class="sy0">/</span>usr<span class="sy0">/</span>sbin<span class="sy0">/</span>mesh11sd <span class="re5">-v</span>
+<span class="br0">&#125;</span>
+&nbsp;
+start_service<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+	procd_open_instance
+	procd_set_param <span class="kw3">command</span> <span class="sy0">/</span>bin<span class="sy0">/</span><span class="kw2">sh</span> <span class="st0">&quot;/usr/sbin/mesh11sd&quot;</span>
+	procd_append_param <span class="kw3">command</span> daemon
+	procd_set_param pidfile <span class="sy0">/</span>var<span class="sy0">/</span>run<span class="sy0">/</span>mesh11sd.pid
+	procd_set_param term_timeout <span class="nu0">1</span>
+	procd_set_param stdout <span class="nu0">1</span>
+	procd_set_param respawn <span class="nu0">150</span> <span class="nu0">10</span> <span class="nu0">10</span>
+	procd_close_instance
+<span class="br0">&#125;</span>
+&nbsp;
+stop_service<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+	<span class="sy0">/</span>sbin<span class="sy0">/</span>uci revert mesh11sd
+	<span class="sy0">/</span>sbin<span class="sy0">/</span>uci revert wireless
+	<span class="sy0">/</span>sbin<span class="sy0">/</span>uci revert dhcp
+	<span class="sy0">/</span>sbin<span class="sy0">/</span>uci revert network
+	<span class="sy0">/</span>usr<span class="sy0">/</span>sbin<span class="sy0">/</span>nft delete table bridge mesh11s <span class="nu0">2</span><span class="sy0">&gt;</span> <span class="sy0">/</span>dev<span class="sy0">/</span>null
+<span class="br0">&#125;</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Procd Init Scripts&quot;,&quot;hid&quot;:&quot;procd_init_scripts&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1104&quot;} -->
+<h2 class="sectionedit2" id="how_do_these_scripts_work">How do these scripts work?</h2>
+<div class="level2">
+
+<p>
+Init script has to handle two main tasks:
+</p>
+<ol>
+<li class="level1"><div class="li"> Define current configuration (state) for service instance(s)</div>
+</li>
+<li class="level1"><div class="li"> Specify when (and optionally how) to reconfigure service</div>
+</li>
+</ol>
+
+<p>
+Defining configuration is handled in the <code>start_service()</code>. For each instance to be run it has to specify service command and all its parameters. All that info is stored internally by <code>procd</code>. On a single change (compared to the last used configuration) <code>procd</code> restarts a service.
+</p>
+
+<p>
+Init script has to specify all possible <code>procd</code> events that may require service reconfiguration. Defining all triggers is done in the <code>service_triggers()</code> using <code>procd_add_*_trigger</code> helpers.
+</p>
+
+<p>
+Optionally init script may handle service reconfiguration process on its own. It&#039;s useful for services that don&#039;t require complete restart to use new configuration. It can be handled by specifying custom <code>reload_service()</code> which prevents <code>start_service()</code> from being called and so stops <code>procd</code> from restarting service.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;How do these scripts work?&quot;,&quot;hid&quot;:&quot;how_do_these_scripts_work&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:2,&quot;range&quot;:&quot;1105-2129&quot;} -->
+<h2 class="sectionedit3" id="service_data">Service Data</h2>
+<div class="level2">
+
+<p>
+Service data is sent to <code>stdout</code> by the function <code>service_data()</code>. This would typically be the version of the service (see the example).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Service Data&quot;,&quot;hid&quot;:&quot;service_data&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;2130-2298&quot;} -->
+<h2 class="sectionedit4" id="defining_service_instances">Defining service instances</h2>
+<div class="level2">
+
+<p>
+The purpose of <code>start_service()</code> (see next section to see when it&#039;s called) is to define instance(s) with:
+</p>
+<ol>
+<li class="level1"><div class="li"> Command to execute to start service</div>
+</li>
+<li class="level1"><div class="li"> Information on what to observe for changes (e.g. files or devices) - optional</div>
+</li>
+<li class="level1"><div class="li"> Settings that <code>procd</code> should use (e.g. auto respawning, logging stdout, user to use) - optional</div>
+</li>
+</ol>
+
+<p>
+The above information is stored by <code>procd</code> as a service instance state. On every relevant system change (e.g. config change), <code>start_service()</code> is called by designed triggers. If it generates any different state (e.g. command will change) than the previous one, <code>procd</code> will detect it and restart the service.
+</p>
+
+<p>
+Defining service instance details is handled by setting parameters. Some values are set directly in the <code>start_service()</code> (like <code>command</code>) while some are determined by <code>procd</code> (like <code>file</code> and file hash). There are two helpers for setting parameters:
+</p>
+<ol>
+<li class="level1"><div class="li"> <code>procd_set_param()</code></div>
+</li>
+<li class="level1"><div class="li"> <code>procd_append_param()</code></div>
+</li>
+</ol>
+
+<p>
+The below example lists supported parameters and describes them. For implementation details see the <a href="https://git.openwrt.org/?p=openwrt/openwrt.git;a=blob;f=package/system/procd/files/procd.sh" class="interwiki iw_commit" title="https://git.openwrt.org/?p=openwrt/openwrt.git;a=blob;f=package/system/procd/files/procd.sh">procd.sh</a>.
+</p>
+<pre class="code bash">start_service<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+         procd_open_instance <span class="br0">&#91;</span>instance_name<span class="br0">&#93;</span>
+         procd_set_param <span class="kw3">command</span> <span class="sy0">/</span>sbin<span class="sy0">/</span>your_service_daemon <span class="re5">-b</span> <span class="re5">-a</span> <span class="re5">--foo</span> <span class="co0"># service executable that has to run in **foreground**.</span>
+         procd_append_param <span class="kw3">command</span> <span class="re5">-bar</span> <span class="nu0">42</span> <span class="co0"># append command parameters</span>
+&nbsp;
+         <span class="co0"># respawn automatically if something died, be careful if you have an alternative process supervisor</span>
+         <span class="co0"># if process exits sooner than respawn_threshold, it is considered crashed and after 5 retries the service is stopped</span>
+         <span class="co0"># if process finishes later than respawn_threshold, it is restarted unconditionally, regardless of error code</span>
+         <span class="co0"># notice that this is literal respawning of the process, not in a respawn-on-failure sense</span>
+         procd_set_param respawn <span class="co1">${respawn_threshold:-3600}</span> <span class="co1">${respawn_timeout:-5}</span> <span class="co1">${respawn_retry:-5}</span>
+&nbsp;
+         procd_set_param <span class="kw2">env</span> <span class="re2">SOME_VARIABLE</span>=funtimes  <span class="co0"># pass environment variables to your process</span>
+         procd_set_param limits <span class="re2">core</span>=<span class="st0">&quot;unlimited&quot;</span>  <span class="co0"># If you need to set ulimit for your process</span>
+         procd_set_param <span class="kw2">file</span> <span class="sy0">/</span>var<span class="sy0">/</span>etc<span class="sy0">/</span>your_service.conf <span class="co0"># /etc/init.d/your_service reload will restart the daemon when these files have changed</span>
+         procd_set_param netdev dev <span class="co0"># likewise, but for when dev's ifindex changes.</span>
+         procd_set_param data <span class="re2">name</span>=value ... <span class="co0"># likewise, but for when this data changes.</span>
+         procd_set_param stdout <span class="nu0">1</span> <span class="co0"># forward stdout of the command to logd</span>
+         procd_set_param stderr <span class="nu0">1</span> <span class="co0"># same for stderr</span>
+         procd_set_param user nobody <span class="co0"># run service as user nobody</span>
+         procd_set_param pidfile <span class="sy0">/</span>var<span class="sy0">/</span>run<span class="sy0">/</span>somefile.pid <span class="co0"># write a pid file on instance start and remove it on stop</span>
+         procd_set_param term_timeout <span class="nu0">60</span> <span class="co0"># wait before sending SIGKILL</span>
+         procd_close_instance
+<span class="br0">&#125;</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Defining service instances&quot;,&quot;hid&quot;:&quot;defining_service_instances&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:4,&quot;range&quot;:&quot;2299-5257&quot;} -->
+<h3 class="sectionedit5" id="stopping_services">Stopping services</h3>
+<div class="level3">
+
+<p>
+<code>stop_service()</code> is only needed when you need special things to stop your service. <code>stop_service()</code> is called <em>before</em> procd killed the service.
+</p>
+
+<p>
+If you want to add a check <em>after</em> procd has sent the terminate signal (e.g. wait for the process to be really gone), you can define an extra function <code>service_stopped()</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Stopping services&quot;,&quot;hid&quot;:&quot;stopping_services&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:5,&quot;range&quot;:&quot;5258-5615&quot;} -->
+<h3 class="sectionedit6" id="init_scripts_during_compilation">Init scripts during compilation</h3>
+<div class="level3">
+
+<p>
+<a href="/_detail/meta/icons/tango/48px-dialog-warning.svg.png?id=docs%3Aguide-developer%3Aprocd-init-scripts" class="media" title="meta:icons:tango:48px-dialog-warning.svg.png"><img src="/_media/meta/icons/tango/48px-dialog-warning.svg.png?w=32&amp;tok=e7a6e2" class="media" loading="lazy" alt="" width="32" /></a>WARNING<a href="/_detail/meta/icons/tango/48px-dialog-warning.svg.png?id=docs%3Aguide-developer%3Aprocd-init-scripts" class="media" title="meta:icons:tango:48px-dialog-warning.svg.png"><img src="/_media/meta/icons/tango/48px-dialog-warning.svg.png?w=32&amp;tok=e7a6e2" class="media" loading="lazy" alt="" width="32" /></a>: initscripts <strong>will run</strong> while building OpenWrt images (when installing packages in what will become a ROM image) in the <strong>host system</strong> (right now, for actions “<em>enable</em>” and “<em>disable</em>”).  <strong>They must not fail, or have undesired side-effects in that situation.</strong>  When being run by the build system, environment variable <strong>${IPKG_INSTROOT}</strong> will be set to the working directory being used.  On the “target system”, that environment variable will be empty/unset.  Refer to “/lib/functions.sh” and also to “/etc/rc.common” in package “base-files” for the nasty details.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Init scripts during compilation&quot;,&quot;hid&quot;:&quot;init_scripts_during_compilation&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:6,&quot;range&quot;:&quot;5616-6347&quot;} -->
+<h2 class="sectionedit7" id="specifying_triggers">Specifying triggers</h2>
+<div class="level2">
+
+<p>
+While <code>start_service()</code> takes care of setting service instances states and submitting them to the <code>procd</code> (for a potential service restart), it has to be explicitly called to do so. In most cases it should happen on some related change.
+</p>
+
+<p>
+That&#039;s where <code>service_triggers()</code> comes in handy and allows specifying triggers. Most system important changes result in generating events that <code>service_triggers()</code> can use for triggering various actions. There are multiple <code>procd_add_*_trigger()</code> helpers for that purpose.
+</p>
+
+<p>
+Every configurable service has to specify what system changes should result in its reconfiguration. Those events should be defined in the <code>service_triggers()</code> using available helpers. When related <code>procd</code> <code>service</code> event occurs it will result in executing <code>/etc/init.d/&lt;foo&gt; reload</code>.
+</p>
+
+<p>
+Example:
+</p>
+<pre class="code bash">service_triggers<span class="br0">&#40;</span><span class="br0">&#41;</span>
+<span class="br0">&#123;</span>
+        procd_add_reload_trigger <span class="st0">&quot;&lt;uci-file-name&gt;&quot;</span> <span class="st0">&quot;&lt;second-uci-file&gt;&quot;</span>
+        procd_add_reload_interface_trigger <span class="sy0">&lt;</span>interface<span class="sy0">&gt;</span>
+        procd_add_reload_mount_trigger <span class="sy0">&lt;</span>path<span class="sy0">&gt;</span> <span class="br0">&#91;</span><span class="sy0">&lt;</span>path<span class="sy0">&gt;</span> ...<span class="br0">&#93;</span>
+<span class="br0">&#125;</span></pre>
+<div class="table sectionedit8"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign"> Function                           </th><th class="col1 leftalign"> Arguments            </th><th class="col2 leftalign"> Event used        </th><th class="col3"> Description </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> procd_add_reload_trigger           </td><td class="col1"> list of config files </td><td class="col2"> <code>config.change</code> </td><td class="col3"> Uses <code>/etc/init.d/&lt;foo&gt; reload</code> as the handler </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> procd_add_reload_interface_trigger </td><td class="col1 leftalign"> interface name       </td><td class="col2 leftalign"> <code>interface.*</code>   </td><td class="col3"> Uses <code>/etc/init.d/&lt;foo&gt; reload</code> as the handler </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> procd_add_reload_mount_trigger     </td><td class="col1 leftalign"> paths to watch for   </td><td class="col2 leftalign"> <code>mount.add</code>     </td><td class="col3"> Uses <code>/etc/init.d/&lt;foo&gt; reload</code> as the handler </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"> procd_add_restart_mount_trigger    </td><td class="col1 leftalign"> paths to watch for   </td><td class="col2 leftalign"> <code>mount.add</code>     </td><td class="col3"> Uses <code>/etc/init.d/&lt;foo&gt; restart</code> as the handler </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:8,&quot;range&quot;:&quot;7436-8064&quot;} --><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:9,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap">
+<p>
+When using <code>uci</code> from command line <code>uci commit</code> doesn&#039;t generate <code>config.change</code> event. It requires calling <code>reload_config</code> afterwards.
+</p>
+
+<p>
+This does not apply to using <code>uci</code> over <code>rpcd</code> plugin.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:10,&quot;range&quot;:&quot;0-&quot;} --><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:11,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap">
+<p>
+Adding <code>interface.*</code> trigger and having <code>/etc/init.d/&lt;foo&gt; reload</code> called won&#039;t automatically make <code>procd</code> notice any state change and won&#039;t make it restart a service.
+</p>
+
+<p>
+Relevant interface has to be made part of service state using the <code>procd_set_param netdev</code>.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:12,&quot;range&quot;:&quot;0-&quot;} --><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:13,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap">
+<p>
+Using mount triggers depends on mount notifications emitted by <code>blockd</code>. Hence <code>blockd</code> needs to be installed and the mount need to be configured in <code>/etc/config/fstab</code>.
+</p>
+
+<p>
+See also <a href="/docs/guide-user/storage/fstab" class="wikilink1" title="docs:guide-user:storage:fstab" data-wiki-id="docs:guide-user:storage:fstab">fstab</a>
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:14,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+See use cases of <a href="https://github.com/openwrt/packages/search?q=procd_add_interface_trigger" class="urlextern" title="https://github.com/openwrt/packages/search?q=procd_add_interface_trigger" rel="ugc nofollow">procd_add_interface_trigger</a>, <a href="https://github.com/openwrt/packages/search?q=procd_add_reload_trigger" class="urlextern" title="https://github.com/openwrt/packages/search?q=procd_add_reload_trigger" rel="ugc nofollow">procd_add_reload_trigger</a>, <a href="https://github.com/openwrt/packages/search?q=procd_add_reload_mount_trigger" class="urlextern" title="https://github.com/openwrt/packages/search?q=procd_add_reload_mount_trigger" rel="ugc nofollow">procd_add_reload_mount_trigger</a> in the OpenWrt packages repository.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Specifying triggers&quot;,&quot;hid&quot;:&quot;specifying_triggers&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:7,&quot;range&quot;:&quot;6348-9208&quot;} -->
+<h3 class="sectionedit15" id="ucitrack">ucitrack</h3>
+<div class="level3">
+
+<p>
+In older versions of OpenWrt, a system called “ucitrack” attempted to track UCI config files, and the processes that depended on each of them, and would restart them all as needed.  This too, is replaced with ubus/procd, and expanded to allow notifying services when network interfaces change.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;ucitrack&quot;,&quot;hid&quot;:&quot;ucitrack&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:15,&quot;range&quot;:&quot;9209-9523&quot;} -->
+<h2 class="sectionedit16" id="manual_reload">Manual reload</h2>
+<div class="level2">
+
+<p>
+Sometimes service state may depend on information that doesn&#039;t have any events related. This may happen e.g. with service native configuration files that don&#039;t get build using UCI config.
+</p>
+
+<p>
+In such cases <code>procd</code> should be told to use relevant config file using <code>procd_set_param file /etc/foo.conf</code>. After every config file modification <code>/etc/init.d/foo reload</code> should be called manually.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Manual reload&quot;,&quot;hid&quot;:&quot;manual_reload&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:16,&quot;range&quot;:&quot;9524-9944&quot;} -->
+<h2 class="sectionedit17" id="custom_service_reload">Custom service reload</h2>
+<div class="level2">
+
+<p>
+By default (without <code>reload_service()</code> specified) calling <code>/etc/init.d/&lt;foo&gt; reload</code> results in running <code>start_service()</code> and <code>procd</code> comparing states. In some cases a more complete control over <code>reload</code> action may be needed thought.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Custom service reload&quot;,&quot;hid&quot;:&quot;custom_service_reload&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:17,&quot;range&quot;:&quot;9945-10224&quot;} -->
+<h3 class="sectionedit18" id="forcing_service_restart">Forcing service restart</h3>
+<div class="level3">
+
+<p>
+If some service requires a restart when <code>reload</code> is called, it can be implemented as follows:
+</p>
+<pre class="code bash">reload_service<span class="br0">&#40;</span><span class="br0">&#41;</span>
+<span class="br0">&#123;</span>
+        <span class="kw3">echo</span> <span class="st0">&quot;Explicitly restarting service, are you sure you need this?&quot;</span>
+        stop
+        start
+<span class="br0">&#125;</span></pre>
+
+<p>
+j
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Forcing service restart&quot;,&quot;hid&quot;:&quot;forcing_service_restart&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:18,&quot;range&quot;:&quot;10225-10500&quot;} -->
+<h3 class="sectionedit19" id="reloading_service_setup">Reloading service setup</h3>
+<div class="level3">
+
+<p>
+Some services may support reloading configuration without a complete restart. It&#039;s usually implemented using `SIGHUP` or similar signal.
+</p>
+
+<p>
+OpenWrt comes with a <code>procd_send_signal()</code> helper that doesn&#039;t require passing PID directly. Example:
+</p>
+<pre class="code">reload_service() {
+         procd_send_signal service_name [instance_name] [signal]
+}</pre>
+
+<p>
+The <em>signal</em> argument is <code>SIGHUP</code> by default and must be specified by NAME. You can get available signals using <code>kill -l</code>.
+</p>
+
+<p>
+The <em>service_name</em> is the basename of the <code>init.d</code> script, e.g. <code>yourapp</code> for the <code>/etc/init.d/yourapp</code>.
+</p>
+
+<p>
+The <em>instance_name</em> allows specifying custom instance name in case it was used like <code>procd_open_instance [instance_name]</code>. If <em>instance_name</em> is unspecified, or <code> &#039;*&#039; </code> then the signal will be delivered to all instances of the service.
+</p>
+
+<p>
+<strong>Note</strong> You can also send signals to named procd services from outside initscripts.  Simply load the procd functions and send the signal as before.
+</p>
+<pre class="code">#!/bin/sh
+. /lib/functions/procd.sh
+procd_send_signal service_name [instance_name] [signal]</pre>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:20,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap">
+<p>
+You can also configure reload by signal with <code>procd_set_param reload_signal</code> service option.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:21,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Reloading service setup&quot;,&quot;hid&quot;:&quot;reloading_service_setup&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:19,&quot;range&quot;:&quot;10501-11746&quot;} -->
+<h2 class="sectionedit22" id="service_jails">Service jails</h2>
+<div class="level2">
+
+<p>
+procd can isolate services using various Linux features typically used for (slim-)containers: <em>chroot</em> and <em>namespaces</em> (and <em>limits</em>, <em>seccomp</em>, <em>capabilities</em> as well as setting <code>PR_SET_NO_NEW_PRIVS</code>, see <a href="#service_parameters" title="docs:guide-developer:procd-init-scripts ↵" class="wikilink1">Service Parameters</a>).
+</p>
+<div class="table sectionedit23"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign"> Function                </th><th class="col1 leftalign"> Arguments            </th><th class="col2 leftalign"> Description                                                        </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> procd_add_jail          </td><td class="col1 leftalign"> jail name, flags     </td><td class="col2 leftalign"> Set up service jail (with features according to <em>flags</em>)          </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> procd_add_jail_mount    </td><td class="col1 leftalign"> read-only paths      </td><td class="col2 leftalign"> Read-only bind the paths listed to the jail&#039;s mount namespace      </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> procd_add_jail_mount_rw </td><td class="col1 leftalign"> read-write paths     </td><td class="col2 leftalign"> Bind the paths listed to the jail&#039;s mount namespace                </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table1&quot;,&quot;secid&quot;:23,&quot;range&quot;:&quot;12038-12518&quot;} --><div class="table sectionedit24"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign"> Flag        </th><th class="col1 leftalign"> Description                                                      </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> log         </td><td class="col1 leftalign"> Allow jailed service to log to syslog                            </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> ubus        </td><td class="col1 leftalign"> Allow jailed service to access ubus                              </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> procfs      </td><td class="col1 leftalign"> Mount /proc in jail                                              </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"> sysfs       </td><td class="col1 leftalign"> Mount /sys in jail                                               </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 leftalign"> ronly       </td><td class="col1 leftalign"> Re-mount jail rootfs read-only                                   </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0"> requirejail </td><td class="col1"> Do not fall back to run without jail in case jail could not be set up </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0 leftalign"> netns       </td><td class="col1 leftalign"> Run jailed process in new network namespace                      </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0 leftalign"> userns      </td><td class="col1 leftalign"> Run jailed process in new user namespace                         </td>
+	</tr>
+	<tr class="row9">
+		<td class="col0 leftalign"> cgroupsns   </td><td class="col1 leftalign"> Run jailed process in new cgroups namespace                      </td>
+	</tr>
+	<tr class="row10">
+		<td class="col0 leftalign"> console     </td><td class="col1 leftalign"> Set up console accessible with <code>ujail-console</code>                 </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table2&quot;,&quot;secid&quot;:24,&quot;range&quot;:&quot;12520-13437&quot;} -->
+<p>
+See use cases of <a href="https://github.com/openwrt/packages/search?q=procd_add_jail" class="urlextern" title="https://github.com/openwrt/packages/search?q=procd_add_jail" rel="ugc nofollow">procd_add_jail</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Service jails&quot;,&quot;hid&quot;:&quot;service_jails&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:22,&quot;range&quot;:&quot;11747-13536&quot;} -->
+<h2 class="sectionedit25" id="debugging">Debugging</h2>
+<div class="level2">
+
+<p>
+Set PROCD_DEBUG=1 to see debugging information when starting or stopping a procd init script.
+Also, <code>INIT_TRACE=1 /etc/init.d/mything $action</code> Where $action is start/stop etc.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Debugging&quot;,&quot;hid&quot;:&quot;debugging&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:25,&quot;range&quot;:&quot;13537-13738&quot;} -->
+<h3 class="sectionedit26" id="a_common_gotcha_with_stopping_a_service">A common gotcha with stopping a service</h3>
+<div class="level3">
+
+<p>
+Keep in mind that <code>procd</code> only tracks the main process.  For example, consider the following script that reads from log file and then performs an action:
+</p>
+<pre class="code sh">#!/usr/bin/sh
+&nbsp;
+tail -f /var/log/messages |  while read -r match; do
+    echo foo
+done</pre>
+
+<p>
+Because this script uses a pipe a sub-process is spawned.  Calling <code>/etc/init.d./&lt;foo&gt; stop</code> will only terminate the parent process.  The sub-process will still be alive and continue running.  This is also true if you call <code>kill</code> on the main process&#039;s PID manually.  The program needs to keep track of its sub-processes and terminate them properly when it receives a <code>SIGTERM</code> signal.
+</p>
+
+<p>
+For this case in particular, here is a working solution: 
+</p>
+<pre class="code sh">#!/usr/bin/sh
+&nbsp;
+pid=
+_cleanup() {
+    kill &quot;$pid&quot;
+    exit
+}
+&nbsp;
+trap _cleanup TERM INT
+&nbsp;
+tail -f /var/log/messages |  while read -r match; do
+    echo foo
+done &amp; # Beware the &amp;: In order to be able to receive signals at all, the above `while read`
+       # needs to be run in the background.
+pid=$!
+wait $pid</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;A common gotcha with stopping a service&quot;,&quot;hid&quot;:&quot;a_common_gotcha_with_stopping_a_service&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:26,&quot;range&quot;:&quot;13739-14826&quot;} -->
+<h2 class="sectionedit27" id="examples">Examples</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/changeset/39617" class="urlextern" title="https://dev.openwrt.org/changeset/39617" rel="ugc nofollow">r39617 firewall3</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/changeset/40635" class="urlextern" title="https://dev.openwrt.org/changeset/40635" rel="ugc nofollow">r40635 radsecproxy</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/changeset/40674" class="urlextern" title="https://dev.openwrt.org/changeset/40674" rel="ugc nofollow">r40674 xupnpd</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/changeset/40785" class="urlextern" title="https://dev.openwrt.org/changeset/40785" rel="ugc nofollow">r40785 shairport</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/changeset/40997" class="urlextern" title="https://dev.openwrt.org/changeset/40997" rel="ugc nofollow">r40997 igmpproxy</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-developer/procd-init-script-example" class="wikilink1" title="docs:guide-developer:procd-init-script-example" data-wiki-id="docs:guide-developer:procd-init-script-example">Create a sample procd init script</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Examples&quot;,&quot;hid&quot;:&quot;examples&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:27,&quot;range&quot;:&quot;14827-15262&quot;} -->
+<h2 class="sectionedit28" id="service_parameters">Service Parameters</h2>
+<div class="level2">
+
+<p>
+The following table contains a listing of the possible values to <code>procd_set_param()</code> and a description of their effects. List values are passed space-separated, e.g. <code>procd_set_param env HOME=/root ENVIRONMENT=production FOO=“bar baz”</code>. String values are implicitely concatenated, so <code>procd_set_param error An error occurred</code> is equivalent to <code>procd_set_param error “An error occurred”</code>.
+</p>
+<div class="table sectionedit29"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Parameter </th><th class="col1"> Data Type </th><th class="col2"> Description </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> <code>env</code> </td><td class="col1"> Key-Value-List </td><td class="col2"> Sets a number of environment variables in <code>key=value</code> notation exported to the spawned process. </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> <code>data</code> </td><td class="col1"> Key-Value-List </td><td class="col2"> Sets arbitrary user data in <code>key=value</code> notation to the ubus service state. This is mainly used to store additional meta data with spawned services, such as mDNS announcements or firewall rules which may be picked up by other services. </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> <code>limits</code> </td><td class="col1"> Key-Value-List </td><td class="col2"> Set ulimit values in <code>key=value</code> notation for the spawned process. The following limit names are recognized by <em>procd</em>: <code>as</code> (<code>RLIMIT_AS</code>), <code>core</code> (<code>RLIMIT_CORE</code>), <code>cpu</code> (<code>RLIMIT_CPU</code>), <code>data</code> (<code>RLIMIT_DATA</code>), <code>fsize</code> (<code>RLIMIT_FSIZE</code>), <code>memlock</code> (<code>RLIMIT_MEMLOCK</code>), <code>nofile</code> (<code>RLIMIT_NOFILE</code>), <code>nproc</code> (<code>RLIMIT_NPROC</code>), <code>rss</code> (<code>RLIMIT_RSS</code>), <code>stack</code> (<code>RLIMIT_STACK</code>), <code>nice</code> (<code>RLIMIT_NICE</code>), <code>rtprio</code> (<code>RLIMIT_RTPRIO</code>), <code>msgqueue</code> (<code>RLIMIT_MSGQUEUE</code>), <code>sigpending</code> (<code>RLIMIT_SIGPENDING</code>) <strong>Two numeric values, separated by blank space, are expected for RLIMIT: the first value represents the soft limit and the other the hard limit; e.g.: procd_set_param limits nofile=“10000 20000”; the “unlimited” value can be used in cases where “ulimit -{parameter} unlimited” works, for example for the “core” parameter.</strong></td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> <code>command</code> </td><td class="col1"> List </td><td class="col2"> Sets the command vector (<code>argv</code>) used to execute the process. </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0"> <code>netdev</code> </td><td class="col1"> List </td><td class="col2"> Passes a list of Linux network device names to <em>procd</em> to be monitored for changes. Upon starting a service, the interface index of each network device name is resolved and stored as part of <em>procd</em>&#039;s in-memory service state. When a service reload request is processed and the interface index of any of the associated network devices changed or if the list itself changed, the running service state is invalidated and <em>procd</em> will restart the associated process or deliver a UNIX signal to it, depending on how the service was set up. </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0"> <code>file</code> </td><td class="col1"> List </td><td class="col2"> Passes a list of file names to <em>procd</em> to be monitored for changes. Upon starting a service, the content of each passed file is checksummed and stored as part of <em>procd</em>&#039;s in-memory service state. When a service reload request is processed and the checksum of one of the associated files changed, or the list of files itself changed, the running service state is invalidated and <em>procd</em> will restart the associated process or deliver a UNIX signal to it, depending on how the service was set up. </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0"> <code>respawn</code> </td><td class="col1"> List </td><td class="col2"> A series of three consecutive numbers which set the <em>respawn threshold</em>, the <em>respawn timeout</em> and the <em>respawn retry</em> respectively. The timeout specifies the amount of seconds to wait before a service restart attempt, the retry value controls how many restart attempts will be made before a service is considered crashed and the threshold value in seconds controls the time frame in which the restart attempts are counted towards the retry limit. For example a threshold of 300 with a retry value of 10 will cause <em>procd</em> to consider the service to be crashed if the associated UNIX process terminated more than 10 times within a time frame of 5 minutes. No further restart attempts will be made for such crashed services unless an explicit restart is performed. Setting the retry value to <code>0</code> will cause <em>procd</em> to try restarting the service indefinitely. The default value for <code>respawn</code> is <code>3600 5 5</code>. </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0"> <code>watch</code> </td><td class="col1"> List </td><td class="col2"> Passes a list of <em>ubus</em> namespaces to watch - <em>procd</em> will subcribe to each namespace and wait for incoming <em>ubus</em> events which are then forwarded to registered JSON script triggers for evaluation. </td>
+	</tr>
+	<tr class="row9">
+		<td class="col0"> <code>error</code> </td><td class="col1"> List </td><td class="col2"> Passes one or more free formed error strings to <em>procd</em>. The error strings are stored as part of the in-memory service state and are exposed verbatim in <em>ubus</em> for use by other tools. This facility is mainly useful to allow init scripts to signal configuration errors or other transient issues preventing a successful start up. If any error string is passed to <em>procd</em>, no attempt will be made to actually spawn the associated UNIX process of the service but the service instance itself is still registered in <em>procd</em>. </td>
+	</tr>
+	<tr class="row10">
+		<td class="col0"> <code>nice</code> </td><td class="col1"> Integer </td><td class="col2"> Set the scheduling priority of the spawned process. Valid values range from <code>-20</code> (most favorable) to <code>19</code> (least favorable). </td>
+	</tr>
+	<tr class="row11">
+		<td class="col0"> <code>term_timeout</code> </td><td class="col1"> Integer </td><td class="col2"> Specifies the amount of seconds to wait for a clean process exit after delivering the <code>TERM</code> signal. If the process fails to completely exit within the specified time frame, the process is forcibly terminated using an uncatchable <code>KILL</code> signal. The default termination timeout value is 5 seconds. Services with expensive shutdown operations, such as database systems, should set the <code>term_timeout</code> parameter to sufficiently large value. </td>
+	</tr>
+	<tr class="row12">
+		<td class="col0"> <code>reload_signal</code> </td><td class="col1"> String </td><td class="col2"> Instructs <em>procd</em> to handle process reloads by delivering a UNIX signal instead of terminating the running process and spawning it again. This is useful for programs that provide extensive native configuration reload handling which allows for updated configurations to be applied on the fly without the need to restart the process. Note that this parameter only makes sense in conjunction with fixed command lines. When a reload signal is specified, any updated command line will be ignored since the running process is retained and not executed again. Valid values for this parameter are UNIX signal names as listed by <code>kill -l</code>. </td>
+	</tr>
+	<tr class="row13">
+		<td class="col0"> <code>pidfile</code> </td><td class="col1"> String </td><td class="col2"> Instructs <em>procd</em> to write the PID of the spawned process into the specified file path. While <em>procd</em> itself does not use or require PID files to track spawned processes, this option is useful for sitation where knowledge of the PID is required, e.g. for monitoring or control client software. </td>
+	</tr>
+	<tr class="row14">
+		<td class="col0"> <code>user</code> </td><td class="col1"> String </td><td class="col2"> Specifies the name of the user to spawn the process as. <em>procd</em> will look up the given name in <code>/etc/passwd</code> and set the effective uid and primary gid of the spawned processaccordingly. If omitted, the process is spawned as <code>root</code> (uid 0, gid 0) </td>
+	</tr>
+	<tr class="row15">
+		<td class="col0"> <code>seccomp</code> </td><td class="col1"> String </td><td class="col2"> Specifies file path to read seccomp filter rules from, the file should be JSON formatted like the <a href="https://github.com/opencontainers/runtime-spec/blob/master/config-linux.md#seccomp" class="urlextern" title="https://github.com/opencontainers/runtime-spec/blob/master/config-linux.md#seccomp" rel="ugc nofollow">seccomp object of the OCI run-time spec</a> </td>
+	</tr>
+	<tr class="row16">
+		<td class="col0"> <code>capabilities</code> </td><td class="col1"> String </td><td class="col2"> Specifies file path to read capability set, the file should be JSON formatted like the <a href="https://github.com/opencontainers/runtime-spec/blob/master/config.md#linux-process" class="urlextern" title="https://github.com/opencontainers/runtime-spec/blob/master/config.md#linux-process" rel="ugc nofollow">capabilities object of the OCI run-time spec</a></td>
+	</tr>
+	<tr class="row17">
+		<td class="col0"> <code>stdout</code> </td><td class="col1"> Boolean </td><td class="col2"> If set to <code>1</code>, instruct <em>procd</em> to relay the spawned process&#039; stdout to the system log. The stdout will be fed line-wise to <code>syslog(3)</code> using the basename of the first command argument as identity, <code>LOG_INFO</code> as priority and <code>LOG_DAEMON</code> as facility. </td>
+	</tr>
+	<tr class="row18">
+		<td class="col0"> <code>stderr</code> </td><td class="col1"> Boolean </td><td class="col2"> If set to <code>1</code>, instruct <em>procd</em> to relay the spawned process&#039; stderr to the system log. The stderr will be fed line-wise to <code>syslog(3)</code> using the basename of the first command argument as identity, <code>LOG_ERR</code> as priority and <code>LOG_DAEMON</code> as facility. </td>
+	</tr>
+	<tr class="row19">
+		<td class="col0"> <code>no_new_privs</code> </td><td class="col1"> Boolean </td><td class="col2"> Instructs <em>ujail</em> to not allow privilege elevation. Sets the <em>ujail</em> <code>-c</code> parameter when true. </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table3&quot;,&quot;secid&quot;:29,&quot;range&quot;:&quot;15691-23045&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Service Parameters&quot;,&quot;hid&quot;:&quot;service_parameters&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:28,&quot;range&quot;:&quot;15263-&quot;} -->

@@ -1,0 +1,130 @@
+
+<h1 class="sectionedit1" id="pwm_emulation_with_gpio">PWM emulation with GPIO</h1>
+<div class="level1">
+
+<p>
+It&#039;s possible to use a GPIO with a kernel driver for making it work as a <a href="https://en.wikipedia.org/wiki/Pulse-width_modulation" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Pulse-width_modulation">PWM</a>.
+</p>
+<pre class="code">HIGH      _      _      _      _      _      _      _      _     
+         | |    | |    | |    | |    | |    | |    | |    | |    
+GPIO     | |    | |    | |    | |    | |    | |    | |    | |    
+       __| |____| |____| |____| |____| |____| |____| |____| |____
+LOW </pre>
+
+<p>
+Only tested in Attitude Adjustment. Patching, and building a custom firmware required.
+</p>
+
+<p>
+Driver made by Bill Gatliff.
+</p>
+
+<p>
+Emulates a PWM device using a GPIO pin and an hrtimer.  Subject to CPU, scheduler and hardware limitations, can support many PWM outputs, e.g. as many as you have GPIO pins available for.
+</p>
+
+<p>
+On a 200 <abbr title="Megahertz">MHz</abbr> ARM9 processor, a PWM frequency of 100 Hz can be attained with this code so long as the duty cycle remains between about 20-80%. At higher or lower duty cycles, the transition events may arrive too close for the scheduler and CPU to reliably service.
+</p>
+
+<p>
+Caveats:
+</p>
+<ul>
+<li class="level1"><div class="li"> The GPIO pin number must be valid, not already in use</div>
+</li>
+<li class="level1"><div class="li"> The output state of the GPIO pin is configured when the PWM starts running i.e. not immediately upon request, because the polarity of the inactive state of the pin isn&#039;t known until the pwm device&#039;s &#039;polarity&#039; attribute is configured</div>
+</li>
+<li class="level1"><div class="li"> After creating and binding the pwm device, you must then request it by writing to /sys/class/pwm/gpio-pwm.&lt;gpio number&gt;/export</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;PWM emulation with GPIO&quot;,&quot;hid&quot;:&quot;pwm_emulation_with_gpio&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1460&quot;} -->
+<h2 class="sectionedit2" id="firmware_modification">Firmware modification</h2>
+<div class="level2">
+
+<p>
+Download the source code of Attitude Adjustment, and this file <a href="/_media/media/doc/howtos/pwm-gpio-aa.tar.gz" class="media mediafile mf_gz" title="media:doc:howtos:pwm-gpio-aa.tar.gz (14.7 KB)">pwm-gpio-aa.tar.gz</a>. Patch the build root
+</p>
+<blockquote><div class="no">
+ patch -p1 -i pwm-gpio-AA.patch</div></blockquote>
+
+<p>
+Enter in the kernel menu:
+</p>
+<blockquote><div class="no">
+ make kernel_menuconfig</div></blockquote>
+
+<p>
+and ensure configfs, PWM and GPIO_PWM are enabled.
+</p>
+
+<p>
+You can use a native led at the router to test the driver, but first remove it from the board definition to get the gpio access.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Firmware modification&quot;,&quot;hid&quot;:&quot;firmware_modification&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:2,&quot;range&quot;:&quot;1461-1893&quot;} -->
+<h2 class="sectionedit3" id="openwrt_commands">Openwrt commands</h2>
+<div class="level2">
+
+<p>
+Once flashed and openwrt running:
+</p>
+<pre class="code">mkdir /config
+mount -t configfs none /config</pre>
+
+<p>
+Now create configurable GPIO PWM, example using the GPIO8
+</p>
+<pre class="code">mkdir /config/gpio_pwm/8
+echo 1 &gt; /sys/class/pwm/gpio_pwm\:8/export</pre>
+
+<p>
+Check tick-hz
+</p>
+<pre class="code">root@OpenWrt:/# cat /sys/class/pwm/gpio_pwm\:8/tick_hz 
+1000000000
+root@OpenWrt:/#</pre>
+
+<p>
+Define the <strong>period</strong> for 100 Hz:
+</p>
+<pre class="code">echo 10000000 &gt; /sys/class/pwm/gpio_pwm\:8/period_ns</pre>
+
+<p>
+Define the <strong>duty cycle</strong>, 10%
+</p>
+<pre class="code">echo 1000000 &gt; /sys/class/pwm/gpio_pwm\:8/duty_ns</pre>
+
+<p>
+Run it
+</p>
+<pre class="code">echo 1 &gt; /sys/class/pwm/gpio_pwm\:8/run</pre>
+
+<p>
+If a led is connected it should should bright at 10% or 90% depending on LED polarity.
+</p>
+
+<p>
+Let&#039;s increase/decrease the virtual brightness
+</p>
+<pre class="code">echo 1000000 &gt; /sys/class/pwm/gpio_pwm\:8/duty_ns
+echo 2000000 &gt; /sys/class/pwm/gpio_pwm\:8/duty_ns
+echo 3000000 &gt; /sys/class/pwm/gpio_pwm\:8/duty_ns
+echo 4000000 &gt; /sys/class/pwm/gpio_pwm\:8/duty_ns
+echo 5000000 &gt; /sys/class/pwm/gpio_pwm\:8/duty_ns
+echo 6000000 &gt; /sys/class/pwm/gpio_pwm\:8/duty_ns
+echo 7000000 &gt; /sys/class/pwm/gpio_pwm\:8/duty_ns
+echo 8000000 &gt; /sys/class/pwm/gpio_pwm\:8/duty_ns</pre>
+
+<p>
+To disable, stop, unexport and delete it:
+</p>
+<pre class="code">echo 0 &gt; /sys/class/pwm/gpio_pwm\:8/run
+echo 1 &gt; /sys/class/pwm/gpio_pwm\:8/unexport
+rm -rf /config/gpio_pwm/8</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Openwrt commands&quot;,&quot;hid&quot;:&quot;openwrt_commands&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;1894-&quot;} -->

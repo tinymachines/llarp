@@ -1,0 +1,315 @@
+
+<h1 class="sectionedit1" id="openwrt_on_vmware_howto">OpenWrt on VMware HowTo</h1>
+<div class="level1">
+
+<p>
+This article describes how to use OpenWrt as a virtual machine with VMware virtualization.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;OpenWrt on VMware HowTo&quot;,&quot;hid&quot;:&quot;openwrt_on_vmware_howto&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-131&quot;} -->
+<h2 class="sectionedit2" id="tested_with">Tested with</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Barrier Breaker 14.07 in combination with VMware ESXi 5.5 Update 2 Build 2068190</div>
+</li>
+<li class="level1"><div class="li"> Chaos Calmer 15.05.1 with VMware Fusion and vSphere ESXi 6.0</div>
+</li>
+<li class="level1"><div class="li"> 19.07.0-rc2 in combination with VMware ESXi 6.7.0 Update 2 Build 13981272</div>
+</li>
+<li class="level1"><div class="li"> 19.07.5 in combination with VMware ESXi 6.7.0 Update 2 Build 16713306</div>
+</li>
+<li class="level1"><div class="li"> 21.02.0-rc3 on a VMware vSphere Client version 6.7.0.42000 machine </div>
+</li>
+<li class="level1"><div class="li"> 23.05.2 on a VMware vSphere VM VMware ESXi, 6.7.0, 20497097 </div>
+</li>
+<li class="level1"><div class="li"> 24.10.0 on VMWare Fusion 13.6.2</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Tested with&quot;,&quot;hid&quot;:&quot;tested_with&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;132-632&quot;} -->
+<h3 class="sectionedit3" id="things_you_need">Things you need</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> <a href="https://downloads.openwrt.org/barrier_breaker/14.07/x86/generic/openwrt-x86-generic-combined-ext4.img.gz" class="urlextern" title="https://downloads.openwrt.org/barrier_breaker/14.07/x86/generic/openwrt-x86-generic-combined-ext4.img.gz" rel="ugc nofollow">https://downloads.openwrt.org/barrier_breaker/14.07/x86/generic/openwrt-x86-generic-combined-ext4.img.gz</a> or</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://downloads.openwrt.org/chaos_calmer/15.05/x86/64/openwrt-15.05-x86-64-combined-ext4.img.gz" class="urlextern" title="https://downloads.openwrt.org/chaos_calmer/15.05/x86/64/openwrt-15.05-x86-64-combined-ext4.img.gz" rel="ugc nofollow">https://downloads.openwrt.org/chaos_calmer/15.05/x86/64/openwrt-15.05-x86-64-combined-ext4.img.gz</a> or</div>
+</li>
+<li class="level1"><div class="li"> Generic x86/64, version COMBINED-EFI (EXT4) from <a href="https://firmware-selector.openwrt.org/" class="urlextern" title="https://firmware-selector.openwrt.org/" rel="ugc nofollow">https://firmware-selector.openwrt.org/</a></div>
+</li>
+<li class="level1"><div class="li"> Linux machine with qemu-utils &amp; gunzip installed or MacOS machine with qemu installed (via <a href="http://brew.sh" class="urlextern" title="http://brew.sh" rel="ugc nofollow">Homebrew</a>)</div>
+</li>
+<li class="level1"><div class="li"> Hypervisor with VMware ESXi, Fusion, Player, or Workstation installed </div>
+</li>
+</ul>
+
+<p>
+First of all, you need to download the image from list above on your machine. After that you extract &amp; convert it to a vmdk image:
+</p>
+<pre class="code">gunzip openwrt-x86-generic-combined-ext4.img.gz
+qemu-img convert -f raw -O vmdk openwrt-x86-generic-combined-ext4.img openwrt-x86-generic-combined-ext4.vmdk</pre>
+
+<p>
+or
+</p>
+<pre class="code">yum -y install qemu-img
+wget https://downloads.openwrt.org/chaos_calmer/15.05/x86/64/openwrt-15.05-x86-64-combined-ext4.img.gz
+gunzip openwrt-15.05-x86-64-combined-ext4.img.gz
+qemu-img convert -f raw -O vmdk openwrt-15.05-x86-64-combined-ext4.img openwrt-15.05-x86-64-combined-ext4.vmdk</pre>
+
+<p>
+or on a Mac
+</p>
+<pre class="code">brew install qemu
+qemu-img convert -f raw -O vmdk ~/Downloads/openwrt-15.05-x86-64-combined-ext4.img openwrt-15.05-x86-64-combined-ext4.vmdk</pre>
+
+<p>
+after that, just create a new VM in Fusion, Workstation, or ESXi with “Linux\Other Linux 32-bit” with LSI BUS Logic &amp; add the vmdk there. Use Intel PRO/1000 Network adapters. This may require editing the .vmx file to include following definition:
+<em>(On Workstation 10, the e1000 gave a corrupted vmx file. Using V6 machine type did work. So it seems somewhere between V6.5 and V10 VMware dropped support for the e1000 driver and/or the virtualDev keyword.)</em>
+</p>
+<pre class="code">ethernet0.virtualDev = &quot;e1000&quot;</pre>
+
+<p>
+On Fusion I had to use the IDE drive controller type. This also applies to recent ESXi versions, just switch the Virtual Device Node from default SCSI controller 0 to IDE 0. Also, recent OpenWRT and ESXi versions do support running VMXNET3 virtual NIC so you can achieve 10GE speeds. 
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Things you need&quot;,&quot;hid&quot;:&quot;things_you_need&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;633-2755&quot;} -->
+<h2 class="sectionedit4" id="quick_start">Quick Start</h2>
+<div class="level2">
+
+<p>
+NB: The first network interface is <abbr title="Local Area Network">LAN</abbr>, and the second is <abbr title="Wide Area Network">WAN</abbr>.
+</p>
+
+<p>
+⚠️This info is obsolete⚠️
+</p>
+
+<p>
+Follow these steps to get an Up to Date VM with the latest code running on ESX in 15 minutes:
+</p>
+<ol>
+<li class="level1"><div class="li"> you can download an OVA image from the following location: <a href="https://www.dropbox.com/s/ao805tl33mqe0an/openwrt15cc.ova" class="urlextern" title="https://www.dropbox.com/s/ao805tl33mqe0an/openwrt15cc.ova" rel="ugc nofollow">https://www.dropbox.com/s/ao805tl33mqe0an/openwrt15cc.ova</a><br/>
+This image was made by Iben in September 2015 based on a July build of CHAOS CALMER 15.05 trunk r46767</div>
+</li>
+<li class="level1"><div class="li"> Import the OVA to VMware ESXi (tested with latest version 6 in July 2016)<br/>
+The base image only has 1 virtual NIC setup with <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr></div>
+</li>
+<li class="level1"><div class="li"> Power on the VM - observe the MAC Address - find that on you <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> server</div>
+</li>
+<li class="level1"><div class="li"> Confirm the OpenWrt VM&#039;s <abbr title="Internet Protocol">IP</abbr> address by opening the console </div>
+</li>
+<li class="level1"><div class="li"> Press enter to get a prompt</div>
+</li>
+<li class="level1"><div class="li"> Type <code>ifconfig | more</code> to see the <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> assigned <abbr title="Internet Protocol">IP</abbr> address for the Bridge assigned to the NIC</div>
+</li>
+<li class="level1"><div class="li"> If you don&#039;t have a <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> server on your network you can set the <abbr title="Internet Protocol">IP</abbr> Address manually: <code>vi /etc/config/network</code><br/>
+The whole goal here is to get the OpenWrt VM on the network so you can hit the LuCI Web User Interface with a web browser. This way we can update the base image.</div>
+</li>
+<li class="level1"><div class="li"> Once you&#039;ve logged in to the LuCI web interface set a root password so you can ssh in</div>
+</li>
+<li class="level1"><div class="li"> With the Web UI navigate to the System/Flash Operations page and find this text: <em>Flash new firmware image - Upload a sysupgrade-compatible image here to replace the running firmware</em>. Check “Keep settings” to retain the current configuration (requires an OpenWrt compatible firmware image).</div>
+</li>
+<li class="level1"><div class="li"> On your admin system with the web browser download the latest file to prepare for the flash upgrade of OpenWrt: <a href="https://downloads.openwrt.org/chaos_calmer/15.05.1/x86/generic/openwrt-15.05.1-x86-generic-combined-ext4.img.gz" class="urlextern" title="https://downloads.openwrt.org/chaos_calmer/15.05.1/x86/generic/openwrt-15.05.1-x86-generic-combined-ext4.img.gz" rel="ugc nofollow">https://downloads.openwrt.org/chaos_calmer/15.05.1/x86/generic/openwrt-15.05.1-x86-generic-combined-ext4.img.gz</a>  ←- this was the most current available from <a href="https://downloads.openwrt.org/" class="urlextern" title="https://downloads.openwrt.org/" rel="ugc nofollow">https://downloads.openwrt.org/</a> dated 16 March 2016 (last checked 11 Sept 2016)</div>
+</li>
+<li class="level1"><div class="li"> Then upload that to your running OpenWrt system and click “Flash Image...”</div>
+</li>
+<li class="level1"><div class="li"> Reboot and login again.</div>
+</li>
+<li class="level1"><div class="li"> Now you can add the second NIC to use the OpenWrt VM as a <abbr title="Wide Area Network">WAN</abbr> router. I set mine up with both <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> and Static <abbr title="Internet Protocol">IP</abbr> addresses for the <abbr title="Wide Area Network">WAN</abbr> - and the <abbr title="Local Area Network">LAN</abbr> interface was configured as a <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> server.</div>
+</li>
+<li class="level1"><div class="li"> To prepare for testing: install iperf3 and nmap from the System/Software page of the Web UI.</div>
+</li>
+<li class="level1"><div class="li"> See the testing section below for details...</div>
+</li>
+<li class="level1"><div class="li"> That&#039;s pretty much it. I&#039;m very happy with this new setup.  I was also looking at M0n0wall (monowall), and pfsense to run as VMs but OpenWrt has a lot more going for it as far as an Open Source eco-system and developer/vendor support.</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Quick Start&quot;,&quot;hid&quot;:&quot;quick_start&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:4,&quot;range&quot;:&quot;2756-5385&quot;} -->
+<h3 class="sectionedit5" id="testing">Testing</h3>
+<div class="level3">
+<ol>
+<li class="level1"><div class="li"> Start the server on OpenWrt: <code>iperf3 -s</code> </div>
+</li>
+<li class="level1"><div class="li"> Download the iperf3 binaries for various Operating Systems from here: <a href="https://iperf.fr/iperf-download.php" class="urlextern" title="https://iperf.fr/iperf-download.php" rel="ugc nofollow">https://iperf.fr/iperf-download.php</a></div>
+</li>
+<li class="level1"><div class="li"> Then install and run the client on other machines on your network.</div>
+</li>
+<li class="level1"><div class="li"> <code>iperf3 -c &lt;ip-address-of-the-server&gt;</code></div>
+</li>
+</ol>
+
+<p>
+Here are some results from my system:
+</p>
+<ul>
+<li class="level1"><div class="li"> 2012 MacBook with 802.11n on 5GHz -→ 284 Mbits/sec</div>
+</li>
+<li class="level2"><div class="li"> 2011 MacMini with CentOS 7.1 -→ 958 Mbits/sec</div>
+</li>
+<li class="level2"><div class="li"> Ubuntu VM running on same old Dell T110 ESXi host and OpenWrt VM -→ 4.14 Gbits/sec </div>
+</li>
+</ul>
+
+<p>
+As you can see - the OpenWrt virtual machine running on VMware ESX is very capable of keeping up with your home internet router needs! And this is with only 1 virtual CPU and no tuning at all.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Testing&quot;,&quot;hid&quot;:&quot;testing&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:5,&quot;range&quot;:&quot;5386-6118&quot;} -->
+<h3 class="sectionedit6" id="todo_list">ToDo List</h3>
+<div class="level3">
+
+<p>
+Here&#039;s a wish list of things we would like to accomplish with OpenWrt - consider this technical debt. 
+</p>
+
+<p>
+(Is there a better place to make these requests?)
+</p>
+<ol>
+<li class="level1"><div class="li"> install open-vm-tools to enhance support on VMware hypervisors (possible via packages sources and LuCI or opkg)</div>
+</li>
+<li class="level1"><div class="li"> use vmxnet3 paravirtualized network interface </div>
+</li>
+<li class="level1"><div class="li"> learn how to create fresh builds from scratch</div>
+</li>
+<li class="level1"><div class="li"> install cloud-init capabilities to allow auto-configuration on OpenStack based clouds like OPNFV</div>
+</li>
+<li class="level1"><div class="li"> create jenkins job as part of CI to download and convert the raw image to vmdk with each build</div>
+</li>
+<li class="level1"><div class="li"> create jenkins job as part of CI to download and convert the raw image to qcow2 with each build</div>
+</li>
+<li class="level1"><div class="li"> do these conversions for both stable and trunk</div>
+</li>
+<li class="level1"><div class="li"> integrate OpenWrt into the CI Pipeline for other network testing projects like OPNFV</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;ToDo List&quot;,&quot;hid&quot;:&quot;todo_list&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:6,&quot;range&quot;:&quot;6119-6952&quot;} -->
+<h2 class="sectionedit7" id="disk_size_issues">Disk Size Issues</h2>
+<div class="level2">
+
+<p>
+Disk size and problems with veeam backup and enlarging the disk
+Veeam backup and VMware will complain about the size of the virtual disk provided by the OpenWrt download
+because the disk is not multiple of 1KB. (this means: no backups available, and could be crucial
+in production environments)
+</p>
+
+<p>
+VMware won&#039;t let you enlarge the disk in the normal way, so one simple way is:
+</p>
+<ol>
+<li class="level1"><div class="li"> make a snapshot of the vm, for possible rollback</div>
+</li>
+<li class="level1"><div class="li"> move the original disk (from OpenWrt downloads) on ide 0:1</div>
+</li>
+<li class="level1"><div class="li"> add a new disk, with a whole size, like 128 <abbr title="Megabyte">MB</abbr> , on ide 0:0</div>
+</li>
+<li class="level1"><div class="li"> use <code>sysrescuecdiso</code></div>
+</li>
+<li class="level1"><div class="li"> start the vm with the iso</div>
+</li>
+<li class="level1"><div class="li"> with dd copy the disc on ide 0:1 to ide 0:0 like <code>dd if=/dev/sdb of=/dev/sda</code></div>
+</li>
+<li class="level1"><div class="li"> enter <code>fdisk /dev/sda</code> and write the partition table (without making changes, this helps sysrescuecd to see the partitions properly)</div>
+</li>
+<li class="level1"><div class="li"> do <code>fsck -f</code> on the sda2 partition</div>
+</li>
+<li class="level1"><div class="li"> with <code>fdisk</code> resize the sda2 partition to occupy all the space available (but still starting with the same sector of before, normally 9135)</div>
+</li>
+<li class="level1"><div class="li"> use <code>resize2fs /dev/sda2</code></div>
+</li>
+<li class="level1"><div class="li"> do <code>fsck -f /dev/sda2</code></div>
+</li>
+<li class="level1"><div class="li"> restart the machine and boot with OpenWrt check that the system uses the new partition</div>
+</li>
+<li class="level1"><div class="li"> stop the machine, delete the previous hd (with less than 128MB)</div>
+</li>
+<li class="level1"><div class="li"> restart the machine and verify that everything is ok.</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Disk Size Issues&quot;,&quot;hid&quot;:&quot;disk_size_issues&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:7,&quot;range&quot;:&quot;6953-8285&quot;} -->
+<h2 class="sectionedit8" id="community">Community</h2>
+<div class="level2">
+
+<p>
+Please use these images in your home and work labs and provide any feedback you might have.
+</p>
+
+<p>
+Feel free to update this wiki page with your results.
+</p>
+
+<p>
+There is some feedback that the newer images are not booting properly.  Has anyone else run into this issue?
+</p>
+
+<p>
+&lt;html&gt;
+&lt;blockquote class=“twitter-tweet” data-lang=“en”&gt;&lt;p lang=“en” dir=“ltr”&gt;&lt;a href=“<a href="https://twitter.com/iben" class="urlextern" title="https://twitter.com/iben" rel="ugc nofollow">https://twitter.com/iben</a>”&gt;@iben&lt;/a&gt; learn , well, your quickstart ova works great. Following the instructions in the paragraph above it by the letter doesn&amp;#39;t. /shrug .&lt;/p&gt;&amp;mdash; Phoenixxl (@Phoenixxl) &lt;a href=“<a href="https://twitter.com/Phoenixxl/status/775043516070260740" class="urlextern" title="https://twitter.com/Phoenixxl/status/775043516070260740" rel="ugc nofollow">https://twitter.com/Phoenixxl/status/775043516070260740</a>”&gt;September 11, 2016&lt;/a&gt;&lt;/blockquote&gt;
+&lt;script async src=“<em>platform.twitter.com/widgets.js” charset=“utf-8”&gt;&lt;/script&gt;
+&lt;/html&gt;
+
+==== Upgrade to 19.07.5 from ova ====
+
+  - Create a snapshot from ESXI UI to allow easy rollback in case of issues
+  - Use the following image from LuCi: <a href="https://downloads.openwrt.org/releases/19.07.5/targets/x86/generic/openwrt-19.07.5-x86-generic-combined-squashfs.img.gz" class="urlextern" title="https://downloads.openwrt.org/releases/19.07.5/targets/x86/generic/openwrt-19.07.5-x86-generic-combined-squashfs.img.gz" rel="ugc nofollow">https://downloads.openwrt.org/releases/19.07.5/targets/x86/generic/openwrt-19.07.5-x86-generic-combined-squashfs.img.gz</a>
+  - You should be able to access console from ESXI, but no <abbr title="Internet Protocol version 4">IPv4</abbr> network will be available
+  - Beware of keyboard layout of the console which is qwerty, type ifconfig and find <abbr title="Internet Protocol version 6">IPv6</abbr> address
+  - From LuCi, go to Network/Interface and click edit on br-lan without doing any change, and save. The configuration will be automatically fixed.
+  - Reboot your OpenWRT VM, you should then get the <abbr title="Internet Protocol version 4">IPv4</abbr> address back.
+
+Here is an upgraded OVA VM export with version 19.07.5, using ext4 instead of squashfs and an extended /overlay filesystem, with <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> enabled instead of a static <abbr title="Internet Protocol">IP</abbr> for br-lan interface: <a href="https://www.dropbox.com/s/4b0dy8d8iqf8a91/OpenWRT_x86_64_19.07.05.ova?dl=0" class="urlextern" title="https://www.dropbox.com/s/4b0dy8d8iqf8a91/OpenWRT_x86_64_19.07.05.ova?dl=0" rel="ugc nofollow">https://www.dropbox.com/s/4b0dy8d8iqf8a91/OpenWRT_x86_64_19.07.05.ova?dl=0</a>
+
+----
+
+==== Upgraded/Updated OVA for OpenWRT21 ====
+
+After import of the previous OVA-file to VMware Sphere, I was able to upgrade to the latest OpenWrt version (21-00-RC3).
+
+This machine, </em>OpenWRT-21<em> has
+  * 2 CPU
+  * 2 <abbr title="Gigabyte">GB</abbr>
+  * 2 NiCs 
+    * <abbr title="Wide Area Network">WAN</abbr> defined as <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> client
+    * <abbr title="Local Area Network">LAN</abbr> static address 192.168.1.1 as <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> server
+  * Compatibility ESXi 5.0 and later (VM version 8)
+  * Installed VMware tools, as well as vnet drivers
+</p>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:9,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_center wrap_round wrap_download plugin_wrap" style="width: 60%;">
+<p>
+<a href="https://www.dropbox.com/s/nljp8todp99qggn/OpenWRT21.ova" class="urlextern" title="https://www.dropbox.com/s/nljp8todp99qggn/OpenWRT21.ova" rel="ugc nofollow">https://www.dropbox.com/s/nljp8todp99qggn/OpenWRT21.ova</a>
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:10,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+
+
+
+
+==== Example Issues seen during VMWare Installs ====
+
+VMDK (1st method): e1000 interface is found/loads intermittently. 
+
+Corresponds to Seg Fault errors in <strong>kmodloader</strong> when loading <strong>libuclibc</strong>. 
+
+=== Build Summary ===
+
+
+  * VMWare ESXi 6.1
+  * 1 CPU
+  * 512 <abbr title="Megabyte">MB</abbr> Memory
+  * Image Used for VMDK:  <a href="https://downloads.openwrt.org/chaos_calmer/15.05/x86/64/openwrt-15.05-x86-64-combined-ext4.img.gz" class="urlextern" title="https://downloads.openwrt.org/chaos_calmer/15.05/x86/64/openwrt-15.05-x86-64-combined-ext4.img.gz" rel="ugc nofollow">https://downloads.openwrt.org/chaos_calmer/15.05/x86/64/openwrt-15.05-x86-64-combined-ext4.img.gz</a>
+  * Extraneous devices (USB, etc) removed 
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Community&quot;,&quot;hid&quot;:&quot;community&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:8,&quot;range&quot;:&quot;8286-&quot;} -->

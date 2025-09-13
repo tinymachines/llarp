@@ -1,0 +1,120 @@
+
+<h1 class="sectionedit1" id="firewall_usage_guide">Firewall usage guide</h1>
+<div class="level1">
+
+<p>
+This section contains useful information and best-practice guides for
+configuring <a href="/docs/guide-user/firewall/overview" class="wikilink1" title="docs:guide-user:firewall:overview" data-wiki-id="docs:guide-user:firewall:overview">firewall3</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Firewall usage guide&quot;,&quot;hid&quot;:&quot;firewall_usage_guide&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-167&quot;} -->
+<h2 class="sectionedit2" id="rules">Rules</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Rules&quot;,&quot;hid&quot;:&quot;rules&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;168-185&quot;} -->
+<h3 class="sectionedit3" id="names">Names</h3>
+<div class="level3">
+
+<p>
+Depending on network topology, there can be a large number of fw3 rules.
+For maintenance, and debugging, it helps to create a naming scheme to enter in the <code>name</code> option of the <a href="/docs/guide-user/firewall/firewall_configuration" class="wikilink1" title="docs:guide-user:firewall:firewall_configuration" data-wiki-id="docs:guide-user:firewall:firewall_configuration">config sections</a>.
+Use whatever pattern works well for you.
+</p>
+
+<p>
+One possible pattern for rule names is: <strong>target-port-source-dest</strong>, where:
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong>target</strong> is the netfilter target,</div>
+</li>
+<li class="level1"><div class="li"> <strong>port</strong> is the port number (see <a href="https://tools.ietf.org/html/rfc793#section-2.7" class="urlextern" title="https://tools.ietf.org/html/rfc793#section-2.7" rel="ugc nofollow">RFC 793, Section 2.7</a>),</div>
+</li>
+<li class="level1"><div class="li"> <strong>source</strong> is the zone, device, or specific station the packet originates from, and...</div>
+</li>
+<li class="level1"><div class="li"> <strong>dest</strong> is the zone, device, or specific station the packet is destined for</div>
+</li>
+</ul>
+
+<p>
+Examples:
+</p>
+
+<p>
+ACCEPT a <abbr title="Secure Shell">SSH</abbr> request from any device in the <abbr title="Wide Area Network">WAN</abbr> zone of the router to any device in the <abbr title="Local Area Network">LAN</abbr> zone.
+</p>
+<pre class="code bash">option name <span class="st_h">'ACCEPT-SSH-WAN-LAN'</span></pre>
+
+<p>
+ACCEPT an <abbr title="Secure Shell">SSH</abbr> request from any device in the <abbr title="Wide Area Network">WAN</abbr> zone to the router.
+This is only necessary if the default rule and <abbr title="Wide Area Network">WAN</abbr> zone config rule are set to REJECT or DROP.
+</p>
+<pre class="code bash">option name <span class="st_h">'ACCEPT-SSH-WAN-DEVICE'</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Names&quot;,&quot;hid&quot;:&quot;names&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;186-1277&quot;} -->
+<h3 class="sectionedit4" id="enabling_or_disabling">Enabling or disabling</h3>
+<div class="level3">
+
+<p>
+The <code>enabled</code> option is defined for each functional section and defaulted to <em>true</em>.
+To override it add <code>option enabled &#039;0</code>&#039; to a particular rule (or toggle the LuCI <em>Network → Firewall → Traffic Rule → <strong>Enable</strong></em> checkbox.)
+</p>
+
+<p>
+This is very useful when adding a rule and quickly enabling/disabling it.
+</p>
+
+<p>
+For example, the following rule disables <abbr title="Secure Shell">SSH</abbr> access from a particular station on the <abbr title="Wide Area Network">WAN</abbr>-side of the
+<a href="/docs/guide-user/firewall/fw3_configurations/fw3_ref_topo" class="wikilink1" title="docs:guide-user:firewall:fw3_configurations:fw3_ref_topo" data-wiki-id="docs:guide-user:firewall:fw3_configurations:fw3_ref_topo">reference network</a> to devices on the <abbr title="Local Area Network">LAN</abbr>-side.
+Note, for production, it is probably easier to use a MAC address instead of setting up a static <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> lease and adding separate rules for <abbr title="Internet Protocol version 4">IPv4</abbr> and <abbr title="Internet Protocol version 6">IPv6</abbr>.
+</p>
+<pre class="code bash">config rule
+	option	src		<span class="st_h">'wan'</span>
+	option	dest		<span class="st_h">'lan'</span>
+	option	proto		<span class="st_h">'tcp'</span>
+	option	dest_port	<span class="st_h">'22'</span>
+	option	src_ip		<span class="st_h">'192.168.3.171'</span>
+	option	target		<span class="st_h">'REJECT'</span>
+	option	name		<span class="st_h">'REJECT-SSH-WANSTA-LAN'</span>
+	option	enabled		<span class="st_h">'0'</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Enabling or disabling&quot;,&quot;hid&quot;:&quot;enabling_or_disabling&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:4,&quot;range&quot;:&quot;1278-2215&quot;} -->
+<h3 class="sectionedit5" id="debugging">Debugging</h3>
+<div class="level3">
+
+<p>
+It is important to test each firewall rule you have added.
+If it works, GREAT!
+</p>
+
+<p>
+If it does not produce the desired result then it is almost certainly a problem with the resulting netfilter rule(s) or rule order.
+See <a href="/docs/guide-user/firewall/netfilter_iptables/netfilter_management" class="wikilink1" title="docs:guide-user:firewall:netfilter_iptables:netfilter_management" data-wiki-id="docs:guide-user:firewall:netfilter_iptables:netfilter_management">Openwrt Netfilter Management</a> for tips on debugging the problem.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Debugging&quot;,&quot;hid&quot;:&quot;debugging&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:5,&quot;range&quot;:&quot;2216-2585&quot;} -->
+<h2 class="sectionedit6" id="default_configuration">Default configuration</h2>
+<div class="level2">
+
+<p>
+When the openwrt image is first installed on the target device, it contains a “safe” <code>/etc/config/firewall</code> file.
+This is a useful file to study and potentially save for backup.
+Note there are a large number of rules commented out that could be uncommented for your use.
+</p>
+
+<p>
+It will generally need to be modified for your needs.
+</p>
+
+<p>
+The original source for the firewall configuration file is in the firewall package source as <code>firewall.config</code>.
+This is installed to the root file system for the image.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Default configuration&quot;,&quot;hid&quot;:&quot;default_configuration&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:6,&quot;range&quot;:&quot;2586-&quot;} -->

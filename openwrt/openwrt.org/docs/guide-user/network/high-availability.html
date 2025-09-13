@@ -1,0 +1,354 @@
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> most of this assumes you&#039;re familiar with openwrt, basic networking concepts and are able to tinker around the command-line <img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" />
+</p>
+
+<h1 class="sectionedit1" id="high_availability">High availability</h1>
+<div class="level1">
+
+<p>
+<em>High availability</em> is a term that can be used to refer to systems that are designed to remain functional despite some hardware and/or software failures and/or despite planned maintenance (e.g. upgrades). Actual measured availability (e.g. percentage of time or requests that succeed) can vary.
+</p>
+
+<p>
+This page describes a simple two router setup, in an active/backup configuration.
+The two devices will share a virtual ip address that hosts on the lan can use as a gateway to reach the internet.
+In case the active router fails or is rebooted, a backup router will take over.
+</p>
+
+<p>
+We&#039;re using keepalived to implement healthchecking and ip failover, and conntrack-tools to implement firewall/nat syncing.
+</p>
+
+<p>
+Most of openwrt configuration required (but not all) is doable from luci web ui as well.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;High availability&quot;,&quot;hid&quot;:&quot;high_availability&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;134-954&quot;} -->
+<h2 class="sectionedit2" id="preparation_assumptions_description_of_environment">Preparation, assumptions, description of environment</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> You have 2 openwrt routers and a static <abbr title="Wide Area Network">WAN</abbr> <abbr title="Internet Protocol">IP</abbr>. (could also be a private <abbr title="Internet Protocol">IP</abbr>+<abbr title="Demilitarized Zone">DMZ</abbr>).</div>
+</li>
+<li class="level1"><div class="li"> If you&#039;re not doing <abbr title="Network Address Translation">NAT</abbr> or connection tracking based firewalling, skip the conntrackd/conntrack-tools sections.</div>
+</li>
+<li class="level1"><div class="li"> <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> dynamic <abbr title="Wide Area Network">WAN</abbr> <abbr title="Internet Protocol">IP</abbr> is possible with keepalived, but requires extra scripting and is not going to be described here.</div>
+</li>
+<li class="level1"><div class="li"> VPNs and tunnel setups and failing those over is not covered.</div>
+</li>
+<li class="level1"><div class="li"> Failing over PPPoE <abbr title="Wide Area Network">WAN</abbr> is not implemented here, best bet: let the modem do PPPoE and setup your virtual wan ip to <abbr title="Demilitarized Zone">DMZ</abbr>.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Preparation, assumptions, description of environment&quot;,&quot;hid&quot;:&quot;preparation_assumptions_description_of_environment&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;955-1534&quot;} -->
+<h2 class="sectionedit3" id="individual_router_configuration">Individual Router Configuration</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Individual Router Configuration&quot;,&quot;hid&quot;:&quot;individual_router_configuration&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;1535-1579&quot;} -->
+<h3 class="sectionedit4" id="configure_1st_openwrt_router">1. Configure 1st openwrt router</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> Internal <abbr title="Local Area Network">LAN</abbr> ip: 192.168.1.2/24   (change so 192.168.1.1 is available for initial configuration of 2nd router)</div>
+</li>
+<li class="level1"><div class="li"> <abbr title="Wide Area Network">WAN</abbr> <abbr title="Internet Protocol">IP</abbr>, gateway: static 192.168.0.2/24 gw 192.168.0.1 metric 10 (using double nat / dmz on the isp provided router)</div>
+</li>
+<li class="level1"><div class="li"> <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> on defaults is fine, we&#039;ll configure it later.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;1. Configure 1st openwrt router&quot;,&quot;hid&quot;:&quot;configure_1st_openwrt_router&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;1580-1914&quot;} -->
+<h3 class="sectionedit5" id="configure_2nd_openwrt_router">2. Configure 2nd openwrt router</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> Interface <abbr title="Local Area Network">LAN</abbr> ip: 192.168.1.3/24   (change so that when you connect the second router to the same network you can configure it)</div>
+</li>
+<li class="level1"><div class="li"> <abbr title="Wide Area Network">WAN</abbr> <abbr title="Internet Protocol">IP</abbr>, gateway: static 192.168.0.3/24 gw 192.168.0.1 metric 10 (using double nat / dmz on the isp provided router)</div>
+</li>
+<li class="level1"><div class="li"> <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> on defaults is fine for now, if you have any static leases in dhcp, or fixed host entries, make sure they&#039;re the same as on 1st router.</div>
+</li>
+</ul>
+
+</div>
+
+<h5 id="verification_and_troubleshooting">verification and troubleshooting</h5>
+<div class="level5">
+<ul>
+<li class="level1"><div class="li"> change a client to use gw 192.168.1.3 and dns 192.168.1.3, make sure second router is working as well</div>
+</li>
+<li class="level1"><div class="li"> hosts that have IPs issued with one dnsmasq might not be resolvable using the second dnsmasq, assigning static leases helps.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;2. Configure 2nd openwrt router&quot;,&quot;hid&quot;:&quot;configure_2nd_openwrt_router&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;1915-2630&quot;} -->
+<h2 class="sectionedit6" id="both_router_configuration">Both router configuration</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Both router configuration&quot;,&quot;hid&quot;:&quot;both_router_configuration&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;2631-2670&quot;} -->
+<h3 class="sectionedit7" id="configure_keepalived">3. Configure keepalived</h3>
+<div class="level3">
+
+<p>
+<strong>keepalived</strong> is a linux daemon that uses VRRP (Virtual Router Redundancy Protocol) to healthcheck and elect a router on the network that will serve a particular <abbr title="Internet Protocol">IP</abbr>. We&#039;ll be using a small subset of its features in our use case.
+</p>
+
+<p>
+<code>opkg update &amp;&amp; opkg install keepalived</code>
+</p>
+
+<p>
+Much work has been done to set up keepalived to use a uci config file, however this config file format has not yet been documented. The following example uses a keepalived.conf configuration, and will enter an option in the uci config file to read it on startup instead.
+</p>
+
+<p>
+The following configuration in <code>/etc/keepalived/keepalived.conf</code> assumes routers are symmetrical, ie. they&#039;re of the same priority, they start up in backup mode and they will not preemept the other router until they establish other router is gone.
+You will need to adjust the interfaces to match your device.
+</p>
+<pre class="code">! Configuration File for keepalived
+
+! failover E1 and I1 at the same time
+vrrp_sync_group G1 {
+  group {
+    E1
+    I1
+  }
+}
+
+! internal
+vrrp_instance I1 {
+  state backup
+  interface br-lan
+  virtual_router_id 51
+  priority 101
+  advert_int 1
+  virtual_ipaddress {
+    10.9.8.4/24
+  }
+  authentication {
+    auth_type PASS
+    auth_pass s3cret
+  }
+  nopreempt
+}
+
+! external
+vrrp_instance E1 {
+  state backup
+  interface eth0.2
+  virtual_router_id 51
+  priority 101
+  advert_int 1
+  virtual_ipaddress {
+    192.168.0.4/24
+  }
+  virtual_routes {
+    src 192.168.0.4 to 0.0.0.0/0 via 192.168.0.1 dev eth0.2 metric 5
+  }
+  authentication {
+    auth_type PASS
+    auth_pass s3cret
+  }
+  nopreempt
+}</pre>
+
+<p>
+To ensure `/etc/init.d/keepalived` script starts the daemon pointed at your config, write an entry in `/etc/config/keepalived` referencing your alternate configuation file. In 19.07 and earlier:
+</p>
+<pre class="code">config global_defs &#039;globals&#039;
+   option alt_config_file          &quot;/etc/keepalived/keepalived.conf&quot;</pre>
+
+<p>
+In 21.02 and later:
+</p>
+<pre class="code">config globals &#039;globals&#039;
+   option alt_config_file          &quot;/etc/keepalived/keepalived.conf&quot;</pre>
+
+<p>
+This will tell the keepalived service to use the configuration file you wrote at /etc/keepalived/keepalived.conf instead of building a new config file on the fly at /tmp/keepalived.conf using a uci-based config.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;3. Configure keepalived&quot;,&quot;hid&quot;:&quot;configure_keepalived&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;2671-4929&quot;} -->
+<h3 class="sectionedit8" id="configure_conntrackd">4. Configure conntrackd</h3>
+<div class="level3">
+
+<p>
+This step is optional, keepalived will be failing over (successing over?) the ip address with or without conntrackd, however, as <abbr title="Network Address Translation">NAT</abbr> relies on tracking connection state in a (network address) table that links external ip:port with internal ip:port (per given protocol, tcp or udp), connections might be broken on failover to backup openwrt instance. New connections (such as application level reconnects) will work just fine.
+This is because the backup instance will not know who to send outgoing packets to.
+</p>
+
+<p>
+Below is a simple config file for conntrackd. It would be advisable to navigate to /etc/conntrackd/ in order to rename the original config. Creating a brand new “conntrackd.conf” file allows you to browse back to the old one for reference. 
+</p>
+<pre class="code">
+Sync {
+    Mode FTFW {
+        DisableExternalCache Off
+        CommitTimeout 1800
+        PurgeTimeout 5
+    }
+
+    UDP {
+        IPv4_address &quot;ip addr of host router&quot;
+        IPv4_Destination_Address &quot;ip addr of partner router&quot;
+        Port 3780
+        Interface eth*
+        SndSocketBuffer 1249280
+        RcvSocketBuffer 1249280
+        Checksum on
+    }
+}
+
+General {
+    Nice -20
+    HashSize 32768
+    HashLimit 131072
+    LogFile on
+    Syslog on
+    LockFile /var/lock/conntrack.lock
+    UNIX {
+        Path /var/run/conntrackd.ctl
+        Backlog 20
+    }
+    NetlinkBufferSize 2097152
+    NetlinkBufferSizeMaxGrowth 8388608
+    Filter From Userspace {
+        Protocol Accept {
+            TCP
+            UDP
+            ICMP # This requires a Linux kernel &gt;= 2.6.31
+        }
+        Address Ignore {
+            IPv4_address 127.0.0.1 # loopback
+        }
+    }
+}
+
+</pre>
+
+<p>
+Run simple commands to verify functionality 
+</p>
+<pre class="code">
+Summary of connected devices:
+
+conntrackd -s
+</pre>
+<pre class="code">
+Resync nodes:
+
+conntrackd -n
+</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;4. Configure conntrackd&quot;,&quot;hid&quot;:&quot;configure_conntrackd&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:8,&quot;range&quot;:&quot;4930-6770&quot;} -->
+<h3 class="sectionedit9" id="configure_dhcp">5. Configure dhcp</h3>
+<div class="level3">
+
+<p>
+You&#039;ll want <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> (dnsmasq) to serve 192.168.0.4 (vip address) to hosts on the lan, both as their gateway and <abbr title="Domain Name System">DNS</abbr>.
+Here&#039;s an excerpt from <code>/etc/config/dhcp</code> that instructs dnsmasq to do that.
+</p>
+<pre class="code">...
+config dhcp &#039;lan&#039;
+        ...
+        option force &#039;1&#039;
+        list dhcp_option &#039;3,192.168.1.4&#039;
+        list dhcp_option &#039;6,192.168.1.4&#039;
+...</pre>
+
+<p>
+option force &#039;1&#039; is needed for dnsmasq to not deactivate when it sees the other dhcp server.
+dhcp_option 3 is gateway, dhcp_option 6 is <abbr title="Domain Name System">DNS</abbr>.
+</p>
+
+<p>
+Now we need to configure synchronization of the dhcp leases. Both devices will have a dhcp server and both will assign dynamic IPs to clients. But each will only update its own dhcp lease list.
+</p>
+
+<p>
+Dnsmasq stores current leases in a text file called <strong>/tmp/dhcp.leases</strong> by default in OpenWrt (it&#039;s also a configuration option you can change from UCI or Luci web interface (<strong>Network → <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> and <abbr title="Domain Name System">DNS</abbr> → Resolv and Hosts files → Lease File</strong> )
+</p>
+
+<p>
+This is what it looks like on my OpenWrt router VM
+</p>
+<pre class="code">root@VM-router:~# cat /tmp/dhcp.leases
+1633703346 00:1c:42:0f:b1:c7 192.168.222.244 hostname1 01:00:1c:42:0f:b1:c7
+1633703352 c4:41:1e:68:97:62 192.168.222.243 hostname2 01:c4:41:1e:68:97:62
+1633703161 c0:10:b1:2c:e4:e6 192.168.123.148 * 01:c0:10:b1:2c:e4:e6
+1633703141 e8:f4:08:1f:9c:67 192.168.123.69 hostname3 01:e8:f4:08:1f:9c:67</pre>
+
+<p>
+The first number is a timestamp (seconds since Unix “beginning of time” date which is somewhere in 1970, so it should be consistent with another device if the clocks are set correctly), then there is mac address of the device, then <abbr title="Internet Protocol">IP</abbr>, then hostname (I redacted the hostnames of my devices above), then it seems another mac address but I&#039;m not sure of what that is.
+</p>
+
+<p>
+So we add a simple and dumb script that just merges the files on both devices every X time, and it assumes that dnsmasq will automatically drop the entries when their lease is up.
+</p>
+
+<p>
+We must do the following on both routers.
+</p>
+
+<p>
+Import the public <abbr title="Secure Shell">SSH</abbr> key of the router 1 in router 2 (and the reverse) so they can scp to each other without writing the password
+this to read the current public key <a href="/docs/guide-user/security/dropbear.public-key.auth#extras" class="wikilink1" title="docs:guide-user:security:dropbear.public-key.auth" data-wiki-id="docs:guide-user:security:dropbear.public-key.auth">extras</a>
+and this to write the key <a href="/docs/guide-user/security/dropbear.public-key.auth#web_interface_instructions" class="wikilink1" title="docs:guide-user:security:dropbear.public-key.auth" data-wiki-id="docs:guide-user:security:dropbear.public-key.auth">web_interface_instructions</a>
+</p>
+
+<p>
+Then copy the following script to <strong>/bin/dnsmasq-lease-sync.sh</strong> and edit the <abbr title="Internet Protocol">IP</abbr> address (so it can point to the other router)
+</p>
+<pre class="code">#!/bin/sh
+#syncs contents of dnsmasq dhcp leases
+
+other_router=192.168.11.254
+
+scp root@$other_router:/tmp/dhcp.leases /tmp/dhcp_lease_temp
+
+cat /tmp/dhcp.leases /tmp/dhcp_lease_temp | sort -u &gt; /tmp/dhcp_lease_new
+
+mv /tmp/dhcp_lease_new /tmp/dhcp.leases</pre>
+
+<p>
+then make it executable
+</p>
+<pre class="code">chmod u+x /bin/dnsmasq-lease-sync.sh</pre>
+
+<p>
+Then add a scheduled task to execute this script every minute and enable cron (scheduled tasks) service. (can be done from luci as well <a href="/docs/guide-user/base-system/cron" class="wikilink1" title="docs:guide-user:base-system:cron" data-wiki-id="docs:guide-user:base-system:cron">cron</a>)
+</p>
+<pre class="code">echo &#039;*/1 * * * *  /bin/dnsmasq-lease-sync.sh&#039; &gt;&gt;  /etc/crontabs/root
+echo &#039;root&#039; &gt;&gt; /etc/crontabs/cron.update
+service cron start</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;5. Configure dhcp&quot;,&quot;hid&quot;:&quot;configure_dhcp&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:9,&quot;range&quot;:&quot;6771-9860&quot;} -->
+<h3 class="sectionedit10" id="sysupgrade_backup_add_dirs">6. Sysupgrade backup add dirs</h3>
+<div class="level3">
+
+<p>
+Add the following directories to <code>/etc/sysupgrade.conf</code>. (can be done from luci as well).
+</p>
+<pre class="code">...
+/etc/keepalived/
+/etc/conntrackd/
+/bin/dnsmasq-lease-sync.sh</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;6. Sysupgrade backup add dirs&quot;,&quot;hid&quot;:&quot;sysupgrade_backup_add_dirs&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:10,&quot;range&quot;:&quot;9861-10074&quot;} -->
+<h2 class="sectionedit11" id="testing_and_verification">Testing and verification</h2>
+<div class="level2">
+
+<p>
+TODO(risk): restarting keepalived with logread -f open, pulling cables with ssh / telnet / http sessions open, forcing dhcp renewal with tcpdump running, ensure 
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Testing and verification&quot;,&quot;hid&quot;:&quot;testing_and_verification&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:11,&quot;range&quot;:&quot;10075-&quot;} -->

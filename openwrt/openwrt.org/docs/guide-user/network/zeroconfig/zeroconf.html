@@ -1,0 +1,132 @@
+
+<h1 class="sectionedit1" id="zero_configuration_networking_in_openwrt">Zero configuration networking in OpenWrt</h1>
+<div class="level1">
+
+<p>
+Zero-configuration networking (zeroconf) is a methodology and a set of special technologies that automatically creates a usable computer network based on the Internet Protocol Suite (<abbr title="Transmission Control Protocol">TCP</abbr>/<abbr title="Internet Protocol">IP</abbr>) when computers or network peripherals are interconnected. It does not require manual operator intervention or special configuration servers.
+<a href="https://en.wikipedia.org/wiki/Zeroconf" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Zeroconf">Zeroconf</a>
+</p>
+
+<p>
+Zeroconf (aka bonjour) can be used for ad-hoc networks and internal service announcements (mDNS) without the need to configure <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> and <abbr title="Domain Name System">DNS</abbr> servers. All zeroconf enabled devices such as printers, scanners, wireless speakers, chromecast devices etc. automatically answer to zeroconf enabled clients via <abbr title="Internet Protocol version 4">IPv4</abbr> or <abbr title="Internet Protocol version 6">IPv6</abbr> multicast messages without a central registry. Therefore, it is only required to install a zeroconf solution on your OpenWrt router if you have one of the following use-cases:
+</p>
+<ul>
+<li class="level1"><div class="li"> Publish services though zeroconf that are not zeroconf enabled </div>
+</li>
+<li class="level1"><div class="li"> Automatically assign a link local <abbr title="Internet Protocol">IP</abbr> address without the need for a <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> server</div>
+</li>
+<li class="level1"><div class="li"> Configure conventional <abbr title="Domain Name System">DNS</abbr> servers using mDNS in a <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr>-like fashion</div>
+</li>
+</ul>
+
+<p>
+If you cannot discover an existing zeroconf service on your local network this is typically due to a multicast issue on layer 2. Sometimes the bridge between your <abbr title="Local Area Network">LAN</abbr> and your <abbr title="Wireless Local Area Network">WLAN</abbr> will block multicast packets. Also managed Ethernet switches can limit/block multicast packets by default. Unless you have specific use-cases like multicast video-streaming it is recommended to disable IGMP-snooping as this will ensure that multicast packets are treated like broadcast packages.
+</p>
+
+<p>
+OpenWrt offers several different packages supporting the different zeroconf implementations:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="/docs/guide-developer/mdns" class="wikilink1" title="docs:guide-developer:mdns" data-wiki-id="docs:guide-developer:mdns">umdns - OpenWrt&#039;s own package</a>. Recommended.</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://wiki.archlinux.org/title/avahi" class="urlextern" title="https://wiki.archlinux.org/title/avahi" rel="ugc nofollow">avahi</a> - A fairly full, but quite large implementation. Packages: avahi-daemon-service-ssh, avahi-daemon-service-http, avahi-utils, avahi-autoipd, avahi-dnsconfd</div>
+</li>
+<li class="level1"><div class="li"> Bonjour - provided by Apple&#039;s mDNSResponder. Packages: mdnsresponder, mdnsd</div>
+</li>
+<li class="level1"><div class="li"> A small <a href="/packages/pkgdata/announce" class="wikilink1" title="packages:pkgdata:announce" data-wiki-id="packages:pkgdata:announce">announce</a> automatically announces ssh, sftp, and http services</div>
+</li>
+<li class="level1"><div class="li"> Zeroconf/UPnP SSDP (Microsoft, incompatible with mDNS)</div>
+</li>
+<li class="level1"><div class="li"> Web Services on Devices Discovery, LLMNR. Install for Samba/Ksmbd servers for network shares to appear in Windows File Explorer / Network. Package: wsdd2</div>
+</li>
+</ul>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Many programs can be compiled with zeroconf support. However due to size restrictions this support is most likely deactivated by default. Compile your own image.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Currently there is little <abbr title="Domain Name System">DNS</abbr>-SD support on Windows, since it uses incompatible UPnP SSDP.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> The .local domain is reserved for (zeroconfig) multicast dns <a href="http://tools.ietf.org/html/rfc6762" class="urlextern" title="http://tools.ietf.org/html/rfc6762" rel="ugc nofollow">rfc6762</a>, <a href="https://en.wikipedia.org/wiki/.local" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/.local">.local</a>. Watch out for conflicts with your Dnsmasq configuration
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Zero configuration networking in OpenWrt&quot;,&quot;hid&quot;:&quot;zero_configuration_networking_in_openwrt&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-2826&quot;} -->
+<h2 class="sectionedit2" id="umdns">umdns</h2>
+<div class="level2">
+
+<p>
+In OpenWrt since OpenWRT 17 <a href="https://dev.openwrt.org/changeset/41345" class="urlextern" title="https://dev.openwrt.org/changeset/41345" rel="ugc nofollow">r41345</a>
+</p>
+
+<p>
+If you want your device to be discoverable in your network, you must define a hostname for it under /etc/config/system
+</p>
+<pre class="code"> option hostname &#039;your_openwrt_device&#039;</pre>
+
+<p>
+Even if the service comes with the base install, it must be enabled and started:
+</p>
+<pre class="code"># /etc/init.d/umdns enable
+# /etc/init.d/umdns start</pre>
+<pre class="code"> umdns: add the new openwrt mdns daemon
+
+this is still wip, you can use the following ubus calls.
+
+ubus call umdns update # triggers a scan
+ubus call umdns browse # look at the currenlty cached records
+ubus call umdns hosts # look at the currenlty cached hosts</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;umdns&quot;,&quot;hid&quot;:&quot;umdns&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;2827-3529&quot;} -->
+<h2 class="sectionedit3" id="avahi">avahi</h2>
+<div class="level2">
+
+<p>
+avahi-daemon: mDNS daemon
+avahi-utils: lookup utility avahi-browse
+</p>
+
+<p>
+In order to announce http and ssh services to the network, do:
+</p>
+<pre class="code">opkg update
+opkg install avahi-daemon-service-ssh avahi-daemon-service-http</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;avahi&quot;,&quot;hid&quot;:&quot;avahi&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:3,&quot;range&quot;:&quot;3530-3760&quot;} -->
+<h2 class="sectionedit4" id="mdnsresponder">mdnsresponder</h2>
+<div class="level2">
+
+<p>
+Install the <strong>mdnsresponder</strong> package:
+</p>
+<pre class="code"># opkg update
+# opkg install mdnsresponder
+</pre>
+
+<p>
+Edit the <strong>/etc/mDNSResponder.conf</strong> file, which contains a list of service descriptions:
+</p>
+<pre class="code">&quot;SSH Service&quot;
+_ssh._tcp. local
+22
+Local SSH Service
+
+&quot;Web Service&quot;
+_http._tcp. local
+80
+Local Web Service
+</pre>
+
+<p>
+Once all your services are configured, you can enable and start the mDNSResponder:
+</p>
+<pre class="code"># /etc/init.d/mDNSResponder enable
+# /etc/init.d/mDNSResponder start</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;mdnsresponder&quot;,&quot;hid&quot;:&quot;mdnsresponder&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:4,&quot;range&quot;:&quot;3761-&quot;} -->

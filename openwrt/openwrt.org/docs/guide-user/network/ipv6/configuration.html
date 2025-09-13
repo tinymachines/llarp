@@ -1,0 +1,607 @@
+
+<h1 class="sectionedit1" id="ipv6_configuration">IPv6 configuration</h1>
+<div class="level1">
+
+<p>
+See also:
+<a href="/docs/guide-user/network/routing/routes_configuration#ipv6_routes" class="wikilink1" title="docs:guide-user:network:routing:routes_configuration" data-wiki-id="docs:guide-user:network:routing:routes_configuration">Static IPv6 routes</a>,
+<a href="/docs/guide-user/network/routing/examples/routing_with_ipv6" class="wikilink1" title="docs:guide-user:network:routing:examples:routing_with_ipv6" data-wiki-id="docs:guide-user:network:routing:examples:routing_with_ipv6">IPv6 routing example</a>,
+<a href="/docs/guide-user/network/ipv6_ipv4_transitioning" class="wikilink1" title="docs:guide-user:network:ipv6_ipv4_transitioning" data-wiki-id="docs:guide-user:network:ipv6_ipv4_transitioning">IPv4/IPv6 transitioning</a>,
+<a href="/docs/guide-user/network/ipv6/ipv6_extras" class="wikilink1" title="docs:guide-user:network:ipv6:ipv6_extras" data-wiki-id="docs:guide-user:network:ipv6:ipv6_extras">IPv6 extras</a>,
+<a href="/docs/guide-user/network/ipv6/troubleshooting" class="wikilink1" title="docs:guide-user:network:ipv6:troubleshooting" data-wiki-id="docs:guide-user:network:ipv6:troubleshooting">IPv6 Troubleshooting</a>
+</p>
+
+<p>
+The default firmware provides full <abbr title="Internet Protocol version 6">IPv6</abbr> support with a DHCPv6 client (<code>odhcp6c</code>), an RA &amp; DHCPv6 Server (<code><a href="/docs/techref/odhcpd" class="wikilink1" title="docs:techref:odhcpd" data-wiki-id="docs:techref:odhcpd">odhcpd</a></code>) and a <abbr title="Internet Protocol version 6">IPv6</abbr> firewall (<code>ip6tables</code>).<br/>
+
+Also, the default installation of the web interface includes the package <code>luci-proto-ipv6</code>, required to configure <abbr title="Internet Protocol version 6">IPv6</abbr> from the <code>luci</code> web interface.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> If you are making a custom build please note that the packages stated above must be installed to provide the corresponding <abbr title="Internet Protocol version 6">IPv6</abbr> functionality.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;IPv6 configuration&quot;,&quot;hid&quot;:&quot;ipv6_configuration&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-909&quot;} -->
+<h3 class="sectionedit2" id="compliance">Compliance</h3>
+<div class="level3">
+
+<p>
+Our aim is to follow <a href="https://datatracker.ietf.org/doc/html/rfc7084" class="urlextern" title="https://datatracker.ietf.org/doc/html/rfc7084" rel="ugc nofollow">RFC 7084</a> where possible.<br/>
+
+Please notify us if you find any standard violations.
+</p>
+
+<p>
+The following requirements of <a href="https://datatracker.ietf.org/doc/html/rfc7084" class="urlextern" title="https://datatracker.ietf.org/doc/html/rfc7084" rel="ugc nofollow">RFC 7084</a> are currently known not to be met:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="https://datatracker.ietf.org/doc/html/rfc7084" class="urlextern" title="https://datatracker.ietf.org/doc/html/rfc7084" rel="ugc nofollow">RFC 7084</a> WAA-5 (SHOULD-requirement): The <abbr title="Network Time Protocol">NTP</abbr>-Server is requested and received but currently not processed or used.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Compliance&quot;,&quot;hid&quot;:&quot;compliance&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;910-1377&quot;} -->
+<h3 class="sectionedit3" id="general_features">General features</h3>
+<div class="level3">
+<ul>
+<li class="level1 node"><div class="li"> Prefix handling:</div>
+<ul>
+<li class="level2"><div class="li"> Management of prefixes, addresses and routes from upstream connections and local ULA-prefixes</div>
+</li>
+<li class="level2"><div class="li"> Management of prefix unreachable-routes, prefix deprecation (<a href="https://datatracker.ietf.org/doc/html/rfc7084" class="urlextern" title="https://datatracker.ietf.org/doc/html/rfc7084" rel="ugc nofollow">RFC 7084</a>) and prefix classes</div>
+</li>
+<li class="level2"><div class="li"> Distribution of prefixes onto downstream interfaces (including size, ID and class hints)</div>
+</li>
+<li class="level2"><div class="li"> Source-based policy routing to correctly handle multiple uplink interfaces, ingress policy filtering (<a href="https://datatracker.ietf.org/doc/html/rfc7084" class="urlextern" title="https://datatracker.ietf.org/doc/html/rfc7084" rel="ugc nofollow">RFC 7084</a>)</div>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;General features&quot;,&quot;hid&quot;:&quot;general_features&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;1378-1935&quot;} -->
+<h2 class="sectionedit4" id="upstream_configuration_for_wan_interfaces">Upstream configuration for WAN interfaces</h2>
+<div class="level2">
+
+<p>
+The following sections describe the configuration of <abbr title="Internet Protocol version 6">IPv6</abbr> connections to your <abbr title="Internet Service Provider">ISP</abbr> or an upstream router. Please note that most tunneling mechanisms like 6in4, 6rd and 6to4 may not work behind a <abbr title="Network Address Translation">NAT</abbr>-router.
+Multiple <abbr title="Internet Protocol version 6">IPv6</abbr> addresses can be assigned with <a href="/docs/guide-user/network/network_interface_alias" class="wikilink1" title="docs:guide-user:network:network_interface_alias" data-wiki-id="docs:guide-user:network:network_interface_alias">aliases</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Upstream configuration for WAN interfaces&quot;,&quot;hid&quot;:&quot;upstream_configuration_for_wan_interfaces&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;1936-2302&quot;} -->
+<h3 class="sectionedit5" id="native_ipv6_connection">Native IPv6 connection</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> Automatic bootstrap from SLAAC, stateless DHCPv6, stateful DHCPv6, DHCPv6-PD and any combination</div>
+</li>
+<li class="level1"><div class="li"> Handling of preferred and valid address and prefix lifetimes</div>
+</li>
+<li class="level1"><div class="li"> Duplicate address (DAD) and Link-<abbr title="Maximum Transmission Unit">MTU</abbr> detection</div>
+</li>
+<li class="level1"><div class="li"> DHCPv6 Extensions: Reconfigure, Information-Refresh, SOL_MAX_RT=3600</div>
+</li>
+<li class="level1"><div class="li"> DHCPv6 Extensions: RDNSS, <abbr title="Domain Name System">DNS</abbr> Search Domain, <abbr title="Network Time Protocol">NTP</abbr>, SIP, ds-lite, prefix exclusion (experimental)</div>
+</li>
+</ul>
+
+<p>
+For an uplink with native <abbr title="Internet Protocol version 6">IPv6</abbr>-connectivity you can use the following example configuration. It will work both for uplinks supporting DHCPv6 with Prefix Delegation and those that don&#039;t support DHCPv6-PD or DHCPv6 at all (SLAAC-only).
+</p>
+<pre class="code bash"><span class="co0"># cat /etc/config/network</span>
+config interface wan
+        option ipv6 <span class="nu0">1</span> <span class="co0"># only required for PPP-based protocols</span>
+        ...
+&nbsp;
+config interface wan6
+        option device   eth1 <span class="co0"># use same device as in wan-section or &quot;@wan&quot;</span>
+        option proto    dhcpv6
+&nbsp;
+config interface lan
+        option proto    static
+        option ip6assign <span class="nu0">60</span>
+        ...</pre>
+
+<p>
+See below for advanced configuration options of protocol <strong>dhcpv6</strong>.
+</p>
+
+</div>
+
+<h4 id="ppp-based_protocols_and_option_ipv6">PPP-based protocols and option ipv6</h4>
+<div class="level4">
+
+<p>
+PPP-based protocols - for example pppoe and pppoa - require that <code>option ipv6</code> is specified in the parent <code>config interface wan</code> section.
+See <a href="/docs/guide-user/network/wan/wan_interface_protocols" class="wikilink1" title="docs:guide-user:network:wan:wan_interface_protocols" data-wiki-id="docs:guide-user:network:wan:wan_interface_protocols">WAN interface protocols</a>. <strong>option ipv6</strong> can take the value:
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong>0</strong>: disable <abbr title="Internet Protocol version 6">IPv6</abbr> on the interface </div>
+</li>
+<li class="level1"><div class="li"> <strong>1</strong>: enable IPCP6 negotiation on the interface, but nothing else. If successful, the parent interface will be assigned a <a href="https://en.wikipedia.org/wiki/Link-local_address" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Link-local_address">link-local address</a> (prefix fe80::/10). All other <abbr title="Internet Protocol version 6">IPv6</abbr> configuration is made in the <code>wan6</code> interface which must be configured manually, as described below.</div>
+</li>
+<li class="level1"><div class="li"> <strong>auto</strong>: (default) enable <abbr title="Internet Protocol version 6">IPv6</abbr> on the interface. Spawn a virtual interface wan_6 (note the underscore) and start DHCPv6 client odhcp6c to manage prefix assignment. Ensure the lan interface has <code>option ip6assign 64</code> (or a larger prefix size) set to redistribute the received prefix downstream.</div>
+</li>
+</ul>
+
+<p>
+Further configuration options, if required, can be given in the <code>config interface wan6</code> section.
+</p>
+
+<p>
+Note: In order to successfully receive DHCPv6 advertisement unicast messages from the dhcp6s to OpenWrt dhcp6c, you will need to have firewall rule for the <abbr title="Wide Area Network">WAN</abbr> zone (already allowed in default):
+</p>
+<pre class="code bash"><span class="co0"># cat /etc/config/firewall</span>
+....
+config rule
+        option target <span class="st_h">'ACCEPT'</span>
+        option src <span class="st_h">'wan'</span>
+        option proto <span class="st_h">'udp'</span>
+        option dest_port <span class="st_h">'546'</span>
+        option name <span class="st_h">'Allow DHCPv6 replies'</span>
+        option family <span class="st_h">'ipv6'</span>
+        option src_port <span class="st_h">'547'</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Native IPv6 connection&quot;,&quot;hid&quot;:&quot;native_ipv6_connection&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;2303-4908&quot;} -->
+<h3 class="sectionedit6" id="protocol_dhcpv6">Protocol &quot;dhcpv6&quot;</h3>
+<div class="level3">
+
+<p>
+These are available options in uci configuration of client ipv6 interface (using the “dhcpv6” protocol).
+</p>
+<div class="table sectionedit7"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Name </th><th class="col1"> Type </th><th class="col2"> Required </th><th class="col3"> Default </th><th class="col4"> Description </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> <code>reqaddress</code> </td><td class="col1"> [try,force,none] </td><td class="col2"> no </td><td class="col3"> try </td><td class="col4"> Behaviour for requesting addresses </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> <code>reqprefix</code> </td><td class="col1"> [auto, no, 0-64, &lt;prefix/length&gt;] </td><td class="col2"> no </td><td class="col3"> auto </td><td class="col4"> Specifies the behavior for requesting <abbr title="Internet Protocol version 6">IPv6</abbr> prefixes. Numbers denote hinted prefix length (e.g., 0-64). If set to no, only a single <abbr title="Internet Protocol version 6">IPv6</abbr> address is requested for the <abbr title="Access Point">AP</abbr> itself, without a subnet for routing. Alternatively, a specific <abbr title="Internet Protocol version 6">IPv6</abbr> prefix and length can be specified in the &lt;prefix/length&gt; format (e.g., 2001:db8::/56), which allows requesting a specific <abbr title="Internet Protocol version 6">IPv6</abbr> prefix when dynamically issued by the upstream. </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> <code>clientid</code> </td><td class="col1"> hexstring </td><td class="col2"> no </td><td class="col3"> <em>DUID-LL (type 3)</em> </td><td class="col4"> Override client identifier in <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> requests (Option 1). The odhcp6c default is <code>00030001</code> concatenated with the <code>device</code> MAC address - see <a href="https://datatracker.ietf.org/doc/html/rfc8415#section-11.4" class="urlextern" title="https://datatracker.ietf.org/doc/html/rfc8415#section-11.4" rel="ugc nofollow">RFC 8415</a> </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> <code>ifaceid</code> </td><td class="col1"> ipv6 addr </td><td class="col2"> no </td><td class="col3"> <em>link-local identifier</em> </td><td class="col4"> Override the interface identifier for adresses received via RA (Router Advertisement) </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0"> <code>dns</code> </td><td class="col1"> list of ip addresses </td><td class="col2"> no </td><td class="col3"> <em>(none)</em> </td><td class="col4"> Supplement <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr>-assigned <abbr title="Domain Name System">DNS</abbr> server(s), or use only these if peerdns is 0 </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0"> <code>peerdns</code> </td><td class="col1"> boolean </td><td class="col2"> no </td><td class="col3"> <code>1</code> </td><td class="col4"> Use <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr>-provided <abbr title="Domain Name System">DNS</abbr> server(s) </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0"> <code>keep_ra_dnslifetime</code> </td><td class="col1"> boolean </td><td class="col2"> no </td><td class="col3"> <code>0</code> </td><td class="col4"> Ignore default lifetime for RDNSS records <a href="https://github.com/openwrt/odhcp6c/commit/d420f49396c627ce1072b83170889baf0720bc8b" class="urlextern" title="https://github.com/openwrt/odhcp6c/commit/d420f49396c627ce1072b83170889baf0720bc8b" rel="ugc nofollow">More info</a> </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0"> <code>defaultroute</code> </td><td class="col1"> boolean </td><td class="col2"> no </td><td class="col3"> <code>1</code> </td><td class="col4"> Whether to create an <abbr title="Internet Protocol version 6">IPv6</abbr> default route via the received gateway </td>
+	</tr>
+	<tr class="row9">
+		<td class="col0"> <code>reqopts</code> </td><td class="col1"> list of numbers </td><td class="col2"> no </td><td class="col3"> <em>(none)</em> </td><td class="col4"> Specifies a list of additional <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> options to request </td>
+	</tr>
+	<tr class="row10">
+		<td class="col0"> <code>defaultreqopts</code> </td><td class="col1"> boolean </td><td class="col2"> no </td><td class="col3"> <code>1</code> </td><td class="col4"> If set to <code>0</code>, do not request any options except those specified in <code>reqopts</code> </td>
+	</tr>
+	<tr class="row11">
+		<td class="col0"> <code>sendopts</code> </td><td class="col1"> string </td><td class="col2"> no </td><td class="col3"> <em>(none)</em> </td><td class="col4"> Space-separated list of additional <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> options to send to the server. Syntax: <code>option:value</code> where <code>option</code> is either an integer code or a symbolic name such as <code>hostname</code>. </td>
+	</tr>
+	<tr class="row12">
+		<td class="col0"> <code>noslaaconly</code> </td><td class="col1"> boolean </td><td class="col2"> no </td><td class="col3"> <code>0</code> </td><td class="col4"> Don&#039;t allow configuration via SLAAC (RAs) only (implied by reqprefix != no) </td>
+	</tr>
+	<tr class="row13">
+		<td class="col0"> <code>forceprefix</code> </td><td class="col1"> boolean </td><td class="col2"> no </td><td class="col3"> <code>0</code> </td><td class="col4"> Require presence of <abbr title="Internet Protocol version 6">IPv6</abbr> Prefix in received <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> message </td>
+	</tr>
+	<tr class="row14">
+		<td class="col0"> <code>norelease</code> </td><td class="col1"> boolean </td><td class="col2"> no </td><td class="col3"> <code>0</code> </td><td class="col4"> Don&#039;t send a RELEASE when the interface is brought down </td>
+	</tr>
+	<tr class="row15">
+		<td class="col0"> <code>ip6prefix</code> </td><td class="col1"> ipv6 prefix </td><td class="col2"> no </td><td class="col3"> <em>(none)</em> </td><td class="col4"> Use an (additional) user-provided <abbr title="Internet Protocol version 6">IPv6</abbr> prefix for distribution to clients </td>
+	</tr>
+	<tr class="row16">
+		<td class="col0"> <code>extendprefix</code> </td><td class="col1"> boolean </td><td class="col2"> no </td><td class="col3"> <code>0</code> </td><td class="col4"> On a 3GPP Mobile <abbr title="Wide Area Network">WAN</abbr> link, accept a /64 prefix via SLAAC and extend it on one downstream interface - see <a href="https://datatracker.ietf.org/doc/html/rfc7278" class="urlextern" title="https://datatracker.ietf.org/doc/html/rfc7278" rel="ugc nofollow">RFC 7278</a> </td>
+	</tr>
+	<tr class="row17">
+		<td class="col0"> <code>iface_dslite</code> </td><td class="col1"> logical interface </td><td class="col2"> no </td><td class="col3"> <em>(none)</em> </td><td class="col4"> Logical interface template for auto-configuration of DS-Lite (0 means disable DS-Lite autoconfiguration; every other value will autoconfigure DS-Lite when the AFTR-Name option is received) </td>
+	</tr>
+	<tr class="row18">
+		<td class="col0"> <code>zone_dslite</code> </td><td class="col1"> string </td><td class="col2"> no </td><td class="col3"> <em>(none)</em> </td><td class="col4"> Firewall zone of the logical DS-Lite interface </td>
+	</tr>
+	<tr class="row19">
+		<td class="col0"> <code>iface_map</code> </td><td class="col1"> string </td><td class="col2"> no </td><td class="col3"> <em>(none)</em> </td><td class="col4"> Logical interface template for auto-configuration of either map-e/map-t/lw6o4 autoconfiguration (0 means disable map-e/map-t/lw406 autoconfiguration; every other value will autoconfigure map-e/map-t/lw4o6 when the corresponding Softwire46 options are received) </td>
+	</tr>
+	<tr class="row20">
+		<td class="col0"> <code>zone_map</code> </td><td class="col1"> string </td><td class="col2"> no </td><td class="col3"> <em>(none)</em> </td><td class="col4"> Firewall zone of the logical map-e/map-t/lw6o4 interface </td>
+	</tr>
+	<tr class="row21">
+		<td class="col0"> <code>iface_464xlat</code> </td><td class="col1"> string </td><td class="col2"> no </td><td class="col3"> <em>(none)</em> </td><td class="col4"> Logical interface template for the 464xlat interface (0 means disable 464xlat autoconfiguration; every other value will try to autoconfigure 464xlat) </td>
+	</tr>
+	<tr class="row22">
+		<td class="col0"> <code>zone_464xlat</code> </td><td class="col1"> string </td><td class="col2"> no </td><td class="col3"> <em>(none)</em> </td><td class="col4"> Firewall zone of the logical 464xlat interface </td>
+	</tr>
+	<tr class="row23">
+		<td class="col0"> <code>zone</code> </td><td class="col1"> string </td><td class="col2"> no </td><td class="col3"> <em>(none)</em> </td><td class="col4"> Firewall zone to which the interface will be added </td>
+	</tr>
+	<tr class="row24">
+		<td class="col0"> <code>sourcefilter</code> </td><td class="col1"> boolean </td><td class="col2"> no </td><td class="col3"> <code>1</code> </td><td class="col4"> Whether to enable source based <abbr title="Internet Protocol version 6">IPv6</abbr> routing </td>
+	</tr>
+	<tr class="row25">
+		<td class="col0"> <code>vendorclass</code> </td><td class="col1"> string </td><td class="col2"> no </td><td class="col3"> <em>(none)</em> </td><td class="col4"> Vendor class to be included in the <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> messages (Option 16)</td>
+	</tr>
+	<tr class="row26">
+		<td class="col0"> <code>userclass</code> </td><td class="col1"> string </td><td class="col2"> no </td><td class="col3"> <em>(none)</em> </td><td class="col4"> User class to be be included in the <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> messages (Option 15)</td>
+	</tr>
+	<tr class="row27">
+		<td class="col0"> <code>delegate</code> </td><td class="col1"> boolean </td><td class="col2"> no </td><td class="col3"> <code>1</code> </td><td class="col4"> Whether to enable prefix delegation in case of DS-Lite/map/464xlat </td>
+	</tr>
+	<tr class="row28">
+		<td class="col0"> <code>soltimeout</code> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> <code>120</code> </td><td class="col4"> The maximum solicit timeout </td>
+	</tr>
+	<tr class="row29">
+		<td class="col0"> <code>fakeroute</code> </td><td class="col1"> boolean </td><td class="col2"> no </td><td class="col3"> <code>1</code> </td><td class="col4"> Fake default route when no route info via RA is received </td>
+	</tr>
+	<tr class="row30">
+		<td class="col0"> <code>ra_holdoff</code> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> <code>3</code> </td><td class="col4"> Minimum time in seconds between accepting RA updates </td>
+	</tr>
+	<tr class="row31">
+		<td class="col0"> <code>noclientfqdn</code> </td><td class="col1"> boolean </td><td class="col2"> no </td><td class="col3"> <code>0</code> </td><td class="col4 leftalign"> Don&#039;t send Client <abbr title="Fully Qualified Domain Name">FQDN</abbr> option (Option 39). The unset default uses the system hostname e.g. <code>OpenWrt</code>  </td>
+	</tr>
+	<tr class="row32">
+		<td class="col0"> <code>noacceptreconfig</code> </td><td class="col1"> boolean </td><td class="col2"> no </td><td class="col3"> <code>0</code> </td><td class="col4 leftalign"> Don&#039;t send Accept Reconfigure option <a href="https://github.com/openwrt/odhcp6c/commit/dc30922e418be6271ad177f3f9d4ecf0c1eb3f01" class="urlextern" title="https://github.com/openwrt/odhcp6c/commit/dc30922e418be6271ad177f3f9d4ecf0c1eb3f01" rel="ugc nofollow">More info</a>  </td>
+	</tr>
+	<tr class="row33">
+		<td class="col0"> <code>noserverunicast</code> </td><td class="col1"> boolean </td><td class="col2"> no </td><td class="col3"> <code>0</code> </td><td class="col4"> Ignore Server Unicast option <a href="https://github.com/openwrt/odhcp6c/commit/67ae6a71b5762292e114b281d0e329cc24209ae6" class="urlextern" title="https://github.com/openwrt/odhcp6c/commit/67ae6a71b5762292e114b281d0e329cc24209ae6" rel="ugc nofollow">More info</a> </td>
+	</tr>
+	<tr class="row34">
+		<td class="col0"> <code>skpriority</code> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> <code>0</code> </td><td class="col4 leftalign"> Set packet kernel priority <a href="https://github.com/openwrt/odhcp6c/commit/bcd283632ac13391aac3ebdd074d1fd832d76fa3" class="urlextern" title="https://github.com/openwrt/odhcp6c/commit/bcd283632ac13391aac3ebdd074d1fd832d76fa3" rel="ugc nofollow">More info</a>  </td>
+	</tr>
+	<tr class="row35">
+		<td class="col0"> <code>verbose</code> </td><td class="col1"> boolean </td><td class="col2"> no </td><td class="col3"> <code>0</code> </td><td class="col4"> Increase logging verbosity </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:7,&quot;range&quot;:&quot;5043-10293&quot;} -->
+<p>
+<strong>Note:</strong> To automatically configure ds-lite from dhcpv6, you need to create an interface with <code>option auto 0</code> and put its name as the &#039;iface_dslite&#039; parameter. In addition, you also need to add its name to a suitable firewall zone in /etc/config/firewall.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Protocol \&quot;dhcpv6\&quot;&quot;,&quot;hid&quot;:&quot;protocol_dhcpv6&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:6,&quot;range&quot;:&quot;4909-10554&quot;} -->
+<h3 class="sectionedit8" id="static_ipv6_connection">Static IPv6 connection</h3>
+<div class="level3">
+
+<p>
+Static configuration of the <abbr title="Internet Protocol version 6">IPv6</abbr> uplink is supported as well. The following example demonstrates this.
+</p>
+<pre class="code bash"><span class="co0"># cat /etc/config/network</span>
+config interface wan
+        option device   eth1
+        option proto    static
+        option ip6addr  <span class="nu0">2001</span>:db80::<span class="nu0">2</span><span class="sy0">/</span><span class="nu0">64</span>   <span class="co0"># Own address</span>
+        option ip6gw    <span class="nu0">2001</span>:db80::<span class="nu0">1</span>      <span class="co0"># Gateway address</span>
+        option ip6prefix <span class="nu0">2001</span>:db80:<span class="nu0">1</span>::<span class="sy0">/</span><span class="nu0">48</span> <span class="co0"># Prefix addresses for distribution to downstream interfaces</span>
+        option dns      <span class="nu0">2001</span>:db80::<span class="nu0">1</span>      <span class="co0"># DNS server</span>
+&nbsp;
+config interface lan
+        option proto    static
+        option ip6assign <span class="nu0">60</span>
+        ...</pre>
+
+<p>
+For advanced configuration options see below for the usable options in a <abbr title="Internet Protocol version 6">IPv6</abbr> “static” protocol:
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Static IPv6 connection&quot;,&quot;hid&quot;:&quot;static_ipv6_connection&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:8,&quot;range&quot;:&quot;10555-11284&quot;} -->
+<h3 class="sectionedit9" id="protocol_static_ipv6">Protocol &quot;static&quot;, IPv6</h3>
+<div class="level3">
+<div class="table sectionedit10"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign"> Name               </th><th class="col1 leftalign"> Type                  </th><th class="col2 leftalign"> Required                      </th><th class="col3 leftalign"> Default     </th><th class="col4 leftalign"> Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> <code>ip6addr</code>        </td><td class="col1 leftalign"> ipv6 address          </td><td class="col2 leftalign"> yes, if no <code>ipaddr</code> is set  </td><td class="col3 leftalign"> <em>(none)</em>  </td><td class="col4 leftalign"> Assign given <abbr title="Internet Protocol version 6">IPv6</abbr> address to this interface (CIDR notation)                                                                                                                                                                                                                                                                                                                                                                                                                                 </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> <code>ip6ifaceid</code>     </td><td class="col1 leftalign"> ipv6 suffix           </td><td class="col2 leftalign"> no                            </td><td class="col3 leftalign"> ::1         </td><td class="col4 leftalign"> Allowed values: &#039;eui64&#039;, &#039;random&#039;, fixed value like &#039;::1:2&#039;. It is advised to <strong>NOT</strong> use just &#039;::&#039; as this is a <a href="https://www.rfc-editor.org/rfc/rfc4291#section-2.6.1" class="urlextern" title="https://www.rfc-editor.org/rfc/rfc4291#section-2.6.1" rel="ugc nofollow">reserved anycast address</a>&#039;<br/>
+When <abbr title="Internet Protocol version 6">IPv6</abbr> prefix (like &#039;a:b:c:d::&#039;) is received from a delegating server, use the suffix (like &#039;::1&#039;) to form the <abbr title="Internet Protocol version 6">IPv6</abbr> address (&#039;a:b:c:d::1&#039;) for this interface. Useful with several routers in <abbr title="Local Area Network">LAN</abbr>. The option was introduced by <a href="http://git.openwrt.org/?p=project/netifd.git;a=commitdiff;h=0b0e5e2fc5b065092644a5c4717c0a03a9098dcf;hp=e9d2014a478807c7fac0581bb4a145901a3f23b4" class="urlextern" title="http://git.openwrt.org/?p=project/netifd.git;a=commitdiff;h=0b0e5e2fc5b065092644a5c4717c0a03a9098dcf;hp=e9d2014a478807c7fac0581bb4a145901a3f23b4" rel="ugc nofollow">this commit</a> to netifd in Jan 2015.  </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> <code>ip6gw</code>          </td><td class="col1 leftalign"> ipv6 address          </td><td class="col2 leftalign"> no                            </td><td class="col3 leftalign"> <em>(none)</em>  </td><td class="col4 leftalign"> Assign given <abbr title="Internet Protocol version 6">IPv6</abbr> default gateway to this interface                                                                                                                                                                                                                                                                                                                                                                                                                                         </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"> <code>ip6assign</code>      </td><td class="col1 leftalign"> prefix length         </td><td class="col2 leftalign"> no                            </td><td class="col3 leftalign"> <em>(none)</em>  </td><td class="col4 leftalign"> Delegate a prefix of given length to this interface (see Downstream configuration below)                                                                                                                                                                                                                                                                                                                                                                                                    </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 leftalign"> <code>ip6hint</code>        </td><td class="col1 leftalign"> prefix hint (hex)     </td><td class="col2 leftalign"> no                            </td><td class="col3 leftalign"> <em>(none)</em>  </td><td class="col4 leftalign"> Hint the subprefix-ID that should be delegated as hexadecimal number (see Downstream configuration below)                                                                                                                                                                                                                                                                                                                                                                                   </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0 leftalign"> <code>ip6prefix</code>      </td><td class="col1 leftalign"> ipv6 prefix           </td><td class="col2 leftalign"> no                            </td><td class="col3 leftalign"> <em>(none)</em>  </td><td class="col4 leftalign"> <abbr title="Internet Protocol version 6">IPv6</abbr> prefix routed here for use on other interfaces (Barrier Breaker and later only)                                                                                                                                                                                                                                                                                                                                                                                                        </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0 leftalign"> <code>ip6class</code>       </td><td class="col1 leftalign"> list of strings       </td><td class="col2 leftalign"> no                            </td><td class="col3 leftalign"> <em>(none)</em>  </td><td class="col4 leftalign"> Define the <abbr title="Internet Protocol version 6">IPv6</abbr> prefix-classes this interface will accept                                                                                                                                                                                                                                                                                                                                                                                                                                   </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0 leftalign"> <code>ip6deprecated</code>  </td><td class="col1 leftalign"> boolean               </td><td class="col2 leftalign"> no                            </td><td class="col3 leftalign"> <code>0</code>       </td><td class="col4 leftalign"> Set preferred lifetime of <abbr title="Internet Protocol version 6">IPv6</abbr> addresses to zero                                                                                                                                                                                                                                                                                                                                                                                                                                            </td>
+	</tr>
+	<tr class="row9">
+		<td class="col0 leftalign"> <code>dns</code>            </td><td class="col1 leftalign"> list of ip addresses  </td><td class="col2 leftalign"> no                            </td><td class="col3 leftalign"> <em>(none)</em>  </td><td class="col4 leftalign"> <abbr title="Domain Name System">DNS</abbr> server(s)                                                                                                                                                                                                                                                                                                                                                                                                                                                                               </td>
+	</tr>
+	<tr class="row10">
+		<td class="col0 leftalign"> <code>dns_metric</code>     </td><td class="col1 leftalign"> integer               </td><td class="col2 leftalign"> no                            </td><td class="col3 leftalign"> <code>0</code>       </td><td class="col4 leftalign"> <a href="https://git.openwrt.org/?p=project/netifd.git;a=commitdiff;h=7f6be657e2dabc185417520de4d0d0de2580c27d" class="interwiki iw_commit" title="https://git.openwrt.org/?p=project/netifd.git;a=commitdiff;h=7f6be657e2dabc185417520de4d0d0de2580c27d">DNS metric</a>                                                                                                                                                                                                                                                                                                                                                                                         </td>
+	</tr>
+	<tr class="row11">
+		<td class="col0 leftalign"> <code>dns_search</code>     </td><td class="col1 leftalign"> list of domain names  </td><td class="col2 leftalign"> no                            </td><td class="col3 leftalign"> <em>(none)</em>  </td><td class="col4 leftalign"> Search list for host-name lookup, relevant only for the router                                                                                                                                                                                                                                                                                                                                                                                                                              </td>
+	</tr>
+	<tr class="row12">
+		<td class="col0 leftalign"> <code>metric</code>         </td><td class="col1 leftalign"> integer               </td><td class="col2 leftalign"> no                            </td><td class="col3 leftalign"> <code>0</code>       </td><td class="col4 leftalign"> Specifies the default route metric to use                                                                                                                                                                                                                                                                                                                                                                                                                                                   </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table1&quot;,&quot;secid&quot;:10,&quot;range&quot;:&quot;11319-18875&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Protocol \&quot;static\&quot;, IPv6&quot;,&quot;hid&quot;:&quot;protocol_static_ipv6&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:9,&quot;range&quot;:&quot;11285-18876&quot;} -->
+<h2 class="sectionedit11" id="downstream_configuration_for_lan_interfaces">Downstream configuration for LAN interfaces</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Server support for Router Advertisement, DHCPv6 (stateless and stateful) and DHCPv6-PD</div>
+</li>
+<li class="level1"><div class="li"> Automatic detection of announced prefixes, delegated prefixes, default routes and <abbr title="Maximum Transmission Unit">MTU</abbr></div>
+</li>
+<li class="level1"><div class="li"> Change detection for prefixes and routes triggering resending of RAs and DHCPv6-Reconfigure</div>
+</li>
+<li class="level1"><div class="li"> Detection of client hostnames and export as augmented hosts-file</div>
+</li>
+<li class="level1"><div class="li"> Support for RA &amp; DHCPv6-relaying and NDP-proxying to e.g. support uplinks without prefix delegation</div>
+</li>
+</ul>
+
+<p>
+OpenWrt provides a flexible local prefix delegation mechanism.
+</p>
+
+<p>
+It can be tuned for each downstream-interface individually with 3 parameters which are all optional:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>ip6assign</code>: Prefix size used for assigned prefix to the interface (e.g. 64 will assign /64-prefixes)</div>
+</li>
+<li class="level1"><div class="li"> <code>ip6hint</code>: Subprefix ID to be used if available (e.g. 1234 with an ip6assign of 64 will assign prefixes of the form ...:1234::/64 or given <abbr title="Local Area Network">LAN</abbr> ports, <abbr title="Local Area Network">LAN</abbr> &amp; LAN2, and a prefix delegation of /56, use ip6hint of 00 and 80 which would give prefixes of <abbr title="Local Area Network">LAN</abbr> ...:xx00::/64 and LAN2 ...:xx80::/64)</div>
+</li>
+<li class="level1"><div class="li"> <code>ip6class</code>: Filter for prefix classes to accept on this interface (e.g. <code>wan6</code> - only assign prefix from the respective interface, <code>local</code> - only assign the ULA-prefix)</div>
+</li>
+</ul>
+
+<p>
+<code>ip6assign</code> and / or <code>ip6hint</code> settings might be ignored if the desired subprefix cannot be assigned.
+In this case, the system will first try to assign a prefix with the same length but different subprefix-ID.
+If this fails as well, the prefix length is reduced until the assignment can be satisfied.
+If <code>ip6hint</code> is not set, an arbitrary ID will be chosen.
+Setting the <code>ip6assign</code> parameter to a value &lt; 64 will allow the DHCPv6-server to hand out all but the first /64 via DHCPv6-Prefix Delegation to downstream routers on the interface.
+If <code>ip6hint</code> is not suitable for the given <code>ip6assign</code>, it will be rounded down to the nearest possible value.
+</p>
+
+<p>
+If <code>ip6class</code> is not set, then all prefix classes are accepted on this interface.
+Specify one or multiple interface names such as <code>wan6</code> to accept only prefix from the respective interface, or specify <code>local</code> accept only the ULA-prefix when using <abbr title="Internet Protocol version 6">IPv6</abbr> <abbr title="Network Address Translation">NAT</abbr> or NPT.
+This can be used to select upstream interfaces from which subprefixes are assigned.
+For prefixes received from dynamic-configuration methods like DHCPv6, it is possible that the prefix-class is not equal to the source-interface but e.g. augmented with an <abbr title="Internet Service Provider">ISP</abbr>-provided numeric prefix class-value.
+</p>
+<pre class="code bash"><span class="co0"># cat /etc/config/network</span>
+config globals globals
+        option ula_prefix fd00:db80::<span class="sy0">/</span><span class="nu0">48</span>
+&nbsp;
+config interface wan6
+        option proto static
+        option ip6prefix <span class="nu0">2001</span>:db80::<span class="sy0">/</span><span class="nu0">56</span>
+        ...
+&nbsp;
+config interface lan
+        option proto static
+        option ip6assign <span class="nu0">60</span>
+        option ip6hint <span class="nu0">10</span>
+        ...
+&nbsp;
+config interface guest
+        option proto static
+        option ip6assign <span class="nu0">64</span>
+        option ip6hint abcd
+        list ip6class wan6
+        ...</pre>
+
+<p>
+The results of that configuration would be:
+</p>
+<ul>
+<li class="level1"><div class="li"> The <code>lan</code> interface will be assigned the prefixes 2001:db80:0:10::/60 and fd00:db80:0:10::/60.</div>
+</li>
+<li class="level1"><div class="li"> The DHCPv6-server can offer both prefixes except 2001:db80:0:abcd::/64 and fd00:db80:0:abcd::/64 to downstream routers on <code>lan</code> via DHCPv6-PD.</div>
+</li>
+<li class="level1"><div class="li"> The <code>guest</code> interface will only get assinged the prefix 2001:db80:0:abcd::/64 due to the class filter.</div>
+</li>
+</ul>
+
+<p>
+For multiple interfaces, the prefixes are assigned based on firstly the assignment length (smallest first) then on weight and finally alphabetical order of interface names.
+e.g. if wlan0 and eth1 have ip6assign 61 and eth2 has ip6assign 62, the prefixes are assigned to eth1 then wlan0 (alphabetic) and then eth2 (longest prefix).
+Note that if there are not enough prefixes, the last interfaces get no prefix - which would happen to eth2 if the overall prefix length was 60 in this example.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> If the router can <code>ping6</code> the internet, but lan machines get “Destination unreachable: Unknown code 5” or “Source address failed ingress/egress policy” then the <strong>ip6assign</strong> option is missing on your lan interface.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Downstream configuration for LAN interfaces&quot;,&quot;hid&quot;:&quot;downstream_configuration_for_lan_interfaces&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:11,&quot;range&quot;:&quot;18877-22960&quot;} -->
+<h2 class="sectionedit12" id="router_advertisement_dhcpv6">Router Advertisement &amp; DHCPv6</h2>
+<div class="level2">
+
+<p>
+OpenWrt features a versatile RA &amp; DHCPv6 server and relay. Per default, SLAAC and both stateless and stateful DHCPv6 are enabled on an interface. If there are any prefixes of size /64 or shorter present then addresses will be handed out from each prefix. If all addresses on an interface have prefixes shorter than /64, then DHCPv6 Prefix Delegation is enabled for downstream routers. If a default route is present, the router advertises itself as default router on the interface.
+</p>
+
+<p>
+The system is also able to detect when there is no prefix available from an upstream interface and can switch into relaying mode automatically to extend the upstream interface configuration onto its downstream interfaces. This is useful for putting the target router behind another <abbr title="Internet Protocol version 6">IPv6</abbr> router which doesn&#039;t offer prefixes via DHCPv6-PD.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Router Advertisement &amp; DHCPv6&quot;,&quot;hid&quot;:&quot;router_advertisement_dhcpv6&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:12,&quot;range&quot;:&quot;22961-23823&quot;} -->
+<h3 class="sectionedit13" id="slaac_and_dhcpv6">SLAAC and DHCPv6</h3>
+<div class="level3">
+
+<p>
+Example configuration section for SLAAC + DHCPv6 server mode.
+This is suitable also for a typical 6in4 tunnel configuration, where you specify the fixed <abbr title="Local Area Network">LAN</abbr> prefix in the tunnel interface config.
+Make sure to disable NDP-Proxy by removing the <code>ndp</code> option if any.
+</p>
+<pre class="code bash"><span class="co0"># cat /etc/config/dhcp</span>
+config dhcp lan
+    option dhcpv6 server
+    option ra server
+    option ra_flags <span class="st_h">'managed-config other-config'</span>
+    ...</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;SLAAC and DHCPv6&quot;,&quot;hid&quot;:&quot;slaac_and_dhcpv6&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:13,&quot;range&quot;:&quot;23824-24281&quot;} -->
+<h3 class="sectionedit14" id="slaac_only">SLAAC only</h3>
+<div class="level3">
+
+<p>
+Example configuration section for SLAAC alone.
+Make sure to deactivate RA flags, otherwise clients expect the presence of a DHCPv6 and consequently may fail to activate the network connection.
+Note that disabling DHCPv6 makes some clients (e.g. Android devices) prefer <abbr title="Internet Protocol version 4">IPv4</abbr> over <abbr title="Internet Protocol version 6">IPv6</abbr>.
+</p>
+<pre class="code bash"><span class="co0"># cat /etc/config/dhcp</span>
+config dhcp lan
+    option dhcpv6 disabled
+    option ra server
+    list ra_flags <span class="st_h">'none'</span>
+    ...</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;SLAAC only&quot;,&quot;hid&quot;:&quot;slaac_only&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:14,&quot;range&quot;:&quot;24282-24729&quot;} -->
+<h3 class="sectionedit15" id="ipv6_relay">IPv6 relay</h3>
+<div class="level3">
+
+<p>
+Example configuration section for relaying
+</p>
+<pre class="code bash"><span class="co0"># cat /etc/config/dhcp</span>
+config dhcp lan
+    option dhcpv6 relay
+    option ra relay
+    option ndp relay
+    ...
+&nbsp;
+config dhcp wan6
+    option dhcpv6 relay
+    option ra relay
+    option ndp relay
+    option master <span class="nu0">1</span>
+    option interface wan6</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;IPv6 relay&quot;,&quot;hid&quot;:&quot;ipv6_relay&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:15,&quot;range&quot;:&quot;24730-25056&quot;} -->
+<h2 class="sectionedit16" id="routing_management">Routing Management</h2>
+<div class="level2">
+
+<p>
+OpenWrt uses a source-address and source-interface based policy-routing system. This is required to correctly handle different uplink interfaces.
+Each delegated prefix is added with an unreachable route to avoid <abbr title="Internet Protocol version 6">IPv6</abbr>-routing loops.
+</p>
+
+<p>
+To determine the current status of routes you can consult the information provided by <code>ifstatus</code>.
+</p>
+
+<p>
+Example (ifstatus wan6):
+</p>
+<pre class="code bash">...
+        <span class="st0">&quot;ipv6-address&quot;</span>: <span class="br0">&#91;</span>
+                <span class="br0">&#123;</span>
+                        <span class="st0">&quot;address&quot;</span>: <span class="st0">&quot;2001:db80::a00:27ff:fe67:cd9c&quot;</span>,
+                        <span class="st0">&quot;mask&quot;</span>: <span class="nu0">64</span>,
+                        <span class="st0">&quot;preferred&quot;</span>: <span class="nu0">1681</span>,
+                        <span class="st0">&quot;valid&quot;</span>: <span class="nu0">7081</span>
+                <span class="br0">&#125;</span>
+        <span class="br0">&#93;</span>,
+        <span class="st0">&quot;ipv6-prefix&quot;</span>: <span class="br0">&#91;</span>
+                <span class="br0">&#123;</span>
+                        <span class="st0">&quot;address&quot;</span>: <span class="st0">&quot;2001:db80:0:100::&quot;</span>,
+                        <span class="st0">&quot;mask&quot;</span>: <span class="nu0">56</span>,
+                        <span class="st0">&quot;preferred&quot;</span>: <span class="nu0">86282</span>,
+                        <span class="st0">&quot;valid&quot;</span>: <span class="nu0">86282</span>,
+                        <span class="st0">&quot;class&quot;</span>: <span class="st0">&quot;wan6&quot;</span>,
+                        <span class="st0">&quot;assigned&quot;</span>: <span class="br0">&#123;</span>
+                                <span class="st0">&quot;lan&quot;</span>: <span class="br0">&#123;</span>
+                                        <span class="st0">&quot;address&quot;</span>: <span class="st0">&quot;2001:db80:0:110::&quot;</span>,
+                                        <span class="st0">&quot;mask&quot;</span>: <span class="nu0">60</span>
+                                <span class="br0">&#125;</span>
+                        <span class="br0">&#125;</span>
+                <span class="br0">&#125;</span>
+        <span class="br0">&#93;</span>,
+        <span class="st0">&quot;route&quot;</span>: <span class="br0">&#91;</span>
+                <span class="br0">&#123;</span>
+                        <span class="st0">&quot;target&quot;</span>: <span class="st0">&quot;2001:db80::&quot;</span>,
+                        <span class="st0">&quot;mask&quot;</span>: <span class="nu0">48</span>,
+                        <span class="st0">&quot;nexthop&quot;</span>: <span class="st0">&quot;fe80::800:27ff:fe00:0&quot;</span>,
+                        <span class="st0">&quot;metric&quot;</span>: <span class="nu0">1024</span>,
+                        <span class="st0">&quot;valid&quot;</span>: <span class="nu0">7081</span>
+                <span class="br0">&#125;</span>,
+                <span class="br0">&#123;</span>
+                        <span class="st0">&quot;target&quot;</span>: <span class="st0">&quot;::&quot;</span>,
+                        <span class="st0">&quot;mask&quot;</span>: <span class="nu0">0</span>,
+                        <span class="st0">&quot;nexthop&quot;</span>: <span class="st0">&quot;fe80::800:27ff:fe00:0&quot;</span>,
+                        <span class="st0">&quot;metric&quot;</span>: <span class="nu0">1024</span>,
+                        <span class="st0">&quot;valid&quot;</span>: <span class="nu0">7081</span>
+                <span class="br0">&#125;</span>
+        <span class="br0">&#93;</span>,
+...</pre>
+
+<p>
+Interpretation:
+</p>
+<ul>
+<li class="level1"><div class="li"> On the interface 2 routes are provided: 2001:db80::/48 and a default-route via the router fe80::800:27ff:fe00:0.</div>
+</li>
+<li class="level1"><div class="li"> These routes can only be used by locally generated traffic and traffic with a suitable source-address, that is either one of the local addresses or an address out of the delegated prefix.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Routing Management&quot;,&quot;hid&quot;:&quot;routing_management&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:16,&quot;range&quot;:&quot;25057-27150&quot;} -->
+<h2 class="sectionedit17" id="ula_prefix">ULA prefix</h2>
+<div class="level2">
+
+<p>
+<abbr title="Internet Protocol version 6">IPv6</abbr> <a href="/docs/guide-user/network/network_configuration?s=ula_prefix#section_globals" class="wikilink1" title="docs:guide-user:network:network_configuration" data-wiki-id="docs:guide-user:network:network_configuration">ULA prefix</a> can serve the following purposes:
+</p>
+<ul>
+<li class="level1"><div class="li"> Predictable <a href="/docs/guide-user/base-system/dhcp_configuration#static_leases" class="wikilink1" title="docs:guide-user:base-system:dhcp_configuration" data-wiki-id="docs:guide-user:base-system:dhcp_configuration">static IPv6</a> suffix allocation with DHCPv6.</div>
+</li>
+<li class="level1"><div class="li"> Predictable site-to-site connectivity with dynamic or missing GUA prefix.</div>
+</li>
+<li class="level1"><div class="li"> <abbr title="Internet Protocol version 6">IPv6</abbr> routing for <abbr title="Local Area Network">LAN</abbr> clients behind <a href="/docs/guide-user/network/ipv6/ipv6.nat6" class="wikilink1" title="docs:guide-user:network:ipv6:ipv6.nat6" data-wiki-id="docs:guide-user:network:ipv6:ipv6.nat6">NAT66</a> with missing GUA prefix.</div>
+</li>
+</ul>
+
+<p>
+If <abbr title="Internet Protocol version 6">IPv6</abbr> GUA is not available, a <a href="/docs/guide-user/network/ipv6/ipv6_extras#using_ipv6_by_default" class="wikilink1" title="docs:guide-user:network:ipv6:ipv6_extras" data-wiki-id="docs:guide-user:network:ipv6:ipv6_extras">workaround</a> is generally required to make applications prefer <abbr title="Internet Protocol version 6">IPv6</abbr> over <abbr title="Internet Protocol version 4">IPv4</abbr>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;ULA prefix&quot;,&quot;hid&quot;:&quot;ula_prefix&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:17,&quot;range&quot;:&quot;27151-27796&quot;} -->
+<h2 class="sectionedit18" id="troubleshooting">Troubleshooting</h2>
+<div class="level2">
+
+<p>
+Assistance diagnosing issues available at <a href="/docs/guide-user/network/ipv6/troubleshooting" class="wikilink1" title="docs:guide-user:network:ipv6:troubleshooting" data-wiki-id="docs:guide-user:network:ipv6:troubleshooting">IPv6 Troubleshooting</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Troubleshooting&quot;,&quot;hid&quot;:&quot;troubleshooting&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:18,&quot;range&quot;:&quot;27797-&quot;} -->

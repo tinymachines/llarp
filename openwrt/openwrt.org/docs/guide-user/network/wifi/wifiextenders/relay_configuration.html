@@ -1,0 +1,856 @@
+
+<h1 class="sectionedit1" id="wi-fi_extenderrepeater_with_relayd">Wi-Fi Extender/Repeater with RelayD</h1>
+<div class="level1">
+
+<p>
+This article describes how to make an OpenWrt router into a Wi-Fi extender/repeater.
+The extender makes an “uplink” Wi-Fi connection to the main router with one of its radios,
+and acts as an <abbr title="Access Point">AP</abbr> (access point) for local devices with its other radio(s). 
+The extender then relies on the <code>relayd</code> package to bridge between the two connections.
+</p>
+
+<p>
+For simplicity, this article will use the term “Wi-Fi extender” or “extender” from now on.
+</p>
+
+<p>
+Use this configuration in situations when you do not control the main router,
+or the main router does not run OpenWrt,
+or the main router does not support the preferred
+<a href="/docs/guide-user/network/wifi/atheroswds" class="wikilink1" title="docs:guide-user:network:wifi:atheroswds" data-wiki-id="docs:guide-user:network:wifi:atheroswds">Wireless Repeater/Extender with WDS</a>
+or <a href="/docs/guide-user/network/wifi/mesh/80211s" class="wikilink1" title="docs:guide-user:network:wifi:mesh:80211s" data-wiki-id="docs:guide-user:network:wifi:mesh:80211s">802.11s Mesh Networking</a>.
+</p>
+
+<p>
+The image below shows the normal configuration.
+The <strong>main router</strong> is on the right: 
+its <abbr title="Local Area Network">LAN</abbr> port (192.168.1.1/24) serves local clients
+while its <abbr title="Wide Area Network">WAN</abbr> port (not shown) connects to the internet. 
+The <strong>Wi-Fi extender</strong> is on the left. 
+It makes a wireless uplink connection (labeled “W-<abbr title="Local Area Network">LAN</abbr> (Client)”) to the main router.
+The Wi-Fi extender&#039;s other radio(s) act as an access point for local devices.
+</p>
+
+<p>
+There is a Youtube video that shows substantially this procedure:
+<a href="https://www.youtube.com/watch?v=Bfmx5NjIWLQ" class="urlextern" title="https://www.youtube.com/watch?v=Bfmx5NjIWLQ" rel="ugc nofollow">https://www.youtube.com/watch?v=Bfmx5NjIWLQ</a>
+which has been tested with OpenWrt 23.05.3 (June 2024).
+</p>
+
+<p>
+<br/>
+<a href="/_detail/docs/guide-user/wifirepeater_802.11-routed-relay.png?id=docs%3Aguide-user%3Anetwork%3Awifi%3Awifiextenders%3Arelay_configuration" class="media" title="docs:guide-user:wifirepeater_802.11-routed-relay.png"><img src="/_media/docs/guide-user/wifirepeater_802.11-routed-relay.png" class="mediacenter" loading="lazy" alt="" /></a> <br/>
+
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Wi-Fi Extender\/Repeater with RelayD&quot;,&quot;hid&quot;:&quot;wi-fi_extenderrepeater_with_relayd&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1443&quot;} -->
+<h2 class="sectionedit2" id="setup_with_luci_web_gui">Setup with LuCI Web GUI</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Setup with LuCI Web GUI&quot;,&quot;hid&quot;:&quot;setup_with_luci_web_gui&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;1444-1480&quot;} -->
+<h3 class="sectionedit3" id="configure_lan_interface">Configure LAN Interface</h3>
+<div class="level3">
+
+<p>
+This article assumes the main router address is 192.168.1.1 (subnet 192.168.1.0/24)
+and the “Wi-Fi extender subnet” is 192.168.2.1 (192.168.2.0/24).
+These subnets MUST be different.
+</p>
+<ul>
+<li class="level1"><div class="li"> Remove any wired connections between the Wi-Fi extender and the main router.</div>
+</li>
+<li class="level1"><div class="li"> Connect a computer with Ethernet to a <abbr title="Local Area Network">LAN</abbr> port on the Wi-Fi extender and log into LuCI web UI at 192.168.1.1 (default address)</div>
+</li>
+<li class="level1"><div class="li"> (Optional) Update the firmware of the Wi-Fi extender to the current release.</div>
+</li>
+<li class="level1"><div class="li"> On <strong>System → Backup/Flash Firmware</strong>, click <strong>Perform reset</strong> to return to default OpenWrt settings.</div>
+</li>
+<li class="level1"><div class="li"> Go to <strong>Network → Interfaces</strong>, click <strong>Edit</strong> for the <abbr title="Local Area Network">LAN</abbr> interface</div>
+</li>
+<li class="level1"><div class="li"> Set <strong><abbr title="Local Area Network">LAN</abbr> protocol</strong> to <strong>static address</strong>, click <strong>Change protocol</strong> (image below)</div>
+</li>
+<li class="level1"><div class="li"> Assign an <abbr title="Internet Protocol">IP</abbr> address using the “Wi-Fi extender subnet” (e.g. 192.168.2.1). </div>
+</li>
+<li class="level1"><div class="li"> Click <strong>Save</strong></div>
+</li>
+<li class="level1"><div class="li"> Click <strong>Save and Apply</strong></div>
+</li>
+</ul>
+
+<p>
+<br/>
+ <a href="/_detail/media/docs/howto/relay_lan_changeip.jpg?id=docs%3Aguide-user%3Anetwork%3Awifi%3Awifiextenders%3Arelay_configuration" class="media" title="media:docs:howto:relay_lan_changeip.jpg"><img src="/_media/media/docs/howto/relay_lan_changeip.jpg?w=400&amp;tok=b39d3a" class="media" loading="lazy" alt="" width="400" /></a> <br/>
+
+</p>
+<hr />
+<ul>
+<li class="level1"><div class="li"> Reconnect to the extender at its new <abbr title="Internet Protocol">IP</abbr> address (eg. 192.168.2.1)</div>
+</li>
+<li class="level1"><div class="li"> From <strong>Network → Interfaces</strong>, click <strong>Edit</strong> for the <abbr title="Local Area Network">LAN</abbr> interface</div>
+</li>
+<li class="level1 node"><div class="li"> Click the <strong><abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> Server</strong> tab and disable <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr>, <abbr title="Internet Protocol version 6">IPv6</abbr> RA-Service, and <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr>-v6 Service. To do this:</div>
+<ul>
+<li class="level2"><div class="li"> On the <strong>General Setup</strong> tab (image below), check the “Ignore interface” box to disable <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> for the interface.</div>
+</li>
+<li class="level2"><div class="li"> On the <strong><abbr title="Internet Protocol version 6">IPv6</abbr> Settings</strong> tab (image below), choose “disabled” for <strong>RA-Service</strong> and <strong><abbr title="Dynamic Host Configuration Protocol">DHCP</abbr>-v6 Service</strong></div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Click <strong>Save</strong>.</div>
+</li>
+<li class="level1"><div class="li"> Click <strong>Save and Apply</strong>.</div>
+</li>
+<li class="level1"><div class="li"> Finally, set your <strong>PC&#039;s Ethernet port</strong> to use a static <abbr title="Internet Protocol">IP</abbr> in the Wi-Fi extender subnet (e.g., 192.168.2.10) and default gateway (e.g., 192.168.2.1), then use Ethernet to connect again to the extender. </div>
+</li>
+</ul>
+
+<p>
+<br/>
+<a href="/_detail/media/docs/howto/relay_lan_disabledhcp.jpg?id=docs%3Aguide-user%3Anetwork%3Awifi%3Awifiextenders%3Arelay_configuration" class="media" title="media:docs:howto:relay_lan_disabledhcp.jpg"><img src="/_media/media/docs/howto/relay_lan_disabledhcp.jpg?w=400&amp;tok=b69c53" class="media" loading="lazy" alt="" width="400" /></a> <br/>
+
+</p>
+<hr />
+
+<p>
+<br/>
+<a href="/_detail/media/docs/howto/relay_lan_disableipv6.jpg?id=docs%3Aguide-user%3Anetwork%3Awifi%3Awifiextenders%3Arelay_configuration" class="media" title="media:docs:howto:relay_lan_disableipv6.jpg"><img src="/_media/media/docs/howto/relay_lan_disableipv6.jpg?w=400&amp;tok=d3727e" class="media" loading="lazy" alt="" width="400" /></a> <br/>
+
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configure LAN Interface&quot;,&quot;hid&quot;:&quot;configure_lan_interface&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;1481-3312&quot;} -->
+<h3 class="sectionedit4" id="configure_wi-fi_uplink">Configure Wi-Fi Uplink</h3>
+<div class="level3">
+
+<p>
+The extender typically will have multiple radios that could serve as the uplink.
+Choose one that works best for your environment.
+5GHz (n/ac/ax) radios have higher transmit speeds, but 2.4GHz (b/g/n) radios have longer range.
+</p>
+<ul>
+<li class="level1"><div class="li"> Keep your PC connected to the Wi-Fi extender via Ethernet. Remove any other physical connections.</div>
+</li>
+<li class="level1"><div class="li"> Navigate to the <strong>Network → Wireless</strong> page</div>
+</li>
+<li class="level1"><div class="li"> Choose the radio for the uplink to the main router. </div>
+</li>
+<li class="level1"><div class="li"> Click on <strong>Scan</strong> button for that radio.</div>
+</li>
+</ul>
+
+<p>
+<br/>
+<a href="/_detail/media/docs/howto/relay_join_wifi_1.jpg?id=docs%3Aguide-user%3Anetwork%3Awifi%3Awifiextenders%3Arelay_configuration" class="media" title="media:docs:howto:relay_join_wifi_1.jpg"><img src="/_media/media/docs/howto/relay_join_wifi_1.jpg?w=800&amp;tok=039cc5" class="media" loading="lazy" alt="" width="800" /></a> <br/>
+
+</p>
+<ul>
+<li class="level1"><div class="li"> From the list of SSIDs found in the scan, choose the main router&#039;s Wi-Fi SSID and click <strong>Join Network</strong>.</div>
+</li>
+</ul>
+
+<p>
+<br/>
+<a href="/_detail/media/docs/howto/relay_join_wifi_2.jpg?id=docs%3Aguide-user%3Anetwork%3Awifi%3Awifiextenders%3Arelay_configuration" class="media" title="media:docs:howto:relay_join_wifi_2.jpg"><img src="/_media/media/docs/howto/relay_join_wifi_2.jpg?w=800&amp;tok=3fec8e" class="media" loading="lazy" alt="" width="800" /></a> <br/>
+
+</p>
+<hr />
+<ul>
+<li class="level1 node"><div class="li"> You&#039;ll see the “Joining Network” pane (image below).</div>
+<ul>
+<li class="level2"><div class="li"> Set the “Name of new network” to <code>wwan</code></div>
+</li>
+<li class="level2"><div class="li"> Enter any Wi-Fi credentials such as WPA passphrase</div>
+</li>
+<li class="level2"><div class="li"> Select <strong>lan</strong> firewall zone. </div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Click <strong>Save</strong>.</div>
+</li>
+<li class="level1"><div class="li"> Click <strong>Save &amp; Apply</strong>.</div>
+</li>
+</ul>
+
+<p>
+<br/>
+<a href="/_detail/media/docs/howto/relay_join_wifi_3.jpg?id=docs%3Aguide-user%3Anetwork%3Awifi%3Awifiextenders%3Arelay_configuration" class="media" title="media:docs:howto:relay_join_wifi_3.jpg"><img src="/_media/media/docs/howto/relay_join_wifi_3.jpg?w=600&amp;tok=dd7296" class="media" loading="lazy" alt="" width="600" /></a> <br/>
+
+</p>
+<hr />
+
+<p>
+You will see the client Wi-Fi settings page (image below). Edit as required.
+The most important settings are on the <strong>Operating Frequency</strong> line.
+</p>
+<ul>
+<li class="level1"><div class="li"> Set the <strong>Mode</strong> to <strong>Legacy</strong> if you are connecting to a Wi-Fi g network, or <strong>N</strong> if you are connecting to a Wi-Fi n (and so on).<br/>
+</div>
+</li>
+<li class="level1"><div class="li"> Set the <strong>Width</strong> to the same channel width as the main router</div>
+</li>
+<li class="level1"><div class="li"> Keep the same Wi-Fi channel number as was discovered during the scan. This will match the main router.</div>
+</li>
+<li class="level1"><div class="li"> Click <strong>Save</strong> when finished. </div>
+</li>
+<li class="level1"><div class="li"> Click <strong>Save &amp; Apply</strong>. </div>
+</li>
+</ul>
+
+<p>
+<br/>
+<a href="/_detail/media/docs/howto/relay_join_wifi_5.jpg?id=docs%3Aguide-user%3Anetwork%3Awifi%3Awifiextenders%3Arelay_configuration" class="media" title="media:docs:howto:relay_join_wifi_5.jpg"><img src="/_media/media/docs/howto/relay_join_wifi_5.jpg?w=550&amp;tok=5c49a3" class="media" loading="lazy" alt="" width="550" /></a> <br/>
+
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configure Wi-Fi Uplink&quot;,&quot;hid&quot;:&quot;configure_wi-fi_uplink&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;3313-4953&quot;} -->
+<h3 class="sectionedit5" id="remove_redundant_wan_interface_and_firewall_zones">Remove redundant WAN interface and firewall zones</h3>
+<div class="level3">
+
+<p>
+Although it&#039;s optional, it is recommended to delete the redundant <abbr title="Wide Area Network">WAN</abbr> interfaces and firewall zones. 
+</p>
+<ul>
+<li class="level1"><div class="li"> Go to <strong>Network → Interfaces</strong> (image below)</div>
+</li>
+<li class="level1"><div class="li"> Delete both <code><abbr title="Wide Area Network">WAN</abbr></code> and <code>WAN6</code> interfaces.</div>
+</li>
+<li class="level1"><div class="li"> Go to <strong>Network &gt; Firewall</strong> (image below)</div>
+</li>
+<li class="level1"><div class="li"> Delete the <code>wan</code> rule.</div>
+</li>
+<li class="level1"><div class="li"> Click <strong>Save &amp; Apply</strong> </div>
+</li>
+</ul>
+
+<p>
+<strong>Note:</strong> These actions will also automatically remove any redundant firewall traffic and port forwarding rules.
+</p>
+
+<p>
+<br/>
+<a href="/_detail/media/docs/howto/relay_wan_delete.jpg?id=docs%3Aguide-user%3Anetwork%3Awifi%3Awifiextenders%3Arelay_configuration" class="media" title="media:docs:howto:relay_wan_delete.jpg"><img src="/_media/media/docs/howto/relay_wan_delete.jpg?w=800&amp;tok=62650d" class="media" loading="lazy" alt="" width="800" /></a> <br/>
+
+</p>
+
+<p>
+<br/>
+<a href="/_detail/media/docs/howto/relay_firewall_delete_wan.jpg?id=docs%3Aguide-user%3Anetwork%3Awifi%3Awifiextenders%3Arelay_configuration" class="media" title="media:docs:howto:relay_firewall_delete_wan.jpg"><img src="/_media/media/docs/howto/relay_firewall_delete_wan.jpg?w=800&amp;tok=c7cd76" class="media" loading="lazy" alt="" width="800" /></a> <br/>
+
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Remove redundant WAN interface and firewall zones&quot;,&quot;hid&quot;:&quot;remove_redundant_wan_interface_and_firewall_zones&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;4954-5555&quot;} -->
+<h3 class="sectionedit6" id="add_static_ip_on_wwan">Add static IP on &#039;&#039;wwan&#039;&#039;</h3>
+<div class="level3">
+
+<p>
+Assign a static <abbr title="Internet Protocol">IP</abbr> address to newly created wwan interface
+that is in the same subnet as the main router&#039;s <abbr title="Local Area Network">LAN</abbr> (eg. 192.168.1.30).
+You can then manage the router using this address
+that will also be used later when creating the Relay interface.  
+</p>
+<ul>
+<li class="level1"><div class="li"> Go to <strong>Network → Interfaces</strong> (image below)</div>
+</li>
+<li class="level1"><div class="li"> Click <strong>Edit</strong> for the <code>wwan</code> interface</div>
+</li>
+</ul>
+
+<p>
+<br/>
+<a href="/_detail/media/docs/howto/relay_wwan_static_1.jpg?id=docs%3Aguide-user%3Anetwork%3Awifi%3Awifiextenders%3Arelay_configuration" class="media" title="media:docs:howto:relay_wwan_static_1.jpg"><img src="/_media/media/docs/howto/relay_wwan_static_1.jpg?w=800&amp;tok=96706f" class="media" loading="lazy" alt="" width="800" /></a> <br/>
+
+</p>
+<ul>
+<li class="level1"><div class="li"> On the <strong>General Settings</strong> tab, change the protocol to &#039;Static Address&#039; (image below)</div>
+</li>
+<li class="level1"><div class="li"> Enter an <abbr title="Internet Protocol">IP</abbr> address from the main router&#039;s <abbr title="Local Area Network">LAN</abbr> subnet (e.g., 192.168.1.30); a subnet mask (e.g., 255.255.255.0); and a gateway <abbr title="Internet Protocol">IP</abbr> address (e.g., 192.168.1.1)</div>
+</li>
+</ul>
+
+<p>
+<br/>
+<a href="/_detail/media/docs/howto/relay_wwan_static_2.jpg?id=docs%3Aguide-user%3Anetwork%3Awifi%3Awifiextenders%3Arelay_configuration" class="media" title="media:docs:howto:relay_wwan_static_2.jpg"><img src="/_media/media/docs/howto/relay_wwan_static_2.jpg?w=500&amp;tok=e4566e" class="media" loading="lazy" alt="" width="500" /></a> <br/>
+
+</p>
+<ul>
+<li class="level1"><div class="li"> On the <strong>Advanced Settings</strong> tab (image below)</div>
+</li>
+<li class="level1"><div class="li"> Set <strong>Use custom <abbr title="Domain Name System">DNS</abbr> Servers</strong> to the <abbr title="Internet Protocol">IP</abbr> address of the main router (e.g., 192.168.1.1).</div>
+</li>
+<li class="level1"><div class="li"> Press <strong>Save</strong> </div>
+</li>
+<li class="level1"><div class="li"> Press <strong>Save &amp; Apply</strong></div>
+</li>
+</ul>
+
+<p>
+<br/>
+<a href="/_detail/media/docs/howto/relay_wwan_statis_3.jpg?id=docs%3Aguide-user%3Anetwork%3Awifi%3Awifiextenders%3Arelay_configuration" class="media" title="media:docs:howto:relay_wwan_statis_3.jpg"><img src="/_media/media/docs/howto/relay_wwan_statis_3.jpg?w=500&amp;tok=cc9d7b" class="media" loading="lazy" alt="" width="500" /></a> <br/>
+
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Add static IP on &#039;&#039;wwan&#039;&#039;&quot;,&quot;hid&quot;:&quot;add_static_ip_on_wwan&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;5556-6555&quot;} -->
+<h3 class="sectionedit7" id="test_connection">Test Connection</h3>
+<div class="level3">
+
+<p>
+At this point, the Wi-Fi extender should be wirelessly connected to the main router.
+To verify the connection:
+</p>
+<ul>
+<li class="level1"><div class="li"> Go to <strong>Network → Diagnostics</strong> (image below)</div>
+</li>
+<li class="level1"><div class="li"> Perform a ping test by clicking the “<abbr title="Internet Protocol version 4">IPv4</abbr> Ping” button.</div>
+</li>
+<li class="level1"><div class="li"> A few moments later, you should see ping results if the main router is connected to the internet.</div>
+</li>
+<li class="level1"><div class="li"> </div>
+</li>
+</ul>
+
+<p>
+<br/>
+<a href="/_detail/media/docs/howto/relay_network_test.jpg?id=docs%3Aguide-user%3Anetwork%3Awifi%3Awifiextenders%3Arelay_configuration" class="media" title="media:docs:howto:relay_network_test.jpg"><img src="/_media/media/docs/howto/relay_network_test.jpg?w=500&amp;tok=5c0c03" class="media" loading="lazy" alt="" width="500" /></a> <br/>
+
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Test Connection&quot;,&quot;hid&quot;:&quot;test_connection&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;6556-6968&quot;} -->
+<h3 class="sectionedit8" id="install_relayd_package">Install relayd package</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> Go to <strong>System → Software</strong> (image below)</div>
+</li>
+<li class="level1"><div class="li"> Click <strong>Update List</strong> button. If the Wi-Fi extender is connected to the main router, and that is connected to the internet, a few moments later, the results of the update appears.</div>
+</li>
+<li class="level1"><div class="li"> Enter <strong>luci-proto-relay</strong> into the Filter box (image below), and click <strong>Install</strong>.</div>
+</li>
+<li class="level1"><div class="li"> When that completes, reboot the router from <strong>System → Reboot</strong> (image below).</div>
+</li>
+</ul>
+
+<p>
+<br/>
+<a href="/_detail/media/docs/howto/relay_package_1.jpg?id=docs%3Aguide-user%3Anetwork%3Awifi%3Awifiextenders%3Arelay_configuration" class="media" title="media:docs:howto:relay_package_1.jpg"><img src="/_media/media/docs/howto/relay_package_1.jpg?w=800&amp;tok=71f0bc" class="media" loading="lazy" alt="" width="800" /></a> <br/>
+
+</p>
+
+<p>
+<br/>
+<a href="/_detail/media/docs/howto/relay_package_2.jpg?id=docs%3Aguide-user%3Anetwork%3Awifi%3Awifiextenders%3Arelay_configuration" class="media" title="media:docs:howto:relay_package_2.jpg"><img src="/_media/media/docs/howto/relay_package_2.jpg?w=400&amp;tok=1c9cb9" class="media" loading="lazy" alt="" width="400" /></a> <br/>
+
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Install relayd package&quot;,&quot;hid&quot;:&quot;install_relayd_package&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:8,&quot;range&quot;:&quot;6969-7513&quot;} -->
+<h3 class="sectionedit9" id="add_relay_interface">Add Relay Interface</h3>
+<div class="level3">
+
+<p>
+Add the <code>relayd</code> interface that will bridge between the
+extender&#039;s <strong>lan</strong> and <strong>wwan</strong> interfaces. To do this:
+</p>
+<ul>
+<li class="level1"><div class="li"> Go to <strong>Network → Interfaces</strong></div>
+</li>
+<li class="level1"><div class="li"> Click on <strong>Add New Interface</strong> (image below)</div>
+</li>
+</ul>
+
+<p>
+<br/>
+<a href="/_detail/media/docs/howto/relay_create_bridge_3.jpg?id=docs%3Aguide-user%3Anetwork%3Awifi%3Awifiextenders%3Arelay_configuration" class="media" title="media:docs:howto:relay_create_bridge_3.jpg"><img src="/_media/media/docs/howto/relay_create_bridge_3.jpg?w=500&amp;tok=ee5749" class="media" loading="lazy" alt="" width="500" /></a> <br/>
+
+</p>
+<ul>
+<li class="level1 node"><div class="li"> In the <strong>Add new interface</strong> window (image below)</div>
+<ul>
+<li class="level2"><div class="li"> Enter a name (“repeater_bridge” is a good choice)</div>
+</li>
+<li class="level2"><div class="li"> Select <strong>Relay bridge</strong> protocol as shown below. (Reboot your device if the <strong>Relay bridge</strong> option fails to appears.) </div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Click <strong>Create Interface</strong>   </div>
+</li>
+</ul>
+
+<p>
+<br/>
+<a href="/_detail/media/docs/howto/relay_create_bridge_1.jpg?id=docs%3Aguide-user%3Anetwork%3Awifi%3Awifiextenders%3Arelay_configuration" class="media" title="media:docs:howto:relay_create_bridge_1.jpg"><img src="/_media/media/docs/howto/relay_create_bridge_1.jpg?w=900&amp;tok=134436" class="media" loading="lazy" alt="" width="900" /></a> <br/>
+
+</p>
+<ul>
+<li class="level1 node"><div class="li"> In <strong>Network → Interfaces</strong>, click <strong>Edit</strong> for the new “repeater_bridge” interface (image below)</div>
+<ul>
+<li class="level2"><div class="li"> Ensure that the <strong>Protocol</strong> is “Relay bridge”</div>
+</li>
+<li class="level2"><div class="li"> Enter the <abbr title="Internet Protocol">IP</abbr> address assigned to the <code>wwan</code> interface. (eg. 192.168.1.30) </div>
+</li>
+<li class="level2"><div class="li"> Select both <strong>lan</strong> and <strong>wwan</strong> in the <strong>Relay between networks</strong> list.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Click <strong>Save</strong>.</div>
+</li>
+<li class="level1"><div class="li"> Click <strong>Save &amp; Apply</strong>.</div>
+</li>
+<li class="level1"><div class="li"> After you have completed above steps, <strong>reboot</strong> the router. </div>
+</li>
+</ul>
+
+<p>
+<br/>
+<a href="/_detail/media/docs/howto/relay_create_bridge_2.jpg?id=docs%3Aguide-user%3Anetwork%3Awifi%3Awifiextenders%3Arelay_configuration" class="media" title="media:docs:howto:relay_create_bridge_2.jpg"><img src="/_media/media/docs/howto/relay_create_bridge_2.jpg?w=500&amp;tok=b3528d" class="media" loading="lazy" alt="" width="500" /></a> <br/>
+
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Add Relay Interface&quot;,&quot;hid&quot;:&quot;add_relay_interface&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:9,&quot;range&quot;:&quot;7514-8624&quot;} -->
+<h3 class="sectionedit10" id="enable_the_ap">Enable the AP</h3>
+<div class="level3">
+
+<p>
+Enable and configure the Wi-Fi extender to be an access point for local devices.
+</p>
+
+<p>
+You may use the same Wi-Fi network name (SSID) and encryption, password, etc.
+settings as your main router.
+This allows wireless devices to roam to the best Wi-Fi network. 
+Alternatively, you can also choose to give the Wi-Fi extender different
+SSID/encryption/password credentials from the main router.
+</p>
+<ul>
+<li class="level1"><div class="li"> Go to <strong>Network → Wireless</strong></div>
+</li>
+<li class="level1 node"><div class="li"> Click <strong>Edit</strong> button for any <strong>SSID</strong> with “<strong>Mode:</strong> Master”. (Don&#039;t edit the “<strong>Mode:</strong> Client” uplink connection to the main router.)</div>
+<ul>
+<li class="level2"><div class="li"> In the <strong>Interface Configuration</strong> section, configure SSID, security and other parameters so the Wi-Fi extender can act like an access point. </div>
+</li>
+<li class="level2"><div class="li"> If you are configuring the radio that also serves as the uplink connection, ensure the <strong>Operating frequency</strong> remains the same.</div>
+</li>
+<li class="level2"><div class="li"> Click <strong>Save</strong></div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> <strong>Enable</strong> that wireless network.</div>
+</li>
+<li class="level1"><div class="li"> You may edit/enable other radios (for example, enabling both the b/g/n and n/ac/ax/etc. radios)</div>
+</li>
+<li class="level1"><div class="li"> Click <strong>Save &amp; Apply</strong>.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Enable the AP&quot;,&quot;hid&quot;:&quot;enable_the_ap&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:10,&quot;range&quot;:&quot;8625-9683&quot;} -->
+<h3 class="sectionedit11" id="you_re_done_more_testing">You&#039;re Done! More Testing</h3>
+<div class="level3">
+
+<p>
+You&#039;re done! The Wi-Fi extender should be extending the network from your main router.
+Change your computer back to <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> client mode
+and connect to the newly-configured Wi-Fi.
+Your computer should be fully on the internet, having acquired a <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> <abbr title="Internet Protocol">IP</abbr> address from your main router. 
+</p>
+
+<p>
+The <strong>Status → Overview</strong> window (image below) shows the final result.
+<code>radio1</code> is a <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> client to the main router.
+The client Wi-Fi has a ? in the <strong>Host</strong> column instead of a <abbr title="Internet Protocol">IP</abbr> address 
+because its <code>wwan</code> <abbr title="Internet Protocol">IP</abbr> address is only visible in the Network Interfaces page.  
+In the image below,<code>radio0</code> (the access point) had not been configured/enabled yet. 
+But it would show the SSID that you configured for the extender.
+</p>
+
+<p>
+<br/>
+<a href="/_detail/media/docs/howto/relay_status_1.jpg?id=docs%3Aguide-user%3Anetwork%3Awifi%3Awifiextenders%3Arelay_configuration" class="media" title="media:docs:howto:relay_status_1.jpg"><img src="/_media/media/docs/howto/relay_status_1.jpg?w=800&amp;tok=2f7c12" class="media" loading="lazy" alt="" width="800" /></a> <br/>
+
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;You&#039;re Done! More Testing&quot;,&quot;hid&quot;:&quot;you_re_done_more_testing&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:11,&quot;range&quot;:&quot;9684-10482&quot;} -->
+<h2 class="sectionedit12" id="setup_with_cli">Setup with CLI</h2>
+<div class="level2">
+
+<p>
+Before doing any actual configuration, the Wi-Fi interface must be enabled in order to scan for networks in the vicinity:
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> wireless.<span class="sy0">@</span>wifi-device<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.disabled=<span class="st0">&quot;0&quot;</span>
+uci commit wireless
+wifi</pre>
+<ul>
+<li class="level1"><div class="li"> Set the disabled option to 0 (to enable wireless)</div>
+</li>
+<li class="level1"><div class="li"> Save changed configuration file</div>
+</li>
+<li class="level1"><div class="li"> Start wireless using the <em>wifi</em> command</div>
+</li>
+</ul>
+
+<p>
+Now we can list networks in range using <code>iw dev wlan0 scan</code>, substituting your actual wireless interface for <em>wlan0</em> if different (<code>ifconfig</code> lists all available interfaces to find how your wlan is called)
+</p>
+
+<p>
+<code>iw dev wlan0 scan</code> output example:<br/>
+
+</p>
+<pre class="code bash"><span class="co0"># iw dev wlan0 scan</span>
+BSS c8:d5:fe:c8:<span class="nu0">61</span>:b0<span class="br0">&#40;</span>on wlan0<span class="br0">&#41;</span> <span class="re5">--</span> associated
+        TSF: <span class="nu0">24324848870</span> usec <span class="br0">&#40;</span>0d, 06:<span class="nu0">45</span>:<span class="nu0">24</span><span class="br0">&#41;</span>
+        freq: <span class="nu0">2412</span>
+        beacon interval: <span class="nu0">100</span> TUs
+        capability: ESS <span class="br0">&#40;</span>0x0411<span class="br0">&#41;</span>
+        signal: -<span class="nu0">72.00</span> dBm
+        <span class="kw2">last</span> seen: <span class="nu0">140</span> ms ago
+        Information elements from Probe Response frame:
+        SSID: Violetta
+        RSN:     <span class="sy0">*</span> Version: <span class="nu0">1</span>
+                 <span class="sy0">*</span> Group cipher: CCMP
+                 <span class="sy0">*</span> Pairwise ciphers: CCMP
+                 <span class="sy0">*</span> Authentication suites: PSK
+                 <span class="sy0">*</span> Capabilities: <span class="nu0">1</span>-PTKSA-RC <span class="nu0">1</span>-GTKSA-RC <span class="br0">&#40;</span>0x0000<span class="br0">&#41;</span>
+BSS f8:<span class="nu0">35</span>:dd:eb:<span class="nu0">20</span>:f8<span class="br0">&#40;</span>on wlan0<span class="br0">&#41;</span>
+        TSF: <span class="nu0">24225790925</span> usec <span class="br0">&#40;</span>0d, 06:<span class="nu0">43</span>:<span class="nu0">45</span><span class="br0">&#41;</span>
+        freq: <span class="nu0">2457</span>
+        beacon interval: <span class="nu0">100</span> TUs
+        capability: ESS <span class="br0">&#40;</span>0x0431<span class="br0">&#41;</span>
+        signal: -<span class="nu0">90.00</span> dBm
+        <span class="kw2">last</span> seen: <span class="nu0">1450</span> ms ago
+        Information elements from Probe Response frame:
+        SSID: GOinternet_EB20FB
+        HT capabilities:
+                Capabilities: 0x11ee
+                        HT20<span class="sy0">/</span>HT40
+                        SM Power Save disabled
+                        RX HT20 SGI
+                        RX HT40 SGI
+                        TX STBC
+                        RX STBC <span class="nu0">1</span>-stream
+                        Max AMSDU length: <span class="nu0">3839</span> bytes
+                        DSSS<span class="sy0">/</span>CCK HT40
+                Maximum RX AMPDU length <span class="nu0">65535</span> bytes <span class="br0">&#40;</span>exponent: 0x003<span class="br0">&#41;</span>
+                Minimum RX AMPDU <span class="kw1">time</span> spacing: <span class="nu0">4</span> usec <span class="br0">&#40;</span>0x05<span class="br0">&#41;</span>
+                HT RX MCS rate indexes supported: <span class="nu0">0</span>-<span class="nu0">15</span>, <span class="nu0">32</span>
+                HT TX MCS rate indexes are undefined
+        HT operation:
+                 <span class="sy0">*</span> primary channel: <span class="nu0">10</span>
+                 <span class="sy0">*</span> secondary channel offset: below
+                 <span class="sy0">*</span> STA channel width: any
+        RSN:     <span class="sy0">*</span> Version: <span class="nu0">1</span>
+                 <span class="sy0">*</span> Group cipher: TKIP
+                 <span class="sy0">*</span> Pairwise ciphers: TKIP CCMP
+                 <span class="sy0">*</span> Authentication suites: PSK
+                 <span class="sy0">*</span> Capabilities: <span class="nu0">1</span>-PTKSA-RC <span class="nu0">1</span>-GTKSA-RC <span class="br0">&#40;</span>0x0000<span class="br0">&#41;</span></pre>
+
+<p>
+In the example, there are two networks, a Wi-Fi g one called Violetta and a Wi-Fi n one called GOinternet_EB20FB.
+The device was configured to connect to the one called Violetta.
+</p>
+
+<p>
+These are the uci values that were added or changed by the configuration procedure.<br/>
+
+For SSID, BSSID, and encryption you must use the info you got from the Wi-Fi scan above.<br/>
+
+For an explanation of why these values were changed, please read the luci tutorial above.<br/>
+
+</p>
+<pre class="code bash">network.lan.ipaddr=<span class="st_h">'192.168.2.1'</span>
+network.repeater_bridge=interface
+network.repeater_bridge.proto=<span class="st_h">'relay'</span>
+network.repeater_bridge.network=<span class="st_h">'lan wwan'</span>
+network.wwan=interface
+network.wwan.proto=<span class="st_h">'dhcp'</span>
+firewall.<span class="sy0">@</span>zone<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.network=<span class="st_h">'lan repeater_bridge wwan'</span>
+dhcp.lan.ignore=<span class="st_h">'1'</span>
+wireless.radio0.hwmode=<span class="st_h">'11g'</span>
+wireless.radio0.country=<span class="st_h">'00'</span>
+wireless.radio0.channel=<span class="st_h">'1'</span>
+wireless.radio0.disabled=<span class="st_h">'0'</span>
+wireless.<span class="sy0">@</span>wifi-iface<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>=wifi-iface
+wireless.<span class="sy0">@</span>wifi-iface<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.device=<span class="st_h">'radio0'</span>
+wireless.<span class="sy0">@</span>wifi-iface<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.mode=<span class="st_h">'ap'</span>
+wireless.<span class="sy0">@</span>wifi-iface<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.encryption=<span class="st_h">'none'</span>
+wireless.<span class="sy0">@</span>wifi-iface<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.ssid=<span class="st_h">'OpenWrt'</span>
+wireless.<span class="sy0">@</span>wifi-iface<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.network=<span class="st_h">'lan'</span>
+wireless.<span class="sy0">@</span>wifi-iface<span class="br0">&#91;</span><span class="nu0">1</span><span class="br0">&#93;</span>=wifi-iface
+wireless.<span class="sy0">@</span>wifi-iface<span class="br0">&#91;</span><span class="nu0">1</span><span class="br0">&#93;</span>.network=<span class="st_h">'wwan'</span>
+wireless.<span class="sy0">@</span>wifi-iface<span class="br0">&#91;</span><span class="nu0">1</span><span class="br0">&#93;</span>.ssid=<span class="st_h">'Violetta'</span>
+wireless.<span class="sy0">@</span>wifi-iface<span class="br0">&#91;</span><span class="nu0">1</span><span class="br0">&#93;</span>.encryption=<span class="st_h">'psk2'</span>
+wireless.<span class="sy0">@</span>wifi-iface<span class="br0">&#91;</span><span class="nu0">1</span><span class="br0">&#93;</span>.device=<span class="st_h">'radio0'</span>
+wireless.<span class="sy0">@</span>wifi-iface<span class="br0">&#91;</span><span class="nu0">1</span><span class="br0">&#93;</span>.mode=<span class="st_h">'sta'</span>
+wireless.<span class="sy0">@</span>wifi-iface<span class="br0">&#91;</span><span class="nu0">1</span><span class="br0">&#93;</span>.bssid=<span class="st_h">'C8:D5:FE:C8:61:B0'</span>
+wireless.<span class="sy0">@</span>wifi-iface<span class="br0">&#91;</span><span class="nu0">1</span><span class="br0">&#93;</span>.key=<span class="st_h">'myWifiPasswordHere'</span></pre>
+
+<p>
+Please note that the Wi-Fi network generated by the device in this example (the one called OpenWrt) has no password nor encryption.<br/>
+
+This was done because the focus of this article was getting the relay bridge up and running.<br/>
+
+You will likely want to set up your device&#039;s Wi-Fi network in a more secure way, as explained in the Wi-Fi setup page <a href="/docs/guide-user/network/wifi/basic" class="wikilink1" title="docs:guide-user:network:wifi:basic" data-wiki-id="docs:guide-user:network:wifi:basic">here</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Setup with CLI&quot;,&quot;hid&quot;:&quot;setup_with_cli&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:12,&quot;range&quot;:&quot;10483-14805&quot;} -->
+<h2 class="sectionedit13" id="networking_details">Networking Details</h2>
+<div class="level2">
+
+<p>
+As an alternative to using <code>relayd</code>, you might consider using
+<a href="/docs/guide-user/network/wifi/connect_client_wifi" class="wikilink1" title="docs:guide-user:network:wifi:connect_client_wifi" data-wiki-id="docs:guide-user:network:wifi:connect_client_wifi">simple wireless client</a>
+if a bridged network is not required.
+The Wi-Fi extender can be managed through its static <code>wwan</code> <abbr title="Internet Protocol">IP</abbr> address (eg. 192.168.1.30) 
+</p>
+
+<p>
+Even though all end devices on the Wi-Fi extender will get a <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> address from the main router&#039;s <abbr title="Local Area Network">LAN</abbr> subnet, the <strong><abbr title="Local Area Network">LAN</abbr></strong> interface of the Wi-Fi extender MUST be on a different subnet for relayd to work (since it is routing traffic, it expects 2 different subnets).
+</p>
+
+<p>
+Since both ethernet ports and Access Point Wi-Fi network are on the same <strong><abbr title="Local Area Network">LAN</abbr></strong> interface, all clients connecting to the Ethernet ports and to the Access Point Wi-Fi network of the Wi-Fi extender device will be routed by <strong>relayd</strong> and will be connected to your main network.
+</p>
+
+<p>
+The <strong><abbr title="Local Area Network">LAN</abbr></strong> interface subnet will be used only as a “management” interface, as devices connecting to the Wi-Fi repeater will be on the main network&#039;s subnet instead. If the relayd device becomes unreachable, you will have to configure a PC with a static address in the same subnet as the <strong><abbr title="Local Area Network">LAN</abbr></strong> interface (eg. 192.168.2.10 for our example) to connect and be able to use LuCI <abbr title="Graphical User Interface">GUI</abbr> or <abbr title="Secure Shell">SSH</abbr>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Networking Details&quot;,&quot;hid&quot;:&quot;networking_details&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:13,&quot;range&quot;:&quot;14806-16043&quot;} -->
+<h2 class="sectionedit14" id="troubleshooting">Troubleshooting</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Troubleshooting&quot;,&quot;hid&quot;:&quot;troubleshooting&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:14,&quot;range&quot;:&quot;16044-16071&quot;} -->
+<h3 class="sectionedit15" id="accessing_the_extender">Accessing the Extender</h3>
+<div class="level3">
+
+<p>
+If you find the Wi-Fi extender itself is only accessible from computers
+directly connected to the W-<abbr title="Local Area Network">LAN</abbr> <abbr title="Access Point">AP</abbr>, not from the ones connected to the OpenWrt W-<abbr title="Local Area Network">LAN</abbr> client,
+when in the 192.168.1.0 subnet, make sure the <code>Local <abbr title="Internet Protocol version 4">IPv4</abbr> address</code> setting
+in the <code>Relay bridge</code> interface matches the ip address of the wireless uplink.
+(The alternative is tedious: It is possible to access the OpenWrt box via
+its <code>192.168.2.1</code> address if you manually configure your computer to that subnet.)
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Accessing the Extender&quot;,&quot;hid&quot;:&quot;accessing_the_extender&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:15,&quot;range&quot;:&quot;16072-16587&quot;} -->
+<h3 class="sectionedit16" id="check_firewall_zones">Check Firewall zones</h3>
+<div class="level3">
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> The following part of the configuration should not be necessary.
+The default operations should have changed them automatically.
+In case something isn&#039;t working, check this too. 
+</p>
+
+<p>
+<br/>
+<a href="/_detail/media/docs/howto/relay_firewallzone_checklan.jpg?id=docs%3Aguide-user%3Anetwork%3Awifi%3Awifiextenders%3Arelay_configuration" class="media" title="media:docs:howto:relay_firewallzone_checklan.jpg"><img src="/_media/media/docs/howto/relay_firewallzone_checklan.jpg?w=800&amp;tok=dbcb8d" class="media" loading="lazy" alt="" width="800" /></a> <br/>
+
+<br/>
+
+----
+<br/>
+<a href="/_detail/media/docs/howto/relay_firewallzone_checklan_2.jpg?id=docs%3Aguide-user%3Anetwork%3Awifi%3Awifiextenders%3Arelay_configuration" class="media" title="media:docs:howto:relay_firewallzone_checklan_2.jpg"><img src="/_media/media/docs/howto/relay_firewallzone_checklan_2.jpg?w=400&amp;tok=c44a5d" class="media" loading="lazy" alt="" width="400" /></a> <br/>
+
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Check Firewall zones&quot;,&quot;hid&quot;:&quot;check_firewall_zones&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:16,&quot;range&quot;:&quot;16588-16943&quot;} -->
+<h3 class="sectionedit17" id="adding_ipv6_support">Adding IPv6 support</h3>
+<div class="level3">
+
+<p>
+Activate <abbr title="Internet Protocol version 6">IPv6</abbr> support on your main router to get you a public <abbr title="Internet Protocol version 6">IPv6</abbr> prefix. 
+Activate <abbr title="Internet Protocol version 6">IPv6</abbr> on our Wi-Fi extender to allow for
+<a href="https://en.wikipedia.org/wiki/IPv6_address#Stateless_address_autoconfiguration" class="urlextern" title="https://en.wikipedia.org/wiki/IPv6_address#Stateless_address_autoconfiguration" rel="ugc nofollow">Stateless Address Autoconfiguration (SLAAC)</a>
+of your public <abbr title="Internet Protocol version 6">IPv6</abbr> addresses and <abbr title="Internet Protocol version 6">IPv6</abbr> traffic.
+</p>
+
+<p>
+1. Go to Network / Interfaces and create a new interface. Name it <code>WWAN6</code>, using protocol DHCPv6, cover the <abbr title="Wireless Wide Area Network">WWAN</abbr> interface. In the Common Configuration of the new interface, configure: Request <abbr title="Internet Protocol version 6">IPv6</abbr> address: disabled. In the Firewall settings: check that the “lan / repeater bridge…” line is selected. Leave the other settings by default, especially, leave the “Custom delegated <abbr title="Internet Protocol version 6">IPv6</abbr>-prefix” field empty. On the Interfaces / overwiew page check that the <abbr title="Wireless Wide Area Network">WWAN</abbr> interface gets a public <abbr title="Internet Protocol version 6">IPv6</abbr> address.<br/>
+
+</p>
+
+<p>
+2. Edit the <code><abbr title="Local Area Network">LAN</abbr></code> interface settings, <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> server / <abbr title="Internet Protocol version 6">IPv6</abbr> settings: check/modify the following settings: Router Advertisement Service: relay mode, DHCPv6 service: disabled, NDP-Proxy: relay mode.<br/>
+
+</p>
+
+<p>
+3. Open a <abbr title="Secure Shell">SSH</abbr> session on your OpenWrt device. Issue the following commands:<br/>
+
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> dhcp.wan.interface=wwan
+uci <span class="kw1">set</span> dhcp.wan.ra=relay
+uci <span class="kw1">set</span> dhcp.wan.ndp=relay
+uci <span class="kw1">set</span> dhcp.wan.master=<span class="nu0">1</span>
+uci commit</pre>
+
+<p>
+We assume that you chose the <code>wwan</code> name when you joined to the other Wi-Fi network
+as suggested earlier in this guide.
+If not, change the <code>dhcp.wan.interface=…</code> line accordingly.<br/>
+
+</p>
+
+<p>
+That&#039;s it. Restart <code>ophcpd</code> (<strong>System → Startup</strong> or <code>service odhcpd restart</code>)
+and your <abbr title="Internet Protocol version 6">IPv6</abbr>-network should begin to configure itself.
+Connected <abbr title="Internet Protocol version 6">IPv6</abbr>-enabled devices should get their public <abbr title="Internet Protocol version 6">IPv6</abbr> addresses,
+derived from your public <abbr title="Internet Protocol version 6">IPv6</abbr> prefix, and <abbr title="Internet Protocol version 6">IPv6</abbr> traffic should go through your Wi-Fi extender. 
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Adding IPv6 support&quot;,&quot;hid&quot;:&quot;adding_ipv6_support&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:17,&quot;range&quot;:&quot;16944-18693&quot;} -->
+<h3 class="sectionedit18" id="known_issues">Known Issues</h3>
+<div class="level3">
+
+<p>
+Here are a list of some recently reported issues:
+</p>
+<ol>
+<li class="level1"><div class="li"> <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> issue caused by Access Point. <a href="https://forum.openwrt.org/t/relayd-not-forwarding-broadcast-bootp-dhcp-responses/53607/15" class="urlextern" title="https://forum.openwrt.org/t/relayd-not-forwarding-broadcast-bootp-dhcp-responses/53607/15" rel="ugc nofollow">OWrt forum</a></div>
+</li>
+<li class="level1"><div class="li"> Extremely poor upstream transfer speeds with some MT762x devices. <a href="https://forum.openwrt.org/t/question-xiaomi-mi-r3g-mir3g-5ghz-relayd-19-07-upload-performance/50248" class="urlextern" title="https://forum.openwrt.org/t/question-xiaomi-mi-r3g-mir3g-5ghz-relayd-19-07-upload-performance/50248" rel="ugc nofollow">Owrt forum</a> <a href="https://bugs.openwrt.org/index.php?do=details&amp;task_id=2816" class="urlextern" title="https://bugs.openwrt.org/index.php?do=details&amp;task_id=2816" rel="ugc nofollow">Bug Report FS#2816</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://forum.openwrt.org/t/relayd-double-nat-issue/134702/" class="urlextern" title="https://forum.openwrt.org/t/relayd-double-nat-issue/134702/" rel="ugc nofollow">Devices connected to relayd device cannot be reached.</a>  <a href="https://forum.openwrt.org/t/wifi-bridge-only-outbound-connections-work/135973" class="urlextern" title="https://forum.openwrt.org/t/wifi-bridge-only-outbound-connections-work/135973" rel="ugc nofollow">2nd possibly similar case</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://forum.openwrt.org/t/how-to-use-openwrt-as-a-wi-fi-repeater-using-a-different-ssid/136177" class="urlextern" title="https://forum.openwrt.org/t/how-to-use-openwrt-as-a-wi-fi-repeater-using-a-different-ssid/136177" rel="ugc nofollow">Cannot enable client and AP on same radio</a></div>
+</li>
+<li class="level1 node"><div class="li"> Additional instruction for backdoor to router since once dhcp is disabled on <abbr title="Local Area Network">LAN</abbr>, the router become unreachable.  This may occur if there are changes to the wireless access point.  eg. wifi SSID, channel number or security passphrase has changed.<br/>
+</div>
+<ol>
+<li class="level2"><div class="li"> Connect a computer using ethernet cable to <abbr title="Local Area Network">LAN</abbr> port of the Wifi bridge. </div>
+</li>
+<li class="level2"><div class="li"> Configure a static <abbr title="Internet Protocol">IP</abbr> address on the computer. eg. if the Wifi bridge uses <abbr title="Local Area Network">LAN</abbr> <abbr title="Internet Protocol">IP</abbr> address of 192.168.2.1 in above example, use static <abbr title="Internet Protocol">IP</abbr> address: 192.168.2.10.</div>
+</li>
+<li class="level2"><div class="li"> Access LuCI at 192.168.2.1 for above example.</div>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> <a href="https://www.nerd-quickies.net/2019/08/20/setup-lan-wlan-bridge-with-openwrt-luci/" class="urlextern" title="https://www.nerd-quickies.net/2019/08/20/setup-lan-wlan-bridge-with-openwrt-luci/" rel="ugc nofollow">Alternative relayd setup guide </a></div>
+</li>
+<li class="level1"><div class="li"> Alternative detailed Relayd setup instructions can also be found in section 9.10 of the <a href="https://www.dropbox.com/sh/c8cqmpc6cacs5n8/AAA2f8htk1uMitBckDW8Jq88a?dl=0" class="urlextern" title="https://www.dropbox.com/sh/c8cqmpc6cacs5n8/AAA2f8htk1uMitBckDW8Jq88a?dl=0" rel="ugc nofollow">1-OpenWrt-LEDE Installation Guide for HH5A</a></div>
+</li>
+<li class="level1"><div class="li"> <abbr title="Internet Protocol version 6">IPv6</abbr> on macOS 10.15+ does not work with a ULA prefix set on <abbr title="Local Area Network">LAN</abbr> <a href="https://github.com/openwrt/openwrt/issues/7561" class="urlextern" title="https://github.com/openwrt/openwrt/issues/7561" rel="ugc nofollow">https://github.com/openwrt/openwrt/issues/7561</a></div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Known Issues&quot;,&quot;hid&quot;:&quot;known_issues&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:18,&quot;range&quot;:&quot;18694-20566&quot;} -->
+<h3 class="sectionedit19" id="using_nat">Using NAT</h3>
+<div class="level3">
+
+<p>
+<strong><span style='color:#ed1c24; '>Comment:</span></strong>  This looks like the basic instructions for configuring a simple <a href="/docs/guide-user/network/wifi/connect_client_wifi" class="wikilink1" title="docs:guide-user:network:wifi:connect_client_wifi" data-wiki-id="docs:guide-user:network:wifi:connect_client_wifi">wireless client</a>
+<br/>
+
+<br/>
+
+</p>
+
+<p>
+This method basically puts a second Wi-Fi router in cascade on the first one; i.e. usually this means that the extender&#039;s clients will be behind double <abbr title="Network Address Translation">NAT</abbr>.
+</p>
+
+<p>
+It&#039;s like connecting with a cable the <abbr title="Wide Area Network">WAN</abbr> port on the Wi-Fi extender to the <abbr title="Local Area Network">LAN</abbr> ports of the main router, the Wi-Fi extender creates a new network for itself and the devices connected to it, that can go on the Internet and reach devices in the <abbr title="Local Area Network">LAN</abbr> network of the main router. But in this case we are doing it with wireless networks instead.
+</p>
+
+<p>
+prerequisites:
+- router with two initial interfaces (<abbr title="Local Area Network">LAN</abbr>, <abbr title="Wide Area Network">WAN</abbr>)
+</p>
+
+<p>
+Setup with WebUI:
+</p>
+<ul>
+<li class="level1"><div class="li"> Go in the Network → Interfaces page, click on edit lan interface,</div>
+</li>
+<li class="level1"><div class="li"> Set <abbr title="Local Area Network">LAN</abbr> as static <abbr title="Internet Protocol version 4">IPv4</abbr> address as 192.168.x.1 (with x different from the network to which you will connect via Wi-Fi),</div>
+</li>
+<li class="level1"><div class="li"> Go in the Network → Wi-Fi, click on scan and choose the “network” link and click “Join Network”.</div>
+</li>
+<li class="level1"><div class="li"> Enter the Wi-Fi password, leave the “name of new network” as “<abbr title="Wireless Wide Area Network">WWAN</abbr>” and select <abbr title="Wireless Wide Area Network">WWAN</abbr> (or <abbr title="Wide Area Network">WAN</abbr>) firewall zone. Click Save,</div>
+</li>
+<li class="level1"><div class="li"> Go in the Network → Interfaces page, click on edit wwan interface,</div>
+</li>
+<li class="level1"><div class="li"> Move to the Firewall tab. Click on Save and Apply.</div>
+</li>
+<li class="level1"><div class="li"> Go in the Network → Firewall, click edit in wan zone and check <abbr title="Wide Area Network">WAN</abbr> and <abbr title="Wireless Wide Area Network">WWAN</abbr> in “covered networks”, click save and apply,</div>
+</li>
+</ul>
+
+<p>
+Now you&#039;ve correctly bounded <abbr title="Wireless Wide Area Network">WWAN</abbr> with <abbr title="Wide Area Network">WAN</abbr>, and consequently <abbr title="Wireless Wide Area Network">WWAN</abbr> with <abbr title="Local Area Network">LAN</abbr>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Using NAT&quot;,&quot;hid&quot;:&quot;using_nat&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:19,&quot;range&quot;:&quot;20567-22100&quot;} -->
+<h3 class="sectionedit20" id="potentially_obsolete">Potentially Obsolete</h3>
+<div class="level3">
+
+<p>
+<em>This section collects all the uncertain statements and provisos from earlier in this document.
+Any that are still valid should be moved to the relevant section.</em>
+</p>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:21,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_center wrap_round wrap_important plugin_wrap" style="width: 90%;">
+<p>
+Using relayd as instructed in this article isn&#039;t guaranteed to work with all Openwrt compatible devices or wifi networks - use only as a last resort.
+</p>
+
+<p>
+If supported by both devices, consider using preferred <a href="/docs/guide-user/network/wifi/atheroswds" class="wikilink1" title="docs:guide-user:network:wifi:atheroswds" data-wiki-id="docs:guide-user:network:wifi:atheroswds">Wireless Repeater/Extender with WDS</a> or <a href="/docs/guide-user/network/wifi/mesh/80211s" class="wikilink1" title="docs:guide-user:network:wifi:mesh:80211s" data-wiki-id="docs:guide-user:network:wifi:mesh:80211s">802.11s Mesh Networking</a>.
+</p>
+
+<p>
+If vlan support is required you can use Layer 2 GRE tunnels (“gretap”).
+</p>
+
+<p>
+The most common problem is that the client router cannot pass the <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> message between the main router and the client connected to the client router. Currently it seems to be the hardware/SOC limitation (related to MAC cloning?)
+</p>
+
+<p>
+Instead of relayd it should be possible to use <strong>kmod-trelay</strong>, the only information about using it can be seen in <a href="https://github.com/openwrt/openwrt/commit/c3bba7f8c61ee98265bcffef8ee86e22aa89bbe9" class="urlextern" title="https://github.com/openwrt/openwrt/commit/c3bba7f8c61ee98265bcffef8ee86e22aa89bbe9" rel="ugc nofollow">its source code</a>, if you used it successfully please add a section for it in this article.<br/>
+
+</p>
+
+<p>
+In this article you will see how to configure your device to become a Wi-Fi extender/repeater/bridge.
+</p>
+
+<p>
+In some cases, the wireless drivers used in OpenWrt do not support “Layer 2” bridging in client mode with a specific “upstream” wireless system. When this occurs, one approach is to <em>route</em> the traffic between <abbr title="Local Area Network">LAN</abbr> and the upstream wireless system. Broadcast traffic, such as <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> and link-local discovery like mDNS are generally not routable.
+</p>
+
+<p>
+When other options don&#039;t work, the <strong>relayd</strong> package implements a bridge-like behavior for <abbr title="Internet Protocol version 4">IPv4</abbr> (only), complete with <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> and broadcast relaying. This configuration can be done through <abbr title="Secure Shell">SSH</abbr> (remote terminal) or through Luci <abbr title="Graphical User Interface">GUI</abbr>.
+</p>
+
+<p>
+This image shows an example setup. <strong><abbr title="Local Area Network">LAN</abbr></strong> interface of the relayd device MUST be on a different subnet for relayd to work (since it is routing traffic, it expects 2 different subnets).
+</p>
+
+<p>
+Since both ethernet ports and Access Point Wi-Fi network are on the same <strong><abbr title="Local Area Network">LAN</abbr></strong> interface, all clients connecting to the Ethernet ports and to the Access Point Wi-Fi network of the Wi-Fi extender device will be routed by <strong>relayd</strong> and will be connected to your main network.
+</p>
+
+<p>
+The <strong><abbr title="Local Area Network">LAN</abbr></strong> interface subnet will be used only as a “management” interface, as devices connecting to the Wi-Fi repeater will be on the main network&#039;s subnet instead. If the relayd device becomes unreachable, you will have to configure a PC with a static address in the same subnet as the <strong><abbr title="Local Area Network">LAN</abbr></strong> interface (eg. 192.168.2.10 for our example) to connect and be able to use LuCI <abbr title="Graphical User Interface">GUI</abbr> or <abbr title="Secure Shell">SSH</abbr>.<br/>
+
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:22,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Potentially Obsolete&quot;,&quot;hid&quot;:&quot;potentially_obsolete&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:20,&quot;range&quot;:&quot;22101-&quot;} -->

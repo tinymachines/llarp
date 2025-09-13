@@ -1,0 +1,231 @@
+
+<h1 class="sectionedit1" id="disk_encryption">Disk Encryption</h1>
+<div class="level1">
+
+<p>
+You may want to encrypt your external disk to improve privacy (in case other people have physical access to your router) or so that you can securely reuse the disk later for another purpose if it&#039;s flash (see <a href="http://nakedsecurity.sophos.com/2011/02/20/ssds-prove-difficult-to-securely-erase/" class="urlextern" title="http://nakedsecurity.sophos.com/2011/02/20/ssds-prove-difficult-to-securely-erase/" rel="ugc nofollow">SSDs prove difficult to securely erase</a>).
+</p>
+
+<p>
+Install encryption packages:
+</p>
+<pre class="code bash">opkg <span class="kw2">install</span> kmod-crypto-ecb kmod-crypto-xts kmod-crypto-seqiv kmod-crypto-misc kmod-crypto-user cryptsetup</pre>
+
+<p>
+Install ext4 packages:
+</p>
+<pre class="code bash">opkg <span class="kw2">install</span> kmod-fs-ext4 e2fsprogs</pre>
+
+<p>
+There are different ways of handling the encryption key.
+In this example we generate a new random key on every mount.
+</p>
+<div class="table sectionedit2"><table class="inline">
+	<tr class="row0">
+		<td class="col0"> <img src="/_media/meta/icons/tango/48px-dialog-warning.svg.png" class="media" loading="lazy" alt="" /> </td><td class="col1"> Don&#039;t follow these instructions blindly!  Read the <a href="https://gitlab.com/cryptsetup/cryptsetup/wikis/FrequentlyAskedQuestions" class="urlextern" title="https://gitlab.com/cryptsetup/cryptsetup/wikis/FrequentlyAskedQuestions" rel="ugc nofollow">CryptSetup FAQ</a> to learn more about the <code>cryptsetup</code> command. </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;728-980&quot;} -->
+<p>
+The following command will create a standard encrypted container on the device or partition <code>[encrypted-device]</code> (eg. <code>/dev/sda</code>), and requires you to enter a passphrase that will be used to access the encrypted data later.
+WARNING: This will destroy anything on <code>[encrypted-device]</code>!
+</p>
+<pre class="code bash">cryptsetup luksFormat <span class="br0">&#91;</span>encrypted-device<span class="br0">&#93;</span></pre>
+
+<p>
+This step may take a long time while <code>/dev/random</code> gathers enough entropy to generate the key.
+The security of the passphrase is based on it&#039;s strength and the number of iterations it is hashed... as the CPU on embedded systems is usually slow, it&#039;s advisable to force the use of a higher iteration count for simple passphrases: use the option <code>--iter-time=[milliseconds]</code> to increase the iteration count (default is usually 2000 milliseconds.
+Note: higher values will increase the time it takes to map the device, not access it once it&#039;s mounted).
+</p>
+
+<p>
+To use the encrypted container, you must map a decrypted device... this must be done before the device can be formatted or mounted (eg. after each reboot).
+The following command creates a mapping called <code>[map-name]</code> (you can choose the name yourself, eg. crypt) -- you must supply the same passphrase you used when performing <code>luksFormat</code> above.
+</p>
+<pre class="code bash">cryptsetup open <span class="br0">&#91;</span>encrypted-device<span class="br0">&#93;</span> <span class="br0">&#91;</span>map-name<span class="br0">&#93;</span></pre>
+
+<p>
+Format and mount the (now available) decrypted device.
+<code>[mount-point]</code> is where you want the filesystem mounted (eg. <code>/mnt</code>):
+</p>
+<pre class="code bash">mkfs.ext4 <span class="sy0">/</span>dev<span class="sy0">/</span>mapper<span class="sy0">/</span><span class="br0">&#91;</span>map-name<span class="br0">&#93;</span>
+<span class="kw2">mount</span> <span class="sy0">/</span>dev<span class="sy0">/</span>mapper<span class="sy0">/</span><span class="br0">&#91;</span>map-name<span class="br0">&#93;</span> <span class="br0">&#91;</span>mount-point<span class="br0">&#93;</span></pre>
+
+<p>
+On a fresh reboot, you just need for perform the mapping and mount (Note: the mapping will require a passphrase)
+</p>
+<pre class="code bash">cryptsetup open <span class="br0">&#91;</span>encrypted-device<span class="br0">&#93;</span> <span class="br0">&#91;</span>map-name<span class="br0">&#93;</span>
+<span class="kw2">mount</span> <span class="sy0">/</span>dev<span class="sy0">/</span>mapper<span class="sy0">/</span><span class="br0">&#91;</span>map-name<span class="br0">&#93;</span> <span class="br0">&#91;</span>mount-point<span class="br0">&#93;</span></pre>
+
+<p>
+Unmount:
+</p>
+<pre class="code bash"><span class="kw2">umount</span> <span class="br0">&#91;</span>mount-point<span class="br0">&#93;</span>
+cryptsetup close <span class="br0">&#91;</span>map-name<span class="br0">&#93;</span></pre>
+
+<p>
+Automated:
+</p>
+
+<p>
+The following script can be used to automate decrypting and mounting removable storage that is encrypted by using entries in <code>/etc/crypttab</code> (like many linux distros) and <code>/etc/config/fstab</code>. To use the following script, a key-file must be generated. To see the occupied Keyslots in the LUKS device:
+</p>
+<pre class="code bash">cryptsetup luksDump <span class="br0">&#91;</span>encrypted-device<span class="br0">&#93;</span></pre>
+
+<p>
+<code>Keyslots</code> should have 1 entry (<code>0:</code>, from the passphrase created earlier). To use a previously generated key-file, this step may be omitted. To create a new key-file:
+</p>
+<pre class="code bash"><span class="kw2">dd</span> <span class="re2">if</span>=<span class="sy0">/</span>dev<span class="sy0">/</span>urandom <span class="re2">of</span>=<span class="br0">&#91;</span>path<span class="sy0">/</span>to<span class="sy0">/</span>key-file<span class="br0">&#93;</span> <span class="re2">bs</span>=<span class="nu0">512</span> <span class="re2">count</span>=<span class="nu0">8</span></pre>
+
+<p>
+This will create a key-file that is filled with 4096 bytes of random data. Add this key-file to the LUKS device:
+</p>
+<pre class="code bash">cryptsetup luksAddKey <span class="br0">&#91;</span>encrypted-device<span class="br0">&#93;</span> <span class="br0">&#91;</span>path<span class="sy0">/</span>to<span class="sy0">/</span>key-file<span class="br0">&#93;</span></pre>
+
+<p>
+You will be prompted for the passphrase from above.
+</p>
+<pre class="code bash">cryptsetup luksDump <span class="br0">&#91;</span>encrypted-device<span class="br0">&#93;</span></pre>
+
+<p>
+<code>Keyslots</code> should now contain 2 entries (<code>1:</code> correlating to the newly created key-file). The format of <code>/etc/crypttab</code> should be as follows:
+<code>[map-name] [UUID=UUID-of-encrypted-device] [path/to/key-file]	[type-of-encryption]</code>
+</p>
+
+<p>
+<code>[UUID]</code> and <code>[type-of-encryption]</code> may be obtained from the output of:
+</p>
+<pre class="code bash">block info</pre>
+
+<p>
+<code>[type-of-encryption]</code> must match exactly with <code>TYPE=</code> given by <code>block info</code>.
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-user/storage/disk.encryption?codeblock=12" title="Download Snippet" class="mediafile mf_sh">install-decrypt.sh</a></dt>
+<dd><pre class="code bash"><span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>hotplug.d<span class="sy0">/</span>block<span class="sy0">/</span><span class="nu0">99</span>-lukscrypt
+<span class="co0"># note: this needs ash installed</span>
+<span class="kw2">ash</span> <span class="sy0">/</span>sbin<span class="sy0">/</span>decrypt.sh
+EOF
+&nbsp;
+<span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>sbin<span class="sy0">/</span>decrypt.sh
+<span class="co0">#!/bin/sh</span>
+<span class="co0"># Perform tasks when called by BLOCK hotplug (/etc/hotplug.d/block/99-lukscrypt)</span>
+<span class="co0"># CC0: 21JUL18 by WaLLy3K, updated 09AUG18</span>
+<span class="co0"># Further adapted for OpenWRT 18.06 by jmm on 2018-09-04</span>
+<span class="co0"># Further adapted for OpenWRT 21.02.2 by mdpc on 2022-12-30</span>
+<span class="co0"># Further adapted for OpenWRT 22.03 by crass on 2023-07-24</span>
+<span class="co0">#  * remove dependency on awk</span>
+<span class="co0">#  * allow specifying alternate path to crypttab and alternate root for keyfile</span>
+<span class="co0"># https://openwrt.org/docs/guide-user/storage/disk.encryption</span>
+&nbsp;
+<span class="co0"># Hotplug Vars: $ACTION (add/remove), $DEVICE (?), $DEVNAME (sdx)</span>
+&nbsp;
+<span class="co0"># logger -s &quot;start decrypt luks&quot; $DEVNAME $ACTION</span>
+&nbsp;
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-z</span> <span class="st0">&quot;<span class="es3">${DEVNAME}</span>&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+    <span class="re2">DEVNAME</span>=<span class="st0">&quot;<span class="es3">${1##*/}</span>&quot;</span>
+<span class="kw1">fi</span>
+&nbsp;
+msg<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;$@&quot;</span> <span class="sy0">&gt;/</span>dev<span class="sy0">/</span>kmsg
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es2">$ACTION</span>&quot;</span> <span class="sy0">!</span>= <span class="st0">&quot;add&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+    <span class="co0">#only do something if a device is being added</span>
+    <span class="kw3">exit</span> <span class="nu0">1</span>
+<span class="kw1">fi</span>
+&nbsp;
+<span class="kw1">if</span> <span class="br0">&#91;</span><span class="br0">&#91;</span> <span class="st0">&quot;<span class="es2">$DEVNAME</span>&quot;</span> == dm-<span class="br0">&#91;</span><span class="nu0">0</span>-<span class="nu0">9</span><span class="br0">&#93;</span> <span class="br0">&#93;</span><span class="br0">&#93;</span>; <span class="kw1">then</span>
+    <span class="co0">#/dev/mapper block device has been created so now try to mount FS if set up</span>
+    <span class="co0"># in /etc/config/fstab (or LuCI &gt; System &gt; Mount Points)</span>
+    block <span class="kw2">mount</span>
+    <span class="kw3">exit</span> <span class="nu0">0</span>
+<span class="kw1">fi</span>
+&nbsp;
+<span class="co0"># Determine whether drive needs to be decrypted</span>
+<span class="re2">CRYPTTAB</span>=<span class="co1">${CRYPTTAB:-&quot;${ALTROOT}</span><span class="sy0">/</span>etc<span class="sy0">/</span>crypttab<span class="st0">&quot;}
+if [[ ! -r &quot;</span><span class="re1">$CRYPTTAB</span><span class="st0">&quot; ]]; then
+    msg &quot;</span>Unable to <span class="kw3">read</span> crypttab file: <span class="co1">${CRYPTTAB}</span><span class="st0">&quot;
+    exit 1
+fi
+&nbsp;
+[ -e /dev/fd ] || ln -s /proc/self/fd /dev
+&nbsp;
+#IFS=: read BID_DEVNAME BID_RAW &lt; &lt;(block info &quot;</span><span class="sy0">/</span>dev<span class="sy0">/</span><span class="re1">$DEVNAME</span><span class="st0">&quot;)
+BID_DEVNAME=<span class="es4">$(block info &quot;/dev/$DEVNAME&quot; | (read V _; echo $V)</span>)
+BID_RAW=<span class="es4">$(block info &quot;/dev/$DEVNAME&quot; | (read _ V; echo $V)</span>)
+if [[ -n &quot;</span><span class="co1">${BID_RAW}</span><span class="st0">&quot; ]]; then
+    eval &quot;</span><span class="kw3">export</span> <span class="co1">${BID_RAW#*:}</span><span class="st0">&quot;
+fi
+&nbsp;
+if [[ -n &quot;</span><span class="re1">$UUID</span><span class="st0">&quot; ]]; then
+    CT_RAW=&quot;</span>$<span class="br0">&#40;</span><span class="kw2">grep</span> <span class="re5">-m</span> <span class="nu0">1</span> <span class="st0">&quot;UUID=<span class="es3">${UUID}</span>&quot;</span> <span class="st0">&quot;<span class="es2">$CRYPTTAB</span>&quot;</span><span class="br0">&#41;</span><span class="st0">&quot;
+fi
+&nbsp;
+if [[ -z &quot;</span><span class="re1">$CT_RAW</span><span class="st0">&quot; ]] &amp;&amp; [[ -n &quot;</span><span class="re1">$LABEL</span><span class="st0">&quot; ]]; then
+    CT_RAW=&quot;</span>$<span class="br0">&#40;</span><span class="kw2">grep</span> <span class="re5">-m</span> <span class="nu0">1</span> <span class="st0">&quot;LABEL=<span class="es3">${LABEL}</span>&quot;</span> <span class="st0">&quot;<span class="es2">$CRYPTTAB</span>&quot;</span><span class="br0">&#41;</span><span class="st0">&quot;
+fi
+&nbsp;
+if [[ -z &quot;</span><span class="re1">$CT_RAW</span><span class="st0">&quot; ]]; then
+    CT_RAW=&quot;</span>$<span class="br0">&#40;</span><span class="kw2">grep</span> <span class="re5">-m</span> <span class="nu0">1</span> <span class="st0">&quot; /dev/<span class="es3">${DEVNAME}</span> &quot;</span> <span class="st0">&quot;<span class="es2">$CRYPTTAB</span>&quot;</span><span class="br0">&#41;</span><span class="st0">&quot;
+fi
+&nbsp;
+if [[ -z &quot;</span><span class="co1">${CT_RAW:-}</span><span class="st0">&quot; ]]; then
+    # No crypttab entry found for this device
+    exit 1
+fi
+#read CT_LABEL _ CT_KEYFILE CT_TYPE &lt; &lt;(echo <span class="es2">$CT_RAW</span>)
+CT_LABEL=<span class="es4">$(echo $CT_RAW | (read V _; echo $V)</span>)
+CT_KEYFILE=<span class="es4">$(echo $CT_RAW | (read _ _ V _; echo $V)</span>)
+CT_TYPE=<span class="es4">$(echo $CT_RAW | (read _ _ _ V; echo $V)</span>)
+&nbsp;
+if [[ -e &quot;</span><span class="sy0">/</span>dev<span class="sy0">/</span>mapper<span class="sy0">/</span><span class="co1">${CT_LABEL}</span><span class="st0">&quot; ]]; then
+    msg &quot;</span>Drive already decrypted: <span class="re1">$CT_LABEL</span><span class="st0">&quot;
+    exit 1
+fi
+&nbsp;
+# Error Handling
+if [[ ! -e &quot;</span><span class="co1">${ALTROOT:+${ALTROOT}</span><span class="sy0">/</span><span class="br0">&#125;</span><span class="re1">$CT_KEYFILE</span><span class="st0">&quot; ]]; then
+    msg &quot;</span>Unable to view keyfile: <span class="st_h">'$CT_KEYFILE'</span><span class="st0">&quot;
+    exit 1
+fi
+if [[ ! &quot;</span><span class="co1">${TYPE}</span><span class="st0">&quot; == *&quot;</span><span class="co1">${CT_TYPE}</span><span class="st0">&quot;* ]]; then
+    msg &quot;</span>Unable to decrypt format: <span class="re1">$CT_TYPE</span><span class="st0">&quot;
+    exit 1
+fi
+&nbsp;
+msg &quot;</span>Decrypting drive: <span class="re1">$CT_LABEL</span> <span class="br0">&#40;</span><span class="sy0">/</span>dev<span class="sy0">/</span><span class="re1">$DEVNAME</span><span class="br0">&#41;</span><span class="st0">&quot;
+cryptsetup open &quot;</span><span class="sy0">/</span>dev<span class="sy0">/</span><span class="re1">$DEVNAME</span><span class="st0">&quot; &quot;</span><span class="co1">${CT_LABEL}</span><span class="st0">&quot; -d &quot;</span><span class="co1">${ALTROOT:+${ALTROOT}</span><span class="sy0">/</span><span class="br0">&#125;</span><span class="re1">$CT_KEYFILE</span><span class="st0">&quot;
+CS_EXIT=&quot;</span><span class="re4">$?</span><span class="st0">&quot;
+case &quot;</span><span class="re1">$CS_EXIT</span><span class="st0">&quot; in
+0)  if [ -e &quot;</span><span class="sy0">/</span>dev<span class="sy0">/</span>mapper<span class="sy0">/</span><span class="co1">${CT_LABEL}</span><span class="st0">&quot; ]; then
+        msg &quot;</span>Drive decrypted: <span class="re1">$CT_LABEL</span><span class="st0">&quot;
+    else
+        msg &quot;</span>Drive not found after decrypting: <span class="re1">$CT_LABEL</span><span class="st0">&quot;
+        exit 1
+    fi;;
+5)  msg &quot;</span>Device already exists: <span class="re1">$CT_LABEL</span> <span class="br0">&#40;</span>Dmsetup stuck?<span class="br0">&#41;</span><span class="st0">&quot;; exit 1;;
+*)  msg &quot;</span>Unable to decrypt drive: <span class="re1">$CT_LABEL</span> <span class="br0">&#40;</span><span class="re1">$CS_EXIT</span><span class="br0">&#41;</span><span class="st0">&quot;; exit 1;;
+esac
+&nbsp;
+exit 0
+EOF
+&nbsp;
+chmod +x /sbin/decrypt.sh</span></pre>
+</dd></dl>
+
+<p>
+The above script does not unmount or remove <code>/dev/mapper</code> devices when a USB device is removed so this must be done manually as outlined above.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Disk Encryption&quot;,&quot;hid&quot;:&quot;disk_encryption&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-7474&quot;} -->
+<h2 class="sectionedit3" id="example">Example</h2>
+<div class="level2">
+
+<p>
+A video demonstration on OpenWrt 14.07 Barrier Breaker using LUKS: <a href="https://www.youtube.com/watch?v=NSVWb6dscVI" class="urlextern" title="https://www.youtube.com/watch?v=NSVWb6dscVI" rel="ugc nofollow">https://www.youtube.com/watch?v=NSVWb6dscVI</a> (broken link, 07.Mar.2016)
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Example&quot;,&quot;hid&quot;:&quot;example&quot;,&quot;codeblockOffset&quot;:13,&quot;secid&quot;:3,&quot;range&quot;:&quot;7475-&quot;} -->

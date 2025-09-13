@@ -1,0 +1,198 @@
+
+<h1 class="sectionedit1" id="using_dependencies">Using Dependencies</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Using Dependencies&quot;,&quot;hid&quot;:&quot;using_dependencies&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-34&quot;} -->
+<h2 class="sectionedit2" id="topic">Topic</h2>
+<div class="level2">
+
+<p>
+A typical package Makefile will contain a section like:
+</p>
+<pre class="code">define Package/tcpdump/default
+  SECTION:=net
+  CATEGORY:=Network
+  DEPENDS:=+libpcap
+  TITLE:=Network monitoring and data acquisition tool
+  URL:=http://www.tcpdump.org/
+endef</pre>
+
+<p>
+This page talks about what the DEPENDS:= line should look like.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Topic&quot;,&quot;hid&quot;:&quot;topic&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;35-368&quot;} -->
+<h2 class="sectionedit3" id="dependency_types">Dependency types</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> If you specify a package name without any ornaments then that means that the current package cannot be selected unless the package named in enabled. e.g., in <code>tcpdump</code> above, </div>
+</li>
+</ul>
+<pre class="code">DEPENDS:=libpcap</pre>
+
+<p>
+would mean that tcpdump would not be shown as possible to be selected unless <code>libpcap</code> were already selected
+</p>
+<ul>
+<li class="level1"><div class="li"> If you say <code>+package</code> that means if the current package is selected, it will cause <code>package</code> to be selected.  This is the case with <code>tcpdump</code> above.  It says that if <code>tcpdump</code> is selected, then select <code>libpcap</code>. e.g.</div>
+</li>
+</ul>
+<pre class="code">DEPENDS:=+libpcap</pre>
+<ul>
+<li class="level1"><div class="li"> If you say <code>+PACKAGE_packageb:packagec</code>, it means that <code>packagec</code> will only get selected by the current package (e.g. <code>tcpdump</code>) if <code>packageb</code> is enabled. e.g.</div>
+</li>
+</ul>
+<pre class="code">DEPENDS:=+PACKAGE_arpd:libpcap</pre>
+
+<p>
+would mean that if <code>tcpdump</code> was selected, then if <code>arpd</code> was also selected, select <code>libpcap</code>.
+</p>
+
+<p>
+Useful is the negation ! to only select a Package if it&#039;s not build into busybox
+</p>
+<pre class="code">DEPENDS:=+!BUSYBOX_CONFIG_HOSTNAME:net-tools-hostname</pre>
+
+<p>
+This means select net-tools-hostname only if hostname is not build into busybox. But don&#039;t try it the other way around, see the last case.
+</p>
+<ul>
+<li class="level1"><div class="li"> If you say <code>@SYMBOL</code> that means that CONFIG_SYMBOL must be defined by OpenWrt in order for the <code>package</code> to be available for selection. e.g</div>
+</li>
+</ul>
+<pre class="code">DEPENDS:=@USB_SUPPORT</pre>
+
+<p>
+would mean that the package wouldn&#039;t even appear unless config symbol CONFIG_USB_SUPPORT was defined, for example by the package <code>usb-core</code>
+</p>
+<ul>
+<li class="level1"><div class="li"> If you say <code>+@SYMBOL</code> that means if the current package is selected, it will cause CONFIG_SYMBOL to be selected.</div>
+</li>
+</ul>
+<pre class="code">DEPENDS:=+@KERNEL_DEBUG_FS</pre>
+
+<p>
+would mean that the if you select the package, it would automatically set the config symbol CONFIG_KERNEL_DEBUG_FS. Beware: This works while compiling your own image. If you install this package on a running box with opkg, this dependency is not checked!
+</p>
+<ul>
+<li class="level1"><div class="li"> Don&#039;t be so clever and combine everything:</div>
+</li>
+</ul>
+<pre class="code">DEPENDS:=+@!PACKAGE_net-tools-hostname:BUSYBOX_CONFIG_HOSTNAME</pre>
+
+<p>
+Here we select the Symbol BUSYBOX_CONFIG_HOSTNAME if the package net-tools-hostname is not selected. The @ belongs to BUSYBOX_CONFIG_HOSTNAME. This works while compiling your own image, but the resulting ipkg depends on the unresolvable BUSYBOX_CONFIG_HOSTNAME, so your package cannot be installed later on a box with opkg.
+</p>
+
+<p>
+As busybox can never be extended on a working box, always select an installable package when a busybox applet is not selected.
+</p>
+<pre class="code">DEPENDS:=+!BUSYBOX_CONFIG_HOSTNAME:net-tools-hostname</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Dependency types&quot;,&quot;hid&quot;:&quot;dependency_types&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;369-2999&quot;} -->
+<h3 class="sectionedit4" id="special_notes">Special Notes</h3>
+<div class="level3">
+
+<p>
+It is possible to do select and depend on packages outside the usual <code>DEPENDS</code> definition.  If, in the package <code>Makefile</code>, you have a definition:
+</p>
+<pre class="code">define Package/package-name/config
+    ...config stuff
+endef</pre>
+
+<p>
+then you can include the following directives.
+</p>
+<div class="table sectionedit5"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0">Directive </th><th class="col1">Meaning </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0">select package </td><td class="col1"> Selects a package if this package is selected </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0">select package if packageb </td><td class="col1"> Selects a package if packageb is selected as well as this package </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0">select package if SYMBOL </td><td class="col1"> Selects a package if CONFIG_SYMBOL is defined </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0">depends packageb</td><td class="col1"> This package depends on packageb (i.e. won&#039;t even show up, unless packageb is selected) </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0">depends packageb if packagec </td><td class="col1"> This package depends on packageb if packagec is selected </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0">select SYMBOL </td><td class="col1"> Sets a symbol to y if this package is selected (.e.g. select BUSYBOX_FEATURE_MKSWAP_UUID) </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0">select SYMBOL if packageb </td><td class="col1"> Like select SYMBOL but only if packageb is selected </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0">select SYMBOL if SYMBOL2 </td><td class="col1"> Like select SYMBOL but only if SYMBOL2 is defined </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;3299-4032&quot;} -->
+<p>
+The author is not aware of the ability to do <code>depends SYMBOL</code>.
+</p>
+
+<p>
+Note that the <code>if</code> directives may also include &amp;&amp;, ||, !, and uses parentheses () to use logical expression for AND (&amp;&amp;), OR (||) and NOT (!), and for order of operations (&#039;()&#039;).
+</p>
+
+<p>
+There is also a <code>default &#039;y&#039; SYMBOL</code> directive but the author is hazy on the details.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> It is important to note that using <code>select bar</code> in  <code>Package/foo/config</code> directives will select <code>bar</code> for building, but it will not be included in the dependencies when <code>opkg</code> installs <code>foo</code>, nor will it guarantee that <code>bar</code> will be built before <code>foo</code>.  Using <code>DEPENDS</code> will take care of all that.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Special Notes&quot;,&quot;hid&quot;:&quot;special_notes&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:4,&quot;range&quot;:&quot;3000-4689&quot;} -->
+<h2 class="sectionedit6" id="caveats">Caveats</h2>
+<div class="level2">
+
+<p>
+Dependencies MAY NOT be circular (i.e. Package A may not depend on Package B, which in turn depends on Package A).  If a circular dependency is created (whether directly or through another package), strange <code>make menuconfig</code> behaviour will be the result.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Caveats&quot;,&quot;hid&quot;:&quot;caveats&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:6,&quot;range&quot;:&quot;4690-4968&quot;} -->
+<h3 class="sectionedit7" id="using_boolean_operators">Using boolean operators</h3>
+<div class="level3">
+
+<p>
+- The <code>DEPENDS:@SYMBOL</code> and <code>DEPENDS:@SYMBOL:package</code> syntax have good support for boolean operators, including parentheses, negation (<code>!</code>), <code>&amp;&amp;</code> and <code>||</code>.
+</p>
+
+<p>
+- The support for operators in the <code>DEPENDS:+SYMBOL:package</code> syntax is limited.  Negation <code>!</code> is only supported to negate the whole condition.  Parentheses are ignored, so use them only for readability.
+Like C, <code>&amp;&amp;</code> has a higher precedence than <code>||</code>. So <code>+(YYY||FOO&amp;&amp;BAR):package</code> will select package if <code>CONFIG_YYY</code> is set or if both <code>CONFIG_FOO</code> and <code>CONFIG_BAR</code> are set.  You may use <code>+YYY||(FOO&amp;&amp;BAR):package</code> for readability, but <img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> writing <code>+(YYY||FOO)&amp;&amp;BAR:package</code> will <strong>not</strong> change the condition to select package if either YYY or FOO is selected and BAR is selected.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Using boolean operators&quot;,&quot;hid&quot;:&quot;using_boolean_operators&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:7,&quot;range&quot;:&quot;4969-5790&quot;} -->
+<h2 class="sectionedit8" id="bugs">Bugs</h2>
+<div class="level2">
+
+<p>
+There may be bugs in the OpenWrt build system wrt to dependencies.  If you can confirm that you have a dependency problem, please report a bug.  The developers would appreciate the following information:
+</p>
+<ul>
+<li class="level1"><div class="li"> the relevant portions of <code>$TOPDIR/tmp/.config-package.in</code> (where $TOPDIR is the directory where you checked out OpenWrt and where you initiate your builds)</div>
+</li>
+</ul>
+
+<p>
+<strong>NB</strong> Many apparent bugs are caused by circular dependencies.  The OpenWrt build system doesn&#039;t like circular dependencies.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Bugs&quot;,&quot;hid&quot;:&quot;bugs&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:8,&quot;range&quot;:&quot;5791-&quot;} -->

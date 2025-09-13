@@ -1,0 +1,192 @@
+
+<h1 class="sectionedit1" id="routed_ap">Routed AP</h1>
+<div class="level1">
+
+<p>
+In the default configuration, OpenWrt bridges the wireless network to the <abbr title="Local Area Network">LAN</abbr> of the device.
+The advantage of bridging is that broadcast traffic from Wireless to <abbr title="Local Area Network">LAN</abbr> and vice versa works without further changes.
+</p>
+
+<p>
+In order to separate the wireless network from <abbr title="Local Area Network">LAN</abbr>, a new network with the corresponding <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> and firewall settings must be created.
+This document outlines the steps necessary to implement such a setup.
+</p>
+
+<p>
+<a href="/_detail/doc/recipes/routed.ap_v3.png?id=docs%3Aguide-user%3Anetwork%3Awifi%3Aroutedap" class="media" title="doc:recipes:routed.ap_v3.png"><img src="/_media/doc/recipes/routed.ap_v3.png" class="media" loading="lazy" alt="" /></a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Routed AP&quot;,&quot;hid&quot;:&quot;routed_ap&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-478&quot;} -->
+<h2 class="sectionedit2" id="configuration">Configuration</h2>
+<div class="level2">
+
+<p>
+The changes below assume an OpenWrt default configuration, the relevant files are:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/base-system/basic-networking" class="wikilink1" title="docs:guide-user:base-system:basic-networking" data-wiki-id="docs:guide-user:base-system:basic-networking">/etc/config/network</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/network/wifi/basic" class="wikilink1" title="docs:guide-user:network:wifi:basic" data-wiki-id="docs:guide-user:network:wifi:basic">/etc/config/wireless</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/base-system/dhcp" class="wikilink1" title="docs:guide-user:base-system:dhcp" data-wiki-id="docs:guide-user:base-system:dhcp">/etc/config/dhcp</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/firewall/firewall_configuration" class="wikilink1" title="docs:guide-user:firewall:firewall_configuration" data-wiki-id="docs:guide-user:firewall:firewall_configuration">/etc/config/firewall</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;479-863&quot;} -->
+<h3 class="sectionedit3" id="step_1define_a_new_network">Step 1: Define a new network</h3>
+<div class="level3">
+
+<p>
+Edit <code>/etc/config/network</code> and define a new <code><a href="/docs/guide-user/base-system/basic-networking#interfaces" class="wikilink1" title="docs:guide-user:base-system:basic-networking" data-wiki-id="docs:guide-user:base-system:basic-networking">interface</a></code> section:
+</p>
+<pre class="code">config &#039;interface&#039; &#039;wifi&#039;
+        option &#039;proto&#039;      &#039;static&#039;
+        option &#039;ipaddr&#039;     &#039;192.168.2.1&#039;
+        option &#039;netmask&#039;    &#039;255.255.255.0&#039;</pre>
+
+<p>
+Note that no <code>ifname/device</code> option is set here, it is not required since the wireless network will reference this section later.
+</p>
+<div class="table sectionedit4"><table class="inline">
+	<tr class="row0">
+		<td class="col0"> <img src="/_media/meta/48px-dialog-warning.svg.png" class="media" loading="lazy" alt="" /> </td><td class="col1"> <strong>Make sure</strong> that the chosen <abbr title="Internet Protocol">IP</abbr> address is in a <strong>different subnet</strong> than the one used by the <code>lan</code> interface. For instance, if your lan is in 192.168.<strong>1</strong>.x space, the wifi must be in the 192.168.<strong>2</strong>; be aware that the same restrictions may apply regarding your <abbr title="Wide Area Network">WAN</abbr> interface </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;1332-1665&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Step 1: Define a new network&quot;,&quot;hid&quot;:&quot;step_1define_a_new_network&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;864-1667&quot;} -->
+<h3 class="sectionedit5" id="step_2change_the_existing_wireless_network">Step 2: Change the existing wireless network</h3>
+<div class="level3">
+
+<p>
+In <code>/etc/config/wireless</code>, locate the existing <code><a href="/docs/guide-user/network/wifi/basic#wifi_interfaces" class="wikilink1" title="docs:guide-user:network:wifi:basic" data-wiki-id="docs:guide-user:network:wifi:basic">wifi-iface</a></code> section and change its network option to point to the newly created interface section.
+</p>
+<pre class="code">config &#039;wifi-iface&#039;
+        option &#039;device&#039;     &#039;wl0&#039;
+        option &#039;network&#039;    &#039;wifi&#039;
+        option &#039;mode&#039;       &#039;ap&#039;
+        option &#039;ssid&#039;       &#039;OpenWrt&#039;
+        option &#039;encryption&#039; &#039;none&#039;</pre>
+
+<p>
+In the existing section, <code>network</code> was changed to point to the <code>wifi</code> interface defined in the previous step.
+</p>
+
+<p>
+Optionally change the last line for <code>option encryption &#039;psk2</code>&#039; and add the line <code>option key &#039;secret key</code>&#039; to enable <a href="/docs/guide-user/network/wifi/encryption#wpaencryption" class="wikilink1" title="docs:guide-user:network:wifi:encryption" data-wiki-id="docs:guide-user:network:wifi:encryption">WPA encryption</a><br/>
+
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Step 2: Change the existing wireless network&quot;,&quot;hid&quot;:&quot;step_2change_the_existing_wireless_network&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:5,&quot;range&quot;:&quot;1668-2453&quot;} -->
+<h3 class="sectionedit6" id="step_3define_a_new_dhcp_pool_optional">Step 3: Define a new DHCP pool (optional)</h3>
+<div class="level3">
+
+<p>
+Since wireless is not bridged to <abbr title="Local Area Network">LAN</abbr> anymore, no <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> leases are served to wireless clients yet.
+In order to support <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> on wireless as well, a new <code><a href="/docs/guide-user/base-system/dhcp#dhcppools" class="wikilink1" title="docs:guide-user:base-system:dhcp" data-wiki-id="docs:guide-user:base-system:dhcp">dhcp</a></code> pool must be defined in <code>/etc/config/dhcp</code>:
+</p>
+<pre class="code">config &#039;dhcp&#039;  &#039;wifi&#039;
+        option &#039;interface&#039;  &#039;wifi&#039;
+        option &#039;start&#039;      &#039;100&#039;
+        option &#039;limit&#039;      &#039;150&#039;
+        option &#039;leasetime&#039;  &#039;12h&#039; </pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Step 3: Define a new DHCP pool (optional)&quot;,&quot;hid&quot;:&quot;step_3define_a_new_dhcp_pool_optional&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:6,&quot;range&quot;:&quot;2454-2936&quot;} -->
+<h3 class="sectionedit7" id="step_4adjust_firewall_settings">Step 4: Adjust firewall settings</h3>
+<div class="level3">
+
+<p>
+By default, traffic originating from the wireless network is not allowed to reach the <abbr title="Wide Area Network">WAN</abbr> or the <abbr title="Local Area Network">LAN</abbr> interface.
+There is also no firewall zone defined for it yet, so only the default policies apply to the wireless network.
+</p>
+
+<p>
+Edit <code>/etc/config/firewall</code> and add new <code><a href="/inbox/firewall/firewall3/fw3_network" class="wikilink2" title="inbox:firewall:firewall3:fw3_network" rel="nofollow" data-wiki-id="inbox:firewall:firewall3:fw3_network">zone</a></code> section covering the <code>wifi</code> interface:
+</p>
+<pre class="code">config zone
+        option name       wifi
+        list   network    &#039;wifi&#039;
+        option input      ACCEPT
+        option output     ACCEPT
+        option forward    REJECT</pre>
+
+<p>
+Now that the zone is defined, traffic forwarding control for the wireless network can be implemented.
+To allow wireless clients to use the <abbr title="Wide Area Network">WAN</abbr> interface, add the following <code><a href="/docs/guide-user/firewall/firewall_configuration#forwardings" class="wikilink1" title="docs:guide-user:firewall:firewall_configuration" data-wiki-id="docs:guide-user:firewall:firewall_configuration">forwarding</a></code> section:
+</p>
+<pre class="code">config &#039;forwarding&#039;
+        option &#039;src&#039;        &#039;wifi&#039;
+        option &#039;dest&#039;       &#039;wan&#039; </pre>
+
+<p>
+If <abbr title="Local Area Network">LAN</abbr> clients should be able to contact wireless clients, add the following forwarding:
+</p>
+<pre class="code">config &#039;forwarding&#039;
+        option &#039;src&#039;        &#039;lan&#039;
+        option &#039;dest&#039;       &#039;wifi&#039;</pre>
+
+<p>
+To allow wireless clients to reach the <abbr title="Local Area Network">LAN</abbr> network, add the reversed rule below as well:
+</p>
+<pre class="code">config &#039;forwarding&#039;
+        option &#039;src&#039;        &#039;wifi&#039;
+        option &#039;dest&#039;       &#039;lan&#039;</pre>
+
+<p>
+To allow replies from wan to wifi client add option masq 1 to the lan &#039;lan&#039; firewall option:
+</p>
+<pre class="code"> 
+config zone                                            
+        option name             lan           
+        list   network          &#039;lan&#039;        
+        option input            ACCEPT    
+        option output           ACCEPT             
+        option forward          ACCEPT             
+        option masq 1 </pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Step 4: Adjust firewall settings&quot;,&quot;hid&quot;:&quot;step_4adjust_firewall_settings&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:7,&quot;range&quot;:&quot;2937-4723&quot;} -->
+<h3 class="sectionedit8" id="apply_changes">Apply changes</h3>
+<div class="level3">
+<ol>
+<li class="level1"><div class="li"> Enable the new wireless network<pre class="code">ifup wifi
+wifi</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Restart the firewall<pre class="code">/etc/init.d/firewall restart</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Restart the <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> service<pre class="code">/etc/init.d/dnsmasq restart</pre>
+</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Apply changes&quot;,&quot;hid&quot;:&quot;apply_changes&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:8,&quot;range&quot;:&quot;4724-4947&quot;} -->
+<h2 class="sectionedit9" id="ipv6_prefix_delegation">IPv6 prefix delegation</h2>
+<div class="level2">
+
+<p>
+If you are using <abbr title="Internet Protocol version 6">IPv6</abbr> prefix delegation for subnetting on the <abbr title="Local Area Network">LAN</abbr> side, you might have to adjust the interface parameter <code>ip6assign</code>, which sets
+the prefix size delegated downstream.
+For each of <code>lan</code> and <code>wifi</code> in the example, a value of <code>ip6assign</code> must be chosen such that the combined size of these subnets does not exceed the size of the <abbr title="Internet Protocol version 6">IPv6</abbr> prefix available from upstream. Otherwise, one of the assignments would fail.
+The <abbr title="Internet Protocol version 6">IPv6</abbr> page explains <a href="/docs/guide-user/network/ipv6/start#downstream_configuration_for_lan-interfaces" class="wikilink1" title="docs:guide-user:network:ipv6:start" data-wiki-id="docs:guide-user:network:ipv6:start">downstream configuration</a> in more detail.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;IPv6 prefix delegation&quot;,&quot;hid&quot;:&quot;ipv6_prefix_delegation&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:9,&quot;range&quot;:&quot;4948-5563&quot;} -->
+<h2 class="sectionedit10" id="more_tweaks">More tweaks</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> In some case, you cannot access Internet from “wifi” network clients (though you can do from the router), then you can replace the firewall setting with this <a href="https://forum.openwrt.org/viewtopic.php?pid=166701#p166701" class="urlextern" title="https://forum.openwrt.org/viewtopic.php?pid=166701#p166701" rel="ugc nofollow">https://forum.openwrt.org/viewtopic.php?pid=166701#p166701</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;More tweaks&quot;,&quot;hid&quot;:&quot;more_tweaks&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:10,&quot;range&quot;:&quot;5564-&quot;} -->

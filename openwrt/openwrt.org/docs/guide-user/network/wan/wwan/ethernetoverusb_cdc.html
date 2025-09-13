@@ -1,0 +1,238 @@
+
+<h1 class="sectionedit1" id="use_cdc_ether_driver_based_dongles_for_wan_connection">Use cdc_ether driver based dongles for WAN connection</h1>
+<div class="level1">
+
+<p>
+This recipe explains how to setup and configure OpenWrt for using a USB 3G/4G/5G modem operating in ECM mode supported by <code>cdc_ether</code> driver.
+</p>
+
+<p>
+The same applies to <em>external</em> modems connected to USB ports and <em>internal</em> models installed into M.2(NGFF) or mPCIe slots.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Use cdc_ether driver based dongles for WAN connection&quot;,&quot;hid&quot;:&quot;use_cdc_ether_driver_based_dongles_for_wan_connection&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-342&quot;} -->
+<h2 class="sectionedit2" id="required_packages">Required Packages</h2>
+<div class="level2">
+
+<p>
+Before using your USB modem, install packages either in LuCI → System → Software or via command line:
+</p>
+<pre class="code">root@OpenWrt:~# opkg update
+root@OpenWrt:~# opkg install kmod-usb-net-cdc-ether</pre>
+
+<p>
+You can also add the necessary packages when building a new image with <a href="https://firmware-selector.openwrt.org/" class="urlextern" title="https://firmware-selector.openwrt.org/" rel="ugc nofollow">Firmware Selector</a>.
+</p>
+
+<p>
+Some [older] modems may additionally need <code>usb-modeswitch</code> package. It is used to <em>switch</em> the modem into a “working” <em>mode</em>. More about: <a href="/docs/guide-user/network/wan/wwan/usb-modeswitching" class="wikilink1" title="docs:guide-user:network:wan:wwan:usb-modeswitching" data-wiki-id="docs:guide-user:network:wan:wwan:usb-modeswitching">USB mode switch</a>
+</p>
+
+<p>
+If the installation was successful, plugging the USB dongle in or restarting the internal modem will show similar messages in the log:
+</p>
+<pre class="code">root@OpenWrt:~# dmesg
+[  208.424433] usb 1-1: new high-speed USB device number 3 using ehci-platform
+[  209.251501] usb 1-1: USB disconnect, device number 3
+[  209.652469] usb 1-1: new high-speed USB device number 4 using ehci-platform
+[  210.060700] cdc_ether 1-1:1.0 usb0: register &#039;cdc_ether&#039; at usb-1b000000.usb-1, CDC Ethernet Device, d2:60:c8:b6:65:46</pre>
+
+<p>
+Note the interface name (<code>usb0</code>) mentioned on the last line, it will be used later. For another modem the name could be <code>eth2</code> or something like that.
+</p>
+
+<p>
+It is worth to check the output of <code>cat /sys/kernel/debug/usb/devices</code> to make sure the necessary drivers are loaded for USB interfaces: 
+</p>
+<pre class="code">root@OpenWrt:~# cat /sys/kernel/debug/usb/devices
+
+[...]
+
+T:  Bus=01 Lev=01 Prnt=01 Port=00 Cnt=01 Dev#=  3 Spd=480  MxCh= 0
+D:  Ver= 2.00 Cls=02(comm.) Sub=00 Prot=00 MxPS=64 #Cfgs=  1
+P:  Vendor=12d1 ProdID=14dc Rev= 1.02
+S:  Manufacturer=HUAWEI
+S:  Product=HUAWEI Mobile
+C:* #Ifs= 3 Cfg#= 1 Atr=80 MxPwr=500mA
+I:* If#= 0 Alt= 0 #EPs= 1 Cls=02(comm.) Sub=06 Prot=00 Driver=cdc_ether
+E:  Ad=83(I) Atr=03(Int.) MxPS=  16 Ivl=32ms
+I:* If#= 1 Alt= 0 #EPs= 2 Cls=0a(data ) Sub=00 Prot=00 Driver=cdc_ether
+E:  Ad=82(I) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+E:  Ad=02(O) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+I:* If#= 2 Alt= 0 #EPs= 2 Cls=08(stor.) Sub=06 Prot=50 Driver=(none)
+E:  Ad=84(I) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+E:  Ad=03(O) Atr=02(Bulk) MxPS= 512 Ivl=125us
+
+[...]</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Required Packages&quot;,&quot;hid&quot;:&quot;required_packages&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;343-2506&quot;} -->
+<h2 class="sectionedit3" id="modem_preparation">Modem Preparation</h2>
+<div class="level2">
+
+<p>
+Some modems require manual switching into ECM mode by using AT commands.
+This could be done on any computer prior to installation or on the router directly using a terminal application like <code>picocom</code>. More about: sending <a href="/docs/guide-user/network/wan/wwan/at_commands" class="wikilink1" title="docs:guide-user:network:wan:wwan:at_commands" data-wiki-id="docs:guide-user:network:wan:wwan:at_commands">AT commands</a> from the router.
+</p>
+
+<p>
+A few extra packages need to be installed in order to “talk” with the modem from the router:
+</p>
+<pre class="code">opkg install kmod-usb-serial-option picocom</pre>
+
+<p>
+This is an example for popular Quectel modems (don&#039;t expect these proprietary commands to work on devices from other manufacturers):
+</p>
+<pre class="code">AT+QCFG=&quot;usbnet&quot;	# check the current mode
+AT+QCFG=&quot;usbnet&quot;,1	# set ECM mode</pre>
+
+<p>
+Reset the modem to apply changes - power toggle it or send <code>AT+CFUN=1,1</code> command.
+</p>
+
+<p>
+<br/>
+
+It is worth checking the APN(s) configured on the modem. If the modem offers its own web interface, use it for this task. Alternatively, if the modem has serial (ttyUSB) interface(s) exposed, use a <em>terminal</em> program to query the modem with <code>AT+CGDCONT?</code> and observe the output. Example:
+</p>
+<pre class="code">AT+CGDCONT?
++CGDCONT: 1,&quot;IPV4V6&quot;,&quot;internet&quot;,...
++CGDCONT: 2,&quot;IPV4V6&quot;,&quot;ims&quot;,...
++CGDCONT: 3,&quot;IPV4V6&quot;,&quot;sos&quot;,...</pre>
+
+<p>
+Typically, but not always, context #1 is used for Internet connection. If it is not configured with the correct information (<abbr title="Internet Protocol">IP</abbr> type and APN), it is recommended to set the desired parameters. Example:
+</p>
+<pre class="code">AT+CGDCONT=1,&quot;IP&quot;,&quot;internet&quot;</pre>
+
+<p>
+Replace <code><abbr title="Internet Protocol">IP</abbr></code> with <code>IPV4V6</code> or <code>IPV6</code> if necessary and use your APN instead of <code>internet</code>.
+</p>
+
+<p>
+While in the <em>terminal</em>, check the modem firmware version with <code>ATI</code> and see if there is an upgrade available.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Since ECM modem typically behaves like a router with <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> and <abbr title="Network Address Translation">NAT</abbr>, it is important that OpenWrt&#039;s <abbr title="Local Area Network">LAN</abbr> <abbr title="Internet Protocol">IP</abbr> subnet is different from the modem&#039;s <abbr title="Internet Protocol">IP</abbr> subnet. For some modems the default <abbr title="Internet Protocol">IP</abbr> address is <code>192.168.1.1</code>, which clashes with OpenWrt&#039;s default. Therefore if that address conflict cannot be resolved on the modem side, then OpenWrt <abbr title="Local Area Network">LAN</abbr> <abbr title="Internet Protocol">IP</abbr> subnet should be changed to something else.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Modem Preparation&quot;,&quot;hid&quot;:&quot;modem_preparation&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:3,&quot;range&quot;:&quot;2507-4576&quot;} -->
+<h2 class="sectionedit4" id="network_configuration">Network Configuration</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Network Configuration&quot;,&quot;hid&quot;:&quot;network_configuration&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:4,&quot;range&quot;:&quot;4577-4612&quot;} -->
+<h3 class="sectionedit5" id="using_luci">Using LuCI</h3>
+<div class="level3">
+
+<p>
+Navigate to Network → Interfaces → Add new interface... → Protocol: <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> Client, Interface: “usb0” (or another name found earlier)
+</p>
+
+<p>
+Assign the firewall zone (wan) on &#039;Firewall Settings&#039; tab.
+</p>
+
+<p>
+Open Advanced Settings and make sure that both “Use default gateway” and “Use <abbr title="Domain Name System">DNS</abbr> servers advertised by peer” checkboxes are ticked.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Using LuCI&quot;,&quot;hid&quot;:&quot;using_luci&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:5,&quot;range&quot;:&quot;4613-4966&quot;} -->
+<h3 class="sectionedit6" id="editing_configuration_files">Editing configuration files</h3>
+<div class="level3">
+
+<p>
+Alternatively you can edit the configuration files with any text editor like <code>vi</code> or <code>nano</code>:
+</p>
+<ul>
+<li class="level1"><div class="li"> add a new interface in <code>/etc/config/network</code>:</div>
+</li>
+</ul>
+<pre class="code">config interface &#039;wwan&#039;
+    option proto &#039;dhcp&#039;
+    option ifname &#039;usb0&#039;</pre>
+
+<p>
+Other <a href="/docs/guide-user/network/ipv4/configuration#protocol_dhcp" class="wikilink1" title="docs:guide-user:network:ipv4:configuration" data-wiki-id="docs:guide-user:network:ipv4:configuration">DHCP options</a> can be used here as well.
+</p>
+<ul>
+<li class="level1"><div class="li"> add the same interface name to the “wan” firewall zone in <code>/etc/config/firewall</code>:</div>
+</li>
+</ul>
+<pre class="code">config zone
+    option name &#039;wan&#039;
+    [...]
+    list network &#039;wwan&#039;</pre>
+
+<p>
+<abbr title="Internet Protocol version 6">IPv6</abbr> interface can be added in a standard way if needed:
+</p>
+<pre class="code">config interface &#039;wwan6&#039;
+    option proto &#039;dhcpv6&#039;
+    option ifname &#039;@wwan&#039;
+    option reqprefix &#039;64&#039;
+    option extendprefix &#039;1&#039;</pre>
+
+<p>
+Other <a href="/docs/guide-user/network/ipv6/configuration#protocol_dhcpv6" class="wikilink1" title="docs:guide-user:network:ipv6:configuration" data-wiki-id="docs:guide-user:network:ipv6:configuration">DHCPv6 options</a> can be used here as well.
+</p>
+
+<p>
+<abbr title="Internet Protocol version 6">IPv6</abbr> interface needs to be in the “wan” firewall zone in <code>/etc/config/firewall</code> as well:
+</p>
+<pre class="code">config zone
+    option name &#039;wan&#039;
+    [...]
+    list network &#039;wwan&#039;
+    list network &#039;wwan6&#039;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Editing configuration files&quot;,&quot;hid&quot;:&quot;editing_configuration_files&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:6,&quot;range&quot;:&quot;4967-6037&quot;} -->
+<h3 class="sectionedit7" id="additional_steps">Additional steps</h3>
+<div class="level3">
+
+<p>
+For some modems adding an interface will be sufficient, but others may need an APN provisioned, it is also sometimes necessary to send a special “autodial” command to the AT command port.
+It is recommended to install additional packages <code>picocom kmod-usb-serial-option</code> and consult AT Commands Guide for the given modem.
+</p>
+
+<p>
+If the modem needs a “dial” command sent on each connection attempt, then it is worth trying to configure the <a href="/docs/guide-user/network/wan/wwan/ethernetoverusb_ncm" class="wikilink1" title="docs:guide-user:network:wan:wwan:ethernetoverusb_ncm" data-wiki-id="docs:guide-user:network:wan:wwan:ethernetoverusb_ncm">NCM</a> interface instead.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Additional steps&quot;,&quot;hid&quot;:&quot;additional_steps&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:7,&quot;range&quot;:&quot;6038-6580&quot;} -->
+<h2 class="sectionedit8" id="modem_settings">Modem Settings</h2>
+<div class="level2">
+
+<p>
+Compared to PPP or QMI protocols there are no settings provided from OpenWrt for the modem. All the configuration changes are made on the modem itself, typically by using <em>AT commands</em>. 
+</p>
+
+<p>
+Alternatively, some manufacturers (Huawei, ZTE, etc) provide a web interface where you can enter your APN, check connection status, enter PIN code, enable data roaming, change bands, send/receive SMS, etc.
+As an example, with Huawei modem in HiLink mode the interface is accessible via <code><a href="http://hi.link" class="urlextern" title="http://hi.link" rel="ugc nofollow">http://hi.link</a></code> or <code><a href="http://192.168.8.1" class="urlextern" title="http://192.168.8.1" rel="ugc nofollow">http://192.168.8.1</a></code> (that is a default <abbr title="Internet Protocol">IP</abbr> address). Modem&#039;s own <abbr title="Internet Protocol">IP</abbr> address can be seen in the System Log:
+</p>
+<pre class="code">daemon.notice netifd: wwan (20573): udhcpc: broadcasting discover
+daemon.notice netifd: wwan (20573): udhcpc: broadcasting select for 192.168.8.198, server 192.168.8.1
+daemon.notice netifd: wwan (20573): udhcpc: lease of 192.168.8.198 obtained from 192.168.8.1, lease time 43200
+daemon.notice netifd: Interface &#039;wwan&#039; is now up</pre>
+
+<p>
+If access to the modem interface is blocked, it may be that your firewall does not allow it. In this case you can define a rule like the following:
+</p>
+<pre class="code">config rule
+	option name &#039;Allow-HiLink&#039;
+	option src &#039;lan&#039;
+	option proto &#039;tcp&#039;
+	option target &#039;ACCEPT&#039;
+	option family &#039;ipv4&#039;
+	option dest &#039;wan&#039;
+	list dest_ip &#039;192.168.8.1&#039;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Modem Settings&quot;,&quot;hid&quot;:&quot;modem_settings&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:8,&quot;range&quot;:&quot;6581-&quot;} -->

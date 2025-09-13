@@ -1,0 +1,187 @@
+
+<h1 class="sectionedit1" id="use_rndis_usb_dongle_for_wan_connection">Use RNDIS USB Dongle for WAN connection</h1>
+<div class="level1">
+
+<p>
+<a href="https://en.wikipedia.org/wiki/RNDIS" class="urlextern" title="https://en.wikipedia.org/wiki/RNDIS" rel="ugc nofollow">RNDIS</a> (Remote Network Driver Interface Specification) is <a href="https://en.wikipedia.org/wiki/Ethernet_over_USB" class="urlextern" title="https://en.wikipedia.org/wiki/Ethernet_over_USB" rel="ugc nofollow">Ethernet over USB</a> protocol used by some USB modems.
+</p>
+
+<p>
+The same applies to external modems connected to USB ports (“dongles”) and internal models installed into M.2(NGFF) or mPCIe slots.
+</p>
+
+<p>
+Note from <a href="https://github.com/torvalds/linux/blob/master/drivers/net/usb/rndis_host.c" class="urlextern" title="https://github.com/torvalds/linux/blob/master/drivers/net/usb/rndis_host.c" rel="ugc nofollow">rndis_host Linux driver source code</a>:
+</p>
+<blockquote><div class="no">
+ USE OF RNDIS IS STRONGLY DISCOURAGED in favor of such non-proprietary alternatives as CDC Ethernet or the newer (and currently rare) “Ethernet Emulation Model” (EEM).</div></blockquote>
+
+<p>
+It is also used by many USB 3.0 to Gigabit Ethernet adapters like the TP-Link UE300 and all Chinese low-cost ones (such as 4G LTE USB Wifi Dongle) you can buy on ebay, etc. It is one of the ways these Gigabit Ethernet dongles use to be “plug and play” or “driverless”, by conforming to RNDIS standard so they don&#039;t need a special driver just for themselves. These dongles lack any kind of web interface or settings, they are just USB-to-Ethernet adapters, nothing more.
+</p>
+
+<p>
+Worth to add, the same protocol is widely used for <a href="/docs/guide-user/network/wan/smartphone.usb.tethering" class="wikilink1" title="docs:guide-user:network:wan:smartphone.usb.tethering" data-wiki-id="docs:guide-user:network:wan:smartphone.usb.tethering">smartphone tethering</a>, so the same instructions are usually applicable for that use case as well.
+</p>
+
+<p>
+For more information about other protocols commonly used:
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong>QMI</strong> and <strong>MBIM</strong>, see <a href="/docs/guide-user/network/wan/wwan/ltedongle" class="wikilink1" title="docs:guide-user:network:wan:wwan:ltedongle" data-wiki-id="docs:guide-user:network:wan:wwan:ltedongle">How to use LTE modem in QMI mode for WAN connection</a></div>
+</li>
+<li class="level1"><div class="li"> <strong>NCM</strong>, see <a href="/docs/guide-user/network/wan/wwan/ethernetoverusb_ncm" class="wikilink1" title="docs:guide-user:network:wan:wwan:ethernetoverusb_ncm" data-wiki-id="docs:guide-user:network:wan:wwan:ethernetoverusb_ncm">How to use LTE modem in NCM mode for WAN connection</a></div>
+</li>
+<li class="level1"><div class="li"> <strong>ECM</strong>, see <a href="/docs/guide-user/network/wan/wwan/ethernetoverusb_cdc" class="wikilink1" title="docs:guide-user:network:wan:wwan:ethernetoverusb_cdc" data-wiki-id="docs:guide-user:network:wan:wwan:ethernetoverusb_cdc">Use cdc_ether driver based dongles for WAN connection</a></div>
+</li>
+<li class="level1"><div class="li"> <strong>PPP</strong>, see <a href="/docs/guide-user/network/wan/wwan/3gdongle" class="wikilink1" title="docs:guide-user:network:wan:wwan:3gdongle" data-wiki-id="docs:guide-user:network:wan:wwan:3gdongle">How to use 3g/UMTS USB Dongle for WAN connection</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Use RNDIS USB Dongle for WAN connection&quot;,&quot;hid&quot;:&quot;use_rndis_usb_dongle_for_wan_connection&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1919&quot;} -->
+<h2 class="sectionedit2" id="setting_up_rndis-based_dongles">Setting up RNDIS-based dongles</h2>
+<div class="level2">
+
+<p>
+For RNDIS device to work <code>kmod-usb-net-rndis</code> package needs to be installed. Install it either in Luci → System → Software or via command line:
+</p>
+<pre class="code">root@OpenWrt:~# opkg update
+root@OpenWrt:~# opkg install kmod-usb-net-rndis</pre>
+
+<p>
+Additional modules will be automatically installed as <em>dependencies</em>.
+</p>
+
+<p>
+You can also add the necessary packages when building a new image with <a href="https://firmware-selector.openwrt.org/" class="urlextern" title="https://firmware-selector.openwrt.org/" rel="ugc nofollow">Firmware Selector</a>.
+</p>
+
+<p>
+Install <code>usb-modeswitch</code> <em class="u">only if</em> that is needed for switching the modem into a “working” state. More about: <a href="/docs/guide-user/network/wan/wwan/usb-modeswitching" class="wikilink1" title="docs:guide-user:network:wan:wwan:usb-modeswitching" data-wiki-id="docs:guide-user:network:wan:wwan:usb-modeswitching">USB mode switch</a>
+</p>
+
+<p>
+After installing the packages and connecting the USB stick, the following should appear in <code>dmesg</code> output:
+</p>
+<pre class="code">[  847.390000] usb 1-1: new high-speed USB device number 3 using ehci-platform
+[  847.590000] usb 1-1: no of_node; not parsing pinctrl DT
+[  847.610000] rndis_host 1-1:1.0: no of_node; not parsing pinctrl DT
+[  847.620000] rndis_host 1-1:1.0 usb0: register &#039;rndis_host&#039; at usb-101c0000.ehci-1, RNDIS device, 72:4d:eb:bb:e2:60</pre>
+
+<p>
+Note the <em>device name</em> (<code>usb0</code>) mentioned on the last line, it will be used later. For another modem the name could be <code>eth2</code> or something like that.
+</p>
+
+<p>
+If the USB modem or phone will be your only <abbr title="Wide Area Network">WAN</abbr> connection, then the easiest way to set up the connection is to change the <em>device</em> used by the existing <code>wan</code> interface, either in Luci or in <code>/etc/config/network</code> as shown below: 
+</p>
+<pre class="code">config interface &#039;wan&#039;
+        option ifname &#039;usb0&#039;
+        option proto &#039;dhcp&#039;</pre>
+
+<p>
+Otherwise a new interface should be created using <em>device name</em> discovered earlier; the interface should be assigned to the existing “wan” firewall zone.
+</p>
+
+<p>
+(you need to reboot or restart the network subsystem with <code>/etc/init.d/network restart</code> afterwards)
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Since RNDIS-based sticks create their own <abbr title="Network Address Translation">NAT</abbr>&#039;ed <abbr title="Internet Protocol">IP</abbr> subnet, it is important that OpenWrt&#039;s <abbr title="Local Area Network">LAN</abbr> <abbr title="Internet Protocol">IP</abbr> subnet is different from the modem&#039;s subnet. For some modems the default <abbr title="Internet Protocol">IP</abbr> address is <code>192.168.1.1</code>, which clashes with OpenWrt&#039;s default. Therefore if that address conflict cannot be resolved on the modem side, then OpenWrt&#039;s <abbr title="Local Area Network">LAN</abbr> <abbr title="Internet Protocol">IP</abbr> subnet should be changed to something else, such as:
+</p>
+<pre class="code">config interface &#039;lan&#039;
+        option ipaddr &#039;192.168.10.1&#039;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Setting up RNDIS-based dongles&quot;,&quot;hid&quot;:&quot;setting_up_rndis-based_dongles&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;1920-4274&quot;} -->
+<h3 class="sectionedit3" id="additional_steps">Additional steps</h3>
+<div class="level3">
+
+<p>
+For some modems adding the network interface will be sufficient, but others may need an APN provisioned. It is also sometimes necessary to send a special “dial” command to the AT command port, consult AT Commands Guide for the given modem for details. If this is the case it is worth trying to configure the <a href="/docs/guide-user/network/wan/wwan/ethernetoverusb_ncm" class="wikilink1" title="docs:guide-user:network:wan:wwan:ethernetoverusb_ncm" data-wiki-id="docs:guide-user:network:wan:wwan:ethernetoverusb_ncm">NCM</a> interface instead.
+</p>
+
+<p>
+If the modem exposes <em>serial</em> interfaces then the appropriate driver needs to be installed (<code>kmod-usb-serial</code> or <code>kmod-usb-serial-option</code> or <code>kmod-usb-serial-qualcomm</code> or <code>kmod-usb-acm</code>) as well as a simple <em>terminal</em> app like <code>picocom</code>. More about: sending <a href="/docs/guide-user/network/wan/wwan/at_commands" class="wikilink1" title="docs:guide-user:network:wan:wwan:at_commands" data-wiki-id="docs:guide-user:network:wan:wwan:at_commands">AT commands</a> from the router.
+</p>
+
+<p>
+If auto-connect is disabled or PIN-request is enabled on the modem or correct APN needs to be set, you may need to visit its admin web interface (typically at <code><a href="http://192.168.1.1" class="urlextern" title="http://192.168.1.1" rel="ugc nofollow">http://192.168.1.1</a></code>) to enter the PIN and/or initiate the connection. Modem&#039;s own <abbr title="Internet Protocol">IP</abbr> address can be seen in the System Log:
+</p>
+<pre class="code">daemon.notice netifd: wwan (20573): udhcpc: broadcasting discover
+daemon.notice netifd: wwan (20573): udhcpc: broadcasting select for 192.168.1.101, server 192.168.1.1
+daemon.notice netifd: wwan (20573): udhcpc: lease of 192.168.1.101 obtained from 192.168.1.1, lease time 43200
+daemon.notice netifd: Interface &#039;wwan&#039; is now up</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Additional steps&quot;,&quot;hid&quot;:&quot;additional_steps&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:3,&quot;range&quot;:&quot;4275-5672&quot;} -->
+<h3 class="sectionedit4" id="rndis_troubleshooting">RNDIS Troubleshooting</h3>
+<div class="level3">
+
+<p>
+If you only see the USB messages, but not the rndis_host messages, then <em>modeswitching</em> may be at fault.
+</p>
+
+<p>
+Checking with <code>cat /sys/kernel/debug/usb/devices</code>, the device section should look like this:
+</p>
+<pre class="code">
+T:  Bus=01 Lev=01 Prnt=01 Port=00 Cnt=01 Dev#=  3 Spd=480  MxCh= 0
+D:  Ver= 2.01 Cls=00(&gt;ifc ) Sub=00 Prot=00 MxPS=64 #Cfgs=  1
+P:  Vendor=1bbb ProdID=0195 Rev= 2.28
+S:  Manufacturer=Alcatel
+S:  Product=MobileBroadBand
+S:  SerialNumber=0123456789ABCDEF
+C:* #Ifs= 3 Cfg#= 1 Atr=80 MxPwr=500mA
+A:  FirstIf#= 0 IfCount= 2 Cls=e0(wlcon) Sub=01 Prot=03
+I:* If#= 0 Alt= 0 #EPs= 1 Cls=e0(wlcon) Sub=01 Prot=03 Driver=rndis_host
+E:  Ad=82(I) Atr=03(Int.) MxPS=   8 Ivl=32ms
+I:* If#= 1 Alt= 0 #EPs= 2 Cls=0a(data ) Sub=00 Prot=00 Driver=rndis_host
+E:  Ad=81(I) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+E:  Ad=01(O) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+I:* If#= 2 Alt= 0 #EPs= 2 Cls=08(stor.) Sub=06 Prot=50 Driver=(none)
+E:  Ad=02(O) Atr=02(Bulk) MxPS= 512 Ivl=125us
+E:  Ad=83(I) Atr=02(Bulk) MxPS= 512 Ivl=0ms</pre>
+
+<p>
+and not like this:
+</p>
+<pre class="code">T:  Bus=01 Lev=01 Prnt=01 Port=00 Cnt=01 Dev#=  2 Spd=480  MxCh= 0
+D:  Ver= 2.01 Cls=00(&gt;ifc ) Sub=00 Prot=00 MxPS=64 #Cfgs=  1
+P:  Vendor=1bbb ProdID=f000 Rev= 2.28
+S:  Manufacturer=Alcatel
+S:  Product=MobileBroadBand
+S:  SerialNumber=0123456789ABCDEF
+C:* #Ifs= 1 Cfg#= 1 Atr=80 MxPwr=500mA
+I:* If#= 0 Alt= 0 #EPs= 2 Cls=08(stor.) Sub=06 Prot=50 Driver=(none)
+E:  Ad=01(O) Atr=02(Bulk) MxPS= 512 Ivl=125us
+E:  Ad=81(I) Atr=02(Bulk) MxPS= 512 Ivl=0ms</pre>
+
+<p>
+(note the difference with “ProdID=” and number of interfaces)
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;RNDIS Troubleshooting&quot;,&quot;hid&quot;:&quot;rndis_troubleshooting&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:4,&quot;range&quot;:&quot;5673-7263&quot;} -->
+<h3 class="sectionedit5" id="rndis_security_note">RNDIS Security Note</h3>
+<div class="level3">
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Leaving your RNDIS-based dongle admin web interface available to <abbr title="Local Area Network">LAN</abbr> users might not be something you would like to do, as there is usually no authentication mechanism there.
+To protect it, you can add the following rule to Network→Firewall→Custom Rules (obsolete, needs to be converted to <code>nftables</code> rules):
+</p>
+<pre class="code">iptables -A forwarding_lan_rule -d 192.168.1.0/24 -m comment --comment &quot;no access to USB dongle from LAN&quot; -j DROP</pre>
+
+<p>
+Now, if you need to access your dongle web interface, log in to your OpenWrt box with:
+</p>
+<pre class="code">ssh -L 8080:192.168.1.1:80 root@your-openwrt-ip</pre>
+
+<p>
+and point your browser to <a href="http://localhost:8080" class="urlextern" title="http://localhost:8080" rel="ugc nofollow">http://localhost:8080</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;RNDIS Security Note&quot;,&quot;hid&quot;:&quot;rndis_security_note&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:5,&quot;range&quot;:&quot;7264-&quot;} -->

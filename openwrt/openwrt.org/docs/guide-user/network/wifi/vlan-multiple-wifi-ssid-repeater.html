@@ -1,0 +1,1449 @@
+
+<h1 class="sectionedit1" id="setting_up_wi-fi_repeaters_with_multiple_ssids_with_separated_private_tor_and_guest_network">Setting up Wi-Fi repeaters with multiple SSIDs with separated private, tor and guest network</h1>
+<div class="level1">
+
+<p>
+ --- <em><a href="mailto:&#111;&#103;&#46;&#111;&#112;&#101;&#110;&#119;&#114;&#116;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;" class="mail" title="&#111;&#103;&#46;&#111;&#112;&#101;&#110;&#119;&#114;&#116;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;">a humbly committed student</a> 2019/01/19 10:31</em>
+</p>
+
+<p>
+The purpose of this article is to show users how to configure a main router and multiple access points to repeat multiple SSIDs through the use of tagged <abbr title="Virtual Local Area Network">VLAN</abbr> switches.
+</p>
+
+<p>
+This example contains one main router that will supply the Wi-Fi SSIDs and <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> service and two routers configured as access points. In this example, the Linksys WRT 3200acm router with OpenWrt 18.01 was used for all devices. 
+</p>
+
+<p>
+These procedures can be done primarily on the LuCI web interface but due to me not being able to attach screenshots, I have done the configuration through the routers config files located in /etc/config during an <abbr title="Secure Shell">SSH</abbr> session into each router.
+</p>
+
+<p>
+It is recommended to be familiar with the following wiki articles to perform this task.
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/network/vlan/creating_virtual_switches" class="wikilink1" title="docs:guide-user:network:vlan:creating_virtual_switches" data-wiki-id="docs:guide-user:network:vlan:creating_virtual_switches">How-to: Creating an additional virtual switch on a typical home router</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/network/wifi/relay_configuration" class="wikilink1" title="docs:guide-user:network:wifi:relay_configuration" data-wiki-id="docs:guide-user:network:wifi:relay_configuration">Wi-Fi Extender or Repeater or Bridge Configuration</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/network/wifi/routedap" class="wikilink1" title="docs:guide-user:network:wifi:routedap" data-wiki-id="docs:guide-user:network:wifi:routedap">Routed AP</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/network/wifi/mesh/80211s" class="wikilink1" title="docs:guide-user:network:wifi:mesh:80211s" data-wiki-id="docs:guide-user:network:wifi:mesh:80211s">802.11s based wireless mesh network</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__meta:infobox:howto_links">
+<div class="level1">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap">
+<p>
+This article may contain network configuration that depends on migration to DSA in OpenWrt 21.02
+</p>
+<ul>
+<li class="level1"><div class="li"> Check if your device uses DSA or swconfig as not all devices have been migrated</div>
+</li>
+<li class="level1"><div class="li"> ifname@interface has been moved to device sections</div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/network/dsa/start" class="wikilink1" title="docs:guide-user:network:dsa:start" data-wiki-id="docs:guide-user:network:dsa:start">DSA Networking</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://forum.openwrt.org/t/mini-tutorial-for-dsa-network-config/96998" class="urlextern" title="https://forum.openwrt.org/t/mini-tutorial-for-dsa-network-config/96998" rel="ugc nofollow">Mini tutorial for DSA network config</a> on the forum</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://openwrt.org/releases/21.02/notes-21.02.0#new_network_configuration_syntax_and_boardjson_change" class="urlextern" title="https://openwrt.org/releases/21.02/notes-21.02.0#new_network_configuration_syntax_and_boardjson_change" rel="ugc nofollow">DSA in the 21.02 release notes</a></div>
+</li>
+</ul>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Setting up Wi-Fi repeaters with multiple SSIDs with separated private, tor and guest network&quot;,&quot;hid&quot;:&quot;setting_up_wi-fi_repeaters_with_multiple_ssids_with_separated_private_tor_and_guest_network&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1391&quot;} -->
+<h2 class="sectionedit6" id="use-case_scenario">Use-case scenario</h2>
+<div class="level2">
+
+<p>
+This is a network topology for this example:
+</p>
+
+<p>
+<a href="https://creately.com/diagram/jqvt7mog/XMLuTm22lf8t2ZGA2XqaZx0sSn8%3D" class="urlextern" title="https://creately.com/diagram/jqvt7mog/XMLuTm22lf8t2ZGA2XqaZx0sSn8%3D" rel="ugc nofollow">Network Topology Example</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Use-case scenario&quot;,&quot;hid&quot;:&quot;use-case_scenario&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;1392-1566&quot;} -->
+<h3 class="sectionedit7" id="wi-fi_and_vlan_configuration_breakdown">Wi-Fi and VLAN Configuration Breakdown</h3>
+<div class="level3">
+
+<p>
+The SSIDs were created and bridged to their respective Network interface. Each Network interface was added to their own specific <abbr title="Virtual Local Area Network">VLAN</abbr> ID. 
+</p>
+
+<p>
+The two APs were configured to use the <abbr title="Wide Area Network">WAN</abbr> port to receive the tagged uplink connection from the tagged interface port of the previous router/hop. I did this to allow me to utilize the 4 ports of the <abbr title="Local Area Network">LAN</abbr> which gave me more ports to connect devices to. 
+</p>
+
+<p>
+It becomes a matching game to ensure the <abbr title="Virtual Local Area Network">VLAN</abbr> ID number that is attached to each of the Wi-Fi interfaces are consistent on all devices i.e. private is on VLAN1 (eth0.1), guest is on VLAN3 (eth0.3), tor is on VLAN4 (eth0.4), etc. so that each router knows the existence of the VLANs.
+</p>
+
+<p>
+List of Wi-Fi SSIDs:
+</p>
+<ul>
+<li class="level1"><div class="li"> Private: SSID = Magick Mushroom, Gaming</div>
+</li>
+<li class="level1"><div class="li"> Guest: SSID = Slave</div>
+</li>
+<li class="level1"><div class="li"> Tor: SSID = tor</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Wi-Fi and VLAN Configuration Breakdown&quot;,&quot;hid&quot;:&quot;wi-fi_and_vlan_configuration_breakdown&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;1567-2405&quot;} -->
+<h3 class="sectionedit8" id="main_router_configuration_procedures">Main Router Configuration Procedures:</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="switch_details">Switch details</h4>
+<div class="level4">
+<div class="table sectionedit9"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign"> <abbr title="Virtual Local Area Network">VLAN</abbr> ID      </th><th class="col1" colspan="2"> Upstream side:HW switch ↔ eth1 driver</th><th class="col3" colspan="5"> Downstream side:HW switch↔physical ports</th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign">      </td><td class="col1 leftalign"> CPU (eth0)    </td><td class="col2 centeralign">  cpu (eth1)        </td><td class="col3">LAN1</td><td class="col4">LAN2</td><td class="col5">LAN3</td><td class="col6">LAN4</td><td class="col7"><abbr title="Wide Area Network">WAN</abbr></td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 centeralign">     1     </td><td class="col1 leftalign"> tagged     </td><td class="col2 leftalign"> off        </td><td class="col3">untagged</td><td class="col4">untagged</td><td class="col5">untagged</td><td class="col6">tagged</td><td class="col7">off</td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 centeralign">     2     </td><td class="col1"> off </td><td class="col2"> tagged </td><td class="col3">off</td><td class="col4">off</td><td class="col5">off</td><td class="col6">off</td><td class="col7">untagged</td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 centeralign">     3     </td><td class="col1 leftalign"> tagged     </td><td class="col2 leftalign"> off        </td><td class="col3">off</td><td class="col4">off</td><td class="col5">off</td><td class="col6">tagged</td><td class="col7">off</td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 centeralign">     4     </td><td class="col1 leftalign"> tagged     </td><td class="col2 leftalign"> off        </td><td class="col3">off</td><td class="col4">off</td><td class="col5">off</td><td class="col6">tagged</td><td class="col7">off</td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:9,&quot;range&quot;:&quot;2479-2913&quot;} -->
+<p>
+*<em>Tip: To determine your routers <abbr title="Wide Area Network">WAN</abbr> CPU when there are multiple CPUs listed is to use the LuCI web interface and navigate to Network&gt;Switch and see which row has both the CPU tagged and the <abbr title="Wide Area Network">WAN</abbr> untagged, together, by default. Another way is to use the LuCI web interface to navigate to Network&gt;Interfaces and see what Interface is used under the Physical Settings of the <abbr title="Wide Area Network">WAN</abbr> </em>
+</p>
+
+<p>
+1. Create extra VLANs to match the table above. The LAN4 interface was configured to be tagged with <abbr title="Virtual Local Area Network">VLAN</abbr> ID numbers. The LAN4 is rebroadcasting the uplink to the next router (the midrange router).
+</p>
+<div class="hiddenGlobal  hiddenActive"><div class="hiddenElements"></div><div class="hiddenHead  hiddenSinceBeginning"><div class="hiddenOnHidden">
+<p>
+/etc/config/network
+</p>
+</div><div class="hiddenOnVisible">
+<p>
+Click to see less
+</p>
+</div></div> <!-- .hiddenHead --><div class="hiddenBody"><pre class="code">config interface &#039;loopback&#039;
+	option ifname &#039;lo&#039;
+	option proto &#039;static&#039;
+	option ipaddr &#039;127.0.0.1&#039;
+	option netmask &#039;255.0.0.0&#039;
+
+config globals &#039;globals&#039;
+	option ula_prefix &#039;fdfb:7e04:aca7::/48&#039;
+
+config interface &#039;lan&#039;
+	option type &#039;bridge&#039;
+	option ifname &#039;eth0.1&#039;
+	option proto &#039;static&#039;
+	option netmask &#039;255.255.255.0&#039;
+	option ip6assign &#039;60&#039;
+	option ipaddr &#039;192.168.0.1&#039;
+	option gateway &#039;192.168.0.1&#039;
+	option broadcast &#039;192.168.0.255&#039;
+	option dns &#039;8.8.8.8&#039;
+
+config interface &#039;wan&#039;
+	option ifname &#039;eth1.2&#039;
+	option proto &#039;dhcp&#039;
+	option hostname &#039;infraverse.network&#039;
+
+config interface &#039;wan6&#039;
+	option ifname &#039;eth1.2&#039;
+	option proto &#039;dhcpv6&#039;
+
+config switch
+	option name &#039;switch0&#039;
+	option reset &#039;1&#039;
+	option enable_vlan &#039;1&#039;
+
+config switch_vlan
+	option device &#039;switch0&#039;
+	option vlan &#039;1&#039;
+	option vid &#039;1&#039;
+	option ports &#039;0t 1 2 3 5t&#039;
+
+config switch_vlan
+	option device &#039;switch0&#039;
+	option vlan &#039;2&#039;
+	option ports &#039;4 6t&#039;
+	option vid &#039;2&#039;
+
+config interface &#039;slave&#039;
+	option type &#039;bridge&#039;
+	option proto &#039;static&#039;
+	option ipaddr &#039;172.16.0.1&#039;
+	option netmask &#039;255.255.0.0&#039;
+	option ifname &#039;eth0.3 radio1&#039;
+	option gateway &#039;172.16.0.1&#039;
+	option broadcast &#039;172.16.255.255&#039;
+
+config interface &#039;tor&#039;
+	option proto &#039;static&#039;
+	option ipaddr &#039;10.1.1.1&#039;
+	option netmask &#039;255.0.0.0&#039;
+	option type &#039;bridge&#039;
+	option ifname &#039;eth0.4&#039;
+
+config switch_vlan
+	option device &#039;switch0&#039;
+	option vlan &#039;3&#039;
+	option vid &#039;3&#039;
+	option ports &#039;0t 5t&#039;
+
+config switch_vlan
+	option device &#039;switch0&#039;
+	option vlan &#039;4&#039;
+	option vid &#039;4&#039;
+	option ports &#039;0t 5t&#039;
+</pre>
+</div></div>
+<p>
+2. Create Wi-Fi interfaces. 
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Be sure to make the SSID names and passwords identical to what is configured on the main router
+</p>
+<div class="hiddenGlobal  hiddenActive"><div class="hiddenElements"></div><div class="hiddenHead  hiddenSinceBeginning"><div class="hiddenOnHidden">
+<p>
+/etc/config/wireless
+</p>
+</div><div class="hiddenOnVisible">
+<p>
+Click to see less
+</p>
+</div></div> <!-- .hiddenHead --><div class="hiddenBody"><pre class="code">config wifi-device &#039;radio0&#039;
+	option type &#039;mac80211&#039;
+	option channel &#039;36&#039;
+	option hwmode &#039;11a&#039;
+	option path &#039;soc/soc:pcie/pci0000:00/0000:00:01.0/0000:01:00.0&#039;
+	option htmode &#039;VHT80&#039;
+	option country &#039;US&#039;
+	option legacy_rates &#039;1&#039;
+
+config wifi-iface &#039;default_radio0&#039;
+	option device &#039;radio0&#039;
+	option network &#039;lan&#039;
+	option mode &#039;ap&#039;
+	option ssid &#039;Gaming&#039;
+	option encryption &#039;psk-mixed&#039;
+	option key &#039;supersecretpassword&#039;
+	option wpa_disable_eapol_key_retries &#039;1&#039;
+
+config wifi-device &#039;radio1&#039;
+	option type &#039;mac80211&#039;
+	option hwmode &#039;11g&#039;
+	option path &#039;soc/soc:pcie/pci0000:00/0000:00:02.0/0000:02:00.0&#039;
+	option country &#039;US&#039;
+	option legacy_rates &#039;1&#039;
+	option distance &#039;7.7&#039;
+	option channel &#039;11&#039;
+	option htmode &#039;HT20&#039;
+
+config wifi-iface &#039;default_radio1&#039;
+	option device &#039;radio1&#039;
+	option network &#039;lan&#039;
+	option mode &#039;ap&#039;
+	option ssid &#039;Magick Mushroom&#039;
+	option encryption &#039;psk-mixed&#039;
+	option key &#039;supersecretpassword&#039;
+	option wpa_group_rekey &#039;0&#039;
+
+config wifi-iface
+	option device &#039;radio1&#039;
+	option mode &#039;ap&#039;
+	option encryption &#039;none&#039;
+	option ssid &#039;Slave&#039;
+	option isolate &#039;1&#039;
+	option network &#039;slave&#039;
+
+config wifi-iface
+	option device &#039;radio1&#039;
+	option mode &#039;ap&#039;
+	option encryption &#039;none&#039;
+	option ssid &#039;tor&#039;
+	option network &#039;tor&#039;
+</pre>
+</div></div>
+<p>
+3. Create firewall rules
+</p>
+<div class="hiddenGlobal  hiddenActive"><div class="hiddenElements"></div><div class="hiddenHead  hiddenSinceBeginning"><div class="hiddenOnHidden">
+<p>
+/etc/config/firewall
+</p>
+</div><div class="hiddenOnVisible">
+<p>
+Click to see less
+</p>
+</div></div> <!-- .hiddenHead --><div class="hiddenBody"><pre class="code">
+config defaults
+	option syn_flood &#039;1&#039;
+	option input &#039;ACCEPT&#039;
+	option output &#039;ACCEPT&#039;
+	option forward &#039;REJECT&#039;
+
+config zone
+	option name &#039;lan&#039;
+	list network &#039;lan&#039;
+	option input &#039;ACCEPT&#039;
+	option output &#039;ACCEPT&#039;
+	option forward &#039;ACCEPT&#039;
+
+config zone
+	option name &#039;wan&#039;
+	list network &#039;wan&#039;
+	list network &#039;wan6&#039;
+	option input &#039;REJECT&#039;
+	option output &#039;ACCEPT&#039;
+	option forward &#039;REJECT&#039;
+	option masq &#039;1&#039;
+	option mtu_fix &#039;1&#039;
+
+config rule
+	option name &#039;Allow-DHCP-Renew&#039;
+	option src &#039;wan&#039;
+	option proto &#039;udp&#039;
+	option dest_port &#039;68&#039;
+	option target &#039;ACCEPT&#039;
+	option family &#039;ipv4&#039;
+
+config rule
+	option name &#039;Allow-Ping&#039;
+	option src &#039;wan&#039;
+	option proto &#039;icmp&#039;
+	option icmp_type &#039;echo-request&#039;
+	option family &#039;ipv4&#039;
+	option target &#039;ACCEPT&#039;
+
+config rule
+	option name &#039;Allow-IGMP&#039;
+	option src &#039;wan&#039;
+	option proto &#039;igmp&#039;
+	option family &#039;ipv4&#039;
+	option target &#039;ACCEPT&#039;
+
+config rule
+	option name &#039;Allow-DHCPv6&#039;
+	option src &#039;wan&#039;
+	option proto &#039;udp&#039;
+	option src_ip &#039;fc00::/6&#039;
+	option dest_ip &#039;fc00::/6&#039;
+	option dest_port &#039;546&#039;
+	option family &#039;ipv6&#039;
+	option target &#039;ACCEPT&#039;
+
+config rule
+	option name &#039;Allow-MLD&#039;
+	option src &#039;wan&#039;
+	option proto &#039;icmp&#039;
+	option src_ip &#039;fe80::/10&#039;
+	list icmp_type &#039;130/0&#039;
+	list icmp_type &#039;131/0&#039;
+	list icmp_type &#039;132/0&#039;
+	list icmp_type &#039;143/0&#039;
+	option family &#039;ipv6&#039;
+	option target &#039;ACCEPT&#039;
+
+config rule
+	option name &#039;Allow-ICMPv6-Input&#039;
+	option src &#039;wan&#039;
+	option proto &#039;icmp&#039;
+	list icmp_type &#039;echo-request&#039;
+	list icmp_type &#039;echo-reply&#039;
+	list icmp_type &#039;destination-unreachable&#039;
+	list icmp_type &#039;packet-too-big&#039;
+	list icmp_type &#039;time-exceeded&#039;
+	list icmp_type &#039;bad-header&#039;
+	list icmp_type &#039;unknown-header-type&#039;
+	list icmp_type &#039;router-solicitation&#039;
+	list icmp_type &#039;neighbour-solicitation&#039;
+	list icmp_type &#039;router-advertisement&#039;
+	list icmp_type &#039;neighbour-advertisement&#039;
+	option limit &#039;1000/sec&#039;
+	option family &#039;ipv6&#039;
+	option target &#039;ACCEPT&#039;
+
+config rule
+	option name &#039;Allow-ICMPv6-Forward&#039;
+	option src &#039;wan&#039;
+	option dest &#039;*&#039;
+	option proto &#039;icmp&#039;
+	list icmp_type &#039;echo-request&#039;
+	list icmp_type &#039;echo-reply&#039;
+	list icmp_type &#039;destination-unreachable&#039;
+	list icmp_type &#039;packet-too-big&#039;
+	list icmp_type &#039;time-exceeded&#039;
+	list icmp_type &#039;bad-header&#039;
+	list icmp_type &#039;unknown-header-type&#039;
+	option limit &#039;1000/sec&#039;
+	option family &#039;ipv6&#039;
+	option target &#039;ACCEPT&#039;
+
+config rule
+	option name &#039;Allow-IPSec-ESP&#039;
+	option src &#039;wan&#039;
+	option dest &#039;lan&#039;
+	option proto &#039;esp&#039;
+	option target &#039;ACCEPT&#039;
+
+config rule
+	option name &#039;Allow-ISAKMP&#039;
+	option src &#039;wan&#039;
+	option dest &#039;lan&#039;
+	option dest_port &#039;500&#039;
+	option proto &#039;udp&#039;
+	option target &#039;ACCEPT&#039;
+
+config include
+	option path &#039;/etc/firewall.user&#039;
+
+config include &#039;miniupnpd&#039;
+	option type &#039;script&#039;
+	option path &#039;/usr/share/miniupnpd/firewall.include&#039;
+	option family &#039;any&#039;
+	option reload &#039;1&#039;
+
+config zone
+	option name &#039;slave&#039;
+	option forward &#039;REJECT&#039;
+	option output &#039;ACCEPT&#039;
+	option network &#039;slave&#039;
+	option input &#039;REJECT&#039;
+
+config rule
+	option target &#039;ACCEPT&#039;
+	option proto &#039;tcp udp&#039;
+	option dest_port &#039;53&#039;
+	option name &#039;Slave dns&#039;
+	option src &#039;slave&#039;
+
+config rule
+	option target &#039;ACCEPT&#039;
+	option proto &#039;udp&#039;
+	option dest_port &#039;67&#039;
+	option name &#039;slave dhcp&#039;
+	option src &#039;slave&#039;
+
+config zone
+	option name &#039;tor&#039;
+	option forward &#039;REJECT&#039;
+	option output &#039;ACCEPT&#039;
+	option network &#039;tor&#039;
+	option input &#039;ACCEPT&#039;
+	option syn_flood &#039;1&#039;
+	option conntrack &#039;1&#039;
+
+config rule
+	option src &#039;tor&#039;
+	option proto &#039;udp&#039;
+	option dest_port &#039;67&#039;
+	option target &#039;ACCEPT&#039;
+	option name &#039;tor DHCP&#039;
+
+config rule
+	option src &#039;tor&#039;
+	option proto &#039;tcp&#039;
+	option dest_port &#039;9040&#039;
+	option target &#039;ACCEPT&#039;
+	option name &#039;tor transport&#039;
+
+config rule
+	option src &#039;tor&#039;
+	option proto &#039;udp&#039;
+	option dest_port &#039;9053&#039;
+	option target &#039;ACCEPT&#039;
+	option name &#039;tor dns&#039;
+
+config redirect
+	option name &#039;Redirect-Tor-Traffic&#039;
+	option src &#039;tor&#039;
+	option src_dip &#039;!10.1.1.1&#039;
+	option dest_port &#039;9040&#039;
+	option proto &#039;tcp&#039;
+	option target &#039;DNAT&#039;
+
+config redirect
+	option name &#039;Redirect-Tor-DNS&#039;
+	option src &#039;tor&#039;
+	option src_dport &#039;53&#039;
+	option dest_port &#039;9053&#039;
+	option proto &#039;udp&#039;
+	option target &#039;DNAT&#039;
+
+config forwarding
+	option dest &#039;wan&#039;
+	option src &#039;lan&#039;
+
+config forwarding
+	option dest &#039;wan&#039;
+	option src &#039;tor&#039;
+
+config forwarding
+	option dest &#039;tor&#039;
+	option src &#039;wan&#039;
+
+config forwarding
+	option dest &#039;wan&#039;
+	option src &#039;slave&#039;
+</pre>
+</div></div>
+<p>
+4. Create <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> configurations
+</p>
+<div class="hiddenGlobal  hiddenActive"><div class="hiddenElements"></div><div class="hiddenHead  hiddenSinceBeginning"><div class="hiddenOnHidden">
+<p>
+/etc/config/dhcp
+</p>
+</div><div class="hiddenOnVisible">
+<p>
+Click to see less
+</p>
+</div></div> <!-- .hiddenHead --><div class="hiddenBody"><pre class="code">config dnsmasq
+	option domainneeded &#039;1&#039;
+	option localise_queries &#039;1&#039;
+	option rebind_protection &#039;1&#039;
+	option rebind_localhost &#039;1&#039;
+	option local &#039;/lan/&#039;
+	option domain &#039;lan&#039;
+	option expandhosts &#039;1&#039;
+	option authoritative &#039;1&#039;
+	option readethers &#039;1&#039;
+	option leasefile &#039;/tmp/dhcp.leases&#039;
+	option resolvfile &#039;/tmp/resolv.conf.auto&#039;
+	option nonwildcard &#039;1&#039;
+	option localservice &#039;1&#039;
+	option serversfile &#039;/tmp/adb_list.overall&#039;
+        list server &#039;8.8.8.8&#039;
+        list server &#039;8.8.4.4&#039;
+
+config dhcp &#039;lan&#039;
+	option interface &#039;lan&#039;
+	option leasetime &#039;12h&#039;
+	option dhcpv6 &#039;server&#039;
+	option ra &#039;server&#039;
+	option start &#039;2&#039;
+	option limit &#039;254&#039;
+	option ra_management &#039;1&#039;
+
+config dhcp &#039;slave&#039;
+	option leasetime &#039;12h&#039;
+	option interface &#039;slave&#039;
+	option start &#039;2&#039;
+	option limit &#039;254&#039;
+
+config dhcp &#039;tor&#039;
+	option leasetime &#039;12h&#039;
+	option interface &#039;tor&#039;
+	option start &#039;2&#039;
+	option limit &#039;254&#039;
+
+config dhcp &#039;wan&#039;
+	option interface &#039;wan&#039;
+	option ignore &#039;1&#039;
+
+config odhcpd &#039;odhcpd&#039;
+	option maindhcp &#039;0&#039;
+	option leasefile &#039;/tmp/hosts/odhcpd&#039;
+	option leasetrigger &#039;/usr/sbin/odhcpd-update&#039;
+	option loglevel &#039;4&#039;
+</pre>
+</div></div>
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Main Router Configuration Procedures:&quot;,&quot;hid&quot;:&quot;main_router_configuration_procedures&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:8,&quot;range&quot;:&quot;2406-12040&quot;} -->
+<h3 class="sectionedit10" id="nd_mid_range_ap">2nd, Mid Range AP</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="switch_details1">Switch details</h4>
+<div class="level4">
+<div class="table sectionedit11"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign"> <abbr title="Virtual Local Area Network">VLAN</abbr> ID      </th><th class="col1" colspan="2"> Upstream side:HW switch ↔ eth1 driver</th><th class="col3" colspan="5"> Downstream side:HW switch↔physical ports</th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign">      </td><td class="col1 leftalign"> CPU (eth0)    </td><td class="col2 centeralign">  cpu (eth1)        </td><td class="col3">LAN1</td><td class="col4">LAN2</td><td class="col5">LAN3</td><td class="col6">LAN4</td><td class="col7"><abbr title="Wide Area Network">WAN</abbr></td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> 1     </td><td class="col1 leftalign"> tagged     </td><td class="col2 leftalign"> tagged     </td><td class="col3">untagged</td><td class="col4">untagged</td><td class="col5">untagged</td><td class="col6">tagged</td><td class="col7">tagged</td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> 2     </td><td class="col1"> off </td><td class="col2 leftalign"> off        </td><td class="col3">off</td><td class="col4">off</td><td class="col5">off</td><td class="col6">off</td><td class="col7">off</td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"> 3     </td><td class="col1 leftalign"> tagged     </td><td class="col2 leftalign"> tagged     </td><td class="col3">off</td><td class="col4">off</td><td class="col5">off</td><td class="col6">tagged</td><td class="col7">tagged</td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 leftalign"> 4     </td><td class="col1 leftalign"> tagged     </td><td class="col2 leftalign"> tagged     </td><td class="col3">off</td><td class="col4">off</td><td class="col5">off</td><td class="col6">tagged</td><td class="col7">tagged</td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table1&quot;,&quot;secid&quot;:11,&quot;range&quot;:&quot;12092-12518&quot;} -->
+<p>
+1. Create extra VLANs to match the table above. The <abbr title="Wide Area Network">WAN</abbr> and LAN4 interfaces were configured to be tagged with <abbr title="Virtual Local Area Network">VLAN</abbr> ID numbers. The <abbr title="Wide Area Network">WAN</abbr> is receiving the uplink from the main router and LAN4 is rebroadcasting the uplink to the next router (the Rear range <abbr title="Access Point">AP</abbr> router).
+</p>
+<div class="hiddenGlobal  hiddenActive"><div class="hiddenElements"></div><div class="hiddenHead  hiddenSinceBeginning"><div class="hiddenOnHidden">
+<p>
+/etc/config/network
+</p>
+</div><div class="hiddenOnVisible">
+<p>
+Click to see less
+</p>
+</div></div> <!-- .hiddenHead --><div class="hiddenBody"><pre class="code">config interface &#039;loopback&#039;
+	option ifname &#039;lo&#039;
+	option proto &#039;static&#039;
+	option ipaddr &#039;127.0.0.1&#039;
+	option netmask &#039;255.0.0.0&#039;
+
+config globals &#039;globals&#039;
+	option ula_prefix &#039;fdfb:7e04:aca7::/48&#039;
+
+config interface &#039;lan&#039;
+	option type &#039;bridge&#039;
+	option ifname &#039;eth0.1&#039;
+	option proto &#039;static&#039;
+	option netmask &#039;255.255.255.0&#039;
+	option ip6assign &#039;60&#039;
+	option ipaddr &#039;192.168.0.1&#039;
+	option gateway &#039;192.168.0.1&#039;
+	option broadcast &#039;192.168.0.255&#039;
+	option dns &#039;8.8.8.8&#039;
+
+config interface &#039;wan&#039;
+	option ifname &#039;eth1.2&#039;
+	option proto &#039;dhcp&#039;
+	option hostname &#039;infraverse.network&#039;
+
+config interface &#039;wan6&#039;
+	option ifname &#039;eth1.2&#039;
+	option proto &#039;dhcpv6&#039;
+
+config switch
+	option name &#039;switch0&#039;
+	option reset &#039;1&#039;
+	option enable_vlan &#039;1&#039;
+
+config switch_vlan
+	option device &#039;switch0&#039;
+	option vlan &#039;1&#039;
+	option vid &#039;1&#039;
+	option ports &#039;0t 1 2 3 5t&#039;
+
+config switch_vlan
+	option device &#039;switch0&#039;
+	option vlan &#039;2&#039;
+	option ports &#039;4 6t&#039;
+	option vid &#039;2&#039;
+
+config interface &#039;slave&#039;
+	option type &#039;bridge&#039;
+	option proto &#039;static&#039;
+	option ipaddr &#039;172.16.0.1&#039;
+	option netmask &#039;255.255.0.0&#039;
+	option ifname &#039;eth0.3 radio1&#039;
+	option gateway &#039;172.16.0.1&#039;
+	option broadcast &#039;172.16.255.255&#039;
+
+config interface &#039;tor&#039;
+	option proto &#039;static&#039;
+	option ipaddr &#039;10.1.1.1&#039;
+	option netmask &#039;255.0.0.0&#039;
+	option type &#039;bridge&#039;
+	option ifname &#039;eth0.4&#039;
+
+config switch_vlan
+	option device &#039;switch0&#039;
+	option vlan &#039;3&#039;
+	option vid &#039;3&#039;
+	option ports &#039;0t 5t&#039;
+
+config switch_vlan
+	option device &#039;switch0&#039;
+	option vlan &#039;4&#039;
+	option vid &#039;4&#039;
+	option ports &#039;0t 5t&#039;
+</pre>
+</div></div>
+<p>
+2. Create Wi-Fi interfaces. 
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Be sure to make the SSID names and passwords identical to what is configured on the main router
+</p>
+<div class="hiddenGlobal  hiddenActive"><div class="hiddenElements"></div><div class="hiddenHead  hiddenSinceBeginning"><div class="hiddenOnHidden">
+<p>
+/etc/config/wireless
+</p>
+</div><div class="hiddenOnVisible">
+<p>
+Click to see less
+</p>
+</div></div> <!-- .hiddenHead --><div class="hiddenBody"><pre class="code">config wifi-device &#039;radio0&#039;
+	option type &#039;mac80211&#039;
+	option channel &#039;36&#039;
+	option hwmode &#039;11a&#039;
+	option path &#039;soc/soc:pcie/pci0000:00/0000:00:01.0/0000:01:00.0&#039;
+	option htmode &#039;VHT80&#039;
+	option country &#039;US&#039;
+	option legacy_rates &#039;1&#039;
+
+config wifi-iface &#039;default_radio0&#039;
+	option device &#039;radio0&#039;
+	option network &#039;lan&#039;
+	option mode &#039;ap&#039;
+	option ssid &#039;Gaming&#039;
+	option encryption &#039;psk-mixed&#039;
+	option key &#039;supersecretpassword&#039;
+	option wpa_disable_eapol_key_retries &#039;1&#039;
+
+config wifi-device &#039;radio1&#039;
+	option type &#039;mac80211&#039;
+	option hwmode &#039;11g&#039;
+	option path &#039;soc/soc:pcie/pci0000:00/0000:00:02.0/0000:02:00.0&#039;
+	option country &#039;US&#039;
+	option legacy_rates &#039;1&#039;
+	option distance &#039;7.7&#039;
+	option channel &#039;11&#039;
+	option htmode &#039;HT20&#039;
+
+config wifi-iface &#039;default_radio1&#039;
+	option device &#039;radio1&#039;
+	option network &#039;lan&#039;
+	option mode &#039;ap&#039;
+	option ssid &#039;Magick Mushroom&#039;
+	option encryption &#039;psk-mixed&#039;
+	option key &#039;supersecretpassword&#039;
+	option wpa_group_rekey &#039;0&#039;
+
+config wifi-iface
+	option device &#039;radio1&#039;
+	option mode &#039;ap&#039;
+	option encryption &#039;none&#039;
+	option ssid &#039;Slave&#039;
+	option isolate &#039;1&#039;
+	option network &#039;slave&#039;
+
+config wifi-iface
+	option device &#039;radio1&#039;
+	option mode &#039;ap&#039;
+	option encryption &#039;none&#039;
+	option ssid &#039;tor&#039;
+	option network &#039;tor&#039;
+</pre>
+</div></div>
+<p>
+3. Create firewall rules
+</p>
+<div class="hiddenGlobal  hiddenActive"><div class="hiddenElements"></div><div class="hiddenHead  hiddenSinceBeginning"><div class="hiddenOnHidden">
+<p>
+/etc/config/firewall
+</p>
+</div><div class="hiddenOnVisible">
+<p>
+Click to see less
+</p>
+</div></div> <!-- .hiddenHead --><div class="hiddenBody"><pre class="code">
+config defaults
+	option syn_flood &#039;1&#039;
+	option input &#039;ACCEPT&#039;
+	option output &#039;ACCEPT&#039;
+	option forward &#039;REJECT&#039;
+
+config zone
+	option name &#039;lan&#039;
+	list network &#039;lan&#039;
+	option input &#039;ACCEPT&#039;
+	option output &#039;ACCEPT&#039;
+	option forward &#039;ACCEPT&#039;
+
+config zone
+	option name &#039;wan&#039;
+	list network &#039;wan&#039;
+	list network &#039;wan6&#039;
+	option input &#039;REJECT&#039;
+	option output &#039;ACCEPT&#039;
+	option forward &#039;REJECT&#039;
+	option masq &#039;1&#039;
+	option mtu_fix &#039;1&#039;
+
+config rule
+	option name &#039;Allow-DHCP-Renew&#039;
+	option src &#039;wan&#039;
+	option proto &#039;udp&#039;
+	option dest_port &#039;68&#039;
+	option target &#039;ACCEPT&#039;
+	option family &#039;ipv4&#039;
+
+config rule
+	option name &#039;Allow-Ping&#039;
+	option src &#039;wan&#039;
+	option proto &#039;icmp&#039;
+	option icmp_type &#039;echo-request&#039;
+	option family &#039;ipv4&#039;
+	option target &#039;ACCEPT&#039;
+
+config rule
+	option name &#039;Allow-IGMP&#039;
+	option src &#039;wan&#039;
+	option proto &#039;igmp&#039;
+	option family &#039;ipv4&#039;
+	option target &#039;ACCEPT&#039;
+
+config rule
+	option name &#039;Allow-DHCPv6&#039;
+	option src &#039;wan&#039;
+	option proto &#039;udp&#039;
+	option src_ip &#039;fc00::/6&#039;
+	option dest_ip &#039;fc00::/6&#039;
+	option dest_port &#039;546&#039;
+	option family &#039;ipv6&#039;
+	option target &#039;ACCEPT&#039;
+
+config rule
+	option name &#039;Allow-MLD&#039;
+	option src &#039;wan&#039;
+	option proto &#039;icmp&#039;
+	option src_ip &#039;fe80::/10&#039;
+	list icmp_type &#039;130/0&#039;
+	list icmp_type &#039;131/0&#039;
+	list icmp_type &#039;132/0&#039;
+	list icmp_type &#039;143/0&#039;
+	option family &#039;ipv6&#039;
+	option target &#039;ACCEPT&#039;
+
+config rule
+	option name &#039;Allow-ICMPv6-Input&#039;
+	option src &#039;wan&#039;
+	option proto &#039;icmp&#039;
+	list icmp_type &#039;echo-request&#039;
+	list icmp_type &#039;echo-reply&#039;
+	list icmp_type &#039;destination-unreachable&#039;
+	list icmp_type &#039;packet-too-big&#039;
+	list icmp_type &#039;time-exceeded&#039;
+	list icmp_type &#039;bad-header&#039;
+	list icmp_type &#039;unknown-header-type&#039;
+	list icmp_type &#039;router-solicitation&#039;
+	list icmp_type &#039;neighbour-solicitation&#039;
+	list icmp_type &#039;router-advertisement&#039;
+	list icmp_type &#039;neighbour-advertisement&#039;
+	option limit &#039;1000/sec&#039;
+	option family &#039;ipv6&#039;
+	option target &#039;ACCEPT&#039;
+
+config rule
+	option name &#039;Allow-ICMPv6-Forward&#039;
+	option src &#039;wan&#039;
+	option dest &#039;*&#039;
+	option proto &#039;icmp&#039;
+	list icmp_type &#039;echo-request&#039;
+	list icmp_type &#039;echo-reply&#039;
+	list icmp_type &#039;destination-unreachable&#039;
+	list icmp_type &#039;packet-too-big&#039;
+	list icmp_type &#039;time-exceeded&#039;
+	list icmp_type &#039;bad-header&#039;
+	list icmp_type &#039;unknown-header-type&#039;
+	option limit &#039;1000/sec&#039;
+	option family &#039;ipv6&#039;
+	option target &#039;ACCEPT&#039;
+
+config rule
+	option name &#039;Allow-IPSec-ESP&#039;
+	option src &#039;wan&#039;
+	option dest &#039;lan&#039;
+	option proto &#039;esp&#039;
+	option target &#039;ACCEPT&#039;
+
+config rule
+	option name &#039;Allow-ISAKMP&#039;
+	option src &#039;wan&#039;
+	option dest &#039;lan&#039;
+	option dest_port &#039;500&#039;
+	option proto &#039;udp&#039;
+	option target &#039;ACCEPT&#039;
+
+config include
+	option path &#039;/etc/firewall.user&#039;
+
+config include &#039;miniupnpd&#039;
+	option type &#039;script&#039;
+	option path &#039;/usr/share/miniupnpd/firewall.include&#039;
+	option family &#039;any&#039;
+	option reload &#039;1&#039;
+
+config zone
+	option name &#039;slave&#039;
+	option forward &#039;REJECT&#039;
+	option output &#039;ACCEPT&#039;
+	option network &#039;slave&#039;
+	option input &#039;REJECT&#039;
+
+config rule
+	option target &#039;ACCEPT&#039;
+	option proto &#039;tcp udp&#039;
+	option dest_port &#039;53&#039;
+	option name &#039;Slave dns&#039;
+	option src &#039;slave&#039;
+
+config rule
+	option target &#039;ACCEPT&#039;
+	option proto &#039;udp&#039;
+	option dest_port &#039;67-68&#039;
+	option name &#039;slave dhcp&#039;
+	option src &#039;slave&#039;
+
+config zone
+	option name &#039;tor&#039;
+	option forward &#039;REJECT&#039;
+	option output &#039;ACCEPT&#039;
+	option network &#039;tor&#039;
+	option input &#039;ACCEPT&#039;
+	option syn_flood &#039;1&#039;
+	option conntrack &#039;1&#039;
+
+config rule
+	option src &#039;tor&#039;
+	option proto &#039;udp&#039;
+	option dest_port &#039;67&#039;
+	option target &#039;ACCEPT&#039;
+	option name &#039;tor DHCP&#039;
+
+config rule
+	option src &#039;tor&#039;
+	option proto &#039;tcp&#039;
+	option dest_port &#039;9040&#039;
+	option target &#039;ACCEPT&#039;
+	option name &#039;tor transport&#039;
+
+config rule
+	option src &#039;tor&#039;
+	option proto &#039;udp&#039;
+	option dest_port &#039;9053&#039;
+	option target &#039;ACCEPT&#039;
+	option name &#039;tor dns&#039;
+
+config redirect
+	option name &#039;Redirect-Tor-Traffic&#039;
+	option src &#039;tor&#039;
+	option src_dip &#039;!10.1.1.1&#039;
+	option dest_port &#039;9040&#039;
+	option proto &#039;tcp&#039;
+	option target &#039;DNAT&#039;
+
+config redirect
+	option name &#039;Redirect-Tor-DNS&#039;
+	option src &#039;tor&#039;
+	option src_dport &#039;53&#039;
+	option dest_port &#039;9053&#039;
+	option proto &#039;udp&#039;
+	option target &#039;DNAT&#039;
+
+config forwarding
+	option dest &#039;wan&#039;
+	option src &#039;lan&#039;
+
+config forwarding
+	option dest &#039;wan&#039;
+	option src &#039;tor&#039;
+
+config forwarding
+	option dest &#039;tor&#039;
+	option src &#039;wan&#039;
+
+config forwarding
+	option dest &#039;wan&#039;
+	option src &#039;slave&#039;
+</pre>
+</div></div>
+<p>
+4. Create <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> configurations
+</p>
+<div class="hiddenGlobal  hiddenActive"><div class="hiddenElements"></div><div class="hiddenHead  hiddenSinceBeginning"><div class="hiddenOnHidden">
+<p>
+/etc/config/dhcp
+</p>
+</div><div class="hiddenOnVisible">
+<p>
+Click to see less
+</p>
+</div></div> <!-- .hiddenHead --><div class="hiddenBody"><pre class="code">config dnsmasq
+	option domainneeded &#039;1&#039;
+	option localise_queries &#039;1&#039;
+	option rebind_protection &#039;1&#039;
+	option rebind_localhost &#039;1&#039;
+	option local &#039;/lan/&#039;
+	option domain &#039;lan&#039;
+	option expandhosts &#039;1&#039;
+	option authoritative &#039;1&#039;
+	option readethers &#039;1&#039;
+	option leasefile &#039;/tmp/dhcp.leases&#039;
+	option resolvfile &#039;/tmp/resolv.conf.auto&#039;
+	option nonwildcard &#039;1&#039;
+	option localservice &#039;1&#039;
+	option serversfile &#039;/tmp/adb_list.overall&#039;
+        list server &#039;8.8.8.8&#039;
+        list server &#039;8.8.4.4&#039;
+
+config dhcp &#039;lan&#039;
+	option interface &#039;lan&#039;
+	option leasetime &#039;12h&#039;
+	option dhcpv6 &#039;server&#039;
+	option ra &#039;server&#039;
+	option start &#039;2&#039;
+	option limit &#039;254&#039;
+	option ra_management &#039;1&#039;
+
+config dhcp &#039;slave&#039;
+	option leasetime &#039;12h&#039;
+	option interface &#039;slave&#039;
+	option start &#039;2&#039;
+	option limit &#039;254&#039;
+
+config dhcp &#039;tor&#039;
+	option leasetime &#039;12h&#039;
+	option interface &#039;tor&#039;
+	option start &#039;2&#039;
+	option limit &#039;254&#039;
+
+config dhcp &#039;wan&#039;
+	option interface &#039;wan&#039;
+	option ignore &#039;1&#039;
+
+config odhcpd &#039;odhcpd&#039;
+	option maindhcp &#039;0&#039;
+	option leasefile &#039;/tmp/hosts/odhcpd&#039;
+	option leasetrigger &#039;/usr/sbin/odhcpd-update&#039;
+	option loglevel &#039;4&#039;
+</pre>
+</div></div>
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;2nd, Mid Range AP&quot;,&quot;hid&quot;:&quot;nd_mid_range_ap&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:10,&quot;range&quot;:&quot;12041-21335&quot;} -->
+<h3 class="sectionedit12" id="rd_rear_range_ap">3rd, Rear Range AP</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="switch_details2">Switch details</h4>
+<div class="level4">
+<div class="table sectionedit13"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign"> <abbr title="Virtual Local Area Network">VLAN</abbr> ID      </th><th class="col1" colspan="2"> Upstream side:HW switch ↔ eth1 driver</th><th class="col3" colspan="5"> Downstream side:HW switch↔physical ports</th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign">      </td><td class="col1 leftalign"> CPU (eth0)    </td><td class="col2 leftalign"> cpu (eth1)        </td><td class="col3"> LAN1 </td><td class="col4"> LAN2 </td><td class="col5"> LAN3 </td><td class="col6"> LAN4 </td><td class="col7"> <abbr title="Wide Area Network">WAN</abbr> </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> 1     </td><td class="col1 leftalign"> tagged     </td><td class="col2 leftalign"> tagged        </td><td class="col3">untagged</td><td class="col4">untagged</td><td class="col5">untagged</td><td class="col6">untagged</td><td class="col7">tagged</td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> 2     </td><td class="col1"> off </td><td class="col2"> off </td><td class="col3">off</td><td class="col4">off</td><td class="col5">off</td><td class="col6">off</td><td class="col7">off</td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"> 3     </td><td class="col1 leftalign"> tagged     </td><td class="col2 leftalign"> tagged        </td><td class="col3">off</td><td class="col4">off</td><td class="col5">off</td><td class="col6">off</td><td class="col7">tagged</td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 leftalign"> 4     </td><td class="col1 leftalign"> tagged     </td><td class="col2 leftalign"> tagged        </td><td class="col3">off</td><td class="col4">off</td><td class="col5">off</td><td class="col6">off</td><td class="col7">tagged</td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table2&quot;,&quot;secid&quot;:13,&quot;range&quot;:&quot;21390-21823&quot;} -->
+<p>
+1. Create extra VLANs to match the table above. The <abbr title="Wide Area Network">WAN</abbr> interface was configured to be tagged with <abbr title="Virtual Local Area Network">VLAN</abbr> ID numbers. The <abbr title="Wide Area Network">WAN</abbr> is receiving the uplink from the mid router.
+</p>
+<div class="hiddenGlobal  hiddenActive"><div class="hiddenElements"></div><div class="hiddenHead  hiddenSinceBeginning"><div class="hiddenOnHidden">
+<p>
+/etc/config/network
+</p>
+</div><div class="hiddenOnVisible">
+<p>
+Click to see less
+</p>
+</div></div> <!-- .hiddenHead --><div class="hiddenBody"><pre class="code">
+config interface &#039;loopback&#039;
+	option ifname &#039;lo&#039;
+	option proto &#039;static&#039;
+	option ipaddr &#039;127.0.0.1&#039;
+	option netmask &#039;255.0.0.0&#039;
+
+config globals &#039;globals&#039;
+	option ula_prefix &#039;fdcb:2636:4335::/48&#039;
+
+config interface &#039;lan&#039;
+	option type &#039;bridge&#039;
+	option ifname &#039;eth0.1&#039;
+	option proto &#039;static&#039;
+	option netmask &#039;255.255.255.0&#039;
+	option ip6assign &#039;60&#039;
+	option ipaddr &#039;192.168.0.252&#039;
+	option gateway &#039;192.168.0.1&#039;
+	option broadcast &#039;192.168.0.255&#039;
+
+config interface &#039;wan&#039;
+	option ifname &#039;eth1.2&#039;
+	option proto &#039;static&#039;
+	option netmask &#039;255.255.255.0&#039;
+	option gateway &#039;192.168.0.1&#039;
+	option broadcast &#039;192.168.1.255&#039;
+	option ipaddr &#039;192.168.0.252&#039;
+
+config interface &#039;wan6&#039;
+	option ifname &#039;eth1.2&#039;
+	option proto &#039;dhcpv6&#039;
+
+config switch
+	option name &#039;switch0&#039;
+	option reset &#039;1&#039;
+	option enable_vlan &#039;1&#039;
+
+config switch_vlan
+	option device &#039;switch0&#039;
+	option vlan &#039;1&#039;
+	option vid &#039;1&#039;
+	option ports &#039;0 1 2 3 4t 5t 6t&#039;
+
+config switch_vlan
+	option device &#039;switch0&#039;
+	option vlan &#039;2&#039;
+	option vid &#039;2&#039;
+
+config switch_vlan
+	option device &#039;switch0&#039;
+	option vlan &#039;3&#039;
+	option vid &#039;3&#039;
+	option ports &#039;4t 5t 6t&#039;
+
+config switch_vlan
+	option device &#039;switch0&#039;
+	option vlan &#039;4&#039;
+	option vid &#039;4&#039;
+	option ports &#039;4t 5t 6t&#039;
+
+config interface &#039;slave&#039;
+	option proto &#039;static&#039;
+	option ipaddr &#039;172.16.0.252&#039;
+	option netmask &#039;255.255.255.0&#039;
+	option gateway &#039;172.16.0.1&#039;
+	option broadcast &#039;172.16.255.255&#039;
+	option type &#039;bridge&#039;
+	option ifname &#039;eth0.3&#039;
+
+config interface &#039;tor&#039;
+	option proto &#039;static&#039;
+	option ipaddr &#039;10.1.1.252&#039;
+	option netmask &#039;255.0.0.0&#039;
+	option type &#039;bridge&#039;
+	option ifname &#039;eth0.4&#039;
+</pre>
+</div></div>
+<p>
+2. Create Wi-Fi interfaces. 
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Be sure to make the SSID names and passwords identical to what is configured on the main router
+</p>
+<div class="hiddenGlobal  hiddenActive"><div class="hiddenElements"></div><div class="hiddenHead  hiddenSinceBeginning"><div class="hiddenOnHidden">
+<p>
+/etc/config/wireless
+</p>
+</div><div class="hiddenOnVisible">
+<p>
+Click to see less
+</p>
+</div></div> <!-- .hiddenHead --><div class="hiddenBody"><pre class="code">
+config wifi-device &#039;radio0&#039;
+	option type &#039;mac80211&#039;
+	option hwmode &#039;11a&#039;
+	option path &#039;soc/soc:pcie/pci0000:00/0000:00:01.0/0000:01:00.0&#039;
+	option htmode &#039;VHT80&#039;
+	option country &#039;US&#039;
+	option legacy_rates &#039;1&#039;
+	option channel &#039;44&#039;
+
+config wifi-iface &#039;default_radio0&#039;
+	option device &#039;radio0&#039;
+	option network &#039;lan&#039;
+	option mode &#039;ap&#039;
+	option ssid &#039;Gaming&#039;
+	option encryption &#039;psk-mixed&#039;
+	option key &#039;supersecretpassword&#039;
+	option wpa_disable_eapol_key_retries &#039;1&#039;
+
+config wifi-device &#039;radio1&#039;
+	option type &#039;mac80211&#039;
+	option hwmode &#039;11g&#039;
+	option path &#039;soc/soc:pcie/pci0000:00/0000:00:02.0/0000:02:00.0&#039;
+	option htmode &#039;HT20&#039;
+	option country &#039;US&#039;
+	option legacy_rates &#039;1&#039;
+	option channel &#039;9&#039;
+
+config wifi-iface &#039;default_radio1&#039;
+	option device &#039;radio1&#039;
+	option network &#039;lan&#039;
+	option mode &#039;ap&#039;
+	option ssid &#039;Magick Mushroom&#039;
+	option encryption &#039;psk-mixed&#039;
+	option key &#039;supersecretpassword&#039;
+	option wpa_disable_eapol_key_retries &#039;1&#039;
+
+config wifi-device &#039;radio2&#039;
+	option type &#039;mac80211&#039;
+	option channel &#039;36&#039;
+	option hwmode &#039;11a&#039;
+	option path &#039;platform/soc/soc:internal-regs/f10d8000.sdhci/mmc_host/mmc0/mmc0:0001/mmc0:0001:1&#039;
+	option htmode &#039;VHT80&#039;
+	option disabled &#039;1&#039;
+
+config wifi-iface &#039;default_radio2&#039;
+	option device &#039;radio2&#039;
+	option network &#039;lan&#039;
+	option mode &#039;ap&#039;
+	option ssid &#039;OpenWrt&#039;
+	option encryption &#039;none&#039;
+
+config wifi-iface
+	option device &#039;radio1&#039;
+	option mode &#039;ap&#039;
+	option encryption &#039;none&#039;
+	option ssid &#039;Slave&#039;
+	option isolate &#039;1&#039;
+	option network &#039;slave&#039;
+
+config wifi-iface
+	option device &#039;radio1&#039;
+	option mode &#039;ap&#039;
+	option encryption &#039;none&#039;
+	option ssid &#039;tor&#039;
+	option isolate &#039;1&#039;
+	option network &#039;tor&#039;
+</pre>
+</div></div>
+<p>
+3. Create firewall rules
+</p>
+<div class="hiddenGlobal  hiddenActive"><div class="hiddenElements"></div><div class="hiddenHead  hiddenSinceBeginning"><div class="hiddenOnHidden">
+<p>
+/etc/config/firewall
+</p>
+</div><div class="hiddenOnVisible">
+<p>
+Click to see less
+</p>
+</div></div> <!-- .hiddenHead --><div class="hiddenBody"><pre class="code">
+config defaults
+	option syn_flood &#039;1&#039;
+	option input &#039;ACCEPT&#039;
+	option output &#039;ACCEPT&#039;
+	option forward &#039;REJECT&#039;
+
+config zone
+	option name &#039;lan&#039;
+	option input &#039;ACCEPT&#039;
+	option output &#039;ACCEPT&#039;
+	option forward &#039;ACCEPT&#039;
+	option network &#039;lan&#039;
+
+config zone
+	option name &#039;wan&#039;
+	option input &#039;REJECT&#039;
+	option output &#039;ACCEPT&#039;
+	option forward &#039;REJECT&#039;
+	option masq &#039;1&#039;
+	option mtu_fix &#039;1&#039;
+	option network &#039;wan wan6&#039;
+
+config forwarding
+	option src &#039;lan&#039;
+	option dest &#039;wan&#039;
+
+config rule
+	option name &#039;Allow-DHCP-Renew&#039;
+	option src &#039;wan&#039;
+	option proto &#039;udp&#039;
+	option dest_port &#039;68&#039;
+	option target &#039;ACCEPT&#039;
+	option family &#039;ipv4&#039;
+
+config rule
+	option name &#039;Allow-Ping&#039;
+	option src &#039;wan&#039;
+	option proto &#039;icmp&#039;
+	option icmp_type &#039;echo-request&#039;
+	option family &#039;ipv4&#039;
+	option target &#039;ACCEPT&#039;
+
+config rule
+	option name &#039;Allow-IGMP&#039;
+	option src &#039;wan&#039;
+	option proto &#039;igmp&#039;
+	option family &#039;ipv4&#039;
+	option target &#039;ACCEPT&#039;
+
+config rule
+	option name &#039;Allow-DHCPv6&#039;
+	option src &#039;wan&#039;
+	option proto &#039;udp&#039;
+	option src_ip &#039;fc00::/6&#039;
+	option dest_ip &#039;fc00::/6&#039;
+	option dest_port &#039;546&#039;
+	option family &#039;ipv6&#039;
+	option target &#039;ACCEPT&#039;
+
+config rule
+	option name &#039;Allow-MLD&#039;
+	option src &#039;wan&#039;
+	option proto &#039;icmp&#039;
+	option src_ip &#039;fe80::/10&#039;
+	list icmp_type &#039;130/0&#039;
+	list icmp_type &#039;131/0&#039;
+	list icmp_type &#039;132/0&#039;
+	list icmp_type &#039;143/0&#039;
+	option family &#039;ipv6&#039;
+	option target &#039;ACCEPT&#039;
+
+config rule
+	option name &#039;Allow-ICMPv6-Input&#039;
+	option src &#039;wan&#039;
+	option proto &#039;icmp&#039;
+	list icmp_type &#039;echo-request&#039;
+	list icmp_type &#039;echo-reply&#039;
+	list icmp_type &#039;destination-unreachable&#039;
+	list icmp_type &#039;packet-too-big&#039;
+	list icmp_type &#039;time-exceeded&#039;
+	list icmp_type &#039;bad-header&#039;
+	list icmp_type &#039;unknown-header-type&#039;
+	list icmp_type &#039;router-solicitation&#039;
+	list icmp_type &#039;neighbour-solicitation&#039;
+	list icmp_type &#039;router-advertisement&#039;
+	list icmp_type &#039;neighbour-advertisement&#039;
+	option limit &#039;1000/sec&#039;
+	option family &#039;ipv6&#039;
+	option target &#039;ACCEPT&#039;
+
+config rule
+	option name &#039;Allow-ICMPv6-Forward&#039;
+	option src &#039;wan&#039;
+	option dest &#039;*&#039;
+	option proto &#039;icmp&#039;
+	list icmp_type &#039;echo-request&#039;
+	list icmp_type &#039;echo-reply&#039;
+	list icmp_type &#039;destination-unreachable&#039;
+	list icmp_type &#039;packet-too-big&#039;
+	list icmp_type &#039;time-exceeded&#039;
+	list icmp_type &#039;bad-header&#039;
+	list icmp_type &#039;unknown-header-type&#039;
+	option limit &#039;1000/sec&#039;
+	option family &#039;ipv6&#039;
+	option target &#039;ACCEPT&#039;
+
+config rule
+	option name &#039;Allow-IPSec-ESP&#039;
+	option src &#039;wan&#039;
+	option dest &#039;lan&#039;
+	option proto &#039;esp&#039;
+	option target &#039;ACCEPT&#039;
+
+config rule
+	option name &#039;Allow-ISAKMP&#039;
+	option src &#039;wan&#039;
+	option dest &#039;lan&#039;
+	option dest_port &#039;500&#039;
+	option proto &#039;udp&#039;
+	option target &#039;ACCEPT&#039;
+
+config include
+	option path &#039;/etc/firewall.user&#039;
+
+config zone
+	option name &#039;slave&#039;
+	option input &#039;ACCEPT&#039;
+	option forward &#039;REJECT&#039;
+	option output &#039;ACCEPT&#039;
+	option network &#039;slave&#039;
+
+config zone
+	option name &#039;tor&#039;
+	option input &#039;ACCEPT&#039;
+	option forward &#039;REJECT&#039;
+	option output &#039;ACCEPT&#039;
+	option network &#039;tor&#039;
+</pre>
+</div></div>
+<p>
+4. Create <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> configurations
+</p>
+<div class="hiddenGlobal  hiddenActive"><div class="hiddenElements"></div><div class="hiddenHead  hiddenSinceBeginning"><div class="hiddenOnHidden">
+<p>
+/etc/config/dhcp
+</p>
+</div><div class="hiddenOnVisible">
+<p>
+Click to see less
+</p>
+</div></div> <!-- .hiddenHead --><div class="hiddenBody"><pre class="code">
+config dnsmasq
+	option domainneeded &#039;1&#039;
+	option boguspriv &#039;1&#039;
+	option filterwin2k &#039;0&#039;
+	option localise_queries &#039;1&#039;
+	option rebind_protection &#039;1&#039;
+	option rebind_localhost &#039;1&#039;
+	option local &#039;/lan/&#039;
+	option domain &#039;lan&#039;
+	option expandhosts &#039;1&#039;
+	option nonegcache &#039;0&#039;
+	option authoritative &#039;1&#039;
+	option readethers &#039;1&#039;
+	option leasefile &#039;/tmp/dhcp.leases&#039;
+	option resolvfile &#039;/tmp/resolv.conf.auto&#039;
+	option nonwildcard &#039;1&#039;
+	option localservice &#039;1&#039;
+
+config dhcp &#039;lan&#039;
+	option interface &#039;lan&#039;
+	option dhcpv6 &#039;server&#039;
+	option ra &#039;server&#039;
+	option ignore &#039;1&#039;
+	option ra_management &#039;1&#039;
+
+config dhcp &#039;wan&#039;
+	option interface &#039;wan&#039;
+	option ignore &#039;1&#039;
+
+config odhcpd &#039;odhcpd&#039;
+	option maindhcp &#039;0&#039;
+	option leasefile &#039;/tmp/hosts/odhcpd&#039;
+	option leasetrigger &#039;/usr/sbin/odhcpd-update&#039;
+	option loglevel &#039;4&#039;
+</pre>
+</div></div>
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;3rd, Rear Range AP&quot;,&quot;hid&quot;:&quot;rd_rear_range_ap&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:12,&quot;range&quot;:&quot;21336-&quot;} -->

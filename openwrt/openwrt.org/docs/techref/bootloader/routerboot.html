@@ -1,0 +1,60 @@
+
+<h1 class="sectionedit1" id="routerboot">RouterBOOT</h1>
+<div class="level1">
+
+<p>
+RouterBOOT is MikroTik&#039;s closed source bootloader. 
+See <a href="https://wiki.mikrotik.com/wiki/Manual:RouterBOOT" class="urlextern" title="https://wiki.mikrotik.com/wiki/Manual:RouterBOOT" rel="ugc nofollow">the Mikrotik documentation</a> for details.
+</p>
+
+<p>
+The information contained in this page is based on reverse engineering experiments and may not be fully accurate.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;RouterBOOT&quot;,&quot;hid&quot;:&quot;routerboot&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-291&quot;} -->
+<h3 class="sectionedit2" id="findings">Findings</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="version_6464_on_rb493g">Version 6.46.4 on RB493G</h4>
+<div class="level4">
+
+<p>
+Routerboot will load an ELF binary under the following conditions:
+</p>
+<ul>
+<li class="level1"><div class="li"> 0x8000-0000 ⇐ load address &lt; 0x8070-0000</div>
+</li>
+<li class="level1"><div class="li"> load address + size &lt; 0x8070-0000</div>
+</li>
+</ul>
+
+<p>
+Any other value will trigger a « kernel is out of range » error. Thus only 7MB is available to load an ELF binary from <abbr title="Trivial File Transfer Protocol">TFTP</abbr>.
+</p>
+
+<p>
+The load address doesn’t seem to have to satisfy any wide alignment: 0x802D-1BC4 was successfully loaded.
+</p>
+
+<p>
+RouterBOOT seems to honor the entry point address (TBC).
+</p>
+
+<p>
+It also appears that RouterBOOT tftp routine loads at offset 0x80A0-0000
+</p>
+
+</div>
+
+<h5 id="implications">Implications</h5>
+<div class="level5">
+
+<p>
+The standard self-decompressing kernel is linked at a load address that starts after the decompressed kernel (it is computed in arch/mips/boot/compressed/calc_vmlinuz_load_addr): it&#039;s thus not suitable because it makes the problem worse.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Findings&quot;,&quot;hid&quot;:&quot;findings&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;292-&quot;} -->

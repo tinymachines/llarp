@@ -1,0 +1,904 @@
+
+<h1 class="sectionedit1" id="wireguard_road-warrior_automated">WireGuard road-warrior automated</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__meta:infobox:howto_links">
+<div class="level1">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_info plugin_wrap">
+<p>
+This article relies on the following:
+</p>
+<ul>
+<li class="level1"><div class="li"> Accessing <a href="/docs/guide-quick-start/walkthrough_login" class="wikilink1" title="docs:guide-quick-start:walkthrough_login" data-wiki-id="docs:guide-quick-start:walkthrough_login">web interface</a> / <a href="/docs/guide-quick-start/sshadministration" class="wikilink1" title="docs:guide-quick-start:sshadministration" data-wiki-id="docs:guide-quick-start:sshadministration">command-line interface</a></div>
+</li>
+<li class="level1"><div class="li"> Managing <a href="/docs/guide-user/base-system/uci" class="wikilink1" title="docs:guide-user:base-system:uci" data-wiki-id="docs:guide-user:base-system:uci">configs</a> / <a href="/docs/guide-user/additional-software/managing_packages" class="wikilink1" title="docs:guide-user:additional-software:managing_packages" data-wiki-id="docs:guide-user:additional-software:managing_packages">packages</a> / <a href="/docs/guide-user/base-system/managing_services" class="wikilink1" title="docs:guide-user:base-system:managing_services" data-wiki-id="docs:guide-user:base-system:managing_services">services</a> / <a href="/docs/guide-user/base-system/log.essentials" class="wikilink1" title="docs:guide-user:base-system:log.essentials" data-wiki-id="docs:guide-user:base-system:log.essentials">logs</a></div>
+</li>
+</ul>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;WireGuard road-warrior automated&quot;,&quot;hid&quot;:&quot;wireguard_road-warrior_automated&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-129&quot;} -->
+<h2 class="sectionedit6" id="introduction">Introduction</h2>
+<div class="level2">
+
+<p>
+The road-warrior scenario is described in
+<a href="/docs/guide-user/services/vpn/strongswan/roadwarrior" class="wikilink1" title="docs:guide-user:services:vpn:strongswan:roadwarrior" data-wiki-id="docs:guide-user:services:vpn:strongswan:roadwarrior">Strongswan&#039;s
+Road-warrior guide</a>.  This guide
+sets up a road-warrior-style service using WireGuard, with support for
+<abbr title="Internet Protocol version 4">IPv4</abbr>-only or <abbr title="Internet Protocol version 4">IPv4</abbr>/<abbr title="Internet Protocol version 6">IPv6</abbr> dual tunnels, with two <abbr title="Internet Protocol version 6">IPv6</abbr> configuration options.
+</p>
+
+</div>
+
+<h4 id="ipv6_configuration_aroutable_global_addresses_delegated_to_the_peers">IPv6 Configuration A: routable global addresses delegated to the peers</h4>
+<div class="level4">
+
+<p>
+This configuration is good if:
+</p>
+<ul>
+<li class="level1"><div class="li"> You have a stable <abbr title="Internet Protocol version 6">IPv6</abbr> prefix delegation (prefix ⇐ /60) from your <abbr title="Internet Service Provider">ISP</abbr>, <em>or</em></div>
+</li>
+<li class="level1"><div class="li"> You are willing to regenerate client configurations when your <abbr title="Internet Protocol version 6">IPv6</abbr> delegation changes</div>
+</li>
+</ul>
+
+<p>
+<em>and</em>
+</p>
+<ul>
+<li class="level1"><div class="li"> You want to use routable <abbr title="Internet Protocol version 6">IPv6</abbr> addresses for your <abbr title="Virtual Private Network">VPN</abbr> clients</div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="ipv6_configuration_bonly_ula_addresses_delegated_to_the_peers_with_nat6">IPv6 Configuration B: only ULA addresses delegated to the peers, with NAT6</h4>
+<div class="level4">
+
+<p>
+This configuration uses only <a href="https://en.wikipedia.org/wiki/Unique local address" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Unique local address">ULA addresses</a>
+for the <abbr title="Virtual Private Network">VPN</abbr> peers.
+This configuration is good if:
+</p>
+<ul>
+<li class="level1"><div class="li"> Your <abbr title="Internet Protocol version 6">IPv6</abbr> delegation is too small (prefix &gt; 60) or you don&#039;t have one (i.e. not enough subnets), <em>or</em></div>
+</li>
+<li class="level1 node"><div class="li"> You have an <abbr title="Internet Protocol version 6">IPv6</abbr> delegation (prefix &lt; = /60), but:</div>
+<ul>
+<li class="level2"><div class="li"> you are not sure your <abbr title="Internet Service Provider">ISP</abbr> will give you the same delegation long-term, <em>or</em></div>
+</li>
+<li class="level2"><div class="li"> You don&#039;t want to regenerate client configurations when your <abbr title="Internet Protocol version 6">IPv6</abbr> delegation changes</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+It&#039;s also good if:
+</p>
+<ul>
+<li class="level1"><div class="li"> Your prefix is fine but you want to use NAT6 addresses for <abbr title="Virtual Private Network">VPN</abbr> clients (and not assigning them any global <abbr title="Internet Protocol version 6">IPv6</abbr> addresses)</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Introduction&quot;,&quot;hid&quot;:&quot;introduction&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;130-1496&quot;} -->
+<h2 class="sectionedit7" id="end_goals">End Goals</h2>
+<div class="level2">
+
+<p>
+When finished with this setup, you will have:
+</p>
+<ul>
+<li class="level1 node"><div class="li"> Set up a WireGuard <abbr title="Virtual Private Network">VPN</abbr> server on OpenWrt</div>
+<ul>
+<li class="level2"><div class="li"> Typically accessed via a <a href="/docs/guide-user/base-system/ddns" class="wikilink1" title="docs:guide-user:base-system:ddns" data-wiki-id="docs:guide-user:base-system:ddns">DDNS</a> hostname(s) managed for the peers&#039; use</div>
+</li>
+<li class="level2"><div class="li"> <a href="/docs/guide-user/network/ipv6/ipv6.nat6" class="wikilink1" title="docs:guide-user:network:ipv6:ipv6.nat6" data-wiki-id="docs:guide-user:network:ipv6:ipv6.nat6">NAT6</a> through your upstream <abbr title="Internet Protocol version 6">IPv6</abbr> interface when routing <abbr title="Internet Protocol version 6">IPv6</abbr> peer traffic from a ULA (configuration B, or configuration A if the peer only uses a ULA)</div>
+</li>
+<li class="level2"><div class="li"> Routed public delegated <abbr title="Internet Protocol version 6">IPv6</abbr> traffic when the peer is using a delegated address (configuration A)</div>
+</li>
+<li class="level2"><div class="li"> <abbr title="Internet Protocol version 4">IPv4</abbr> and <abbr title="Internet Protocol version 6">IPv6</abbr> traffic is subject to normal firewall rules based on the zone assigned to the WireGuard interface</div>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> Created WireGuard peer configurations, and corresponding configuration files and QR codes for each peer</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;End Goals&quot;,&quot;hid&quot;:&quot;end_goals&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;1497-2253&quot;} -->
+<h2 class="sectionedit8" id="prerequisites">Prerequisites</h2>
+<div class="level2">
+
+<p>
+Before you start, you need:
+</p>
+<ul>
+<li class="level1"><div class="li"> A hostname (or <abbr title="Internet Protocol">IP</abbr> address) and port that can be used to connect to an <abbr title="Internet Protocol version 4">IPv4</abbr> <abbr title="User Datagram Protocol">UDP</abbr> service on your OpenWrt system, for transporting <abbr title="Virtual Private Network">VPN</abbr> traffic via the public <abbr title="Internet Protocol version 4">IPv4</abbr> internet.  If you don&#039;t have a public <abbr title="Internet Protocol">IP</abbr> address, you will need to arrange a port forward from your upstream router (not tested).</div>
+</li>
+<li class="level1"><div class="li"> For <abbr title="Internet Protocol version 4">IPv4</abbr>, an available RFC1918 /24 subnet to dedicate to the WireGuard tunnel and its peers</div>
+</li>
+<li class="level1 node"><div class="li"> If configuring <abbr title="Internet Protocol version 6">IPv6</abbr> tunnel support:</div>
+<ul>
+<li class="level2"><div class="li"> <abbr title="Internet Protocol version 6">IPv6</abbr> configured &gt;&gt; <a href="/docs/guide-user/network/ipv6/configuration" class="wikilink1" title="docs:guide-user:network:ipv6:configuration" data-wiki-id="docs:guide-user:network:ipv6:configuration">IPv6</a></div>
+</li>
+<li class="level2"><div class="li"> A unique <abbr title="Internet Protocol version 6">IPv6</abbr> assignment hint for the WireGuard interface.  It must be no larger than 2 ^ (64 - prefix-length); this is used to compose the /64 subnet&#039;s prefix</div>
+</li>
+<li class="level2"><div class="li"> <em>Required for configuration A</em>: A delegated routable prefix (no more than /60 bits as the prefix) from which you can dedicate a /64 subnet</div>
+</li>
+<li class="level2"><div class="li"> Optionally, a hostname (or <abbr title="Internet Protocol version 6">IPv6</abbr> address) and port that can be used to connect to an <abbr title="Internet Protocol version 6">IPv6</abbr> <abbr title="User Datagram Protocol">UDP</abbr> service on your OpenWrt system (for transporting <abbr title="Virtual Private Network">VPN</abbr> traffic via the public <abbr title="Internet Protocol version 6">IPv6</abbr> internet)</div>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Prerequisites&quot;,&quot;hid&quot;:&quot;prerequisites&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:8,&quot;range&quot;:&quot;2254-3319&quot;} -->
+<h3 class="sectionedit9" id="install_the_prerequisite_packages">Install the prerequisite packages</h3>
+<div class="level3">
+<pre class="code bash">opkg update
+opkg <span class="kw2">install</span> wireguard-tools qrencode</pre>
+
+<p>
+For OpenWrt 21.02 series, also add in:
+</p>
+<pre class="code bash">opkg <span class="kw2">install</span> kmod-ipt-nat6</pre>
+
+<p>
+Optional packages for post-configuration management through LuCI:
+</p>
+<pre class="code bash">opkg <span class="kw2">install</span> luci-proto-wireguard luci-app-wireguard</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Install the prerequisite packages&quot;,&quot;hid&quot;:&quot;install_the_prerequisite_packages&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:9,&quot;range&quot;:&quot;3320-3662&quot;} -->
+<h2 class="sectionedit10" id="create_wireguard_interface_and_its_keys">Create WireGuard interface and its keys</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Download the script</div>
+</li>
+<li class="level1"><div class="li"> Edit the configuration values at the top (or write a wrapper script to set environment variables and call this script)</div>
+</li>
+<li class="level1"><div class="li"> Copy the script(s) to your OpenWrt system (such as with <code>scp</code>)</div>
+</li>
+</ul>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-user/services/vpn/wireguard/road-warrior?codeblock=3" title="Download Snippet" class="mediafile mf_sh">wg_roadwarrior.sh</a></dt>
+<dd><pre class="code bash"><span class="co0">#!/bin/ash</span>
+<span class="co0">#</span>
+<span class="co0"># See more details at https://openwrt.org/docs/guide-user/services/vpn/wireguard/road-warrior</span>
+&nbsp;
+<span class="co0"># The following configuration variables are required: set them before</span>
+<span class="co0"># running this script, or edit this script to set them:</span>
+&nbsp;
+<span class="co0">## The base name for the wireguard interface.</span>
+<span class="co0">## this will have &quot;wg_&quot; prepended to it.</span>
+<span class="co0">#export WG_INTERFACE=&quot;vpn&quot;</span>
+&nbsp;
+<span class="co0">## The WireGuard server port (UDP), this must be unused by other</span>
+<span class="co0">## WireGuard interfaces or programs</span>
+<span class="co0">#export WG_SERVER_PORT=&quot;51820&quot;</span>
+&nbsp;
+<span class="co0">## The (existing) firewall zone for the interface that will receive</span>
+<span class="co0">## IPv4-ingress tunnel traffic</span>
+<span class="co0">#export WG_WAN4_FWZONE=&quot;wan&quot;</span>
+&nbsp;
+<span class="co0">## The (existing) firewall zone name for the new WG interface</span>
+<span class="co0">#export WG_FWZONE=&quot;lan&quot;</span>
+&nbsp;
+<span class="co0">##An IPv4 /24 subnet (without last octet) for the IPv4 tunnel</span>
+<span class="co0">#export WG_IPV4_SUBNET=&quot;192.168.x&quot;</span>
+&nbsp;
+<span class="co0">## To use only IPv4 in the tunnel, leave the rest of these</span>
+<span class="co0">## variables below commented out.</span>
+&nbsp;
+<span class="co0">########## Optional IPv6 config below ##############</span>
+&nbsp;
+<span class="co0">## The (existing) firewall zone for the interface that will receive</span>
+<span class="co0">## IPv6-ingress tunnel traffic (May be identical to WG_WAN4_FWZONE)</span>
+<span class="co0">#export WG_WAN6_FWZONE=&quot;wan&quot;</span>
+&nbsp;
+<span class="co0">## The prefix hint is used to compose a subnet from the /48 ULA prefix</span>
+<span class="co0">## (obtained from the system config).  It will be composed like</span>
+<span class="co0">## ${ULA_PREFIX}:${WG_IPV6_PREFIX_HINT}::/64</span>
+<span class="co0">## Choose a prefix hint that is not used for any interfaces's ip6hint</span>
+<span class="co0">## value.</span>
+<span class="co0">#export WG_IPV6_PREFIX_HINT=4</span>
+&nbsp;
+<span class="co0">## To use only ULA IPv6 addresses in the tunnel (no delegated</span>
+<span class="co0">## addresses), omit WG_DELEGATED_PREFIX6.</span>
+&nbsp;
+<span class="co0">## The prefix hint is also used to compose a subnet from the</span>
+<span class="co0">## WG_DELEGATED_PREFIX6, but without a separating colon, so that if</span>
+<span class="co0">## you have a prefix larger than 48, you can use hex digits to select</span>
+<span class="co0">## the subnet.</span>
+&nbsp;
+<span class="co0">## for a /48 prefix delegation, use a prefix up to 16 bits, so you get</span>
+<span class="co0">## WG_delegated_interface6=&quot;nnnn:nnnn:nnnn:${WG_IPV6_PREFIX_HINT}&quot;</span>
+<span class="co0">#export WG_DELEGATED_PREFIX6=&quot;nnnn:nnnn:nnnn:&quot;</span>
+&nbsp;
+<span class="co0">## for a /56 prefix delegation, use a two-digit hex WG_IPV6_PREFIX_HINT,</span>
+<span class="co0">## so you get WG_delegated_interface6=&quot;nnnn:nnnn:nn${WG_IPV6_PREFIX_HINT}&quot;</span>
+<span class="co0">#export WG_DELEGATED_PREFIX6=&quot;nnnn:nnnn:nn&quot;</span>
+&nbsp;
+<span class="co0">## for a /60 prefix delegation, use a one-digit hex WG_IPV6_PREFIX_HINT,</span>
+<span class="co0">## so you get WG_delegated_interface6=&quot;nnnn:nnnn:nnn${WG_IPV6_PREFIX_HINT}&quot;</span>
+<span class="co0">#export WG_DELEGATED_PREFIX6=&quot;nnnn:nnnn:nnn&quot;</span>
+&nbsp;
+<span class="kw2">clear</span>
+<span class="kw3">echo</span> <span class="st0">&quot;======================================&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;|     Automated WireGuard Script     |&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;|     road-warrior server setup      |&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;======================================&quot;</span>
+<span class="co0"># Define Variables</span>
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Defining variables... &quot;</span>
+&nbsp;
+check_ev<span class="br0">&#40;</span><span class="br0">&#41;</span>
+<span class="br0">&#123;</span>
+    <span class="re2">evname</span>=<span class="re4">$1</span>
+    <span class="kw3">eval</span> <span class="re2">value</span>=<span class="st0">&quot;<span class="es1">\$</span><span class="es3">${evname}</span>&quot;</span>
+    <span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-z</span> <span class="st0">&quot;<span class="es2">$value</span>&quot;</span> <span class="br0">&#93;</span>
+    <span class="kw1">then</span>
+	<span class="kw3">echo</span> <span class="re1">$evname</span> not <span class="kw1">set</span> <span class="nu0">1</span><span class="sy0">&gt;&amp;</span><span class="nu0">2</span>
+	<span class="kw3">exit</span> <span class="nu0">1</span>
+    <span class="kw1">fi</span>
+<span class="br0">&#125;</span>
+&nbsp;
+check_ev WG_INTERFACE
+check_ev WG_IPV4_SUBNET
+check_ev WG_SERVER_PORT
+check_ev WG_FWZONE
+check_ev WG_WAN4_FWZONE
+&nbsp;
+find_fwzone<span class="br0">&#40;</span><span class="br0">&#41;</span>
+<span class="br0">&#123;</span>
+    <span class="re2">zone</span>=<span class="re4">$1</span>
+    <span class="re2">varname</span>=<span class="re4">$2</span>
+&nbsp;
+    <span class="re2">n</span>=<span class="nu0">0</span>
+    <span class="kw1">while</span> <span class="re2">zname</span>=$<span class="br0">&#40;</span>uci <span class="re5">-q</span> get firewall.<span class="sy0">@</span>zone<span class="br0">&#91;</span><span class="re1">$n</span><span class="br0">&#93;</span>.name<span class="br0">&#41;</span>; <span class="kw1">do</span>
+	<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es2">$zname</span>&quot;</span> = <span class="st0">&quot;<span class="es2">$zone</span>&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+	    <span class="kw3">eval</span> <span class="re1">$varname</span>=<span class="st0">&quot;@zone[<span class="es2">$n</span>]&quot;</span>
+	    <span class="kw3">return</span>
+	<span class="kw1">fi</span>
+	<span class="re2">n</span>=$<span class="br0">&#40;</span><span class="br0">&#40;</span>n+<span class="nu0">1</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+    <span class="kw1">done</span>
+&nbsp;
+    <span class="kw3">echo</span> Unable to <span class="kw2">find</span> firewall zone <span class="co1">${zone}</span>. <span class="nu0">1</span><span class="sy0">&gt;&amp;</span><span class="nu0">2</span>
+    <span class="kw3">exit</span> <span class="nu0">1</span>
+<span class="br0">&#125;</span>
+&nbsp;
+find_fwzone <span class="co1">${WG_FWZONE}</span> WG_firewall_zone
+find_fwzone <span class="co1">${WG_WAN4_FWZONE}</span> scratch
+&nbsp;
+<span class="kw1">if</span> <span class="br0">&#91;</span> \
+	<span class="re5">-z</span> <span class="st0">&quot;<span class="es2">$WG_IPV6_PREFIX_HINT</span>&quot;</span> <span class="re5">-o</span> \
+	<span class="re5">-z</span> <span class="st0">&quot;<span class="es2">$WG_WAN6_FWZONE</span>&quot;</span> <span class="br0">&#93;</span>
+<span class="kw1">then</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;IPv4 only mode&quot;</span>
+    <span class="re2">DUAL_TUNNEL</span>=<span class="st0">&quot;&quot;</span>
+<span class="kw1">else</span>
+    find_fwzone <span class="co1">${WG_WAN6_FWZONE}</span> scratch
+&nbsp;
+    <span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-n</span> <span class="st0">&quot;<span class="es2">$WG_DELEGATED_PREFIX6</span>&quot;</span> <span class="br0">&#93;</span>
+    <span class="kw1">then</span>
+	<span class="kw3">export</span> <span class="re2">WG_delegated_interface6</span>=<span class="st0">&quot;<span class="es3">${WG_DELEGATED_PREFIX6}</span><span class="es3">${WG_IPV6_PREFIX_HINT}</span>&quot;</span>
+	<span class="kw3">echo</span> <span class="st0">&quot;IPv6 ULA and delegated prefix mode&quot;</span>
+	<span class="kw3">export</span> <span class="re2">WG_server_IP6_delegated</span>=<span class="st0">&quot;<span class="es3">${WG_delegated_interface6}</span>::1&quot;</span>
+    <span class="kw1">else</span>
+	<span class="kw3">echo</span> <span class="st0">&quot;IPv6 ULA only mode&quot;</span>
+    <span class="kw1">fi</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;IPv4/IPv6 dual tunnel mode&quot;</span>
+    <span class="re2">DUAL_TUNNEL</span>=<span class="kw2">yes</span>
+    <span class="co0">## TODO: future: determine upstream settings/prefixes/etc</span>
+    <span class="co0">## Look at https://openwrt.org/docs/guide-developer/jshn</span>
+    <span class="co0"># case $(uci get network.wan6.proto) in</span>
+    <span class="co0"># 	6in4)</span>
+    <span class="co0"># 	# Use ifstatus wan with jshn</span>
+    <span class="co0"># 	;;</span>
+    <span class="co0"># 	dhcpv6)</span>
+    <span class="co0"># 	# TODO: get this from ifstatus?</span>
+    <span class="co0"># 	;;</span>
+    <span class="co0"># esac</span>
+    <span class="kw1">if</span> <span class="sy0">!</span> uci <span class="re5">-q</span> get network.globals.ula_prefix <span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null
+    <span class="kw1">then</span>
+	<span class="kw3">echo</span> <span class="st0">&quot;No ULA defined, unable to proceed.&quot;</span> <span class="nu0">1</span><span class="sy0">&gt;&amp;</span><span class="nu0">2</span>
+	<span class="kw3">exit</span> <span class="nu0">1</span>
+    <span class="kw1">fi</span>
+    <span class="re2">ula</span>=$<span class="br0">&#40;</span>uci get network.globals.ula_prefix<span class="br0">&#41;</span>
+    <span class="re2">ula</span>=<span class="co1">${ula%%::/*}</span>
+    <span class="kw3">export</span> <span class="re2">interface6_ula</span>=<span class="st0">&quot;<span class="es3">${ula}</span>:<span class="es3">${WG_IPV6_PREFIX_HINT}</span>&quot;</span>
+    <span class="kw3">export</span> <span class="re2">WG_server_IP6_ula</span>=<span class="st0">&quot;<span class="es3">${interface6_ula}</span>::1&quot;</span>
+<span class="kw1">fi</span>
+&nbsp;
+<span class="kw3">export</span> <span class="re2">WG_server_IP</span>=<span class="st0">&quot;<span class="es3">${WG_IPV4_SUBNET}</span>.1&quot;</span>
+<span class="kw3">export</span> <span class="re2">WG_INTERFACE_NAME</span>=wg_<span class="co1">${WG_INTERFACE}</span>
+<span class="kw3">export</span> <span class="re2">WG_NAT6_name</span>=nat6_<span class="co1">${WG_INTERFACE_NAME}</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Create directories</span>
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Creating directories and pre-defining permissions on those directories... &quot;</span>
+<span class="re2">wg_directory</span>=<span class="sy0">/</span>etc<span class="sy0">/</span>wireguard
+<span class="kw2">mkdir</span> <span class="re5">-p</span> <span class="co1">${wg_directory}</span><span class="sy0">/</span>networks<span class="sy0">/</span><span class="co1">${WG_INTERFACE}</span><span class="sy0">/</span>peers
+<span class="kw2">chmod</span> <span class="nu0">700</span> <span class="co1">${wg_directory}</span><span class="sy0">/</span>networks<span class="sy0">/</span><span class="co1">${WG_INTERFACE}</span>
+<span class="kw1">if</span> <span class="sy0">!</span> <span class="kw2">fgrep</span> <span class="re5">-w</span> <span class="re5">-q</span> <span class="co1">${wg_directory}</span> <span class="sy0">/</span>etc<span class="sy0">/</span>sysupgrade.conf <span class="sy0">&amp;&amp;</span> \
+   <span class="sy0">!</span> <span class="kw2">fgrep</span> <span class="re5">-w</span> <span class="re5">-q</span> <span class="co1">${wg_directory}</span><span class="sy0">/</span> <span class="sy0">/</span>etc<span class="sy0">/</span>sysupgrade.conf
+<span class="kw1">then</span>
+    <span class="kw3">echo</span> <span class="co1">${wg_directory}</span> <span class="sy0">&gt;&gt;/</span>etc<span class="sy0">/</span>sysupgrade.conf
+<span class="kw1">fi</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Remove pre-existing WireGuard interface</span>
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Removing pre-existing WireGuard interface... &quot;</span>
+uci <span class="re5">-q</span> del network.<span class="co1">${WG_INTERFACE_NAME}</span>
+uci <span class="re5">-q</span> del_list firewall.<span class="co1">${WG_firewall_zone}</span>.network=<span class="st0">&quot;<span class="es3">${WG_INTERFACE_NAME}</span>&quot;</span>
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Disabling pre-existing firewall script... &quot;</span>
+uci <span class="re5">-q</span> delete firewall.<span class="co1">${WG_NAT6_name}</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Generate WireGuard server keys</span>
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Generating WireGuard server keys for '<span class="es3">${WG_INTERFACE}</span>' network... &quot;</span>
+wg genkey <span class="sy0">|</span> <span class="kw2">tee</span> <span class="st0">&quot;<span class="es3">${wg_directory}</span>/networks/<span class="es3">${WG_INTERFACE}</span>/<span class="es3">${WG_INTERFACE}</span>_server_private.key&quot;</span> <span class="sy0">|</span> wg pubkey <span class="sy0">|</span> <span class="kw2">tee</span> <span class="st0">&quot;<span class="es3">${wg_directory}</span>/networks/<span class="es3">${WG_INTERFACE}</span>/<span class="es3">${WG_INTERFACE}</span>_server_public.key&quot;</span> <span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Create WireGuard interface for 'LAN' network</span>
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Creating WireGuard interface for '<span class="es3">${WG_INTERFACE}</span>' network... &quot;</span>
+uci <span class="kw1">set</span> network.<span class="co1">${WG_INTERFACE_NAME}</span>=interface
+uci <span class="kw1">set</span> network.<span class="co1">${WG_INTERFACE_NAME}</span>.proto=<span class="st_h">'wireguard'</span>
+uci <span class="kw1">set</span> network.<span class="co1">${WG_INTERFACE_NAME}</span>.private_key=<span class="st0">&quot;<span class="es4">$(cat ${wg_directory}/networks/${WG_INTERFACE}/${WG_INTERFACE}_server_private.key)</span>&quot;</span>
+uci <span class="kw1">set</span> network.<span class="co1">${WG_INTERFACE_NAME}</span>.listen_port=<span class="st0">&quot;<span class="es3">${WG_SERVER_PORT}</span>&quot;</span>
+uci add_list network.<span class="co1">${WG_INTERFACE_NAME}</span>.addresses=<span class="st0">&quot;<span class="es3">${WG_server_IP}</span>/24&quot;</span>
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-n</span> <span class="st0">&quot;<span class="es2">$DUAL_TUNNEL</span>&quot;</span> <span class="br0">&#93;</span>
+<span class="kw1">then</span>
+    uci add_list network.<span class="co1">${WG_INTERFACE_NAME}</span>.addresses=<span class="st0">&quot;<span class="es3">${WG_server_IP6_ula}</span>/64&quot;</span>
+    <span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-n</span> <span class="st0">&quot;<span class="es3">${WG_server_IP6_delegated}</span>&quot;</span> <span class="br0">&#93;</span>
+    <span class="kw1">then</span>
+	uci add_list network.<span class="co1">${WG_INTERFACE_NAME}</span>.addresses=<span class="st0">&quot;<span class="es3">${WG_server_IP6_delegated}</span>/64&quot;</span>
+    <span class="kw1">fi</span>
+<span class="kw1">fi</span>
+uci add_list firewall.<span class="co1">${WG_firewall_zone}</span>.network=<span class="st0">&quot;<span class="es3">${WG_INTERFACE_NAME}</span>&quot;</span>
+uci <span class="kw1">set</span> network.<span class="co1">${WG_INTERFACE_NAME}</span>.mtu=<span class="st_h">'1280'</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Add firewall rule</span>
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Adding firewall rules for '<span class="es3">${WG_INTERFACE}</span>' network... &quot;</span>
+uci <span class="kw1">set</span> firewall.wg_rule_<span class="co1">${WG_INTERFACE}</span>=<span class="st0">&quot;rule&quot;</span>
+uci <span class="kw1">set</span> firewall.wg_rule_<span class="co1">${WG_INTERFACE}</span>.name=<span class="st0">&quot;Allow-WireGuard-<span class="es3">${WG_INTERFACE}</span>-<span class="es3">${WG_WAN4_FWZONE}</span>&quot;</span>
+uci <span class="kw1">set</span> firewall.wg_rule_<span class="co1">${WG_INTERFACE}</span>.src=<span class="st0">&quot;<span class="es3">${WG_WAN4_FWZONE}</span>&quot;</span>
+uci <span class="kw1">set</span> firewall.wg_rule_<span class="co1">${WG_INTERFACE}</span>.dest_port=<span class="st0">&quot;<span class="es3">${WG_SERVER_PORT}</span>&quot;</span>
+uci <span class="kw1">set</span> firewall.wg_rule_<span class="co1">${WG_INTERFACE}</span>.proto=<span class="st0">&quot;udp&quot;</span>
+uci <span class="kw1">set</span> firewall.wg_rule_<span class="co1">${WG_INTERFACE}</span>.target=<span class="st0">&quot;ACCEPT&quot;</span>
+&nbsp;
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-n</span> <span class="st0">&quot;<span class="es2">$DUAL_TUNNEL</span>&quot;</span> <span class="br0">&#93;</span>
+<span class="kw1">then</span>
+    <span class="kw1">if</span> <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es3">${WG_WAN6_FWZONE}</span>&quot;</span> <span class="sy0">!</span>= <span class="st0">&quot;<span class="es3">${WG_WAN4_FWZONE}</span>&quot;</span> <span class="br0">&#93;</span>
+    <span class="kw1">then</span>
+	uci <span class="kw1">set</span> firewall.wg_rule6_<span class="co1">${WG_INTERFACE}</span>=<span class="st0">&quot;rule&quot;</span>
+	uci <span class="kw1">set</span> firewall.wg_rule6_<span class="co1">${WG_INTERFACE}</span>.name=<span class="st0">&quot;Allow-WireGuard-<span class="es3">${WG_INTERFACE}</span>-<span class="es3">${WG_WAN6_FWZONE}</span>&quot;</span>
+	uci <span class="kw1">set</span> firewall.wg_rule6_<span class="co1">${WG_INTERFACE}</span>.src=<span class="st0">&quot;<span class="es3">${WG_WAN6_FWZONE}</span>&quot;</span>
+	uci <span class="kw1">set</span> firewall.wg_rule6_<span class="co1">${WG_INTERFACE}</span>.dest_port=<span class="st0">&quot;<span class="es3">${WG_SERVER_PORT}</span>&quot;</span>
+	uci <span class="kw1">set</span> firewall.wg_rule6_<span class="co1">${WG_INTERFACE}</span>.proto=<span class="st0">&quot;udp&quot;</span>
+	uci <span class="kw1">set</span> firewall.wg_rule6_<span class="co1">${WG_INTERFACE}</span>.target=<span class="st0">&quot;ACCEPT&quot;</span>
+    <span class="kw1">fi</span>
+&nbsp;
+    <span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-d</span> <span class="sy0">/</span>etc<span class="sy0">/</span>nftables.d <span class="br0">&#93;</span>; <span class="kw1">then</span>
+	<span class="co0"># Create NAT6 firewall chain for ULA egress</span>
+	<span class="re2">fwscript</span>=<span class="sy0">/</span>etc<span class="sy0">/</span>nftables.d<span class="sy0">/</span><span class="co1">${WG_NAT6_name}</span>.nft
+	<span class="kw2">cat</span> <span class="sy0">&gt;</span><span class="co1">${fwscript}</span> <span class="co2">&lt;&lt;EOF
+# Created by ${0##*/}
+chain srcnat_ula6_${WG_INTERFACE} {
+  type nat hook postrouting priority srcnat; policy accept;
+  oifname &quot;\$${WG_WAN6_FWZONE}_devices&quot; ip6 saddr ${interface6_ula}::/64 counter masquerade comment &quot;!fw4: ULA masquerade6&quot;
+}
+EOF</span>
+    <span class="kw1">else</span>
+	<span class="co0"># Create NAT6 firewall addition script for ULA</span>
+	<span class="re2">fwscript</span>=<span class="sy0">/</span>etc<span class="sy0">/</span>firewall.<span class="co1">${WG_NAT6_name}</span>.sh
+	<span class="kw2">cat</span> <span class="sy0">&gt;</span><span class="re1">$fwscript</span> <span class="co2">&lt;&lt;EOF
+#!/bin/sh
+# Created by ${0##*/}
+MY_NETWORK=${WG_INTERFACE_NAME}
+NET_PFX6=&quot;${interface6_ula}::/64&quot;
+. /lib/functions/network.sh
+network_flush_cache
+network_find_wan6 NET_IF6
+network_get_device NET_DEV6 &quot;\${NET_IF6}&quot;
+if [ -n &quot;\${NET_DEV6}&quot; ];
+then
+  logger -t firewall.${WG_NAT6_name} -p info -- adding NAT/MASQUERADE for source net &quot;\${NET_PFX6}&quot; through &quot;\${NET_DEV6}&quot;
+  ip6tables -t nat -A POSTROUTING -s &quot;\${NET_PFX6}&quot; -o &quot;\${NET_DEV6}&quot; -j MASQUERADE
+fi
+&nbsp;
+exit 0
+EOF</span>
+	<span class="kw2">chmod</span> <span class="nu0">555</span> <span class="re1">$fwscript</span>
+&nbsp;
+	uci <span class="kw1">set</span> firewall.<span class="co1">${WG_NAT6_name}</span>=<span class="st0">&quot;include&quot;</span>
+	uci <span class="kw1">set</span> firewall.<span class="co1">${WG_NAT6_name}</span>.path=<span class="st0">&quot;<span class="es3">${fwscript}</span>&quot;</span>
+	uci <span class="kw1">set</span> firewall.<span class="co1">${WG_NAT6_name}</span>.reload=<span class="st_h">'1'</span>
+    <span class="kw1">fi</span>
+    <span class="kw1">if</span> <span class="sy0">!</span> <span class="kw2">fgrep</span> <span class="re5">-w</span> <span class="re5">-q</span> <span class="co1">${fwscript}</span> <span class="sy0">/</span>etc<span class="sy0">/</span>sysupgrade.conf; <span class="kw1">then</span>
+	<span class="kw3">echo</span> <span class="co1">${fwscript}</span> <span class="sy0">&gt;&gt;/</span>etc<span class="sy0">/</span>sysupgrade.conf
+    <span class="kw1">fi</span>
+&nbsp;
+<span class="kw1">fi</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Remove existing peers</span>
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Removing pre-existing peers... &quot;</span>
+<span class="kw1">while</span> uci <span class="re5">-q</span> delete network.<span class="sy0">@</span>wireguard_<span class="co1">${WG_INTERFACE_NAME}</span><span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>; <span class="kw1">do</span> :; <span class="kw1">done</span>
+<span class="kw2">rm</span> <span class="re5">-R</span> <span class="co1">${wg_directory}</span><span class="sy0">/</span>networks<span class="sy0">/</span><span class="co1">${WG_INTERFACE}</span><span class="sy0">/</span>peers<span class="sy0">/*</span> <span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Commit UCI changes</span>
+<span class="kw3">echo</span> <span class="re5">-en</span> <span class="st0">&quot;<span class="es1">\n</span>Commiting changes... &quot;</span>
+uci commit
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Restart WireGuard interface</span>
+<span class="kw3">echo</span> <span class="re5">-en</span> <span class="st0">&quot;<span class="es1">\n</span>Restarting WireGuard interface... &quot;</span>
+<span class="kw2">ifup</span> <span class="co1">${WG_INTERFACE_NAME}</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Restart firewall</span>
+<span class="kw3">echo</span> <span class="re5">-en</span> <span class="st0">&quot;<span class="es1">\n</span>Restarting firewall... &quot;</span>
+service firewall restart <span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span></pre>
+</dd></dl>
+<ul>
+<li class="level1"><div class="li"> Run the script</div>
+</li>
+</ul>
+<pre class="code bash"><span class="kw2">sh</span> .<span class="sy0">/</span>wg_roadwarrior.sh</pre>
+
+<p>
+This creates the WireGuard interface and its server keys.  It also sets
+up a firewall rule to NAT6 outbound traffic from the <abbr title="Virtual Private Network">VPN</abbr>&#039;s /64 subnet of the
+<abbr title="Internet Protocol version 6">IPv6</abbr> ULA prefix.  If it detects fw4 installation (presence of
+<code>/etc/nftables.d</code>) it creates a new nftable chain with a NAT6 rule,
+otherwise it creates a fw3 include rule and puts the NAT6 rule into that
+file.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Create WireGuard interface and its keys&quot;,&quot;hid&quot;:&quot;create_wireguard_interface_and_its_keys&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:10,&quot;range&quot;:&quot;3663-13554&quot;} -->
+<h2 class="sectionedit11" id="create_wireguard_peer_configurations">Create WireGuard peer configurations</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Download the script</div>
+</li>
+<li class="level1"><div class="li"> Edit the configuration values at the top (or write a wrapper script to set environment variables and call this script)</div>
+</li>
+<li class="level1"><div class="li"> Copy the script(s) to your OpenWrt system (such as with <code>scp</code>)</div>
+</li>
+</ul>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-user/services/vpn/wireguard/road-warrior?codeblock=5" title="Download Snippet" class="mediafile mf_sh">add_roadwarrior_peer.sh</a></dt>
+<dd><pre class="code bash"><span class="co0">#!/bin/ash</span>
+&nbsp;
+<span class="co0"># See more details at https://openwrt.org/docs/guide-user/services/vpn/wireguard/road-warrior</span>
+&nbsp;
+<span class="co0"># These variables are required: set them before running this script,</span>
+<span class="co0"># or edit this script to set them:</span>
+&nbsp;
+<span class="co0">## Match this to the value used for WG_INTERFACE in wg_roadwarrior.sh</span>
+<span class="co0">#export WG_INTERFACE=&quot;vpn&quot;</span>
+&nbsp;
+<span class="co0">## Set the hostname or address for the WG server for IPv4 tunnel</span>
+<span class="co0">## ingress</span>
+<span class="co0">#WG_DDNS=&quot;yourserver.dyndns.org&quot;</span>
+&nbsp;
+<span class="co0">## Set this to &quot;0&quot; to use a delegated non-ULA subnet from the WG</span>
+<span class="co0">## interface.  Set this to &quot;1&quot; to skip using a delegated prefix.  If</span>
+<span class="co0">## you created the WG server with a delegated prefix, this can be the</span>
+<span class="co0">## client's choice to use either ONLY_ULA=0 or ONLY_ULA=1, but if you</span>
+<span class="co0">## created the WG server with only a ULA subnet, then this must be</span>
+<span class="co0">## ONLY_ULA=1.</span>
+<span class="co0">#ONLY_ULA=&quot;0&quot;</span>
+&nbsp;
+<span class="co0">## Optional: set the hostname or address for the WG server for IPv6</span>
+<span class="co0">## tunnel ingress</span>
+<span class="co0">#WG_DDNS6=&quot;yourserver-ipv6.dyndns.org&quot;</span>
+&nbsp;
+<span class="co0">## for debugging, change these to start with 'echo '</span>
+<span class="re2">UCI</span>=uci
+<span class="re2">TRIAL</span>=
+&nbsp;
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-z</span> <span class="st0">&quot;$1&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+    <span class="kw3">echo</span> too few arguments: usage <span class="re4">$0</span> peer_name <span class="nu0">1</span><span class="sy0">&gt;&amp;</span><span class="nu0">2</span>
+    <span class="kw3">exit</span> <span class="nu0">1</span>
+<span class="kw1">fi</span>
+<span class="kw3">export</span> <span class="re2">username</span>=<span class="st0">&quot;$1&quot;</span>
+&nbsp;
+<span class="kw2">clear</span>
+<span class="kw3">echo</span> <span class="st0">&quot;=========================================================&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;|               Automated WireGuard Script              |&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;|                 Add road-warrior peer                 |&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;=========================================================&quot;</span>
+<span class="co0"># Define Variables</span>
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-z</span> <span class="st0">&quot;<span class="es3">${WG_INTERFACE}</span>&quot;</span> <span class="br0">&#93;</span>
+<span class="kw1">then</span>
+    <span class="kw3">echo</span> WG_INTERFACE not <span class="kw1">set</span> <span class="nu0">1</span><span class="sy0">&gt;&amp;</span><span class="nu0">2</span>
+    <span class="kw3">exit</span> <span class="nu0">1</span>
+<span class="kw1">fi</span>
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-z</span> <span class="st0">&quot;<span class="es3">${WG_DDNS}</span>&quot;</span> <span class="br0">&#93;</span>
+<span class="kw1">then</span>
+    <span class="kw3">echo</span> WG_DDNS not <span class="kw1">set</span> <span class="nu0">1</span><span class="sy0">&gt;&amp;</span><span class="nu0">2</span>
+    <span class="kw3">exit</span> <span class="nu0">1</span>
+<span class="kw1">fi</span>
+<span class="kw3">export</span> <span class="re2">WG_INTERFACE_NAME</span>=wg_<span class="co1">${WG_INTERFACE}</span>
+<span class="kw3">export</span> <span class="re2">WG_server_port</span>=<span class="st0">&quot;<span class="es4">$(uci get network.${WG_INTERFACE_NAME}.listen_port)</span>&quot;</span>
+<span class="re2">ula</span>=$<span class="br0">&#40;</span>uci get network.globals.ula_prefix <span class="sy0">|</span><span class="kw2">sed</span> <span class="re5">-e</span> <span class="st_h">'s,::/.*,,'</span><span class="br0">&#41;</span>
+<span class="re2">ticker</span>=<span class="nu0">1</span>
+<span class="re2">DUAL_TUNNEL</span>=<span class="st0">&quot;&quot;</span>
+<span class="kw1">for</span> network <span class="kw1">in</span> $<span class="br0">&#40;</span>uci <span class="re5">-q</span> get network.<span class="co1">${WG_INTERFACE_NAME}</span>.addresses<span class="br0">&#41;</span>
+<span class="kw1">do</span>
+    <span class="kw1">case</span> <span class="re1">$network</span> <span class="kw1">in</span>
+	<span class="sy0">*</span>.<span class="sy0">*</span>.<span class="sy0">*</span>.<span class="sy0">*/*</span><span class="br0">&#41;</span>
+	    <span class="re2">ipv4addr</span>=<span class="co1">${network%%/*}</span>
+	    <span class="kw3">export</span> <span class="re2">interface</span>=$<span class="br0">&#40;</span><span class="kw3">echo</span> <span class="co1">${ipv4addr}</span> <span class="sy0">|</span> <span class="kw2">cut</span> <span class="re5">-d</span> . <span class="re5">-f</span> <span class="nu0">1</span>,<span class="nu0">2</span>,<span class="nu0">3</span><span class="br0">&#41;</span>
+	    <span class="kw3">export</span> <span class="re2">WG_server_IP</span>=<span class="st0">&quot;<span class="es3">${interface}</span>.1&quot;</span>
+	    <span class="sy0">;;</span>
+&nbsp;
+	<span class="sy0">*</span>:<span class="sy0">*/*</span><span class="br0">&#41;</span>
+	    <span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-z</span> <span class="st0">&quot;<span class="es3">${ONLY_ULA}</span>&quot;</span> <span class="br0">&#93;</span>
+	    <span class="kw1">then</span>
+		<span class="kw3">echo</span> ONLY_ULA not <span class="kw1">set</span> <span class="nu0">1</span><span class="sy0">&gt;&amp;</span><span class="nu0">2</span>
+		<span class="kw3">exit</span> <span class="nu0">1</span>
+	    <span class="kw1">fi</span>
+	    <span class="re2">ipv6prefix</span>=<span class="co1">${network%%::1/*}</span>
+	    <span class="re2">ipv6addr</span>=<span class="co1">${network%%/*}</span>
+	    <span class="re2">ulamatch1</span>=<span class="co1">${network##fd*}</span>
+	    <span class="re2">ulamatch2</span>=<span class="co1">${network##fc*}</span>
+	    <span class="kw1">if</span> <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es3">${ONLY_ULA}</span>&quot;</span> = <span class="nu0">0</span> <span class="re5">-o</span> <span class="re5">-z</span> <span class="st0">&quot;<span class="es3">${ulamatch1}</span>&quot;</span> <span class="re5">-o</span> <span class="re5">-z</span> <span class="st0">&quot;<span class="es3">${ulamatch2}</span>&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+		<span class="kw3">export</span> WG_server_IP6_<span class="co1">${ticker}</span>=<span class="co1">${ipv6addr}</span>
+		<span class="kw3">export</span> interface6_<span class="co1">${ticker}</span>=<span class="st0">&quot;<span class="es3">${ipv6prefix}</span>&quot;</span>
+		<span class="re2">ticker</span>=$<span class="br0">&#40;</span><span class="br0">&#40;</span>ticker+<span class="nu0">1</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+	    <span class="kw1">fi</span>
+	    <span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-z</span> <span class="st0">&quot;<span class="es3">${ulamatch1}</span>&quot;</span> <span class="re5">-o</span> <span class="re5">-z</span> <span class="st0">&quot;<span class="es3">${ulamatch2}</span>&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+		<span class="kw3">export</span> <span class="re2">dns6_ula</span>=<span class="co1">${ipv6addr}</span>
+		<span class="kw3">export</span> <span class="re2">interface6_ula</span>=<span class="co1">${ipv6prefix}</span>
+	    <span class="kw1">fi</span>
+	    <span class="re2">DUAL_TUNNEL</span>=<span class="st0">&quot;yes&quot;</span>
+	    <span class="sy0">;;</span>
+    <span class="kw1">esac</span>
+    <span class="kw3">shift</span>
+<span class="kw1">done</span>
+&nbsp;
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-n</span> <span class="st0">&quot;<span class="es2">$DUAL_TUNNEL</span>&quot;</span> <span class="br0">&#93;</span>
+<span class="kw1">then</span>
+    <span class="kw3">echo</span> IPv4<span class="sy0">/</span>IPv6 dual tunnel
+<span class="kw1">else</span>
+    <span class="kw3">echo</span> IPv4 only tunnel
+<span class="kw1">fi</span>
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-z</span> <span class="st0">&quot;<span class="es2">$WG_DDNS6</span>&quot;</span> <span class="br0">&#93;</span>
+<span class="kw1">then</span>
+    <span class="kw3">echo</span> only providing tunnel ingress via IPv4
+<span class="kw1">else</span>
+    <span class="kw3">echo</span> including tunnel ingress via IPv6
+<span class="kw1">fi</span>
+&nbsp;
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Checking variables... &quot;</span>
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-z</span> <span class="st0">&quot;<span class="es3">${WG_INTERFACE}</span>&quot;</span> <span class="re5">-o</span> \
+	<span class="re5">-z</span> <span class="st0">&quot;<span class="es3">${interface}</span>&quot;</span> <span class="re5">-o</span> \
+	<span class="re5">-z</span> <span class="st0">&quot;<span class="es3">${WG_DDNS}</span>&quot;</span> <span class="re5">-o</span> \
+	<span class="re5">-z</span> <span class="st0">&quot;<span class="es3">${WG_server_port}</span>&quot;</span> <span class="re5">-o</span> \
+	<span class="re5">-z</span> <span class="st0">&quot;<span class="es3">${WG_server_IP}</span>&quot;</span> <span class="br0">&#93;</span>
+<span class="kw1">then</span>
+    <span class="kw3">echo</span> Insufficient configurations found <span class="kw1">in</span> existing network <span class="st0">&quot;<span class="es3">${WG_INTERFACE}</span>&quot;</span> <span class="nu0">1</span><span class="sy0">&gt;&amp;</span><span class="nu0">2</span>
+    <span class="kw3">exit</span> <span class="nu0">1</span>
+<span class="kw1">fi</span>
+&nbsp;
+<span class="kw1">function</span> last_peer_ID <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+	<span class="kw3">cd</span> <span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${WG_INTERFACE}</span>/peers&quot;</span>
+	<span class="kw2">ls</span> <span class="sy0">|</span> <span class="kw2">sort</span> <span class="re5">-V</span> <span class="sy0">|</span> <span class="kw2">tail</span> <span class="re5">-1</span> <span class="sy0">|</span> <span class="kw2">cut</span> <span class="re5">-d</span> <span class="st_h">'_'</span> <span class="re5">-f</span> <span class="nu0">1</span>
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="re2">peer_ID</span>=$<span class="br0">&#40;</span>last_peer_ID<span class="br0">&#41;</span>
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-z</span> <span class="st0">&quot;<span class="es2">$peer_ID</span>&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+    <span class="kw3">export</span> <span class="re2">peer_ID</span>=<span class="nu0">1</span>
+<span class="kw1">else</span>
+    <span class="kw3">export</span> <span class="re2">peer_ID</span>=$<span class="br0">&#40;</span><span class="br0">&#40;</span>peer_ID+<span class="nu0">1</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+<span class="kw1">fi</span>
+<span class="kw3">echo</span> using new peer ID <span class="co1">${peer_ID}</span> <span class="kw1">for</span> <span class="co1">${username}</span>
+<span class="kw3">export</span> <span class="re2">peer_IP</span>=$<span class="br0">&#40;</span><span class="br0">&#40;</span>peer_ID+<span class="nu0">1</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-n</span> <span class="st0">&quot;<span class="es2">$DUAL_TUNNEL</span>&quot;</span> <span class="br0">&#93;</span>
+<span class="kw1">then</span>
+    <span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-z</span> <span class="st0">&quot;<span class="es3">${interface6_1}</span>&quot;</span> <span class="re5">-o</span> \
+	<span class="re5">-z</span> <span class="st0">&quot;<span class="es3">${dns6_ula}</span>&quot;</span> <span class="re5">-o</span> \
+	<span class="re5">-z</span> <span class="st0">&quot;<span class="es3">${interface6_ula}</span>&quot;</span> <span class="re5">-o</span> \
+	<span class="re5">-z</span> <span class="st0">&quot;<span class="es3">${WG_server_IP6_1}</span>&quot;</span> <span class="br0">&#93;</span>
+    <span class="kw1">then</span>
+	<span class="kw3">echo</span> Insufficient EVs or configurations found <span class="kw1">for</span> IPv6 dual tunnel <span class="nu0">1</span><span class="sy0">&gt;&amp;</span><span class="nu0">2</span>
+	<span class="kw3">exit</span> <span class="nu0">1</span>
+    <span class="kw1">fi</span>
+    <span class="re2">allowed_ips6</span>=<span class="st0">&quot;<span class="es3">${interface6_1}</span>::<span class="es3">${interface}</span>.<span class="es3">${peer_IP}</span>/128&quot;</span>
+    <span class="re2">allowed_ips6_ula</span>=<span class="st0">&quot;<span class="es3">${interface6_ula}</span>::<span class="es3">${interface}</span>.<span class="es3">${peer_IP}</span>/128&quot;</span>
+<span class="kw1">else</span>
+    <span class="re2">allowed_ips6</span>=<span class="st0">&quot;&quot;</span>
+<span class="kw1">fi</span>
+&nbsp;
+create_peer_config<span class="br0">&#40;</span><span class="br0">&#41;</span>
+<span class="br0">&#123;</span>
+    <span class="re2">CONFNAME</span>=<span class="st0">&quot;$1&quot;</span>
+    <span class="re2">ENDPOINT</span>=<span class="st0">&quot;$2&quot;</span>
+    <span class="re2">DNS</span>=<span class="st0">&quot;$3&quot;</span>
+    <span class="re2">PEERIPS</span>=<span class="st0">&quot;$4&quot;</span>
+    <span class="re2">SERVERIPS</span>=<span class="st0">&quot;$5&quot;</span>
+    <span class="co0"># Create peer configuration</span>
+    <span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Creating config for '<span class="es3">${peer_ID}</span>_<span class="es3">${WG_INTERFACE}</span>_<span class="es3">${username}</span> (<span class="es3">${ENDPOINT}</span>)'... &quot;</span>
+    <span class="re2">confdir</span>=<span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${WG_INTERFACE}</span>/peers/<span class="es3">${peer_ID}</span>_<span class="es3">${WG_INTERFACE}</span>_<span class="es3">${username}</span>&quot;</span>
+    <span class="re2">conffile</span>=<span class="st0">&quot;<span class="es3">${peer_ID}</span>_<span class="es3">${WG_INTERFACE}</span>_<span class="es3">${username}</span>.<span class="es3">${CONFNAME}</span>&quot;</span>
+    <span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span>-EOF <span class="sy0">&gt;</span> <span class="st0">&quot;<span class="es3">${confdir}</span>/<span class="es3">${conffile}</span>.conf&quot;</span>
+<span class="br0">&#91;</span>Interface<span class="br0">&#93;</span>
+<span class="co0"># Name = ${username}-${CONFNAME}</span>
+Address = <span class="co1">${PEERIPS}</span>
+PrivateKey = $<span class="br0">&#40;</span><span class="kw2">cat</span> <span class="sy0">/</span>etc<span class="sy0">/</span>wireguard<span class="sy0">/</span>networks<span class="sy0">/</span><span class="co1">${WG_INTERFACE}</span><span class="sy0">/</span>peers<span class="sy0">/</span><span class="co1">${peer_ID}</span>_<span class="co1">${WG_INTERFACE}</span>_<span class="co1">${username}</span><span class="sy0">/</span><span class="co1">${peer_ID}</span>_<span class="co1">${WG_INTERFACE}</span>_<span class="co1">${username}</span>_private.key<span class="br0">&#41;</span> <span class="co0"># Peer's private key</span>
+DNS = <span class="co1">${DNS}</span>
+&nbsp;
+<span class="br0">&#91;</span>Peer<span class="br0">&#93;</span>
+PublicKey = $<span class="br0">&#40;</span><span class="kw2">cat</span> <span class="sy0">/</span>etc<span class="sy0">/</span>wireguard<span class="sy0">/</span>networks<span class="sy0">/</span><span class="co1">${WG_INTERFACE}</span><span class="sy0">/</span><span class="co1">${WG_INTERFACE}</span>_server_public.key<span class="br0">&#41;</span> <span class="co0"># Server's public key</span>
+PresharedKey = $<span class="br0">&#40;</span><span class="kw2">cat</span> <span class="sy0">/</span>etc<span class="sy0">/</span>wireguard<span class="sy0">/</span>networks<span class="sy0">/</span><span class="co1">${WG_INTERFACE}</span><span class="sy0">/</span>peers<span class="sy0">/</span><span class="co1">${peer_ID}</span>_<span class="co1">${WG_INTERFACE}</span>_<span class="co1">${username}</span><span class="sy0">/</span><span class="co1">${peer_ID}</span>_<span class="co1">${WG_INTERFACE}</span>_<span class="co1">${username}</span>.psk<span class="br0">&#41;</span> <span class="co0"># Peer's pre-shared key</span>
+PersistentKeepalive = <span class="nu0">25</span>
+AllowedIPs = <span class="co1">${SERVERIPS}</span>
+Endpoint = <span class="co1">${ENDPOINT}</span>:<span class="co1">${WG_server_port}</span>
+EOF
+    qrencode <span class="re5">-t</span> svg <span class="re5">-o</span> <span class="st0">&quot;<span class="es3">${confdir}</span>/<span class="es3">${conffile}</span>.svg&quot;</span> <span class="re5">-r</span> <span class="st0">&quot;<span class="es3">${confdir}</span>/<span class="es3">${conffile}</span>.conf&quot;</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="co0"># Configure Variables</span>
+<span class="kw3">echo</span> <span class="st0">&quot;&quot;</span>
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Defining variables for '<span class="es3">${peer_ID}</span>_<span class="es3">${WG_INTERFACE}</span>_<span class="es3">${username}</span>'... &quot;</span>
+&nbsp;
+<span class="co0"># Gather allowed IP addresses: one for provided IPv4 tunnel endpoint</span>
+<span class="co0"># plus one for each allowed IPv6 address</span>
+<span class="re2">allowed_ips4</span>=<span class="st0">&quot;<span class="es3">${interface}</span>.<span class="es3">${peer_IP}</span>/32&quot;</span>
+<span class="re2">allowed_ips6_list</span>=<span class="st0">&quot;<span class="es3">${allowed_ips6}</span>&quot;</span>
+<span class="re2">n</span>=<span class="nu0">2</span>;
+<span class="kw3">eval</span> <span class="st0">&quot;nextinterface=<span class="es1">\$</span>{interface6_<span class="es3">${n}</span>}&quot;</span>
+<span class="kw1">while</span> <span class="br0">&#91;</span> <span class="re5">-n</span> <span class="st0">&quot;<span class="es3">${nextinterface}</span>&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">do</span>
+    <span class="kw3">echo</span> adding <span class="st0">&quot;<span class="es3">${nextinterface}</span>&quot;</span>
+    <span class="re2">ip6</span>=<span class="st0">&quot;<span class="es3">${nextinterface}</span>::<span class="es3">${interface}</span>.<span class="es3">${peer_IP}</span>/128&quot;</span>
+    <span class="re2">allowed_ips6</span>=<span class="st0">&quot;<span class="es3">${allowed_ips6}</span>,<span class="es3">${ip6}</span>&quot;</span>
+    <span class="re2">allowed_ips6_list</span>=<span class="st0">&quot;<span class="es3">${allowed_ips6_list}</span> <span class="es3">${ip6}</span>&quot;</span>
+    <span class="re2">n</span>=$<span class="br0">&#40;</span><span class="br0">&#40;</span>n+<span class="nu0">1</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+    <span class="kw3">eval</span> <span class="st0">&quot;nextinterface=<span class="es1">\$</span>{interface6_<span class="es3">${n}</span>}&quot;</span>
+<span class="kw1">done</span>
+<span class="re2">allowed_ips</span>=<span class="st0">&quot;<span class="es3">${allowed_ips4}</span>,<span class="es3">${allowed_ips6}</span>&quot;</span>
+<span class="re2">allowed_ips_ula</span>=<span class="st0">&quot;<span class="es3">${allowed_ips4}</span>,<span class="es3">${allowed_ips6_ula}</span>&quot;</span>
+&nbsp;
+<span class="co0"># Create directory for storing peers</span>
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Creating directory for peer '<span class="es3">${peer_ID}</span>_<span class="es3">${WG_INTERFACE}</span>_<span class="es3">${username}</span>'... &quot;</span>
+<span class="kw2">mkdir</span> <span class="re5">-p</span> <span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${WG_INTERFACE}</span>/peers/<span class="es3">${peer_ID}</span>_<span class="es3">${WG_INTERFACE}</span>_<span class="es3">${username}</span>&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Generate peer keys</span>
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Generating peer keys for '<span class="es3">${peer_ID}</span>_<span class="es3">${WG_INTERFACE}</span>_<span class="es3">${username}</span>'... &quot;</span>
+wg genkey <span class="sy0">|</span> <span class="kw2">tee</span> <span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${WG_INTERFACE}</span>/peers/<span class="es3">${peer_ID}</span>_<span class="es3">${WG_INTERFACE}</span>_<span class="es3">${username}</span>/<span class="es3">${peer_ID}</span>_<span class="es3">${WG_INTERFACE}</span>_<span class="es3">${username}</span>_private.key&quot;</span> <span class="sy0">|</span> wg pubkey <span class="sy0">|</span> <span class="kw2">tee</span> <span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${WG_INTERFACE}</span>/peers/<span class="es3">${peer_ID}</span>_<span class="es3">${WG_INTERFACE}</span>_<span class="es3">${username}</span>/<span class="es3">${peer_ID}</span>_<span class="es3">${WG_INTERFACE}</span>_<span class="es3">${username}</span>_public.key&quot;</span> <span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Generate Pre-shared key</span>
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Generating peer PSK for '<span class="es3">${peer_ID}</span>_<span class="es3">${WG_INTERFACE}</span>_<span class="es3">${username}</span>'... &quot;</span>
+wg genpsk <span class="sy0">|</span> <span class="kw2">tee</span> <span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${WG_INTERFACE}</span>/peers/<span class="es3">${peer_ID}</span>_<span class="es3">${WG_INTERFACE}</span>_<span class="es3">${username}</span>/<span class="es3">${peer_ID}</span>_<span class="es3">${WG_INTERFACE}</span>_<span class="es3">${username}</span>.psk&quot;</span> <span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Add peer to server</span>
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Adding '<span class="es3">${peer_ID}</span>_<span class="es3">${WG_INTERFACE}</span>_<span class="es3">${username}</span>' to WireGuard server... &quot;</span>
+<span class="co1">${UCI}</span> add network wireguard_<span class="co1">${WG_INTERFACE_NAME}</span> <span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span>
+<span class="co1">${UCI}</span> <span class="kw1">set</span> network.<span class="sy0">@</span>wireguard_<span class="co1">${WG_INTERFACE_NAME}</span><span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.public_key=<span class="st0">&quot;<span class="es4">$(cat /etc/wireguard/networks/${WG_INTERFACE}/peers/${peer_ID}_${WG_INTERFACE}_${username}/${peer_ID}_${WG_INTERFACE}_${username}_public.key)</span>&quot;</span>
+<span class="co1">${UCI}</span> <span class="kw1">set</span> network.<span class="sy0">@</span>wireguard_<span class="co1">${WG_INTERFACE_NAME}</span><span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.preshared_key=<span class="st0">&quot;<span class="es4">$(cat /etc/wireguard/networks/${WG_INTERFACE}/peers/${peer_ID}_${WG_INTERFACE}_${username}/${peer_ID}_${WG_INTERFACE}_${username}.psk)</span>&quot;</span>
+<span class="co1">${UCI}</span> <span class="kw1">set</span> network.<span class="sy0">@</span>wireguard_<span class="co1">${WG_INTERFACE_NAME}</span><span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.description=<span class="st0">&quot;<span class="es3">${username}</span>&quot;</span>
+<span class="co1">${UCI}</span> add_list network.<span class="sy0">@</span>wireguard_<span class="co1">${WG_INTERFACE_NAME}</span><span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.allowed_ips=<span class="st0">&quot;<span class="es3">${allowed_ips4}</span>&quot;</span>
+<span class="kw1">for</span> ip6 <span class="kw1">in</span> <span class="co1">${allowed_ips6_list}</span>
+<span class="kw1">do</span>
+    <span class="co1">${UCI}</span> add_list network.<span class="sy0">@</span>wireguard_<span class="co1">${WG_INTERFACE_NAME}</span><span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.allowed_ips=<span class="st0">&quot;<span class="es3">${ip6}</span>&quot;</span>
+<span class="kw1">done</span>
+<span class="co1">${UCI}</span> <span class="kw1">set</span> network.<span class="sy0">@</span>wireguard_<span class="co1">${WG_INTERFACE_NAME}</span><span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.route_allowed_ips=<span class="st_h">'1'</span>
+<span class="co1">${UCI}</span> <span class="kw1">set</span> network.<span class="sy0">@</span>wireguard_<span class="co1">${WG_INTERFACE_NAME}</span><span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.persistent_keepalive=<span class="st_h">'25'</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-n</span> <span class="st0">&quot;<span class="es2">$DUAL_TUNNEL</span>&quot;</span> <span class="br0">&#93;</span>
+<span class="kw1">then</span>
+   <span class="co0"># IPv4 tunnel endpoint, dual stack tunnel</span>
+   create_peer_config <span class="st0">&quot;<span class="es3">${WG_DDNS}</span>-dual&quot;</span> <span class="st0">&quot;<span class="es3">${WG_DDNS}</span>&quot;</span> <span class="st0">&quot;<span class="es3">${WG_server_IP}</span>,<span class="es3">${dns6_ula}</span>&quot;</span> <span class="st0">&quot;<span class="es3">${allowed_ips}</span>&quot;</span> <span class="st0">&quot;0.0.0.0/0,::/0&quot;</span>
+&nbsp;
+   <span class="co0"># IPv4 tunnel endpoint, dual stack (ULA only) tunnel</span>
+   create_peer_config <span class="st0">&quot;<span class="es3">${WG_DDNS}</span>-dual-ula&quot;</span> <span class="st0">&quot;<span class="es3">${WG_DDNS}</span>&quot;</span> <span class="st0">&quot;<span class="es3">${WG_server_IP}</span>,<span class="es3">${dns6_ula}</span>&quot;</span> <span class="st0">&quot;<span class="es3">${allowed_ips_ula}</span>&quot;</span> <span class="st0">&quot;0.0.0.0/0,::/0&quot;</span>
+&nbsp;
+   <span class="co0"># IPv4 tunnel endpoint, IPv6 tunnel</span>
+   create_peer_config <span class="st0">&quot;<span class="es3">${WG_DDNS}</span>-ipv6&quot;</span> <span class="st0">&quot;<span class="es3">${WG_DDNS}</span>&quot;</span> <span class="st0">&quot;<span class="es3">${dns6_ula}</span>&quot;</span> <span class="st0">&quot;<span class="es3">${allowed_ips6}</span>&quot;</span> <span class="st0">&quot;::/0&quot;</span>
+&nbsp;
+   <span class="co0"># IPv4 tunnel endpoint, IPv6 ULA tunnel</span>
+   create_peer_config <span class="st0">&quot;<span class="es3">${WG_DDNS}</span>-ipv6-ula&quot;</span> <span class="st0">&quot;<span class="es3">${WG_DDNS}</span>&quot;</span> <span class="st0">&quot;<span class="es3">${dns6_ula}</span>&quot;</span> <span class="st0">&quot;<span class="es3">${allowed_ips6_ula}</span>&quot;</span> <span class="st0">&quot;::/0&quot;</span>
+<span class="kw1">fi</span>
+&nbsp;
+<span class="co0"># IPv4 tunnel endpoint, IPv4 only tunnel</span>
+create_peer_config <span class="st0">&quot;<span class="es3">${WG_DDNS}</span>-ipv4&quot;</span> <span class="st0">&quot;<span class="es3">${WG_DDNS}</span>&quot;</span> <span class="st0">&quot;<span class="es3">${WG_server_IP}</span>&quot;</span> <span class="st0">&quot;<span class="es3">${allowed_ips4}</span>&quot;</span> <span class="st0">&quot;0.0.0.0/0&quot;</span>
+&nbsp;
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-n</span> <span class="st0">&quot;<span class="es2">$DUAL_TUNNEL</span>&quot;</span> <span class="re5">-a</span> <span class="re5">-n</span> <span class="st0">&quot;<span class="es2">$WG_DDNS6</span>&quot;</span> <span class="br0">&#93;</span>
+<span class="kw1">then</span>
+    <span class="co0"># IPv6 tunnel endpoint, dual stack tunnel</span>
+    create_peer_config <span class="st0">&quot;<span class="es3">${WG_DDNS6}</span>-dual-via6&quot;</span> <span class="st0">&quot;<span class="es3">${WG_DDNS6}</span>&quot;</span> <span class="st0">&quot;<span class="es3">${WG_server_IP}</span>,<span class="es3">${dns6_ula}</span>&quot;</span> <span class="st0">&quot;<span class="es3">${allowed_ips}</span>&quot;</span> <span class="st0">&quot;0.0.0.0/0,::/0&quot;</span>
+&nbsp;
+    <span class="co0"># IPv6 tunnel endpoint, dual stack (ULA only) tunnel</span>
+    create_peer_config <span class="st0">&quot;<span class="es3">${WG_DDNS6}</span>-dual-ula-via6&quot;</span> <span class="st0">&quot;<span class="es3">${WG_DDNS6}</span>&quot;</span> <span class="st0">&quot;<span class="es3">${WG_server_IP}</span>,<span class="es3">${dns6_ula}</span>&quot;</span> <span class="st0">&quot;<span class="es3">${allowed_ips_ula}</span>&quot;</span> <span class="st0">&quot;0.0.0.0/0,::/0&quot;</span>
+<span class="kw1">fi</span>
+&nbsp;
+<span class="co0"># Commit UCI changes</span>
+<span class="kw3">echo</span> <span class="re5">-en</span> <span class="st0">&quot;<span class="es1">\n</span>Commiting changes... &quot;</span>
+<span class="co1">${UCI}</span> commit
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Restart WireGuard interface</span>
+<span class="kw3">echo</span> <span class="re5">-en</span> <span class="st0">&quot;<span class="es1">\n</span>Restarting WireGuard interface... &quot;</span>
+<span class="co1">${TRIAL}</span> <span class="kw2">ifup</span> <span class="co1">${WG_INTERFACE_NAME}</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Restart firewall</span>
+<span class="kw3">echo</span> <span class="re5">-en</span> <span class="st0">&quot;<span class="es1">\n</span>Restarting firewall... &quot;</span>
+<span class="co1">${TRIAL}</span> service firewall restart <span class="nu0">2</span><span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span></pre>
+</dd></dl>
+<ul>
+<li class="level1"><div class="li"> Run it once for each peer:</div>
+</li>
+</ul>
+<pre class="code bash"><span class="kw2">sh</span> .<span class="sy0">/</span>add_roadwarrior_peer.sh <span class="sy0">&lt;</span>peername<span class="sy0">&gt;</span></pre>
+
+<p>
+This configures the peers on the interface previously created, and
+generates configuration files and QR codes for those peers.
+</p>
+
+<p>
+After you have run this for all your expected peers, copy
+<code>/etc/wireguard/networks/${WG_INTERFACE}/peers</code> off of the OpenWrt
+system (such as with <code>scp</code>) to a place where you can distribute the
+configuration files or display the QR codes for your WireGuard peers to
+use.
+</p>
+
+<p>
+<em>Note:</em> the wireguard server keys and each client&#039;s keys are stored in
+<code>/etc/wireguard/networks/${WG_INTERFACE}</code>.  To keep your <abbr title="Virtual Private Network">VPN</abbr> secure,
+these keys must be protected from disclosure.
+</p>
+
+<p>
+You can add more peers later with the same script.
+</p>
+
+<p>
+The script generates several variants of configuration files for each
+client.  They are merely client-side variations on the peer
+configuration.  Since they share the same server-side peer definition,
+only one of these configurations (per client) can be actively connected
+to the server at a time.
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>nnn-ipv4.conf</code> and <code>nnn-ipv4.svg</code>: tunnel running via <abbr title="Internet Protocol version 4">IPv4</abbr> ingress to WireGuard service; tunnels only <abbr title="Internet Protocol version 4">IPv4</abbr> traffic</div>
+</li>
+</ul>
+<ul>
+<li class="level1 node"><div class="li"> <code>nnn-dual.conf</code> and <code>nnn-dual.svg</code>: tunnel running via <abbr title="Internet Protocol version 4">IPv4</abbr> ingress to WireGuard service; tunnels <abbr title="Internet Protocol version 4">IPv4</abbr> and <abbr title="Internet Protocol version 6">IPv6</abbr> traffic, with client using <abbr title="Internet Protocol version 6">IPv6</abbr> addresses from ULA and global prefixes</div>
+<ul>
+<li class="level2"><div class="li"> only created if you configured <abbr title="Internet Protocol version 6">IPv6</abbr> when creating the WireGuard interface with <code>wg_roadwarrior.sh</code></div>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="level1 node"><div class="li"> <code>nnn-dual-ula.conf</code> and <code>nnn-dual-ula.svg</code>: tunnel running via <abbr title="Internet Protocol version 4">IPv4</abbr> ingress to WireGuard service; tunnels <abbr title="Internet Protocol version 4">IPv4</abbr> and <abbr title="Internet Protocol version 6">IPv6</abbr> traffic, with client using <abbr title="Internet Protocol version 6">IPv6</abbr> address from ULA prefix only</div>
+<ul>
+<li class="level2"><div class="li"> only created if you configured <abbr title="Internet Protocol version 6">IPv6</abbr> when creating the WireGuard interface with <code>wg_roadwarrior.sh</code></div>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="level1 node"><div class="li"> <code>nnn-ipv6.conf</code> and <code>nnn-ipv6.svg</code>: tunnel running via <abbr title="Internet Protocol version 4">IPv4</abbr> ingress to WireGuard service; tunnels only <abbr title="Internet Protocol version 6">IPv6</abbr> traffic, with client using <abbr title="Internet Protocol version 6">IPv6</abbr> addresses from ULA and global prefixes</div>
+<ul>
+<li class="level2"><div class="li"> only created if you configured <abbr title="Internet Protocol version 6">IPv6</abbr> when creating the WireGuard interface with <code>wg_roadwarrior.sh</code></div>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="level1 node"><div class="li"> <code>nnn-ipv6-ula.conf</code> and <code>nnn-ipv6-ula.svg</code>: tunnel running via <abbr title="Internet Protocol version 4">IPv4</abbr> ingress to WireGuard service; tunnels only <abbr title="Internet Protocol version 6">IPv6</abbr> traffic, with client using <abbr title="Internet Protocol version 6">IPv6</abbr> address from ULA prefix only</div>
+<ul>
+<li class="level2"><div class="li"> only created if you configured <abbr title="Internet Protocol version 6">IPv6</abbr> when creating the WireGuard interface with <code>wg_roadwarrior.sh</code></div>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="level1 node"><div class="li"> <code>nnn-dual-via6.conf</code> and <code>nnn-dual-via6.svg</code>: tunnel running via <abbr title="Internet Protocol version 6">IPv6</abbr> ingress to WireGuard service; tunnels <abbr title="Internet Protocol version 4">IPv4</abbr> and <abbr title="Internet Protocol version 6">IPv6</abbr> traffic, with client using <abbr title="Internet Protocol version 6">IPv6</abbr> addresses from ULA and global prefixes</div>
+<ul>
+<li class="level2"><div class="li"> only created if you set WG_DDNS6  when running <code>add_roadwarrior_peer.sh</code> and you configured <abbr title="Internet Protocol version 6">IPv6</abbr> when creating the WireGuard interface with <code>wg_roadwarrior.sh</code></div>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="level1 node"><div class="li"> <code>nnn-dual-ula-via6.conf</code> and <code>nnn-dual-ula-via6.svg</code>: tunnel running via <abbr title="Internet Protocol version 6">IPv6</abbr> ingress to WireGuard service; tunnels <abbr title="Internet Protocol version 4">IPv4</abbr> and <abbr title="Internet Protocol version 6">IPv6</abbr> traffic, with client using <abbr title="Internet Protocol version 6">IPv6</abbr> address from ULA prefix only</div>
+<ul>
+<li class="level2"><div class="li"> only created if you set WG_DDNS6  when running <code>add_roadwarrior_peer.sh</code> and you configured <abbr title="Internet Protocol version 6">IPv6</abbr> when creating the WireGuard interface with <code>wg_roadwarrior.sh</code></div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+The WireGuard <abbr title="Internet Protocol version 6">IPv6</abbr> peer configurations assign both a ULA-prefixed and a
+delegated routable <abbr title="Internet Protocol version 6">IPv6</abbr> address unless you set <code>ONLY_ULA=1</code> when
+running <code>add_roadwarrior_peer.sh</code>, in which case they have only a ULA-prefixed <abbr title="Internet Protocol version 6">IPv6</abbr> address.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Create WireGuard peer configurations&quot;,&quot;hid&quot;:&quot;create_wireguard_peer_configurations&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:11,&quot;range&quot;:&quot;13555-26467&quot;} -->
+<h2 class="sectionedit12" id="enable_ula_routing">Enable ULA routing</h2>
+<div class="level2">
+
+<p>
+ULA prefixes normally won&#039;t have packets sent out to the <abbr title="Internet Protocol version 6">IPv6</abbr> internet.
+Because the <abbr title="Network Address Translation">NAT</abbr> is applied after the routing is determined, you need to
+enable the routing of ULA to the <abbr title="Internet Protocol version 6">IPv6</abbr> internet.  Since the firewall has
+been configured with NAT6 for ULA source addresses, it&#039;s safe to enable
+routing for ULA sources.
+</p>
+<ul>
+<li class="level1"><div class="li"> Download the following ULA routing script.</div>
+</li>
+</ul>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-user/services/vpn/wireguard/road-warrior?codeblock=7" title="Download Snippet" class="mediafile mf_sh">enable-ula.sh</a></dt>
+<dd><pre class="code bash"><span class="co0">#!/bin/sh</span>
+<span class="re2">wan6proto</span>=$<span class="br0">&#40;</span>uci get network.wan6.proto<span class="br0">&#41;</span>
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es3">${wan6proto}</span>&quot;</span> = <span class="st_h">'6in4'</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+   uci add_list network.wan6.ip6<span class="re2">prefix</span>=$<span class="br0">&#40;</span>uci get network.globals.ula_prefix<span class="br0">&#41;</span>
+<span class="kw1">elif</span> <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es3">${wan6proto}</span>&quot;</span> = <span class="st_h">'dhcpv6'</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+   uci <span class="kw1">set</span> network.wan6.sourcefilter=<span class="st0">&quot;0&quot;</span>
+<span class="kw1">fi</span>
+uci commit
+<span class="kw2">ifup</span> wan6</pre>
+</dd></dl>
+<ul>
+<li class="level1"><div class="li"> Run the script</div>
+</li>
+</ul>
+<pre class="code bash"><span class="kw2">sh</span> enable-ula.sh</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Enable ULA routing&quot;,&quot;hid&quot;:&quot;enable_ula_routing&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:12,&quot;range&quot;:&quot;26468-27221&quot;} -->
+<h2 class="sectionedit13" id="testing">Testing</h2>
+<div class="level2">
+
+<p>
+Configure the WireGuard client on a peer using one of the QR codes or
+configuration files.  Connect the <abbr title="Virtual Private Network">VPN</abbr> tunnel.  Visit
+<a href="https://ipquail.com" class="urlextern" title="https://ipquail.com" rel="ugc nofollow">https://ipquail.com</a> in a browser on the client to confirm the <abbr title="Internet Protocol">IP</abbr>
+addresses used are those from the <abbr title="Virtual Private Network">VPN</abbr> tunnel configuration.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Testing&quot;,&quot;hid&quot;:&quot;testing&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:13,&quot;range&quot;:&quot;27222-27495&quot;} -->
+<h2 class="sectionedit14" id="credit">Credit</h2>
+<div class="level2">
+
+<p>
+The scripts here are modeled on those from <a href="/docs/guide-user/services/vpn/wireguard/automated" class="wikilink1" title="docs:guide-user:services:vpn:wireguard:automated" data-wiki-id="docs:guide-user:services:vpn:wireguard:automated">Automated WireGuard Server and Multi-client</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Credit&quot;,&quot;hid&quot;:&quot;credit&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:14,&quot;range&quot;:&quot;27496-&quot;} -->

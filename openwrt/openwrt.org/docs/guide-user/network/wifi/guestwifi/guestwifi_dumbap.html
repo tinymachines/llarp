@@ -1,0 +1,460 @@
+
+<h1 class="sectionedit1" id="guest_wi-fi_on_a_dumb_wireless_ap_using_luci">Guest Wi-Fi on a dumb wireless AP using LuCI</h1>
+<div class="level1">
+
+<p>
+A guest Wi-Fi setup will provide internet access to untrusted Wi-Fi devices while isolating them from other devices on your main network.         <br/>
+
+</p>
+
+<p>
+This guide will create a new guest network and use firewall security rules and masquerading to isolate it.  <br/>
+
+</p>
+
+<p>
+This guide is the user-friendly LuCI (web interface) alternative to <a href="/docs/guide-user/network/wifi/guestwifi/guest-wlan" class="wikilink1" title="docs:guide-user:network:wifi:guestwifi:guest-wlan" data-wiki-id="docs:guide-user:network:wifi:guestwifi:guest-wlan">Guest Wi-Fi basics</a> and <a href="/docs/guide-user/network/wifi/guestwifi/extras#restricting_upstream_accesswireless_ap" class="wikilink1" title="docs:guide-user:network:wifi:guestwifi:extras" data-wiki-id="docs:guide-user:network:wifi:guestwifi:extras">Guest Wi-Fi extras</a> (command-line).  <br/>
+
+</p>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap">
+<p>
+<strong>This article assumes an OpenWrt default configuration already modified as a wireless access point</strong> (aka “Dumb” Access Point, aka “dumbAP”). <br/>
+
+For the procedure, refer to this article: <a href="/docs/guide-user/network/wifi/dumbap#configuration_via_luci_the_openwrt_web_interface" class="wikilink1" title="docs:guide-user:network:wifi:dumbap" data-wiki-id="docs:guide-user:network:wifi:dumbap">Create dumb AP with LuCI</a>.<br/>
+
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+This guide will create a guest <abbr title="Wireless Local Area Network">WLAN</abbr> on 192.168.2.xxx, and assumes that the default private <abbr title="Local Area Network">LAN</abbr> / <abbr title="Wireless Local Area Network">WLAN</abbr> is present on 192.168.1.xxx.<br/>
+
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Guest Wi-Fi on a dumb wireless AP using LuCI&quot;,&quot;hid&quot;:&quot;guest_wi-fi_on_a_dumb_wireless_ap_using_luci&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1064&quot;} -->
+<h2 class="sectionedit4" id="add_a_new_device_and_new_interface">1. Add a new Device and new Interface</h2>
+<div class="level2">
+
+<p>
+Before we create the Guest_WiFi <abbr title="Access Point">AP</abbr>, we are going to create the complete interface this WiFI will use.<br/>
+
+We start with creating a new device (it is a empty bridge!), to have a clean empty device for the new interface we create later.<br/>
+
+The bridge is not 100% necessary, but helps to avoid other problems and helps to start the new interface without errors.
+</p>
+
+<p>
+<a href="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_01new_1_overview_interface_start.jpg" class="media" title="media:docs:howto:guestwifi-dumbap-23.05_config_01new_1_overview_interface_start.jpg"><img src="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_01new_1_overview_interface_start.jpg?w=900&amp;tok=62b3f5" class="media" loading="lazy" alt="" width="900" /></a>
+</p>
+
+</div>
+
+<h4 id="starting_point">Starting Point</h4>
+<div class="level4">
+
+<p>
+Go to Network&gt;Interfaces <br/>
+
+As stated earlier, it is assumed that you already have a working dumb <abbr title="Access Point">AP</abbr> configuration. <br/>
+
+This means that the <abbr title="Local Area Network">LAN</abbr> <abbr title="Internet Protocol">IP</abbr> address of your OpenWrt dumb <abbr title="Access Point">AP</abbr> is in the same subnet as your main router and that its address does not conflict with any other devices on the network. <br/>
+
+Often that means that address is something other than 192.168.1.1 which is typically already used by your main router. <br/>
+
+If you setup your dumb <abbr title="Access Point">AP</abbr>&#039;s lan interface as a <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> client, this will be handled by the main router/<abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> server<br/>
+
+If you strictly followed this guide - <a href="/docs/guide-user/network/wifi/dumbap#configuration_via_luci_the_openwrt_web_interface" class="wikilink1" title="docs:guide-user:network:wifi:dumbap" data-wiki-id="docs:guide-user:network:wifi:dumbap">Create dumb AP with LuCI</a> (non dhcp, but the static ip version), your dumb <abbr title="Access Point">AP</abbr> <abbr title="Internet Protocol">IP</abbr> is most likely 192.168.1.2<br/>
+
+</p>
+
+<p>
+Now change to “Devices” Tab, lets do the first step to configure your GUEST WiFi.
+</p>
+
+<p>
+<a href="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_01new_2_devices.jpg" class="media" title="media:docs:howto:guestwifi-dumbap-23.05_config_01new_2_devices.jpg"><img src="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_01new_2_devices.jpg?w=900&amp;tok=92e0b4" class="media" loading="lazy" alt="" width="900" /></a>
+</p>
+
+<p>
+Press “Add device configuration...”
+</p>
+
+<p>
+<a href="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_01new_4_new_bridge.jpg" class="media" title="media:docs:howto:guestwifi-dumbap-23.05_config_01new_4_new_bridge.jpg"><img src="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_01new_4_new_bridge.jpg?w=900&amp;tok=bd310c" class="media" loading="lazy" alt="" width="900" /></a>
+</p>
+
+<p>
+Select as device type a “Bridge Device”<br/>
+
+name it “br-guest”<br/>
+
+do NOT choose anything in “Bridge ports”<br/>
+
+and select “Bring up empty bridge”<br/>
+
+</p>
+
+<p>
+<a href="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_01new_3_device_list.jpg" class="media" title="media:docs:howto:guestwifi-dumbap-23.05_config_01new_3_device_list.jpg"><img src="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_01new_3_device_list.jpg?w=900&amp;tok=46820e" class="media" loading="lazy" alt="" width="900" /></a>
+</p>
+
+<p>
+Your device list should look like this. Save it. <br/>
+
+Let&#039;s change back to the “Interfaces” tab and use our new device
+</p>
+
+<p>
+<a href="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_01new_1_overview_interface_start.jpg" class="media" title="media:docs:howto:guestwifi-dumbap-23.05_config_01new_1_overview_interface_start.jpg"><img src="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_01new_1_overview_interface_start.jpg?w=900&amp;tok=62b3f5" class="media" loading="lazy" alt="" width="900" /></a>
+</p>
+
+<p>
+Press “Add new interface”
+</p>
+
+<p>
+<a href="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_01new_5_0_new_interface.jpg" class="media" title="media:docs:howto:guestwifi-dumbap-23.05_config_01new_5_0_new_interface.jpg"><img src="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_01new_5_0_new_interface.jpg?w=900&amp;tok=b31102" class="media" loading="lazy" alt="" width="900" /></a>
+</p>
+
+<p>
+Set parameters according to screenshot and select “create interface”
+</p>
+
+<p>
+<a href="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_01new_5_1_new_interface.jpg" class="media" title="media:docs:howto:guestwifi-dumbap-23.05_config_01new_5_1_new_interface.jpg"><img src="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_01new_5_1_new_interface.jpg?w=900&amp;tok=bd26ac" class="media" loading="lazy" alt="" width="900" /></a>
+</p>
+
+<p>
+Now give the new interface a new static <abbr title="Internet Protocol">IP</abbr>.<br/>
+
+In this example it is 192.168.2.1 <br/>
+
+The <abbr title="Internet Protocol">IP</abbr> and subnet MUST be different from your <abbr title="Local Area Network">LAN</abbr>.<br/>
+
+Here, the <abbr title="Local Area Network">LAN</abbr> is 192.168.1.0/24 (192.168.1.1 - 192.168.1.254),<br/>
+
+so we will use for the GUEST interface address 192.168.2.1 with an <abbr title="Internet Protocol version 4">IPv4</abbr> subnet mask 255.255.255.0 (which is the 192.168.2.0/24 subnet).
+</p>
+
+<p>
+Leave the gateway untouched/empty. Screenshot shows 192.168.1.1 in grey text which is the address of the main router as assumed in this article).<br/>
+
+</p>
+
+<p>
+Now Select “<abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> Server” Tab
+</p>
+
+<p>
+<a href="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_01new_7_dhcp1.jpg" class="media" title="media:docs:howto:guestwifi-dumbap-23.05_config_01new_7_dhcp1.jpg"><img src="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_01new_7_dhcp1.jpg?w=900&amp;tok=75a782" class="media" loading="lazy" alt="" width="900" /></a>
+</p>
+
+<p>
+Enable <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> Server for GUEST Network by pressing the Button “Set Up <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> Server”
+</p>
+
+<p>
+<a href="/_media/media/docs/howto/dhcp-dns.jpg" class="media" title="media:docs:howto:dhcp-dns.jpg"><img src="/_media/media/docs/howto/dhcp-dns.jpg?w=900&amp;tok=d18840" class="media" loading="lazy" alt="" width="900" /></a>
+</p>
+
+<p>
+You do not need to change settings. 
+Press “Save” &amp; “Save &amp; Apply” on the interface page
+</p>
+
+<p>
+Note that you GUEST network uses the <abbr title="Local Area Network">LAN</abbr> network as its upstream network<br/>
+
+Therefore we need to check and/or make sure that the <abbr title="Local Area Network">LAN</abbr> on your dumb <abbr title="Access Point">AP</abbr> is configured correctly<br/>
+
+The <abbr title="Local Area Network">LAN</abbr> on your dumb <abbr title="Access Point">AP</abbr> needs at least two paramter set correctly to be able to upstram your GUEST traffic, namely the <abbr title="Local Area Network">LAN</abbr> “Standard Gateway” and the <abbr title="Local Area Network">LAN</abbr> “<abbr title="Domain Name System">DNS</abbr> Server”.<br/>
+
+Good news is: If you configured your dumb <abbr title="Access Point">AP</abbr> as a <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> client, this two paramters are already set automatically.<br/>
+
+</p>
+
+<p>
+If you have configured your dumb <abbr title="Access Point">AP</abbr> manually, you need to make sure that <abbr title="Local Area Network">LAN</abbr> Standard Gateway and <abbr title="Local Area Network">LAN</abbr> <abbr title="Domain Name System">DNS</abbr> Server are set.<br/>
+
+You can skip the edits / checks (next three Screenshots) in <abbr title="Local Area Network">LAN</abbr> if you are on a dumb <abbr title="Access Point">AP</abbr> as a <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> client and continue in the firewall section of this guide. <br/>
+
+</p>
+
+<p>
+<a href="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_01new_9_new_interface_enabled_.jpg" class="media" title="media:docs:howto:guestwifi-dumbap-23.05_config_01new_9_new_interface_enabled_.jpg"><img src="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_01new_9_new_interface_enabled_.jpg?w=900&amp;tok=731a27" class="media" loading="lazy" alt="" width="900" /></a>
+</p>
+
+<p>
+Head to the “Interfaces” Page, find your <abbr title="Local Area Network">LAN</abbr> Interface and press “Edit” to edit your <abbr title="Local Area Network">LAN</abbr> Interface 
+</p>
+
+<p>
+<a href="/_media/media/docs/howto/dumb_ap_guest_standard_gateway.jpg" class="media" title="media:docs:howto:dumb_ap_guest_standard_gateway.jpg"><img src="/_media/media/docs/howto/dumb_ap_guest_standard_gateway.jpg?w=900&amp;tok=7adf12" class="media" loading="lazy" alt="" width="900" /></a>
+</p>
+
+<p>
+Select the “General” Tab of the <abbr title="Local Area Network">LAN</abbr> configuration page. <br/>
+
+Make sure that the “Standard Gateway” shows your standard gateway. <br/>
+
+If not - put in 192.168.1.1 as “Standard Gateway” (Standard openWrt).<br/>
+
+</p>
+
+<p>
+<a href="/_media/media/docs/howto/dumb_ap_guest_dns.jpg" class="media" title="media:docs:howto:dumb_ap_guest_dns.jpg"><img src="/_media/media/docs/howto/dumb_ap_guest_dns.jpg?w=900&amp;tok=18f30c" class="media" loading="lazy" alt="" width="900" /></a>
+</p>
+
+<p>
+Select the “Advanced Settings” Tab. <br/>
+
+Make sure that a working <abbr title="Domain Name System">DNS</abbr> is configured.<br/>
+
+The “Custom <abbr title="Domain Name System">DNS</abbr> server” should show the <abbr title="Domain Name System">DNS</abbr> Server in your System, openWrt Standard would be 192.168.1.1 , your main router.<br/>
+
+→ Any public <abbr title="Domain Name System">DNS</abbr> server like 1.1.1.1 would work as well, but you MUST configure one <abbr title="Domain Name System">DNS</abbr> Server for your GUEST network.<br/>
+
+</p>
+
+<p>
+Hit “save”, you are led back to the “Interface” overview page 
+</p>
+
+<p>
+<a href="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_01new_9_new_interface_enabled_.jpg" class="media" title="media:docs:howto:guestwifi-dumbap-23.05_config_01new_9_new_interface_enabled_.jpg"><img src="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_01new_9_new_interface_enabled_.jpg?w=900&amp;tok=731a27" class="media" loading="lazy" alt="" width="900" /></a>
+</p>
+
+<p>
+Press “Save &amp; Apply” if there are unsaved changes.<br/>
+
+You have created a new interface with a static <abbr title="Internet Protocol">IP</abbr>, Guest <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> Server enabled and you put a empty bridge as device behind it. <br/>
+
+You also made sure that your upstream network “<abbr title="Local Area Network">LAN</abbr>” has its “Standard Gateway” and its “<abbr title="Domain Name System">DNS</abbr> Server” configured.<br/>
+
+Great!<br/>
+
+Let&#039;s now also create a firewall zone for our new interface<br/>
+
+Press “edit” next to your “guest” interface and configure your interface again.
+</p>
+
+<p>
+<a href="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_01new_11_create_firewall_zone.jpg" class="media" title="media:docs:howto:guestwifi-dumbap-23.05_config_01new_11_create_firewall_zone.jpg"><img src="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_01new_11_create_firewall_zone.jpg?w=900&amp;tok=255c61" class="media" loading="lazy" alt="" width="900" /></a>
+</p>
+
+<p>
+Create a new firewall zone called “guest” on the “Firewall” Tab of your Interface configuration page.<br/>
+
+Press “Save”<br/>
+
+Your interface for the guest traffic is ready, it got its own firwall zone added.<br/>
+
+Let&#039;s head to the firewall section of your router to configure this new firewall zone we just created. <br/>
+
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;1. Add a new Device and new Interface&quot;,&quot;hid&quot;:&quot;add_a_new_device_and_new_interface&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;1065-6876&quot;} -->
+<h2 class="sectionedit5" id="firewall_-_part_1">2. Firewall - Part 1</h2>
+<div class="level2">
+
+<p>
+<a href="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_05_fw2.jpg" class="media" title="media:docs:howto:guestwifi-dumbap-23.05_config_05_fw2.jpg"><img src="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_05_fw2.jpg?w=900&amp;tok=08d5bb" class="media" loading="lazy" alt="" width="900" /></a>
+</p>
+
+<p>
+After you did “Save &amp; Apply” all settings in the interface section,<br/>
+
+move on in LuCI to “Network → Firewall Settings” and edit the firewall zone “guest” that you just created.
+</p>
+
+<p>
+<a href="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_05_fw3.jpg" class="media" title="media:docs:howto:guestwifi-dumbap-23.05_config_05_fw3.jpg"><img src="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_05_fw3.jpg?w=900&amp;tok=173aa7" class="media" loading="lazy" alt="" width="900" /></a>
+</p>
+
+<p>
+Set for your “guest” zone the following parameter:<br/>
+
+Input to REJECT, Output to ACCEPT and Foward to REJECT.<br/>
+
+Allow forward to destination zone: `lan`. <br/>
+
+Press “Save &amp; Apply”.
+</p>
+
+<p>
+<a href="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_05_fw4.jpg" class="media" title="media:docs:howto:guestwifi-dumbap-23.05_config_05_fw4.jpg"><img src="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_05_fw4.jpg?w=900&amp;tok=cf19f8" class="media" loading="lazy" alt="" width="900" /></a>
+</p>
+
+<p>
+<strong>After you have enabled “masquerading” for lan</strong>,<br/>
+
+your screen should look like the screenshot above<br/>
+
+In principle, you have finished your GUEST network setup.<br/>
+
+</p>
+
+<p>
+In the next section, we set up a firewall rule to isolate the guest network from <abbr title="Local Area Network">LAN</abbr>.<br/>
+
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;2. Firewall - Part 1&quot;,&quot;hid&quot;:&quot;firewall_-_part_1&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;6877-7752&quot;} -->
+<h2 class="sectionedit6" id="firewall_part_2_-_firewall_traffic_rules">3. Firewall Part 2 - Firewall traffic rules</h2>
+<div class="level2">
+
+<p>
+Now go to the traffic rules tab inside firewall and add the following three rules:
+</p>
+
+<p>
+<a href="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_06_fw_dhcp.jpg" class="media" title="media:docs:howto:guestwifi-dumbap-23.05_config_06_fw_dhcp.jpg"><img src="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_06_fw_dhcp.jpg?w=900&amp;tok=e03211" class="media" loading="lazy" alt="" width="900" /></a>
+</p>
+
+<p>
+Allow <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> traffic from your Guests to your Router 
+</p>
+
+<p>
+<a href="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_06_fw_dns.jpg" class="media" title="media:docs:howto:guestwifi-dumbap-23.05_config_06_fw_dns.jpg"><img src="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_06_fw_dns.jpg?w=900&amp;tok=3b7f33" class="media" loading="lazy" alt="" width="900" /></a>
+</p>
+
+<p>
+Allow <abbr title="Domain Name System">DNS</abbr> traffic from your Guests to your Router
+</p>
+
+<p>
+<a href="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_06_fw_block-all.jpg" class="media" title="media:docs:howto:guestwifi-dumbap-23.05_config_06_fw_block-all.jpg"><img src="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_06_fw_block-all.jpg?w=900&amp;tok=098e40" class="media" loading="lazy" alt="" width="900" /></a>
+</p>
+
+<p>
+Block all traffic that comes from “guest” zone if the guest wants to connect to network devices in your “<abbr title="Local Area Network">LAN</abbr>” zone<br/>
+
+</p>
+
+<p>
+Everything is prepared to add the “wireless guest” part to your configuration<br/>
+
+Head to “Network → Wireless” to do the final part
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;3. Firewall Part 2 - Firewall traffic rules&quot;,&quot;hid&quot;:&quot;firewall_part_2_-_firewall_traffic_rules&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;7753-8491&quot;} -->
+<h2 class="sectionedit7" id="add_a_new_wifi_and_connect_it_to_your_guest_interface">4. Add a new WiFi and connect it to your &quot;guest&quot; interface</h2>
+<div class="level2">
+
+<p>
+<a href="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_01.jpg" class="media" title="media:docs:howto:guestwifi-dumbap-23.05_config_01.jpg"><img src="/_media/media/docs/howto/guestwifi-dumbap-23.05_config_01.jpg?w=900&amp;tok=3fdf96" class="media" loading="lazy" alt="" width="900" /></a>
+</p>
+
+<p>
+Add a new wireless radio using the “Add” button either on radio0 or radio1 <br/>
+
+In this example we are going to use radio1
+</p>
+
+<p>
+<a href="/_media/media/docs/guestwifi-dumbap-23.05_config_new_chap4-1_add_wirless.jpg" class="media" title="media:docs:guestwifi-dumbap-23.05_config_new_chap4-1_add_wirless.jpg"><img src="/_media/media/docs/guestwifi-dumbap-23.05_config_new_chap4-1_add_wirless.jpg?w=900&amp;tok=c029c0" class="media" loading="lazy" title="|" alt="|" width="900" /></a>
+</p>
+
+<p>
+Choose an SSID fur your wirless guest network.<br/>
+
+In this guide we use Guest_WiFi<br/>
+
+Connect your Guest_WiFi to the Interface “guest” which we created in step 1<br/>
+
+We do not change wireless security settings (= WiFi Password Setting) in this guide - you maybe should ;)  <br/>
+
+press “save” button
+</p>
+
+<p>
+<a href="/_media/media/docs/guestwifi-dumbap-23.05_config_new_chap4-2_wirelless_ap_ok.jpg" class="media" title="media:docs:guestwifi-dumbap-23.05_config_new_chap4-2_wirelless_ap_ok.jpg"><img src="/_media/media/docs/guestwifi-dumbap-23.05_config_new_chap4-2_wirelless_ap_ok.jpg?w=900&amp;tok=881941" class="media" loading="lazy" alt="" width="900" /></a>
+</p>
+
+<p>
+Press “Save &amp; Apply”
+</p>
+
+<p>
+<a href="/_media/media/docs/guestwifi-dumbap-23.05_config_new_chap4-3_wirelless_ap_ok.jpg" class="media" title="media:docs:guestwifi-dumbap-23.05_config_new_chap4-3_wirelless_ap_ok.jpg"><img src="/_media/media/docs/guestwifi-dumbap-23.05_config_new_chap4-3_wirelless_ap_ok.jpg?w=900&amp;tok=8f7759" class="media" loading="lazy" alt="" width="900" /></a>
+</p>
+
+<p>
+<strong>YOU ARE DONE.</strong> All necessary steps are taken to have an isolated guest network on an “dumb wireless access point”. <br/>
+
+If you are interested how things work and how to get the setting even cleaner (with all <abbr title="Wide Area Network">WAN</abbr> traces eliminated) read on.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;4. Add a new WiFi and connect it to your \&quot;guest\&quot; interface&quot;,&quot;hid&quot;:&quot;add_a_new_wifi_and_connect_it_to_your_guest_interface&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;8492-9587&quot;} -->
+<h2 class="sectionedit8" id="additional_infoexplanation">5. Additional Info / Explanation</h2>
+<div class="level2">
+
+<p>
+We created a new interface, based on a new virtual device (empty bridge), and connected a <abbr title="Wireless Local Area Network">WLAN</abbr> Access Point to it. The new (Guest WiFI) has an interface with own, separated <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> Service / separated <abbr title="Internet Protocol">IP</abbr> addresses, firewall zone which differ from the ones in the <abbr title="Local Area Network">LAN</abbr> net segment<br/>
+
+The traffic from the Guest_WiFI Network is routed to the upstream gateway (the main router), and that router interfaces with the internet.<br/>
+
+</p>
+
+<p>
+From the perspective of the main router, the guest traffic all appears to come from the <abbr title="Local Area Network">LAN</abbr> <abbr title="Internet Protocol">IP</abbr> address of the dumb <abbr title="Access Point">AP</abbr> which is possible because of the “masquerading” option in the lan firewall zone.<br/>
+
+Without this, the upstream router would not know how to route to the network.
+Without the three firewall rules and the “reject” setting, guest users could try to access the AccessPoint Router and all other devices in <abbr title="Local Area Network">LAN</abbr>. <br/>
+
+</p>
+
+<p>
+Optional / EXTRA: <br/>
+
+In dumb <abbr title="Access Point">AP</abbr> mode, the <abbr title="Wide Area Network">WAN</abbr> Zone and <abbr title="Wide Area Network">WAN</abbr> firewall settings can be deleted, as <abbr title="Wide Area Network">WAN</abbr> is not used in dumb <abbr title="Access Point">AP</abbr> mode. Everything looks a bit “cleaner” if you also go for this extra. <br/>
+
+Your Firewall dashboard then looks like this:
+</p>
+
+<p>
+<a href="/_media/media/docs/howto/8unbenannt.jpg" class="media" title="media:docs:howto:8unbenannt.jpg"><img src="/_media/media/docs/howto/8unbenannt.jpg?w=900&amp;tok=4c5112" class="media" loading="lazy" alt="" width="900" /></a>
+</p>
+
+<p>
+This screenshot (with all <abbr title="Wide Area Network">WAN</abbr> traces eliminated) makes it clearer what is really going on in Firewall section of dumbAP + Guest szenario.<br/>
+
+</p>
+
+<p>
+<a href="/_media/media/docs/howto/dumbap-nw-overview.jpg" class="media" title="media:docs:howto:dumbap-nw-overview.jpg"><img src="/_media/media/docs/howto/dumbap-nw-overview.jpg?w=900&amp;tok=6873f7" class="media" loading="lazy" alt="" width="900" /></a>
+</p>
+
+<p>
+and Interface overview looks like this (please note the used IPs / Networks on the screenshot are different to openWrt standard )
+</p>
+
+<p>
+<br/>
+
+Compared to the Standard Installation of openWrt, <br/>
+
+“Guest” behaves a bit like <abbr title="Local Area Network">LAN</abbr> in openWRT standard, with its own <abbr title="Internet Protocol">IP</abbr> Space / <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> and does forward its traffic to its upstream network zone. But upstream network zone is now <abbr title="Local Area Network">LAN</abbr>, not <abbr title="Wide Area Network">WAN</abbr><br/>
+
+and<br/>
+
+<abbr title="Local Area Network">LAN</abbr> takes the role of <abbr title="Wide Area Network">WAN</abbr> (compared to standard openWrt Intsallation), recieving forwarded traffic from Guest including masquerading that traffic<br/>
+
+The role of <abbr title="Wide Area Network">WAN</abbr> is taken over by another router with real <abbr title="Wide Area Network">WAN</abbr> access .. that offers its <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> and Standard Gateway and Firewall to the dumbAP <abbr title="Local Area Network">LAN</abbr> clients, and also acts as the Standard Gateway / <abbr title="Domain Name System">DNS</abbr> Server / primary Firewall for Guest WiFi.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;5. Additional Info \/ Explanation&quot;,&quot;hid&quot;:&quot;additional_infoexplanation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:8,&quot;range&quot;:&quot;9588-11746&quot;} -->
+<h2 class="sectionedit9" id="troubleshooting">6. Troubleshooting</h2>
+<div class="level2">
+
+<p>
+In Guest_<abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> traffic Rule, in destination port field, try to choose either 67 or 68 port 
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;6. Troubleshooting&quot;,&quot;hid&quot;:&quot;troubleshooting&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:9,&quot;range&quot;:&quot;11747-&quot;} -->

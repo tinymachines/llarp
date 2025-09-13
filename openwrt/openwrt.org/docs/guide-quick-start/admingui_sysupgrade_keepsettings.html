@@ -1,0 +1,194 @@
+
+<h1 class="sectionedit1" id="preserving_openwrt_settings_during_firmware_upgrade">Preserving OpenWrt settings during firmware upgrade</h1>
+<div class="level1">
+
+<p>
+While upgrading OpenWrt firmware using web interface, you can utilize the “Keep settings” checkbox.
+It performs OpenWrt backup before upgrade and restores it after upgrade.
+</p>
+
+<p>
+If you do not precisely understand the button&#039;s use cases, <strong>uncheck “Keep Settings”</strong> every time you flash a new OpenWrt sysupgrade to your device, to <strong>not</strong> preserve settings.
+</p>
+<ul>
+<li class="level1"><div class="li"> Only check the “Keep settings” checkbox on minor bug fix upgrades that are known to not change the config structure.</div>
+</li>
+<li class="level1"><div class="li"> Only use it for the same firmware channel (release → release, snapshot → snapshot).</div>
+</li>
+<li class="level1"><div class="li"> Checking it will preserve several specific config files on the upgrade, but not the whole overlay partition.</div>
+</li>
+<li class="level1"><div class="li"> If you flash your device regularly, preferably consider unchecking “Keep Settings” every time you flash the router and instead create a <a href="/docs/guide-developer/uci-defaults" class="wikilink1" title="docs:guide-developer:uci-defaults" data-wiki-id="docs:guide-developer:uci-defaults">custom script</a> for your customization.</div>
+</li>
+<li class="level1"><div class="li"> Cautiousness is mostly needed with major version upgrades, e.g. from 18.06 to 19.07, or from 19.07 to 21.02, etc.</div>
+</li>
+<li class="level1"><div class="li"> It is possible that settings change critically inside a release branch, but that is rare.</div>
+</li>
+<li class="level1"><div class="li"> Settings can change more often inside the master branch which reflects the bleeding edge development. But even with master branch snapshots, the settings change only rarely.</div>
+</li>
+</ul>
+
+<p>
+See also: <a href="/docs/guide-user/troubleshooting/backup_restore" class="wikilink1" title="docs:guide-user:troubleshooting:backup_restore" data-wiki-id="docs:guide-user:troubleshooting:backup_restore">Backup and restore</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Preserving OpenWrt settings during firmware upgrade&quot;,&quot;hid&quot;:&quot;preserving_openwrt_settings_during_firmware_upgrade&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1431&quot;} -->
+<h2 class="sectionedit2" id="upgrade_compatibility">Upgrade compatibility</h2>
+<div class="level2">
+
+<p>
+<em><strong>The following section only applies if image metadata is used for the upgrade process.</strong></em>
+</p>
+
+<p>
+We regularly encounter the situation that devices are subject to changes that will make them incompatible to previous versions.
+This typically happens when the setup of a device has changed in a way so that the configuration cannot be migrated or filesystem changes won&#039;t allow sysupgrade.
+</p>
+
+<p>
+Since August 2020 (20.xx release), an additional mechanism makes sure that users are warned when upgrading between incompatible versions like that.
+</p>
+
+<p>
+The is achieved by a compatibility version number that is stored on the device and the images.
+The compat-version is built from a major revision x and a minor revision y: <strong>x.y</strong>
+</p>
+
+<p>
+For all devices and image before the introduction, the default value “1.0” is assumed.
+The value is assigned for individual devices, so it does not tell anything about the general revision of OpenWrt.
+</p>
+
+<p>
+If an incompatible change is introduced, one can increase either the minor version (1.0→1.1) or the major version (1.0→2.0).
+</p>
+
+<p>
+<strong>Minor version increment:</strong>
+</p>
+
+<p>
+This will still allow sysupgrade, but require to reset config (uncheck “Keep Settings”, run <code>sysupgrade -n</code> or <code>SAVE_CONFIG=0</code>).
+If sysupgrade is called without, a corresponding message will be printed.
+If sysupgrade is called and settings are reset, it will just pass, with supported devices being checked as usual.
+</p>
+
+<p>
+<strong>Major version increment:</strong>
+</p>
+
+<p>
+This is meant for potential (rare) cases where sysupgrade is not possible at all, because it would “break” the device.
+In this case, a warning will be printed, and resetting config (<code>sysupgrade -n</code>) won&#039;t help.
+You will need to research instructions on how to proceed.
+</p>
+
+<p>
+Typically, in addition to the increment of the compatibility version, developers will also specify a message to be printed with the warnings above giving a first hint about the problem.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Upgrade compatibility&quot;,&quot;hid&quot;:&quot;upgrade_compatibility&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;1432-3351&quot;} -->
+<h3 class="sectionedit3" id="forcing_upgrade">Forcing upgrade</h3>
+<div class="level3">
+
+<p>
+In any case, upgrade can still be forced (<code>sysupgrade -F</code>) as usual, but then you will obviously run into the very problem the mechanism tries to save you from.
+</p>
+
+<p>
+If you do that, please note that the compatibility version on the device is a property of the config, i.e. the value is stored in uci: <code>system.@system[0].compat_version</code>
+</p>
+
+<p>
+Consequently, as a forced update won&#039;t reset your config, it also won&#039;t bump your compat-version, and you will have to do that manually afterwards, e.g.
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> system.<span class="sy0">@</span>system<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.compat_version=<span class="st0">&quot;1.1&quot;</span>
+uci commit system</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Forcing upgrade&quot;,&quot;hid&quot;:&quot;forcing_upgrade&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;3352-3954&quot;} -->
+<h3 class="sectionedit4" id="backward_compatibility">Backward compatibility</h3>
+<div class="level3">
+
+<p>
+As stated above, all devices and images without compat-version set will be treated as “1.0”.
+</p>
+
+<p>
+However, the new compat-version-aware upgrade mechanism will only be available on devices flashed after that point.
+</p>
+
+<p>
+For older devices, the metadata in new images has been altered to provide a similar experience for incremented compat-version.
+</p>
+
+<p>
+On those devices, when upgrading into an “incompatible” image, incompatibility warnings and hint message will be printed.
+However, upgrade has to be forced in all cases (<code>sysupgrade -F -n</code>).
+Be sure to also reset config in addition to the “force” parameter, otherwise you will end up as described in “Forcing upgrade” section above.
+The only exception applies to early DSA-adopters, which can keep their config.
+Details are found in “Forcing upgrade” section above.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Backward compatibility&quot;,&quot;hid&quot;:&quot;backward_compatibility&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:4,&quot;range&quot;:&quot;3955-4795&quot;} -->
+<h3 class="sectionedit5" id="implementation_details">Implementation details</h3>
+<div class="level3">
+
+<p>
+<em><strong>This section is focussed on developers wanting to implement compat-version after introducing an incompatible change.</strong></em>
+</p>
+
+<p>
+Setup consists of two parts:
+</p>
+
+</div>
+
+<h4 id="image_metadata">Image metadata</h4>
+<div class="level4">
+
+<p>
+To set the version of an image, which is checked against the locally installed OpenWrt config version, the variables DEVICE_COMPAT_VERSION and DEVICE_COMPAT_MESSAGE may be added to a device definition:
+</p>
+<pre class="code bash">define Device<span class="sy0">/</span>somedevice
+  ...
+  DEVICE_COMPAT_VERSION := <span class="nu0">1.1</span>
+  DEVICE_COMPAT_MESSAGE := Config cannot be migrated from swconfig to DSA
+endef</pre>
+
+<p>
+The DEVICE_COMPAT_VERSION is mandatory for any value other than “1.0”.
+The DEVICE_COMPAT_MESSAGE is optional and should be used to provide a hint about the problem and/or possibly measures for the user.
+</p>
+
+</div>
+
+<h4 id="device_config">Device config</h4>
+<div class="level4">
+
+<p>
+Beyond the image metadata, the compat-version also needs to be available on the running device, so it can be compared against any images.
+</p>
+
+<p>
+Like for the LED/network setup, this will be achieved by a command “ucidef_set_compat_version” to set the compat_version in board.d files, e.g.
+</p>
+<pre class="code bash">    ucidef_set_compat_version <span class="st0">&quot;1.1&quot;</span></pre>
+
+<p>
+During <em>firstboot</em>, this will then add a string to /etc/board.json, which will be translated into uci system config.
+</p>
+
+<p>
+By this, the compat_version, being a version of the config, will also be exposed to the user.
+</p>
+
+<p>
+Therefore, the on-device compat-version is a property of the config, not of the installation.
+Consequently, it will be affected by Backup/Restore, but can also be adjusted by the user if necessary.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Implementation details&quot;,&quot;hid&quot;:&quot;implementation_details&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:5,&quot;range&quot;:&quot;4796-&quot;} -->

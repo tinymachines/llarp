@@ -1,0 +1,165 @@
+
+<h1 class="sectionedit1" id="netifd_network_interface_daemon_technical_reference">netifd (Network Interface Daemon) – Technical Reference</h1>
+<div class="level1">
+<ul>
+<li class="level1"><div class="li"> <a href="http://git.openwrt.org/?p=project/netifd.git;a=summary" class="urlextern" title="http://git.openwrt.org/?p=project/netifd.git;a=summary" rel="ugc nofollow">Project&#039;s git</a></div>
+</li>
+<li class="level1"><div class="li"> netifd is available in OpenWrt since <a href="https://dev.openwrt.org/changeset/28499" class="urlextern" title="https://dev.openwrt.org/changeset/28499" rel="ugc nofollow">R28499 (trunk)</a> and published under the GPLv2.</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/search?changeset=on&amp;milestone=on&amp;wiki=on&amp;q=netifd&amp;page=1&amp;noquickjump=1" class="urlextern" title="https://dev.openwrt.org/search?changeset=on&amp;milestone=on&amp;wiki=on&amp;q=netifd&amp;page=1&amp;noquickjump=1" rel="ugc nofollow">commits to OpenWrt trunk regarding netifd</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://git.openwrt.org/?p=project/netifd.git;a=blob;f=DESIGN" class="urlextern" title="http://git.openwrt.org/?p=project/netifd.git;a=blob;f=DESIGN" rel="ugc nofollow">Design of netifd</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;netifd (Network Interface Daemon) \u2013 Technical Reference&quot;,&quot;hid&quot;:&quot;netifd_network_interface_daemon_technical_reference&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-513&quot;} -->
+<h3 class="sectionedit2" id="what_is_netifd">What is netifd?</h3>
+<div class="level3">
+
+<p>
+<code>netifd</code> is an <a href="https://en.wikipedia.org/wiki/Remote procedure call" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Remote procedure call">RPC</a>-capable <a href="https://en.wikipedia.org/wiki/Daemon (computing)" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Daemon (computing)">daemon</a> written in <a href="https://en.wikipedia.org/wiki/C (programming language)" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/C (programming language)">C</a> for better access to kernel APIs with the ability to listen on <a href="https://en.wikipedia.org/wiki/Netlink" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Netlink">netlink events</a>. <code>Netifd</code> has replaced the old <em>OpenWrt-network configuration scripts</em>, the actual scripts that configured the network, e.g.
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>/lib/network/*.sh</code>,</div>
+</li>
+<li class="level1"><div class="li"> <code>/sbin/ifup</code></div>
+</li>
+<li class="level1"><div class="li"> some scripts in <code>/etc/hotplug.d</code>.)</div>
+</li>
+</ul>
+
+<p>
+<code>netifd</code> is intended to stay compatible with the existing format of <code><a href="/docs/guide-user/network/network_configuration" class="wikilink1" title="docs:guide-user:network:network_configuration" data-wiki-id="docs:guide-user:network:network_configuration">/etc/config/network</a></code>, the only exceptions being rare special cases like 
+aliases or the overlay variables in <code>/var/state</code> (though even most of those can be easily emulated).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;What is netifd?&quot;,&quot;hid&quot;:&quot;what_is_netifd&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;514-1285&quot;} -->
+<h3 class="sectionedit3" id="debugging">Debugging</h3>
+<div class="level3">
+<ul>
+<li class="level1 node"><div class="li"> Add the switch <code>-l &lt;level&gt;</code> to <em>/etc/init.d/network</em></div>
+<ul>
+<li class="level2 node"><div class="li"> Level is specified as an integer:</div>
+<ul>
+<li class="level3"><div class="li"> 0 = L_CRIT</div>
+</li>
+<li class="level3"><div class="li"> 1 = L_WARNING</div>
+</li>
+<li class="level3"><div class="li"> 2 = L_NOTICE (default)</div>
+</li>
+<li class="level3"><div class="li"> 3 = L_INFO</div>
+</li>
+<li class="level3"><div class="li"> 4 = L_DEBUG</div>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="level1 node"><div class="li"> For the L_DEBUG level, there is another option <code>-d &lt;mask&gt;</code> to set a mask:</div>
+<ul>
+<li class="level2 node"><div class="li"> Options are:</div>
+<ul>
+<li class="level3"><div class="li"> 1 = DEBUG_SYSTEM</div>
+</li>
+<li class="level3"><div class="li"> 2 = DEBUG_DEVICE</div>
+</li>
+<li class="level3"><div class="li"> 4 = DEBUG_INTERFACE</div>
+</li>
+<li class="level3"><div class="li"> 8 = DEBUG_WIRELESS</div>
+</li>
+</ul>
+</li>
+<li class="level2"><div class="li"> Add your favorite options together to obtain the <code>&lt;mask&gt;</code>.</div>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="level1 node"><div class="li"> In order for the output to be seen you&#039;ll need to modify /etc/init.d/network to add:</div>
+<ul>
+<li class="level3"><div class="li"> procd_set_param stdout 1</div>
+</li>
+<li class="level3"><div class="li"> procd_set_param stderr 1</div>
+</li>
+</ul>
+</li>
+<li class="level2"><div class="li"> to start_service so that procd doesn&#039;t send netifd hotplug script output to /dev/null.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Debugging&quot;,&quot;hid&quot;:&quot;debugging&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;1286-2041&quot;} -->
+<h3 class="sectionedit4" id="help_with_the_development_of_netifd">Help with the development of netifd</h3>
+<div class="level3">
+<ol>
+<li class="level1"><div class="li"> test what has been ported</div>
+</li>
+<li class="level1"><div class="li"> review of the code</div>
+</li>
+<li class="level1"><div class="li"> help porting more of our protocol handler scripts (so far, static, ppp, pppoe, pppoa and dhcp are supported)</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Help with the development of netifd&quot;,&quot;hid&quot;:&quot;help_with_the_development_of_netifd&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;2042-2254&quot;} -->
+<h3 class="sectionedit5" id="why_do_we_want_netifd">Why do we want netifd?</h3>
+<div class="level3">
+
+<p>
+One thing that <code>netifd</code> does much better then old <em>OpenWrt-network configuration scripts</em> is handling configuration changes. With <code>netifd</code>, when the file <code><a href="/docs/guide-user/network/network_configuration" class="wikilink1" title="docs:guide-user:network:network_configuration" data-wiki-id="docs:guide-user:network:network_configuration">/etc/config/network</a></code> changes, you no longer have to restart all interfaces. Simply run <strong><code>/etc/init.d/network reload</code></strong>. This will issue an <code>ubus</code>-call to <code>netifd</code>, telling it to figure out the difference between runtime state and the new config and apply only that. This works on a per-interface level, even with protocol handlers written as shell scripts.
+</p>
+
+<p>
+It boils down to the fact that the current network and interface setup mechanisms (via network configuration scripts) are rather constrained and inflexible:
+</p>
+<ul>
+<li class="level1"><div class="li"> lack of statefulness</div>
+</li>
+<li class="level1"><div class="li"> tendency for raceconditions</div>
+</li>
+<li class="level1"><div class="li"> inability to properly nest protocols</div>
+</li>
+<li class="level1"><div class="li"> limited featureset of the ash shell which will not allow for complex interface operations like e.g. calculating <a href="https://en.wikipedia.org/wiki/Unique local address" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Unique local address">ULAs</a></div>
+</li>
+<li class="level1"><div class="li"> you name it</div>
+</li>
+</ul>
+
+<p>
+<code>Netifd</code> will be able to manage even complex interface configurations with a mix of bonding, vlans, bridges, etc. and handle the dependencies 
+between interfaces properly - and of course all that without adding unnecessary bloat. <br/>
+
+<abbr title="As far as I know">AFAIK</abbr> there are no alternatives to netifd, e.g. <a href="https://connman.net/" class="urlextern" title="https://connman.net/" rel="ugc nofollow">connman</a> seems to be centered around one specifific use case only: having a mobile device access the internet through multiple connections. Connman is based on dbus.
+</p>
+
+<p>
+The following is a brief conversation from <abbr title="Internet Relay Chat">IRC</abbr> regarding hints on how netifd is involved with wifi interface startup and variables used.  It &#039;documents&#039; my frustration with trying to add a new uci variable (utf8_ssid), and I don&#039;t think the answers contained should be lost:
+</p>
+<pre class="code">[20:20:06]  &lt;jow&gt;	ldir: its complicated
+[20:20:29]  &lt;jow&gt;	ldir: upon start, netifd scans all wireless handlers in /lib/netifd/wireless/
+[20:21:08]  &lt;jow&gt;	ldir: so for mac80211 that&#039;d be /lib/netifd/wireless/mac80211.sh
+[20:22:33]  &lt;jow&gt;	ldir: the handler tells netifd about which options it recognized, for mac80211.sh this can be seen in drv_mac80211_init_device_config() (for config wifi-device) and drv_mac80211_init_iface_config() (for config wifi-iface)
+[20:27:26]  &lt;jow&gt;	ldir: netifd reads /etc/config/wireless, converts it into json and eventually passes it via various indirections back to the script
+[20:28:07]  &lt;jow&gt;	ldir: it will execute something like  /lib/netifd/wireless/mac80211.sh mac80211 setup radio0 &#039;{ lots of json encoded uci options }&#039;
+[20:29:20]  &lt;jow&gt;	ldir: this invocation is catched by `init_wireless_driver &quot;$@&quot;` in /lib/netifd/wireless/mac80211.sh (declared in the shared /lib/netifd/netifd-wireless.sh)
+[20:31:03]  &lt;ldir&gt;	jow: thank you - I shall try to digest this.
+[20:31:38]  &lt;jow&gt;	ldir: init_wireless_driver() will parse the passed json into shell variables and dispatch back to one of the drv_*() functions in /lib/netifd/wireless/mac80211.sh
+[20:32:02]  &lt;jow&gt;	e.g. /lib/netifd/wireless/mac80211.sh mac80211 setup radio0 &#039;{ lots of json encoded uci options }&#039;  will eventually call  drv_mac80211_setup()
+[20:32:48]  &lt;jow&gt;	drv_mac80211_setup() will have access to all the uci config variables via the loaded jshn environment so you can accesss them using json_get_vars, json_select etc.
+[20:33:15]  &lt;jow&gt;	the radio we&#039;re operating on is passed as &quot;$1&quot; and will contain the uci wifi-device section name, e.g. &quot;radio0&quot;
+[20:35:11]  &lt;jow&gt;	from then on its &quot;just&quot; shell magic translating things back and forth, writing temporary hostapd config etc. and eventually instructing netifd to launch a hostapd process using wireless_add_process()
+[20:35:50]  &lt;jow&gt;	executive summary
+[20:36:03]  &lt;ldir&gt;	that&#039;s hell on a stick :-)
+[20:36:26]  &lt;ldir&gt;	btw the executive summary was &#039;it&#039;s complicated&#039; ;-)
+[20:36:33]  &lt;jow&gt;	- register new config options in /lib/netifd/wireless/mac80211.sh using either drv_mac80211_init_device_config or drv_mac80211_init_iface_config - for utf8ssid you likely want drv_mac80211_init_iface_config
+[20:38:32]  &lt;jow&gt;	correction; register it in hostapd_common_add_bss_config() of /lib/netifd/hostapd.sh
+[20:39:07]  &lt;jow&gt;	- and process it in hostapd_set_bss_options()
+[20:39:12]  &lt;jow&gt;	thats it
+[20:39:19]  &lt;ldir&gt;	jow: in theory I&#039;ve done that - I noticed mac80211.sh has a &#039;common&#039; set options
+[20:39:36]  &lt;jow&gt;	you most likely need to restart netifd for it to become aware of the new option
+[20:39:50]  &lt;jow&gt;	du to the uci-&gt;blob-&gt;json-&gt;string-&gt;jshn call chain</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Why do we want netifd?&quot;,&quot;hid&quot;:&quot;why_do_we_want_netifd&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;2255-&quot;} -->

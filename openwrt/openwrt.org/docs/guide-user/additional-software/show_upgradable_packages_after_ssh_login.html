@@ -1,0 +1,274 @@
+
+<h1 class="sectionedit1" id="show_available_package_upgrades_after_ssh_login">Show available package upgrades after SSH login</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;meta:infobox:upgrade_packages_warning&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__meta:infobox:upgrade_packages_warning" id="plugin_include__meta__infobox__upgrade_packages_warning">
+<div class="level1">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_center wrap_round wrap_important plugin_wrap" style="width: 100%;"><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+Blindly upgrading packages (manually or via script) can lead you into all sorts of trouble.<br/>
+
+</p>
+
+<p>
+Just because there is an updated version of a given package does not mean it should be installed or that it will function properly. Ensure yourself <strong>before</strong> doing upgrade that it would be safe. Almost for sure <a href="https://forum.openwrt.org/t/upgrade-the-packages-on-snapshot/53158/2?u=tmomas" class="urlextern" title="https://forum.openwrt.org/t/upgrade-the-packages-on-snapshot/53158/2?u=tmomas" rel="ugc nofollow">avoid upgrading core packages</a>.
+</p>
+<hr />
+
+<p>
+There are two ways to manage and install packages in OpenWrt: with the LuCI web interface (System &gt; Software), and via the command line interface (CLI). Both methods invoke the same <a href="https://openwrt.org/docs/guide-user/additional-software/opkg" class="urlextern" title="https://openwrt.org/docs/guide-user/additional-software/opkg" rel="ugc nofollow">opkg</a> command.
+As of OpenWrt 19.07.0, the LuCI interface now has an &#039;Updates&#039; tab with a listing of packages that have available upgrades. The LuCI <code>Upgrade...</code> button performs the same <code>opkg upgrade</code> command that is discussed in this article.
+<strong>The same warnings apply to upgrading packages using LuCI and the CLI.</strong>
+</p>
+<hr />
+
+<p>
+Generally speaking, <strong>the use of <code>opkg upgrade</code> is very highly discouraged</strong>. It should be avoided in almost all circumstances. In particular, bulk upgrading is very likely to result in major problems, but even upgrading individual packages may cause issues. It is also important to stress that this is distinctly different from the <code>sysupgrade</code> path for upgrading OpenWrt releases (major versions as well as maintenance upgrades). <code>opkg upgrade</code> will not update the OpenWrt version. Only <code>sysupgrade</code> can do that. The two are not equivalent.
+</p>
+
+<p>
+Unlike the “big distros” of Linux, OpenWrt is optimized to run on systems with limited resources. This includes the opkg package manager, which does not have built-in ABI (Application Binary Interface) compatibility and kernel version dependencies verification. Although sometimes there may be no issues, there is no guarantee and the upgrade can result in various types of incompatibilities that can range from minor to severe, and it may be very difficult to troubleshoot. In addition, the <code>opkg upgrade</code> process will consume flash storage space. Since it does not (and cannot) overwrite the original (stored in ROM), it must store the upgraded packages in the r/w overlay.
+</p>
+
+<p>
+In the vast majority of cases, any security patches of significant importance/risk will be rapidly released in an official stable maintenance release to be upgraded using the <code>sysupgrade</code> system. This is the recommended method for keeping up-to-date.
+</p>
+
+<p>
+Those looking to be on the bleeding edge can consider using the snapshot releases, but should be mindful of the differences between stable and snapshot. Or, alternatively, build a custom image with the desired updated packages included in that image. The remaining users who still want to use <code>opkg upgrade</code> should only do so with <em>selected individual packages</em> (do not bulk update, and do not blindly update) and they should be aware that <strong>problems may occur that could necessitate a complete reset-to-defaults to resolve</strong>.
+</p>
+
+<p>
+If you&#039;re already having issues, or wish to “undo” the upgraded packages: create a backup (optional; can be restored after the reset is complete) and then perform a reset to defaults (<code>firstboot</code>).
+</p>
+
+<p>
+<strong>If you do choose to upgrade packages, especially with a script,</strong> you have been warned. Don&#039;t complain on the forum, and be ready to deal with the consequences, troubleshooting, and resolution yourself.
+</p>
+
+<h2 id="see_also">See also</h2>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;meta:infobox:upgrade_packages_warning&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --><ul>
+<li class="level1"><div class="li"> <a href="https://www.youtube.com/watch?v=FFTPA6GkJjg" class="urlextern" title="https://www.youtube.com/watch?v=FFTPA6GkJjg" rel="ugc nofollow">Video: How to upgrade OpenWrt?</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/installation/generic.sysupgrade" class="wikilink1" title="docs:guide-user:installation:generic.sysupgrade" data-wiki-id="docs:guide-user:installation:generic.sysupgrade">Upgrading OpenWrt firmware using LuCI and CLI</a></div>
+</li>
+</ul>
+</div><!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Show available package upgrades after SSH login&quot;,&quot;hid&quot;:&quot;show_available_package_upgrades_after_ssh_login&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-&quot;} -->
+</div>
+</div>
+<div class="level1">
+
+<p>
+If you would like a simple way to view packages with available upgrades when you login via ssh (this will have no effect when you login to LuCI), you can achieve this with two simple steps:
+</p>
+<ol>
+<li class="level1"><div class="li"> Create a user profile script that checks the package list for upgradable packages</div>
+</li>
+<li class="level1"><div class="li"> Schedule “opkg update” with crontab to keep the package lists up-to-date, </div>
+</li>
+</ol>
+
+<p>
+Or simply integrate the update check in the user profile script so everything is run on login.
+</p>
+
+<p>
+When this is running, you will see the following when you login via ssh:
+</p>
+<pre class="code">  _______                     ________        __
+ |       |.-----.-----.-----.|  |  |  |.----.|  |_
+ |   -   ||  _  |  -__|     ||  |  |  ||   _||   _|
+ |_______||   __|_____|__|__||________||__|  |____|
+          |__| W I R E L E S S   F R E E D O M
+ -----------------------------------------------------
+ OpenWrt 18.06.1, r7258-5eb055306f
+ -----------------------------------------------------
+
+151 packages are installed.
+4 packages can be upgraded.
+
+root@OpenWrt:~#</pre>
+
+<p>
+You may then choose to upgrade one or several packages, or all packages in one command.
+</p>
+
+</div>
+
+<h2 class="sectionedit6" id="create_user_profile_script">Create user profile script</h2>
+<div class="level2">
+
+<p>
+To create the user profile script, you need to be logged-in as root via <abbr title="Secure Shell">SSH</abbr>. This example uses nano as the text editor (since it is a bit easier to use as the system default text editor <code>vim</code>), but you can of course create the script with the editor of your choice.
+</p>
+<pre class="code">nano ~/.profile</pre>
+<pre class="code">#!/bin/sh
+
+opkgInstalled=&quot;$(opkg list-installed 2&gt; /dev/null | wc -l)&quot; #silencing error output
+opkgUpgradable=&quot;$(opkg list-upgradable 2&gt; /dev/null | wc -l)&quot; #silencing error output
+
+echo &quot;$opkgInstalled packages are installed.&quot; &amp;&amp; echo &quot;$opkgUpgradable packages can be upgraded.&quot; &amp;&amp; echo</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Create user profile script&quot;,&quot;hid&quot;:&quot;create_user_profile_script&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;1253-1881&quot;} -->
+<h2 class="sectionedit7" id="automate_package_updates">Automate package updates</h2>
+<div class="level2">
+
+<p>
+For the above script to work, the package lists must be available and up-to-date at login time. Updating the packages list can be automated in three ways:
+</p>
+<ol>
+<li class="level1"><div class="li"> in regular intervalls → crontab</div>
+</li>
+<li class="level1"><div class="li"> at each startup / booting → startup script</div>
+</li>
+<li class="level1"><div class="li"> on login → using the same profile script </div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Automate package updates&quot;,&quot;hid&quot;:&quot;automate_package_updates&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;1882-2208&quot;} -->
+<h3 class="sectionedit8" id="via_crontab">via crontab</h3>
+<div class="level3">
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Keep in mind that this will occupy precious RAM space on low memory devices (16+32MB). See the third method for a low-ram-friendly script.
+</p>
+
+<p>
+Schedule crontab to “opkg update” once per week, either via LuCI or via commandline.
+</p>
+<ul>
+<li class="level1"><div class="li"> via LuCI: Add below lines via <em>LuCi &gt; System &gt; Scheduled Tasks</em></div>
+</li>
+<li class="level1"><div class="li"> via command line: <code>crontab -e</code> → add below lines</div>
+</li>
+</ul>
+<pre class="code">1 0 * * 0 /bin/opkg update # Update list of available packages every Sunday 00:01
+# crontab and fstab must end with the last line a space or comment</pre>
+
+<p>
+You can change the interval as you like, but keep in mind that every interval below 24h is a waste of resources, since release packages do not get compiled that often.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;via crontab&quot;,&quot;hid&quot;:&quot;via_crontab&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:8,&quot;range&quot;:&quot;2209-2911&quot;} -->
+<h3 class="sectionedit9" id="via_startup_script">via startup script</h3>
+<div class="level3">
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> This method only works if you frequently reboot your hardware. Keep in mind that this will occupy precious RAM space on low memory devices (16+32MB). See the third method for a low-ram-friendly script.
+</p>
+
+<p>
+If you prefer to run “opkg list” only once at startup, rather than in regular intervals as shown above, you can do so by means of the startup script <code>rc.local</code>.
+</p>
+<ul>
+<li class="level1"><div class="li"> via LuCI: Add below lines via <em>LuCi &gt; System &gt; Startup &gt; Local Startup</em></div>
+</li>
+<li class="level1"><div class="li"> via commandline: edit <code>etc/rc.local</code> and add below lines</div>
+</li>
+</ul>
+<pre class="code">/bin/opkg update # Update list of available packages
+exit 0</pre>
+
+<p>
+Now everytime you login with Dropbear (<abbr title="Secure Shell">SSH</abbr>) you will see the number of total packages installed and how many packages can be upgraded.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;via startup script&quot;,&quot;hid&quot;:&quot;via_startup_script&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:9,&quot;range&quot;:&quot;2912-3656&quot;} -->
+<h3 class="sectionedit10" id="via_the_same_profile_script">via the same profile script</h3>
+<div class="level3">
+
+<p>
+You can place the updating commands in the same profile file, as that script is executed each time the user logs in with ssh or serial console. 
+</p>
+
+<p>
+The main drawback is that the user will have to wait a few seconds for the update to finish before they can start writing commands, which if all goes well is just a few seconds. It will be quite a bit more if there is no internet access, as opkg will take a while to figure out that there is no internet connection. So a check for internet connectivity is included. If no internet is detected the update is skipped.<br/>
+
+For the sake of being low-RAM friendly, there is a check that deletes automatically the package lists if the device has less then 32 MiB of free RAM.<br/>
+
+</p>
+
+<p>
+This is the whole .profile script:
+</p>
+<pre class="code">nano ~/.profile</pre>
+<pre class="code">#!/bin/sh
+
+if wget -q --spider https://openwrt.org/; then  # if OpenWrt website/wiki is available we update
+  echo &quot;You are connected to the internet. Checking for updates, please wait...&quot; &amp;&amp; echo
+  opkg update &gt; /dev/null 2&gt;&amp;1 #silenced standard output and error output
+
+  opkgInstalled=&quot;$(opkg list-installed 2&gt; /dev/null | wc -l)&quot; #silencing error output
+  opkgUpgradable=&quot;$(opkg list-upgradable 2&gt; /dev/null | wc -l)&quot; #silencing error output
+
+  echo &quot;$opkgInstalled packages are installed.&quot; &amp;&amp; echo &quot;$opkgUpgradable packages can be upgraded.&quot; &amp;&amp; echo
+  
+  memLimit=32000 # in bytes
+  if [ &quot;$(grep MemFree /proc/meminfo | awk &#039;{print$2}&#039;)&quot; -lt $memLimit ]; then
+    for opkg_package_lists in /var/opkg-lists/*
+    do
+      if [ -f &quot;$opkg_package_lists&quot; ]; then #prevent error if opkg update fails
+        rm -r /var/opkg-lists/*
+        echo &quot;Warning: Memory limit $memLimit bytes. Removed downloaded package lists to save memory.&quot;
+        echo #only remove when free RAM is less than set memory limit (default 32 MiB)
+      fi
+    done
+  fi
+  else
+  echo &quot;You are not connected to the internet. Unable to check for updates.&quot; &amp;&amp; echo
+fi
+</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;via the same profile script&quot;,&quot;hid&quot;:&quot;via_the_same_profile_script&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:10,&quot;range&quot;:&quot;3657-5624&quot;} -->
+<h3 class="sectionedit11" id="preserving_your_script_on_firmware_upgrade">Preserving your script on firmware upgrade</h3>
+<div class="level3">
+
+<p>
+By default, firmware upgrade procedure does not back up <code>/root/.profile</code> so we need to add it to the list of custom files to back up.
+</p>
+<pre class="code">echo  &#039;/root/.profile #my profile with update script &#039;  &gt;&gt; /etc/sysupgrade.conf</pre>
+
+<p>
+Other files created or modified by this tutorial (chrontabs and /etc/rc.local) are already in the whitelist of files preserved.
+</p>
+
+<p>
+For more information, please check the <a href="/docs/guide-user/installation/sysupgrade.cli" class="wikilink1" title="docs:guide-user:installation:sysupgrade.cli" data-wiki-id="docs:guide-user:installation:sysupgrade.cli">Upgrading OpenWrt from the Command Line</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Preserving your script on firmware upgrade&quot;,&quot;hid&quot;:&quot;preserving_your_script_on_firmware_upgrade&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:11,&quot;range&quot;:&quot;5625-6155&quot;} -->
+<h2 class="sectionedit12" id="upgrading_openwrt_packages_in_one_command">Upgrading OpenWrt packages in one command</h2>
+<div class="level2">
+
+<p>
+<code>opkg upgrade package_name</code> allow upgrading one package.
+To upgrade all packages, follow <a href="/docs/guide-user/installation/generic.sysupgrade#check_for_any_upgradable_packages" class="wikilink1" title="docs:guide-user:installation:generic.sysupgrade" data-wiki-id="docs:guide-user:installation:generic.sysupgrade">check_for_any_upgradable_packages</a>.
+</p>
+
+<p>
+Note that package upgrades are processed without order and be sure to have sufficient space on your device.
+Automating OpenWrt package upgrades is strongly discouraged, unless you manage a central repository and push upgrades from there.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Upgrading OpenWrt packages in one command&quot;,&quot;hid&quot;:&quot;upgrading_openwrt_packages_in_one_command&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:12,&quot;range&quot;:&quot;6156-6627&quot;} -->
+<h3 class="sectionedit13" id="closing_thoughts">Closing thoughts</h3>
+<div class="level3">
+
+<p>
+If you have a better way of doing this, please update this user guide. You can also add the above script to “/etc/profile” which is the system default, but you are better off keeping that untouched as to prevent issues.
+</p>
+
+<p>
+Enjoy!
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Closing thoughts&quot;,&quot;hid&quot;:&quot;closing_thoughts&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:13,&quot;range&quot;:&quot;6628-&quot;} -->

@@ -1,0 +1,612 @@
+
+<h1 class="sectionedit1" id="squid">Squid</h1>
+<div class="level1">
+
+<p>
+Squid is an enterprise-class caching web proxy.  
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Squid&quot;,&quot;hid&quot;:&quot;squid&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-71&quot;} -->
+<h2 class="sectionedit2" id="squid_transparent_mode_on_devices_with_sufficient_space_to_install_squid">1. Squid transparent mode on devices with sufficient space to install Squid</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;1. Squid transparent mode on devices with sufficient space to install Squid&quot;,&quot;hid&quot;:&quot;squid_transparent_mode_on_devices_with_sufficient_space_to_install_squid&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;72-159&quot;} -->
+<h3 class="sectionedit3" id="prerequisites">Prerequisites</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="external_storage">External storage</h4>
+<div class="level4">
+
+<p>
+You will need additional storage for Squid cache.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Prerequisites&quot;,&quot;hid&quot;:&quot;prerequisites&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;160-259&quot;} -->
+<h3 class="sectionedit4" id="installation">Installation</h3>
+<div class="level3">
+
+<p>
+Install Squid on LEDE/OpenWrt device (can be extrooted for more installation space):
+</p>
+<pre class="code">opkg install squid</pre>
+
+<p>
+Optional packages:
+</p>
+<ul>
+<li class="level1"><div class="li"> luci-app-squid - Luci application for managing Squid settings</div>
+</li>
+<li class="level1"><div class="li"> squid-mod-cachemgr - Page for Squid statistics etc</div>
+</li>
+</ul>
+<pre class="code">opkg install luci-app-squid squid-mod-cachemgr</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation&quot;,&quot;hid&quot;:&quot;installation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;260-605&quot;} -->
+<h3 class="sectionedit5" id="storage_configuration">Storage configuration</h3>
+<div class="level3">
+
+<p>
+You need to update &#039;fstab&#039; configuration to mount your caching storage device partition to “/tmp/squid”.
+</p>
+
+<p>
+Open &#039;fstab&#039; configuration in Luci or in terminal:
+</p>
+<pre class="code">vi /etc/config/fstab</pre>
+
+<p>
+In this example partition &#039;/dev/sda1&#039; with &#039;ext4&#039; filesystem, is mounted to &#039;/tmp/squid&#039;, and filesystem check (fsck) is enabled:
+</p>
+<pre class="code">config mount
+        option enabled &#039;1&#039;
+        option device &#039;/dev/sda1&#039;
+        option fstype &#039;ext4&#039;
+        option enabled_fsck &#039;1&#039;
+        option target &#039;/tmp/squid&#039;</pre>
+
+<p>
+Save your configuration and try out if mounting works. Manually mount your configuration file for test:
+</p>
+<pre class="code">mount -a</pre>
+
+<p>
+And check if you see your device in list:
+</p>
+<pre class="code">df -h</pre>
+
+</div>
+
+<h4 id="set_up_forwarding">Set up forwarding</h4>
+<div class="level4">
+
+<p>
+Add http (port 80) traffic forwarding to Squid (so called transparent mode). 
+Add firewall section: 
+</p>
+<pre class="code">vi /etc/config/firewall</pre>
+<pre class="code">config redirect
+        option name &#039;Allow-transparent-Squid&#039;
+        option enabled &#039;1&#039;
+        option proto &#039;tcp&#039;
+        option target &#039;DNAT&#039;
+        option src &#039;lan&#039;
+        option src_ip &#039;!192.168.1.1&#039;
+       	option src_dip &#039;!192.168.1.1&#039;
+        option src_dport &#039;80&#039;
+        option dest &#039;lan&#039;
+        option dest_ip &#039;192.168.1.1&#039;
+        option dest_port &#039;3128&#039;</pre>
+
+<p>
+Reload and restart firewall service:
+</p>
+<pre class="code">/etc/init.d/firewall reload
+/etc/init.d/firewall restart</pre>
+
+</div>
+
+<h4 id="squid_configuration">Squid configuration</h4>
+<div class="level4">
+
+<p>
+Edit Squid configuration:
+</p>
+<pre class="code">vi /etc/squid/squid.conf</pre>
+
+<p>
+or use <strong>luci-app-squid</strong> and go to Services→Squid→Advanced Settings.
+</p>
+<pre class="code">acl localnet src 10.0.0.0/8
+acl localnet src 172.16.0.0/12
+acl localnet src 192.168.0.0/16
+acl localnet src fc00::/7
+acl localnet src fe80::/10
+
+acl ssl_ports port 443
+
+acl safe_ports port 80
+acl safe_ports port 21
+acl safe_ports port 443
+acl safe_ports port 70
+acl safe_ports port 210
+acl safe_ports port 1025-65535
+acl safe_ports port 280
+acl safe_ports port 488
+acl safe_ports port 591
+acl safe_ports port 777
+acl connect method connect
+
+http_access deny !safe_ports
+http_access deny connect !ssl_ports
+
+http_access allow localhost manager
+http_access deny manager
+
+http_access deny to_localhost
+
+http_access allow localnet
+http_access allow localhost
+
+http_access deny all
+
+refresh_pattern ^ftp: 1440 20% 10080
+refresh_pattern ^gopher: 1440 0% 1440
+refresh_pattern -i (/cgi-bin/|\?) 0 0% 0
+refresh_pattern . 0 20% 4320
+
+access_log none
+cache_log /dev/null
+cache_store_log stdio:/dev/null
+logfile_rotate 0
+
+logfile_daemon /dev/null
+
+http_port 3128 intercept
+
+# cache_dir aufs Directory-Name Mbytes L1 L2 [options]
+cache_dir aufs /tmp/squid/cache 900 16 512
+
+# If you have 64 MB device RAM you can use 16 MB cache_mem, default is 8 MB
+cache_mem 8 MB             
+maximum_object_size_in_memory 100 KB
+maximum_object_size 32 MB</pre>
+
+<p>
+In this example, 900 means that Squid is allowed to use 900 <abbr title="Megabyte">MB</abbr> for <strong>cache</strong>: 
+</p>
+<pre class="code">cache_dir aufs /tmp/squid/cache 900 16 512</pre>
+
+<p>
+You can use your device capacity here, but make sure you leave some (5% - 15%) free space on device for logs/folder tree etc. 
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Squid will crash when the disk gets full or unwritable! 
+When this happens your Internet traffic, also access to Luci will stop working. You can fix it by logging in with <abbr title="Secure Shell">SSH</abbr>, disabling cache_dir: 
+</p>
+<pre class="code">#cache_dir aufs /tmp/squid/cache 900 16 512</pre>
+
+<p>
+ or by fixing settings.
+Configuration reload is needed after all changes or disabling.
+</p>
+
+</div>
+
+<h4 id="reload_configuration">Reload configuration</h4>
+<div class="level4">
+
+<p>
+Squid reconfiguration and cache directory tree rebuild :
+</p>
+<pre class="code">squid -k reconfigure    (use -f &quot;cfgfile&quot; if congiguration file has moved)    
+squid -z                (rebuild cache directory tree)
+squid                   (start squid to make sure it will be running)</pre>
+
+</div>
+
+<h4 id="keep_settings">Keep settings</h4>
+<div class="level4">
+
+<p>
+If you have successfully set up your Squid cache, you may want to preserve the settings while (future) sysupgrade.
+Add squid configuration <strong>/etc/squid/squid.conf</strong> into sysupgrade keep file: 
+</p>
+<pre class="code">vi /etc/sysupgrade.conf</pre>
+
+<p>
+or use <strong>luci</strong> and go to System→Backup/Flash Firmware→Configuration.
+</p>
+<pre class="code">## This file contains files and directories that should
+## be preserved during an upgrade.
+
+# /etc/example.conf
+# /etc/openvpn/
+
+/etc/squid/squid.conf</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Storage configuration&quot;,&quot;hid&quot;:&quot;storage_configuration&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:5,&quot;range&quot;:&quot;606-4823&quot;} -->
+<h3 class="sectionedit6" id="execution">Execution</h3>
+<div class="level3">
+
+<p>
+Squid should be working now.
+If you want to be sure it&#039;s really caching, you can control cache folder used size:
+</p>
+<pre class="code">df -h</pre>
+
+<p>
+That should be something like in this example:
+</p>
+<pre class="code bash">Filesystem                Size      Used Available Use<span class="sy0">%</span> Mounted on
+        ..                  ..        ..        ..   ..         ..
+<span class="sy0">/</span>dev<span class="sy0">/</span>sda1               1000M       600M      400M  <span class="nu0">60</span><span class="sy0">%</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>squid</pre>
+
+<p>
+Or use squid-mod-cachemgr, accessing its page: 
+</p>
+<pre class="code">http://192.168.1.1/cgi-bin/cachemgr.cgi</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Execution&quot;,&quot;hid&quot;:&quot;execution&quot;,&quot;codeblockOffset&quot;:16,&quot;secid&quot;:6,&quot;range&quot;:&quot;4824-5352&quot;} -->
+<h2 class="sectionedit7" id="squid_on_devices_without_enough_flash_space">2. Squid on devices without enough flash space</h2>
+<div class="level2">
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> This howto is a work in progress, and I expect that it will not work for everyone unless others (i.e. you) contribute to it&#039;s development.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;2. Squid on devices without enough flash space&quot;,&quot;hid&quot;:&quot;squid_on_devices_without_enough_flash_space&quot;,&quot;codeblockOffset&quot;:19,&quot;secid&quot;:7,&quot;range&quot;:&quot;5353-5555&quot;} -->
+<h3 class="sectionedit8" id="prerequisites1">Prerequisites</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="external_storage1">External storage</h4>
+<div class="level4">
+
+<p>
+You <em>will</em> need additional storage for Squid, definitely for it&#039;s cache, and most likely for the executable too.  
+</p>
+
+<p>
+This howto assumes that an ext4 filesystem is mounted as <strong>/opt</strong>, with at least 4GB of free storage space. <abbr title="In my humble opinion">IMHO</abbr>, this is <em>much</em> easier than using <a href="/docs/guide-user/additional-software/extroot_configuration" class="wikilink1" title="docs:guide-user:additional-software:extroot_configuration" data-wiki-id="docs:guide-user:additional-software:extroot_configuration">extroot</a>.
+</p>
+<pre class="code bash"><span class="co4">root@db-router:~# </span><span class="kw2">df</span> <span class="re5">-h</span>
+Filesystem                Size      Used Available Use<span class="sy0">%</span> Mounted on
+<span class="sy0">/</span>dev<span class="sy0">/</span>root                10.8M     10.8M         <span class="nu0">0</span> <span class="nu0">100</span><span class="sy0">%</span> <span class="sy0">/</span>rom
+tmpfs                    61.4M    980.0K     60.5M   <span class="nu0">2</span><span class="sy0">%</span> <span class="sy0">/</span>tmp
+<span class="sy0">/</span>dev<span class="sy0">/</span>mtdblock3            3.8M    868.0K      2.9M  <span class="nu0">23</span><span class="sy0">%</span> <span class="sy0">/</span>overlay
+overlayfs:<span class="sy0">/</span>overlay        3.8M    868.0K      2.9M  <span class="nu0">23</span><span class="sy0">%</span> <span class="sy0">/</span>
+tmpfs                   512.0K         <span class="nu0">0</span>    512.0K   <span class="nu0">0</span><span class="sy0">%</span> <span class="sy0">/</span>dev
+<span class="sy0">/</span>dev<span class="sy0">/</span>sda5                28.4G     21.0M     26.9G   <span class="nu0">0</span><span class="sy0">%</span> <span class="sy0">/</span>opt</pre>
+
+<p>
+How to do this is covered elsewhere in the wiki (i.e. <a href="/docs/guide-user/storage/start" class="wikilink1" title="docs:guide-user:storage:start" data-wiki-id="docs:guide-user:storage:start">Storage</a>, and <a href="/docs/guide-user/storage/usb-drives" class="wikilink1" title="docs:guide-user:storage:usb-drives" data-wiki-id="docs:guide-user:storage:usb-drives">USB Storage</a>), and the forums.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Prerequisites&quot;,&quot;hid&quot;:&quot;prerequisites1&quot;,&quot;codeblockOffset&quot;:19,&quot;secid&quot;:8,&quot;range&quot;:&quot;5556-6594&quot;} -->
+<h3 class="sectionedit9" id="installation1">Installation</h3>
+<div class="level3">
+
+<p>
+Squid is a big package, and for many systems it will not fit on the root file system (i.e. under <strong>/usr</strong>).  Since the web cache will be on external storage, we may as well put Squid on it too.
+</p>
+
+</div>
+
+<h4 id="before_installing">Before installing</h4>
+<div class="level4">
+
+<p>
+For maximum compatibility, install Squid&#039;s dependencies in the regular way so that Squid and all other apps will find them in the expected location. Depending upon which packages you have already installed, these dependencies may already be on the rootfs.  
+</p>
+
+<p>
+To do this, execute the following command:
+</p>
+<pre class="code bash"><span class="co4">root@db-router:~# </span>opkg <span class="kw2">install</span> $<span class="br0">&#40;</span>opkg depends <span class="re5">-A</span> squid<span class="sy0">*</span> <span class="sy0">|</span> <span class="kw2">grep</span> <span class="re5">-v</span> depends <span class="sy0">|</span> <span class="kw2">grep</span> <span class="re5">-v</span> squid <span class="sy0">|</span> <span class="kw2">sort</span> -u<span class="br0">&#41;</span>
+Package libc <span class="br0">&#40;</span>1.1.11-<span class="nu0">1</span><span class="br0">&#41;</span> installed <span class="kw1">in</span> root is up to date.
+Package libopenssl <span class="br0">&#40;</span>1.0.2d-<span class="nu0">1</span><span class="br0">&#41;</span> installed <span class="kw1">in</span> root is up to date.
+Package libpthread <span class="br0">&#40;</span>1.1.11-<span class="nu0">1</span><span class="br0">&#41;</span> installed <span class="kw1">in</span> root is up to date.
+Package librt <span class="br0">&#40;</span>1.1.11-<span class="nu0">1</span><span class="br0">&#41;</span> installed <span class="kw1">in</span> root is up to date.
+Package libltdl <span class="br0">&#40;</span><span class="nu0">2.4</span>-<span class="nu0">1</span><span class="br0">&#41;</span> installed <span class="kw1">in</span> root is up to date.
+Package libstdcpp <span class="br0">&#40;</span><span class="nu0">4.8</span>-linaro-<span class="nu0">1</span><span class="br0">&#41;</span> installed <span class="kw1">in</span> root is up to date.</pre>
+
+<p>
+You will then need to ensure packages can be installed onto the external storage:
+</p>
+<pre class="code bash"><span class="co0">### Allow packages to be installed to (external storage mounted as) /opt...</span>
+  <span class="kw1">if</span> <span class="sy0">!</span> <span class="kw2">grep</span> <span class="re5">-q</span> usb <span class="sy0">/</span>etc<span class="sy0">/</span>opkg.conf; <span class="kw1">then</span>
+    <span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st_h">'EOF'</span> <span class="sy0">&gt;&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>opkg.conf
+dest usb <span class="sy0">/</span>opt
+EOF
+  <span class="kw1">fi</span>;</pre>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> I suggest you do not change the <strong>$PATH</strong> in <strong>/etc/profile</strong> (and certainly <em>not</em> <strong>$LD_LIBRARY_PATH</strong>).
+</p>
+
+</div>
+
+<h4 id="installing">Installing</h4>
+<div class="level4">
+
+<p>
+You can install the Squid packages via the following command:
+</p>
+<pre class="code bash"><span class="co0">### Install the Squid package (and optionally, the cache manager package)...</span>
+  opkg <span class="re5">-d</span> usb <span class="kw2">install</span> squid
+<span class="co0"># opkg -d usb install squid-mod-cachemgr</span>
+&nbsp;
+<span class="co0"># debug tip: use this to see which libraries Squid uses (with their location)...</span>
+<span class="co0"># ldd /opt/usr/sbin/squid</span></pre>
+
+</div>
+
+<h4 id="after_installing">After installing</h4>
+<div class="level4">
+
+<p>
+Because the Squid package is installed on external storage (e.g. the executable is in <strong>/opt/usr/sbin</strong> instead of <strong>/usr/sbin</strong>), we need to do a few tricks for it to work.
+</p>
+
+<p>
+There are several ways to achieve this (such as adding <strong>/opt/usr/sbin</strong> to <strong>$PATH</strong>), but I recommend:
+</p>
+<pre class="code bash"><span class="co0">### Create a link to the startup script and configuration files...</span>
+  <span class="kw2">ln</span> <span class="re5">-s</span> <span class="sy0">/</span>opt<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>squid      <span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>squid        <span class="co0">## this is absolutely required (i.e. dont cp)</span>
+  <span class="kw2">ln</span> <span class="re5">-s</span> <span class="sy0">/</span>opt<span class="sy0">/</span>etc<span class="sy0">/</span>squid             <span class="sy0">/</span>etc<span class="sy0">/</span>                    <span class="co0">## there may be better ways of achieving this</span>
+  <span class="kw2">ln</span> <span class="re5">-s</span> <span class="sy0">/</span>opt<span class="sy0">/</span>etc<span class="sy0">/</span>config<span class="sy0">/</span>squid      <span class="sy0">/</span>etc<span class="sy0">/</span>config<span class="sy0">/</span>squid        <span class="co0">## if not, it will complain with: validation failed</span>
+&nbsp;
+<span class="co0"># alternatively, this appears cleaner than a ln -s (but use squid -f if executing from cmd line)...</span>
+<span class="co0"># uci set squid.squid.config_file='/opt/etc/squid/squid.conf'</span>
+<span class="co0"># uci commit</span>
+&nbsp;
+&nbsp;
+<span class="co0">### Make the necessary changes to the startup script if not symlinking /usr/sbin/squid (required, redoable)...</span>
+  <span class="kw2">sed</span> <span class="re5">-i</span> <span class="st_h">'/^PROG=/   s:=/usr/:=/opt/usr/:'</span> <span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>squid    <span class="co0">## for: squid</span>
+  <span class="kw2">sed</span> <span class="re5">-i</span> <span class="st_h">'/ssl_crtd/ s: /usr/: /opt/usr/:'</span> <span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>squid    <span class="co0">## for: ssl_crtd</span>
+&nbsp;
+<span class="co0"># alternatively, create symlinks where the startup script expects them to be (is a bit messy?)...</span>
+<span class="co0"># ln -s /opt/usr/sbin/squid          /usr/sbin/squid</span>
+<span class="co0"># ln -s /opt/usr/lib/squid/ssl_crtd  /usr/lib/squid/ssl_crtd</span>
+&nbsp;
+&nbsp;
+<span class="co0">### Make the necessary fixes to the configuration file...</span>
+<span class="kw1">if</span> <span class="sy0">!</span> <span class="kw2">grep</span> <span class="re5">-q</span> zxdavb <span class="sy0">/</span>etc<span class="sy0">/</span>squid<span class="sy0">/</span>squid.conf; <span class="kw1">then</span>
+  <span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st_h">'EOF'</span> <span class="sy0">&gt;&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>squid<span class="sy0">/</span>squid.conf
+&nbsp;
+<span class="co0"># Changes necessary because squid is installed upon /opt (zxdavb)...</span>
+  error_directory <span class="sy0">/</span>opt<span class="sy0">/</span>usr<span class="sy0">/</span>share<span class="sy0">/</span>squid<span class="sy0">/</span>errors<span class="sy0">/</span>templates<span class="sy0">/</span>       <span class="co0"># WARNING: this will disable multi-language support on error pages</span>
+  icon_directory  <span class="sy0">/</span>opt<span class="sy0">/</span>usr<span class="sy0">/</span>share<span class="sy0">/</span>squid<span class="sy0">/</span>icons                   <span class="co0"># usually: /usr/share/squid/icons</span>
+EOF
+<span class="kw1">fi</span>;</pre>
+
+<p>
+Squid should now run (well, not yet. Keep reading <img src="/lib/images/smileys/smile.svg" class="icon smiley" alt=":-)" />):
+</p>
+<pre class="code bash"><span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>squid start
+<span class="kw2">ps</span> <span class="re5">-w</span> <span class="sy0">|</span> <span class="kw2">grep</span> squid
+<span class="kw2">netstat</span> <span class="re5">-nltp</span> 
+logread <span class="sy0">|</span> <span class="kw2">grep</span> squid
+<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>squid stop</pre>
+
+<p>
+To enable Squid to start automatically at system startup, execute <strong>/etc/init.d/squid enable</strong>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation&quot;,&quot;hid&quot;:&quot;installation1&quot;,&quot;codeblockOffset&quot;:20,&quot;secid&quot;:9,&quot;range&quot;:&quot;6595-10486&quot;} -->
+<h3 class="sectionedit10" id="configuration">Configuration</h3>
+<div class="level3">
+
+<p>
+For reference, OpenWrt&#039;s default Squid configuration can always be found on GitHub, including the <a href="https://github.com/openwrt/packages/blob/master/net/squid/files/squid.init" class="urlextern" title="https://github.com/openwrt/packages/blob/master/net/squid/files/squid.init" rel="ugc nofollow">init script</a>, the <a href="https://github.com/openwrt/packages/blob/master/net/squid/files/squid.config" class="urlextern" title="https://github.com/openwrt/packages/blob/master/net/squid/files/squid.config" rel="ugc nofollow">uci configuration</a>, and <a href="https://github.com/openwrt/packages/blob/master/net/squid/files/squid.conf" class="urlextern" title="https://github.com/openwrt/packages/blob/master/net/squid/files/squid.conf" rel="ugc nofollow">squid.conf</a>.
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Squid will <em>not run</em> from external storage unless some changes are made to these files (some of these changes have been made in earlier sections).
+</p>
+
+</div>
+
+<h4 id="creating_the_cache_directory">Creating the cache directory</h4>
+<div class="level4">
+
+<p>
+Squid will fail to start unless it can access this directory, that is: it must exist, have the correct permission and the correct owner/group (see below).
+</p>
+<pre class="code bash"><span class="co0">### Create the cache directory (this is all that is required for the default user:group)...</span>
+  <span class="kw2">mkdir</span> <span class="re5">-p</span>          <span class="sy0">/</span>opt<span class="sy0">/</span>var<span class="sy0">/</span>cache<span class="sy0">/</span>squid
+  <span class="kw2">chmod</span> 0777        <span class="sy0">/</span>opt<span class="sy0">/</span>var<span class="sy0">/</span>cache<span class="sy0">/</span>squid
+&nbsp;
+&nbsp;
+<span class="co0">### Make the necessary changes to the configuration file...</span>
+<span class="kw1">if</span> <span class="sy0">!</span> <span class="kw2">grep</span> <span class="re5">-q</span> cache_dir <span class="sy0">/</span>etc<span class="sy0">/</span>squid<span class="sy0">/</span>squid.conf; <span class="kw1">then</span>
+  <span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st_h">'EOF'</span> <span class="sy0">&gt;&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>squid<span class="sy0">/</span>squid.conf
+&nbsp;
+<span class="co0"># cache_dir: change it if you want. 2048 meams 2GB cache size.</span>
+  cache_dir ufs <span class="sy0">/</span>opt<span class="sy0">/</span>var<span class="sy0">/</span>cache<span class="sy0">/</span>squid <span class="nu0">2048</span> <span class="nu0">16</span> <span class="nu0">256</span>
+EOF
+<span class="kw1">fi</span>;
+&nbsp;
+&nbsp;
+<span class="co0">### Create swap directories under the cache directory and then exit...</span>
+  <span class="sy0">/</span>opt<span class="sy0">/</span>usr<span class="sy0">/</span>sbin<span class="sy0">/</span>squid <span class="re5">-z</span>
+&nbsp;
+<span class="co0"># debug tip: use this to see if the swap directories are being populated during caching...</span>
+<span class="co0"># du -m /opt/var/cache/squid/ | sort -nr | head -n17 | tail -n16</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:25,&quot;secid&quot;:10,&quot;range&quot;:&quot;10487-11972&quot;} -->
+<h3 class="sectionedit11" id="execution1">Execution</h3>
+<div class="level3">
+
+<p>
+You have to <strong>/etc/init.d/squid enable</strong>, and <strong>/etc/init.d/squid start</strong>, and it should be good to go!
+</p>
+
+</div>
+
+<h4 id="starting_squid_from_the_command_line">Starting Squid from the command line</h4>
+<div class="level4">
+
+<p>
+This may be useful for debugging configurations, etc.
+</p>
+
+<p>
+You might not get the Squid executable to work from the command line (e.g. <strong>squid -d2</strong>) without (temporarily) adding the following to <strong>/etc/squid/squid.conf</strong>:
+</p>
+<pre class="code">http_port 3128
+coredump_dir /tmp/squid
+visible_hostname OpenWrt
+pinger_enable off</pre>
+
+<p>
+A better option may be to start/stop Squid, and then use the generated configuration:
+</p>
+<pre class="code bash"><span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>squid start
+<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>squid stop
+squid <span class="re5">-f</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>squid<span class="sy0">/</span>squid.conf <span class="re5">-d2</span> ...</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Execution&quot;,&quot;hid&quot;:&quot;execution1&quot;,&quot;codeblockOffset&quot;:26,&quot;secid&quot;:11,&quot;range&quot;:&quot;11973-12653&quot;} -->
+<h2 class="sectionedit12" id="maintenance">Maintenance</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Maintenance&quot;,&quot;hid&quot;:&quot;maintenance&quot;,&quot;codeblockOffset&quot;:28,&quot;secid&quot;:12,&quot;range&quot;:&quot;12654-12678&quot;} -->
+<h3 class="sectionedit13" id="before_a_sysupgrade">Before a sysupgrade</h3>
+<div class="level3">
+
+<p>
+Because Squid (and it&#039;s config file) is on external (i.e. permanent) storage, I suggest you <strong>do not</strong> do something similar to the following:
+</p>
+<pre class="code bash"><span class="co4"># </span><span class="kw3">echo</span> <span class="st_h">'/etc/squid/'</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>lib<span class="sy0">/</span>upgrade<span class="sy0">/</span>keep.d<span class="sy0">/</span>squid                   <span class="co0">## Keep config across sysupgrades</span></pre>
+
+<p>
+However, if you are building your own images, you may want to do something with <strong>./files/etc/uci-defaults/squid</strong> (see the next bit).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Before a sysupgrade&quot;,&quot;hid&quot;:&quot;before_a_sysupgrade&quot;,&quot;codeblockOffset&quot;:28,&quot;secid&quot;:13,&quot;range&quot;:&quot;12679-13108&quot;} -->
+<h3 class="sectionedit14" id="after_a_sysupgrade">After a sysupgrade</h3>
+<div class="level3">
+
+<p>
+After a <strong>sysupgrade</strong>, the following may need doing before Squid will run (NB: this assumes you&#039;re using <strong>/opt</strong>):
+</p>
+<pre class="code bash"><span class="co0"># the following needs redoing after a sysupgrade</span>
+<span class="br0">&#91;</span> <span class="re5">-h</span> <span class="sy0">/</span>etc<span class="sy0">/</span>squid <span class="br0">&#93;</span>                <span class="sy0">||</span> <span class="kw2">rm</span> <span class="re5">-rf</span> <span class="sy0">/</span>etc<span class="sy0">/</span>squid                             <span class="sy0">&gt;</span> <span class="sy0">/</span>dev<span class="sy0">/</span>null <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span> <span class="co0">## if not a symlink, delete the dir </span>
+<span class="br0">&#91;</span> <span class="re5">-e</span> <span class="sy0">/</span>etc<span class="sy0">/</span>squid <span class="br0">&#93;</span>                <span class="sy0">||</span> <span class="kw2">ln</span> <span class="re5">-s</span> <span class="sy0">/</span>opt<span class="sy0">/</span>etc<span class="sy0">/</span>squid <span class="sy0">/</span>etc<span class="sy0">/</span>                                     <span class="co0">## if not exists, create the symlink</span>
+&nbsp;
+<span class="br0">&#91;</span> <span class="re5">-h</span> <span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>squid <span class="br0">&#93;</span>         <span class="sy0">||</span> <span class="kw2">rm</span>    <span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>squid                       <span class="sy0">&gt;</span> <span class="sy0">/</span>dev<span class="sy0">/</span>null <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span> <span class="co0">## if not a symlink, delete the file </span>
+<span class="br0">&#91;</span> <span class="re5">-e</span> <span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>squid <span class="br0">&#93;</span>         <span class="sy0">||</span> <span class="kw2">ln</span> <span class="re5">-s</span> <span class="sy0">/</span>opt<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>squid <span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>squid                  <span class="co0">## if not exists, create the symlink</span>
+&nbsp;
+<span class="br0">&#91;</span> <span class="re5">-e</span> <span class="sy0">/</span>usr<span class="sy0">/</span>sbin<span class="sy0">/</span>squid <span class="br0">&#93;</span>           <span class="sy0">||</span> <span class="kw2">ln</span> <span class="re5">-s</span> <span class="sy0">/</span>opt<span class="sy0">/</span>usr<span class="sy0">/</span>sbin<span class="sy0">/</span>squid <span class="sy0">/</span>usr<span class="sy0">/</span>sbin<span class="sy0">/</span>squid                      <span class="co0">## if not a symlink, delete the file </span>
+<span class="br0">&#91;</span> <span class="re5">-e</span> <span class="sy0">/</span>www<span class="sy0">/</span>cgi-bin<span class="sy0">/</span>cachemgr.cgi <span class="br0">&#93;</span> <span class="sy0">||</span> <span class="kw2">ln</span> <span class="re5">-s</span> <span class="sy0">/</span>opt<span class="sy0">/</span>www<span class="sy0">/</span>cgi-bin<span class="sy0">/</span>cachemgr.cgi <span class="sy0">/</span>www<span class="sy0">/</span>cgi-bin<span class="sy0">/</span>cachemgr.cgi  <span class="co0">## if not exists, create the symlink</span>
+&nbsp;
+<span class="co0"># now, re-enable Squid (it will restart later)...</span>
+<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>squid <span class="kw3">enable</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;After a sysupgrade&quot;,&quot;hid&quot;:&quot;after_a_sysupgrade&quot;,&quot;codeblockOffset&quot;:29,&quot;secid&quot;:14,&quot;range&quot;:&quot;13109-14220&quot;} -->
+<h2 class="sectionedit15" id="troubleshooting">Troubleshooting</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Troubleshooting&quot;,&quot;hid&quot;:&quot;troubleshooting&quot;,&quot;codeblockOffset&quot;:30,&quot;secid&quot;:15,&quot;range&quot;:&quot;14221-14249&quot;} -->
+<h3 class="sectionedit16" id="configuring_logging">Configuring logging</h3>
+<div class="level3">
+
+<p>
+Squid sends log entries to the system log, and has a wealth of logging options that are disabled by OpenWrt&#039;s default squid.conf file.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuring logging&quot;,&quot;hid&quot;:&quot;configuring_logging&quot;,&quot;codeblockOffset&quot;:30,&quot;secid&quot;:16,&quot;range&quot;:&quot;14250-14416&quot;} -->
+<h2 class="sectionedit17" id="tweaks_and_tips">Tweaks and Tips</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Tweaks and Tips&quot;,&quot;hid&quot;:&quot;tweaks_and_tips&quot;,&quot;codeblockOffset&quot;:30,&quot;secid&quot;:17,&quot;range&quot;:&quot;14417-14445&quot;} -->
+<h3 class="sectionedit18" id="using_the_cache_manager_cachemgrcgi">Using the cache manager (cachemgr.cgi)</h3>
+<div class="level3">
+
+<p>
+The following requires that <strong>uhttpd</strong> is installed and running (the simplest/safest way to do this is <strong>opkg install luci</strong>).
+</p>
+
+<p>
+Do the following:
+</p>
+<pre class="code bash">opkg <span class="re5">-d</span> usb <span class="kw2">install</span> squid-mod-cachemgr
+<span class="kw3">echo</span> 127.0.0.1:<span class="nu0">3128</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>squid<span class="sy0">/</span>cachemgr.conf
+<span class="kw2">ln</span> <span class="re5">-s</span> <span class="sy0">/</span>opt<span class="sy0">/</span>www<span class="sy0">/</span>cgi-bin<span class="sy0">/</span>cachemgr.cgi  <span class="sy0">/</span>www<span class="sy0">/</span>cgi-bin<span class="sy0">/</span>cachemgr.cgi</pre>
+
+<p>
+You can now access it via: <a href="http://%3CIP address%3E/cgi-bin/cachemgr.cgi" class="urlextern" title="http://&lt;IP address&gt;/cgi-bin/cachemgr.cgi" rel="ugc nofollow">http://&lt;IP address&gt;/cgi-bin/cachemgr.cgi</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Using the cache manager (cachemgr.cgi)&quot;,&quot;hid&quot;:&quot;using_the_cache_manager_cachemgrcgi&quot;,&quot;codeblockOffset&quot;:30,&quot;secid&quot;:18,&quot;range&quot;:&quot;14446-14884&quot;} -->
+<h3 class="sectionedit19" id="using_a_specific_usergroup">Using a specific user:group</h3>
+<div class="level3">
+
+<p>
+This is how to use a user:group other that nobody:nogroup (<strong><abbr title="For your information">FYI</abbr> only, not recommended</strong>).
+</p>
+
+<p>
+First, create the user and group:
+</p>
+<pre class="code bash"><span class="co0"># Create Squid user &amp; group...</span>
+  opkg <span class="kw2">install</span> shadow <span class="re5">--force-overwrite</span> <span class="co0"># provides groupadd &amp; useradd utils, but must replace passwd</span>
+&nbsp;
+<span class="co0"># check for a free UID in the system user range (500-1000)</span>
+<span class="kw1">for</span> UID <span class="kw1">in</span> $<span class="br0">&#40;</span><span class="kw2">seq</span> <span class="nu0">300</span> <span class="nu0">1000</span><span class="br0">&#41;</span>; <span class="kw1">do</span>
+    <span class="kw2">grep</span> <span class="re5">-q</span> <span class="re5">-e</span> <span class="st0">&quot;^[^:]*:[^:]:<span class="es2">$UID</span>:&quot;</span> <span class="sy0">/</span>etc<span class="sy0">/</span><span class="kw2">passwd</span> <span class="sy0">||</span> <span class="kw3">break</span>
+<span class="kw1">done</span>
+<span class="br0">&#91;</span> <span class="re1">$UID</span> <span class="re5">-eq</span> <span class="nu0">1000</span> <span class="br0">&#93;</span> <span class="sy0">&amp;&amp;</span> <span class="br0">&#123;</span> <span class="kw3">echo</span> <span class="st0">&quot;ERROR: Could not find a suitable UID&quot;</span>; <span class="kw3">exit</span> <span class="nu0">1</span>; <span class="br0">&#125;</span>
+&nbsp;
+<span class="co0"># check for a free GID in the system group range (500-1000)</span>
+<span class="kw1">for</span> GID <span class="kw1">in</span> $<span class="br0">&#40;</span><span class="kw2">seq</span> <span class="nu0">300</span> <span class="nu0">1000</span><span class="br0">&#41;</span>; <span class="kw1">do</span>
+    <span class="kw2">grep</span> <span class="re5">-q</span> <span class="re5">-e</span> <span class="st0">&quot;^[^:]*:[^:]:<span class="es2">$GID</span>:&quot;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>group <span class="sy0">||</span> <span class="kw3">break</span>
+<span class="kw1">done</span>
+<span class="br0">&#91;</span> <span class="re1">$GID</span> <span class="re5">-eq</span> <span class="nu0">1000</span> <span class="br0">&#93;</span> <span class="sy0">&amp;&amp;</span> <span class="br0">&#123;</span> <span class="kw3">echo</span> <span class="st0">&quot;ERROR: Could not find a suitable GID&quot;</span>; <span class="kw3">exit</span> <span class="nu0">1</span>; <span class="br0">&#125;</span>
+&nbsp;
+<span class="co0"># add new group entry, then a new user entry</span>
+  <span class="kw2">id</span> <span class="re5">-g</span> squid <span class="sy0">&gt;</span> <span class="sy0">/</span>dev<span class="sy0">/</span>nul <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span> <span class="sy0">||</span> groupadd squid <span class="re5">--gid</span> <span class="re1">$GID</span>
+  <span class="kw2">id</span>    squid <span class="sy0">&gt;</span> <span class="sy0">/</span>dev<span class="sy0">/</span>nul <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span> <span class="sy0">||</span> useradd  squid <span class="re5">--uid</span> <span class="re1">$UID</span> <span class="re5">--gid</span> <span class="re1">$GID</span></pre>
+
+<p>
+Then you need to configure external storage (permissions, and owner:group):
+</p>
+<pre class="code bash"><span class="co0">### create cache directory (may already exist)</span>
+  <span class="kw2">mkdir</span> <span class="re5">-p</span>          <span class="sy0">/</span>opt<span class="sy0">/</span>var<span class="sy0">/</span>cache<span class="sy0">/</span>squid
+  <span class="kw2">chmod</span> 0755        <span class="sy0">/</span>opt<span class="sy0">/</span>var<span class="sy0">/</span>cache<span class="sy0">/</span>squid
+  <span class="kw2">chown</span> squid:squid <span class="sy0">/</span>opt<span class="sy0">/</span>var<span class="sy0">/</span>cache<span class="sy0">/</span>squid  <span class="co0"># only if the squid user:group exists</span></pre>
+
+<p>
+The you need to configure squid to use the new user:group:
+</p>
+<pre class="code bash"><span class="co0">### Make the necessary changes to the configuration file (redoable)...</span>
+<span class="kw1">if</span> <span class="sy0">!</span> <span class="kw2">grep</span> <span class="re5">-q</span> cache_effective_user <span class="sy0">/</span>etc<span class="sy0">/</span>squid<span class="sy0">/</span>squid.conf; <span class="kw1">then</span>
+  <span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st_h">'EOF'</span> <span class="sy0">&gt;&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>squid<span class="sy0">/</span>squid.conf
+&nbsp;
+<span class="co0"># Changes necessary because squid using it's own user:group...</span>
+  cache_effective_user  squid
+  cache_effective_group squid
+EOF
+<span class="kw1">fi</span>;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Using a specific user:group&quot;,&quot;hid&quot;:&quot;using_a_specific_usergroup&quot;,&quot;codeblockOffset&quot;:31,&quot;secid&quot;:19,&quot;range&quot;:&quot;14885-&quot;} -->

@@ -1,0 +1,380 @@
+
+<h1 class="sectionedit1" id="wireguard_site-to-site_automated">WireGuard site-to-site automated</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;WireGuard site-to-site automated&quot;,&quot;hid&quot;:&quot;wireguard_site-to-site_automated&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-48&quot;} -->
+<h3 class="sectionedit2" id="introduction">Introduction</h3>
+<div class="level3">
+
+<p>
+This guide provides an automated script that creates scripts to configure a site-to-site WireGuard <abbr title="Virtual Private Network">VPN</abbr> between two OpenWrt systems.  The script generates two scripts, one for each site.  Once the scripts are generated, you copy them to the two OpenWrt systems and run them to configure the WireGuard <abbr title="Virtual Private Network">VPN</abbr>.
+</p>
+
+<p>
+Once you have run the setup scripts, you must delete them to protect the private keys they contain.  The scripts write the private keys into the standard network configuration files, which are already protected.
+</p>
+
+<p>
+The top of the script contains a section of settings that you need to customize for your system hostnames and <abbr title="Internet Protocol">IP</abbr> address ranges.  It supports a single <abbr title="Internet Protocol version 4">IPv4</abbr> range and a single <abbr title="Internet Protocol version 6">IPv6</abbr> range.  The <abbr title="Internet Protocol version 4">IPv4</abbr> uses an example RFC1918 address range for each site, which you should customize.  The <abbr title="Internet Protocol version 6">IPv6</abbr> range is set to the ULA for each site (which you will provide), but you can use a different <abbr title="Internet Protocol version 6">IPv6</abbr> range if desired.
+</p>
+
+<p>
+The scripts have been tested with OpenWrt 23.05.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Introduction&quot;,&quot;hid&quot;:&quot;introduction&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;49-1044&quot;} -->
+<h2 class="sectionedit3" id="prerequisites">1. Prerequisites</h2>
+<div class="level2">
+<ol>
+<li class="level1"><div class="li"> Set up a Dynamic <abbr title="Domain Name System">DNS</abbr> client &gt;&gt; <a href="/docs/guide-user/services/ddns/client" class="wikilink1" title="docs:guide-user:services:ddns:client" data-wiki-id="docs:guide-user:services:ddns:client">DDNS client</a></div>
+</li>
+<li class="level1"><div class="li"> Install Wireguard &gt;&gt; <a href="/docs/guide-user/services/vpn/wireguard/basics#installing_packages" class="wikilink1" title="docs:guide-user:services:vpn:wireguard:basics" data-wiki-id="docs:guide-user:services:vpn:wireguard:basics">Installing packages</a></div>
+</li>
+<li class="level1"><div class="li"> <abbr title="Internet Protocol version 6">IPv6</abbr> configured &gt;&gt; <a href="/docs/guide-user/network/ipv6/configuration" class="wikilink1" title="docs:guide-user:network:ipv6:configuration" data-wiki-id="docs:guide-user:network:ipv6:configuration">IPv6</a></div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;1. Prerequisites&quot;,&quot;hid&quot;:&quot;prerequisites&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;1045-1353&quot;} -->
+<h2 class="sectionedit4" id="script">2. Script</h2>
+<div class="level2">
+
+<p>
+Copy the script below to one of the OpenWrt systems, customize the script settings in <code>/root/s2s_combined.sh</code> in the top section to match your desired configuration, and then run the script with 
+</p>
+<pre class="code">sh /root/s2s_combined.sh</pre>
+
+<p>
+If you set the <code>WG_TRIAL</code> variable to a non-empty value, the generated scripts will echo the commands they <em>would</em> use instead of actually configuring the <abbr title="Virtual Private Network">VPN</abbr>.
+</p>
+
+<p>
+After running the script, copy the generated scripts to the indicated hosts and run them.  Delete them afterwards to protect your keys. 
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-user/services/vpn/wireguard/site-to-site?codeblock=1" title="Download Snippet" class="mediafile mf_sh">s2s_combined.sh</a></dt>
+<dd><pre class="code bash"><span class="co0">#!/bin/sh</span>
+<span class="co0">#</span>
+<span class="co0"># s2s_combined.sh: create configuration scripts that set up a</span>
+<span class="co0"># site-to-site VPN between two OpenWrt hosts using wireguard.</span>
+<span class="co0"># The site configurations are symmetric, each is a server with the</span>
+<span class="co0"># other as a peer.</span>
+<span class="co0">#</span>
+<span class="co0"># This script generates two script files, one for each site.  The</span>
+<span class="co0"># generated files contain matched pre-shared keys and private/public key</span>
+<span class="co0"># values for the two sites.</span>
+<span class="co0">#</span>
+<span class="co0"># Run this script on one of the routers (site A for example), then</span>
+<span class="co0"># copy the generated script for the other site to the other router.</span>
+<span class="co0"># Run the appropriate script on each router: '/tmp/site-&lt;hostname&gt;.sh'</span>
+<span class="co0">#</span>
+<span class="co0"># After running the generated scripts, DELETE the scripts, so that</span>
+<span class="co0"># nobody copies them and steals the keys.  The keys are stored in the</span>
+<span class="co0"># network configuration files, which you are already protecting since</span>
+<span class="co0"># they have other confidential information such as wifi passwords, TLS</span>
+<span class="co0"># server keys, etc.</span>
+<span class="co0">#</span>
+<span class="co0"># The generated scripts configure a wireguard tunnel that carries IPv4</span>
+<span class="co0"># and IPv6 through the tunnel.  It routes the other site's IPv6 ULA</span>
+<span class="co0"># range through the tunnel, plus one IPv4 range.  You can add more</span>
+<span class="co0"># routed networks later through LuCI or uci.</span>
+<span class="co0">#</span>
+&nbsp;
+<span class="kw2">clear</span>
+<span class="kw3">echo</span> <span class="st0">&quot;======================================&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;|     Automated WireGuard Script     |&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;|          Site-to-Site VPN          |&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;|          Script generator          |&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;======================================&quot;</span>
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Defining variables... &quot;</span>
+<span class="co0"># Set the following values as needed to configure the generated scripts:</span>
+<span class="co0">#</span>
+<span class="co0"># Make this non-empty if you want to create scripts that only show</span>
+<span class="co0"># the configuration and don't actually set it.</span>
+<span class="re2">WG_TRIAL</span>=<span class="st0">&quot;&quot;</span>
+<span class="co0"># The hostnames of the two OpenWrt routers.  Use a dynamic DNS service</span>
+<span class="co0"># if needed so that your routers can find each other.</span>
+<span class="re2">WG_SITE_A_HOSTNAME</span>=<span class="st0">&quot;siteA.dynamic-dns.net&quot;</span>
+<span class="re2">WG_SITE_B_HOSTNAME</span>=<span class="st0">&quot;siteB.dynamic-dns.net&quot;</span>
+<span class="co0"># The description</span>
+<span class="re2">WG_SITE_A_DESCRIPTION</span>=<span class="st0">&quot;Site A, <span class="es3">${WG_SITE_A_HOSTNAME}</span>&quot;</span>
+<span class="re2">WG_SITE_B_DESCRIPTION</span>=<span class="st0">&quot;Site B, <span class="es3">${WG_SITE_B_HOSTNAME}</span>&quot;</span>
+<span class="co0"># The interface names at each site</span>
+<span class="re2">WG_SITE_A_IF</span>=<span class="st0">&quot;wg_s2s_a&quot;</span>
+<span class="re2">WG_SITE_B_IF</span>=<span class="st0">&quot;wg_s2s_b&quot;</span>
+<span class="re2">WG_PORT</span>=<span class="st0">&quot;51820&quot;</span>
+<span class="co0"># The IPv4 range at each site.</span>
+<span class="co0"># Site A will route traffic to WG_SITE_B_LAN_RANGE through the tunnel</span>
+<span class="co0"># and vice-versa for site B</span>
+<span class="re2">WG_SITE_A_LAN_RANGE</span>=<span class="st0">&quot;192.168.0.0/24&quot;</span>
+<span class="re2">WG_SITE_B_LAN_RANGE</span>=<span class="st0">&quot;192.168.1.0/24&quot;</span>
+<span class="co0"># The IPv6 ULA prefixes for each host.  The tunnel will be configured</span>
+<span class="co0"># to route to the peer's ULA addresses. Get this with</span>
+<span class="co0"># &quot;uci get network.globals.ula_prefix |sed -e 's,::/.*,,'&quot;</span>
+<span class="re2">WG_SITE_A_ULA_PREFIX</span>=<span class="st0">&quot;fdff:ffff:ffff&quot;</span>
+<span class="re2">WG_SITE_B_ULA_PREFIX</span>=<span class="st0">&quot;fdee:eeee:eeee&quot;</span>
+<span class="co0"># Route the IPv6 ULA prefix for the remote site through the tunnel</span>
+<span class="re2">WG_SITE_A_LAN_RANGE6</span>=<span class="st0">&quot;<span class="es3">${WG_SITE_A_ULA_PREFIX}</span>::/48&quot;</span>
+<span class="re2">WG_SITE_B_LAN_RANGE6</span>=<span class="st0">&quot;<span class="es3">${WG_SITE_B_ULA_PREFIX}</span>::/48&quot;</span>
+<span class="co0"># The firewall zone names at each site (the VPN tunnel endpoints are placed</span>
+<span class="co0"># in these zones).  The zones must already exist before you run</span>
+<span class="co0"># the generated scripts.</span>
+<span class="re2">WG_SITE_A_VPN_ZONE</span>=vpn
+<span class="re2">WG_SITE_B_VPN_ZONE</span>=vpn
+<span class="co0"># The firewall WAN zone names at each site, used to configure WAN</span>
+<span class="co0"># firewall ingress rules to accept wireguard traffic on the chosen port</span>
+<span class="re2">WG_SITE_A_WAN_ZONE</span>=wan
+<span class="re2">WG_SITE_B_WAN_ZONE</span>=wan
+<span class="co0"># You probably don't need to change these unless you don't like these</span>
+<span class="co0"># internal names</span>
+<span class="re2">WG_SITE_A_CONFIG_NAME</span>=s2s_vpn_site_a
+<span class="re2">WG_SITE_B_CONFIG_NAME</span>=s2s_vpn_site_b
+<span class="re2">WG_FW_RULE_ID</span>=<span class="st0">&quot;wg_s2s_<span class="es3">${WG_PORT}</span>&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="sy0">!</span> <span class="re5">-z</span> <span class="st0">&quot;<span class="es3">${WG_TRIAL}</span>&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+    <span class="re2">ECHO</span>=<span class="st0">&quot;echo echo&quot;</span>
+<span class="kw1">else</span>
+    <span class="re2">ECHO</span>=<span class="st0">&quot;echo&quot;</span>
+<span class="kw1">fi</span>
+&nbsp;
+cleanup<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Removing temporary key files... &quot;</span>
+    <span class="kw2">rm</span> <span class="re5">-f</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>wg_site_a.key <span class="sy0">/</span>tmp<span class="sy0">/</span>wg_site_a.pub
+    <span class="kw2">rm</span> <span class="re5">-f</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>wg_site_b.key <span class="sy0">/</span>tmp<span class="sy0">/</span>wg_site_b.pub
+    <span class="kw2">rm</span> <span class="re5">-f</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>wg_site_a_and_b.psk
+    <span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="kw3">trap</span> cleanup EXIT
+&nbsp;
+<span class="kw3">cd</span> <span class="sy0">/</span>tmp
+<span class="co0"># Generate keys</span>
+<span class="kw3">umask</span> <span class="re2">go</span>=
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Generating WireGuard keys for sites A and B... &quot;</span>
+wg genkey <span class="sy0">|</span> <span class="kw2">tee</span> wg_site_a.key <span class="sy0">|</span> wg pubkey <span class="sy0">&gt;</span> wg_site_a.pub
+wg genkey <span class="sy0">|</span> <span class="kw2">tee</span> wg_site_b.key <span class="sy0">|</span> wg pubkey <span class="sy0">&gt;</span> wg_site_b.pub
+wg genpsk <span class="sy0">&gt;</span> wg_site_a_and_b.psk
+&nbsp;
+<span class="co0"># Site_A keys</span>
+<span class="re2">WG_SITE_A_KEY</span>=<span class="st0">&quot;<span class="es4">$(cat wg_site_a.key)</span>&quot;</span>
+<span class="re2">WG_SITE_A_PUB</span>=<span class="st0">&quot;<span class="es4">$(cat wg_site_a.pub)</span>&quot;</span>
+&nbsp;
+<span class="co0"># Site_B keys</span>
+<span class="re2">WG_SITE_B_KEY</span>=<span class="st0">&quot;<span class="es4">$(cat wg_site_b.key)</span>&quot;</span>
+<span class="re2">WG_SITE_B_PUB</span>=<span class="st0">&quot;<span class="es4">$(cat wg_site_b.pub)</span>&quot;</span>
+&nbsp;
+<span class="co0"># Pre-shared key known by both</span>
+<span class="re2">WG_PSK</span>=<span class="st0">&quot;<span class="es4">$(cat wg_site_a_and_b.psk)</span>&quot;</span>
+&nbsp;
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+create_site_config<span class="br0">&#40;</span><span class="br0">&#41;</span>
+<span class="br0">&#123;</span>
+    <span class="re2">LOCAL_DESCRIPTION</span>=<span class="st0">&quot;<span class="es3">${1}</span>&quot;</span>
+    <span class="re2">LOCAL_VPN_ZONE</span>=<span class="st0">&quot;<span class="es3">${2}</span>&quot;</span>
+    <span class="re2">LOCAL_IF</span>=<span class="st0">&quot;<span class="es3">${3}</span>&quot;</span>
+    <span class="re2">LOCAL_WAN_ZONE</span>=<span class="st0">&quot;<span class="es3">${4}</span>&quot;</span>
+    <span class="re2">LOCAL_KEY</span>=<span class="st0">&quot;<span class="es3">${5}</span>&quot;</span>
+    <span class="re2">LOCAL_HOSTNAME</span>=<span class="st0">&quot;<span class="es3">${6}</span>&quot;</span>
+    <span class="re2">REMOTE_CONF</span>=<span class="st0">&quot;<span class="es3">${7}</span>&quot;</span>
+    <span class="re2">REMOTE_PUB</span>=<span class="st0">&quot;<span class="es3">${8}</span>&quot;</span>
+    <span class="re2">REMOTE_PSK</span>=<span class="st0">&quot;<span class="es3">${9}</span>&quot;</span>
+    <span class="re2">REMOTE_LAN_RANGE</span>=<span class="st0">&quot;<span class="es3">${10}</span>&quot;</span>
+    <span class="re2">REMOTE_LAN_RANGE6</span>=<span class="st0">&quot;<span class="es3">${11}</span>&quot;</span>
+    <span class="re2">REMOTE_HOSTNAME</span>=<span class="st0">&quot;<span class="es3">${12}</span>&quot;</span>
+    <span class="re2">REMOTE_DESCRIPTION</span>=<span class="st0">&quot;<span class="es3">${13}</span>&quot;</span>
+&nbsp;
+    <span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-z</span> <span class="st0">&quot;<span class="es2">$REMOTE_DESCRIPTION</span>&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+        <span class="kw3">echo</span> not enough args to subroutine <span class="nu0">1</span><span class="sy0">&gt;&amp;</span><span class="nu0">2</span>
+        <span class="kw3">exit</span> <span class="nu0">1</span>
+    <span class="kw1">fi</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;#!/bin/sh&quot;</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;clear&quot;</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;echo ======================================&quot;</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;echo <span class="es1">\&quot;</span>|     Automated WireGuard Script     |<span class="es1">\&quot;</span>&quot;</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;echo <span class="es1">\&quot;</span>|          Site-to-Site VPN          |<span class="es1">\&quot;</span>&quot;</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;echo <span class="es1">\&quot;</span>|           Configuration            |<span class="es1">\&quot;</span>&quot;</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;echo ======================================&quot;</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;echo Generated to configure <span class="es1">\&quot;</span><span class="es3">${LOCAL_HOSTNAME}</span><span class="es1">\&quot;</span> to tunnel with <span class="es1">\&quot;</span><span class="es3">${REMOTE_HOSTNAME}</span><span class="es1">\&quot;</span>&quot;</span>
+&nbsp;
+    <span class="kw3">echo</span> <span class="st0">&quot;echo -n Creating firewall rule for WAN ingress...&quot;</span>
+    <span class="co0"># find the zone in the firewall.  There doesn't seem to be a way</span>
+    <span class="co0"># to ask uci to show the zone with name=X, so we have</span>
+    <span class="co0"># to search for it</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;i=0&quot;</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;zone=&quot;</span>
+    <span class="kw3">echo</span> <span class="st_h">'while uci -q get firewall.@zone[$i].name &gt;/dev/null; do'</span>
+    <span class="kw3">echo</span> <span class="st_h">'    if [ &quot;$(uci -q get firewall.@zone[$i].name)&quot; = &quot;'</span><span class="co1">${LOCAL_VPN_ZONE}</span><span class="st_h">'&quot; ]; then'</span>
+    <span class="kw3">echo</span> <span class="st_h">'        zone=$i'</span>
+    <span class="kw3">echo</span> <span class="st_h">'        break'</span>
+    <span class="kw3">echo</span> <span class="st_h">'    fi'</span>
+    <span class="kw3">echo</span> <span class="st_h">'    i=$((i + 1))'</span>
+    <span class="kw3">echo</span> <span class="st_h">'done'</span>
+    <span class="kw3">echo</span> <span class="st_h">'if [ -z &quot;$zone&quot; ]; then'</span>
+    <span class="kw3">echo</span> <span class="st_h">'    echo firewall zone '</span><span class="co1">${LOCAL_VPN_ZONE}</span><span class="st_h">' not found'</span>
+    <span class="kw3">echo</span> <span class="st_h">'    exit 1'</span>
+    <span class="kw3">echo</span> <span class="st_h">'fi'</span>
+&nbsp;
+    <span class="co1">${ECHO}</span> uci del_list firewall.<span class="sy0">@</span>zone<span class="br0">&#91;</span><span class="st_h">'$zone'</span><span class="br0">&#93;</span>.network=<span class="co3">\&quot;</span><span class="co1">${LOCAL_IF}</span><span class="co3">\&quot;</span>
+    <span class="co1">${ECHO}</span> uci add_list firewall.<span class="sy0">@</span>zone<span class="br0">&#91;</span><span class="st_h">'$zone'</span><span class="br0">&#93;</span>.network=<span class="co3">\&quot;</span><span class="co1">${LOCAL_IF}</span><span class="co3">\&quot;</span>
+    <span class="co1">${ECHO}</span> uci <span class="re5">-q</span> delete firewall.<span class="co1">${WG_FW_RULE_ID}</span>
+    <span class="co1">${ECHO}</span> uci <span class="kw1">set</span> firewall.<span class="co1">${WG_FW_RULE_ID}</span>=<span class="co3">\&quot;</span>rule<span class="co3">\&quot;</span>
+    <span class="co1">${ECHO}</span> uci <span class="kw1">set</span> firewall.<span class="co1">${WG_FW_RULE_ID}</span>.name=<span class="co3">\&quot;</span>Allow-WireGuard-<span class="co1">${WG_PORT}</span><span class="co3">\&quot;</span>
+    <span class="co1">${ECHO}</span> uci <span class="kw1">set</span> firewall.<span class="co1">${WG_FW_RULE_ID}</span>.src=<span class="co3">\&quot;</span><span class="co1">${LOCAL_WAN_ZONE}</span><span class="co3">\&quot;</span>
+    <span class="co1">${ECHO}</span> uci <span class="kw1">set</span> firewall.<span class="co1">${WG_FW_RULE_ID}</span>.dest_port=<span class="co3">\&quot;</span><span class="co1">${WG_PORT}</span><span class="co3">\&quot;</span>
+    <span class="co1">${ECHO}</span> uci <span class="kw1">set</span> firewall.<span class="co1">${WG_FW_RULE_ID}</span>.proto=<span class="co3">\&quot;</span>udp<span class="co3">\&quot;</span>
+    <span class="co1">${ECHO}</span> uci <span class="kw1">set</span> firewall.<span class="co1">${WG_FW_RULE_ID}</span>.target=<span class="co3">\&quot;</span>ACCEPT<span class="co3">\&quot;</span>
+    <span class="co1">${ECHO}</span> uci commit firewall
+    <span class="co1">${ECHO}</span> service firewall restart
+    <span class="kw3">echo</span> <span class="st0">&quot;echo Done&quot;</span>
+&nbsp;
+    <span class="co0"># Configure network, $LOCAL_DESCRIPTION tunnel endpoint</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;echo -n Configure wireguard interface <span class="es1">\&quot;</span><span class="es3">${LOCAL_IF}</span><span class="es1">\&quot;</span>...&quot;</span>
+    <span class="co1">${ECHO}</span> uci <span class="re5">-q</span> delete network.<span class="co1">${LOCAL_IF}</span>
+    <span class="co1">${ECHO}</span> uci <span class="kw1">set</span> network.<span class="co1">${LOCAL_IF}</span>=<span class="co3">\&quot;</span>interface<span class="co3">\&quot;</span>
+    <span class="co1">${ECHO}</span> uci <span class="kw1">set</span> network.<span class="co1">${LOCAL_IF}</span>.proto=<span class="co3">\&quot;</span>wireguard<span class="co3">\&quot;</span>
+    <span class="co1">${ECHO}</span> uci <span class="kw1">set</span> network.<span class="co1">${LOCAL_IF}</span>.private_key=<span class="co3">\&quot;</span><span class="co1">${LOCAL_KEY}</span><span class="co3">\&quot;</span>
+    <span class="co1">${ECHO}</span> uci <span class="kw1">set</span> network.<span class="co1">${LOCAL_IF}</span>.listen_port=<span class="co3">\&quot;</span><span class="co1">${WG_PORT}</span><span class="co3">\&quot;</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;echo Done&quot;</span>
+&nbsp;
+    <span class="co0"># Add local site's ideas about remote site</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;echo -n Configure peer <span class="es1">\&quot;</span><span class="es3">${REMOTE_DESCRIPTION}</span><span class="es1">\&quot;</span>...&quot;</span>
+    <span class="co1">${ECHO}</span> uci <span class="re5">-q</span> delete network.<span class="co1">${REMOTE_CONF}</span>
+    <span class="co1">${ECHO}</span> uci <span class="kw1">set</span> network.<span class="co1">${REMOTE_CONF}</span>=<span class="co3">\&quot;</span>wireguard_<span class="co1">${LOCAL_IF}</span><span class="co3">\&quot;</span>
+    <span class="co1">${ECHO}</span> uci <span class="kw1">set</span> network.<span class="co1">${REMOTE_CONF}</span>.public_key=<span class="co3">\&quot;</span><span class="co1">${REMOTE_PUB}</span><span class="co3">\&quot;</span>
+    <span class="co1">${ECHO}</span> uci <span class="kw1">set</span> network.<span class="co1">${REMOTE_CONF}</span>.preshared_key=<span class="co3">\&quot;</span><span class="co1">${REMOTE_PSK}</span><span class="co3">\&quot;</span>
+    <span class="co1">${ECHO}</span> uci <span class="kw1">set</span> network.<span class="co1">${REMOTE_CONF}</span>.description=<span class="co3">\&quot;</span><span class="st0">&quot;<span class="es3">${REMOTE_DESCRIPTION}</span>&quot;</span><span class="co3">\&quot;</span>
+    <span class="co1">${ECHO}</span> uci add_list network.<span class="co1">${REMOTE_CONF}</span>.allowed_ips=<span class="co3">\&quot;</span><span class="co1">${REMOTE_LAN_RANGE}</span><span class="co3">\&quot;</span>
+    <span class="co1">${ECHO}</span> uci add_list network.<span class="co1">${REMOTE_CONF}</span>.allowed_ips=<span class="co3">\&quot;</span><span class="co1">${REMOTE_LAN_RANGE6}</span><span class="co3">\&quot;</span>
+    <span class="co1">${ECHO}</span> uci <span class="kw1">set</span> network.<span class="co1">${REMOTE_CONF}</span>.route_allowed_ips=<span class="co3">\'</span><span class="nu0">1</span><span class="co3">\'</span>
+    <span class="co1">${ECHO}</span> uci <span class="kw1">set</span> network.<span class="co1">${REMOTE_CONF}</span>.persistent_keepalive=<span class="co3">\'</span><span class="nu0">25</span><span class="co3">\'</span>
+    <span class="co1">${ECHO}</span> uci <span class="kw1">set</span> network.<span class="co1">${REMOTE_CONF}</span>.endpoint_host=<span class="co3">\&quot;</span><span class="co1">${REMOTE_HOSTNAME}</span><span class="co3">\&quot;</span>
+    <span class="co1">${ECHO}</span> uci <span class="kw1">set</span> network.<span class="co1">${REMOTE_CONF}</span>.endpoint_port=<span class="co3">\&quot;</span><span class="co1">${WG_PORT}</span><span class="co3">\&quot;</span>
+    <span class="co1">${ECHO}</span> uci commit network
+    <span class="co1">${ECHO}</span> service network restart
+    <span class="kw3">echo</span> <span class="st0">&quot;echo Done&quot;</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;echo ======================================&quot;</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;echo <span class="es1">\&quot;</span>|             Next steps             |<span class="es1">\&quot;</span>&quot;</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;echo ======================================&quot;</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;echo Remove this script: <span class="es1">\&quot;</span><span class="es1">\$</span>0<span class="es1">\&quot;</span>&quot;</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;echo It contains copies of your secret keys that&quot;</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;echo you do not need anymore, because they are now in the network&quot;</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;echo configuration files.  Delete the script to avoid key theft.&quot;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Creating configuration script for <span class="es1">\&quot;</span><span class="es3">${WG_SITE_A_DESCRIPTION}</span><span class="es1">\&quot;</span> ... &quot;</span>
+create_site_config \
+    <span class="st0">&quot;<span class="es3">${WG_SITE_A_DESCRIPTION}</span>&quot;</span> \
+    <span class="st0">&quot;<span class="es3">${WG_SITE_A_VPN_ZONE}</span>&quot;</span> \
+    <span class="st0">&quot;<span class="es3">${WG_SITE_A_IF}</span>&quot;</span> \
+    <span class="st0">&quot;<span class="es3">${WG_SITE_A_WAN_ZONE}</span>&quot;</span> \
+    <span class="st0">&quot;<span class="es3">${WG_SITE_A_KEY}</span>&quot;</span>\
+    <span class="st0">&quot;<span class="es3">${WG_SITE_A_HOSTNAME}</span>&quot;</span>\
+    <span class="st0">&quot;<span class="es3">${WG_SITE_B_CONFIG_NAME}</span>&quot;</span> \
+    <span class="st0">&quot;<span class="es3">${WG_SITE_B_PUB}</span>&quot;</span> \
+    <span class="st0">&quot;<span class="es3">${WG_PSK}</span>&quot;</span> \
+    <span class="st0">&quot;<span class="es3">${WG_SITE_B_LAN_RANGE}</span>&quot;</span> \
+    <span class="st0">&quot;<span class="es3">${WG_SITE_B_LAN_RANGE6}</span>&quot;</span> \
+    <span class="st0">&quot;<span class="es3">${WG_SITE_B_HOSTNAME}</span>&quot;</span> \
+    <span class="st0">&quot;<span class="es3">${WG_SITE_B_DESCRIPTION}</span>&quot;</span> <span class="sy0">&gt;</span>site-<span class="co1">${WG_SITE_A_HOSTNAME}</span>.sh
+<span class="kw2">chmod</span> u+x site-<span class="co1">${WG_SITE_A_HOSTNAME}</span>.sh
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Creating configuration script for <span class="es1">\&quot;</span><span class="es3">${WG_SITE_B_DESCRIPTION}</span><span class="es1">\&quot;</span> ... &quot;</span>
+create_site_config \
+    <span class="st0">&quot;<span class="es3">${WG_SITE_B_DESCRIPTION}</span>&quot;</span> \
+    <span class="st0">&quot;<span class="es3">${WG_SITE_B_VPN_ZONE}</span>&quot;</span> \
+    <span class="st0">&quot;<span class="es3">${WG_SITE_B_IF}</span>&quot;</span> \
+    <span class="st0">&quot;<span class="es3">${WG_SITE_B_WAN_ZONE}</span>&quot;</span> \
+    <span class="st0">&quot;<span class="es3">${WG_SITE_B_KEY}</span>&quot;</span>\
+    <span class="st0">&quot;<span class="es3">${WG_SITE_B_HOSTNAME}</span>&quot;</span>\
+    <span class="st0">&quot;<span class="es3">${WG_SITE_A_CONFIG_NAME}</span>&quot;</span> \
+    <span class="st0">&quot;<span class="es3">${WG_SITE_A_PUB}</span>&quot;</span> \
+    <span class="st0">&quot;<span class="es3">${WG_PSK}</span>&quot;</span> \
+    <span class="st0">&quot;<span class="es3">${WG_SITE_A_LAN_RANGE}</span>&quot;</span> \
+    <span class="st0">&quot;<span class="es3">${WG_SITE_A_LAN_RANGE6}</span>&quot;</span> \
+    <span class="st0">&quot;<span class="es3">${WG_SITE_A_HOSTNAME}</span>&quot;</span> \
+    <span class="st0">&quot;<span class="es3">${WG_SITE_A_DESCRIPTION}</span>&quot;</span> <span class="sy0">&gt;</span>site-<span class="co1">${WG_SITE_B_HOSTNAME}</span>.sh
+<span class="kw2">chmod</span> u+x site-<span class="co1">${WG_SITE_B_HOSTNAME}</span>.sh
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="kw3">echo</span> <span class="st0">&quot;======================================&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;|             Next steps             |&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;======================================&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;1. Copy /tmp/site-<span class="es3">${WG_SITE_A_HOSTNAME}</span>.sh to <span class="es3">${WG_SITE_A_HOSTNAME}</span> and run it there,&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;  then delete all copies of it to protect your keys.&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;2. Copy /tmp/site-<span class="es3">${WG_SITE_B_HOSTNAME}</span>.sh to <span class="es3">${WG_SITE_B_HOSTNAME}</span> and run it there,&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;  then delete all copies of it to protect your keys.&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;======================================&quot;</span>
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="sy0">!</span> <span class="re5">-z</span> <span class="st0">&quot;<span class="es3">${WG_TRIAL}</span>&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;=========================================&quot;</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;| Trial mode, scripts are nonfunctional |&quot;</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;=========================================&quot;</span>
+<span class="kw1">fi</span>
+<span class="kw3">exit</span> <span class="nu0">0</span></pre>
+</dd></dl>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;2. Script&quot;,&quot;hid&quot;:&quot;script&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;1354-11978&quot;} -->
+<h2 class="sectionedit5" id="testing">3. Testing</h2>
+<div class="level2">
+
+<p>
+The <abbr title="Virtual Private Network">VPN</abbr> connection auto-establishes when the network is started on each system. <br/>
+
+In LuCI, you can check in STATUS \ WIREGUARD if site-a and site-b are connected, you see the time between the last successfull handshake (or errors).
+</p>
+
+<p>
+<strong>Please be aware, that the scripts do not set firewall zone settings to enable traffic forwarding from “lan” firewall zone to “vpn” firewall zone and vice versa.<br/>
+
+You need to configure this firewall zone stuff (or for testing purpose, just put the wiregourd interfaces on both sides in the “lan” firwall zone instead of “vpn”) before you can do the tracerout test (see below). </strong>
+<br/>
+
+</p>
+
+<p>
+Verify the traffic is routed from each site through the <abbr title="Virtual Private Network">VPN</abbr> to the tunneled addresses at the other site.<br/>
+
+</p>
+
+<p>
+On site a:
+</p>
+<pre class="code bash">traceroute <span class="sy0">&lt;</span>some-site-b-LAN-IPv4-address<span class="sy0">&gt;</span>
+traceroute <span class="sy0">&lt;</span>some-site-b-LAN-IPv6-address<span class="sy0">&gt;</span></pre>
+
+<p>
+On site b:
+</p>
+<pre class="code bash">traceroute <span class="sy0">&lt;</span>some-site-a-LAN-IPv4-address<span class="sy0">&gt;</span>
+traceroute <span class="sy0">&lt;</span>some-site-a-LAN-IPv6-address<span class="sy0">&gt;</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;3. Testing&quot;,&quot;hid&quot;:&quot;testing&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:5,&quot;range&quot;:&quot;11979-12961&quot;} -->
+<h2 class="sectionedit6" id="troubleshooting">4. Troubleshooting</h2>
+<div class="level2">
+
+<p>
+* Error Line 100 .. : Did you install Software Package luci-proto-wireguard before running the script?<br/>
+
+* Editing Firewall before running scripts: Have you defined a empty “vpn” Firewall Zone before running the script? <br/>
+
+* Downloading the code/script/file to a Computer with Windows <abbr title="Operating System">OS</abbr> leads to a non functional script file. You need to open the downloaded file with an editor like PSPad or Notepad++ and save it as text file in UNIX format before uploading.<br/>
+
+* Transfer/Upload of the downloaded script/code snippet/file s2s_combined.sh from your computer to the openWRT device can be tricky if you are working with a Windows based system / WinSCP. Make sure you use “text” mode for the upload of the file to the “root” folder of your openWrt device. For details see this forum post: <a href="https://forum.openwrt.org/t/wireguard-guide-site2site-script-upload-problem-binary-text-winscp/182597" class="urlextern" title="https://forum.openwrt.org/t/wireguard-guide-site2site-script-upload-problem-binary-text-winscp/182597" rel="ugc nofollow">https://forum.openwrt.org/t/wireguard-guide-site2site-script-upload-problem-binary-text-winscp/182597</a><br/>
+
+* More info about configuring the firwall zones “vpn” and “lan” working together can be found here:<br/>
+
+→ <a href="https://forum.openwrt.org/t/solved-routing-riddle-driving-me-crazy/182754/4" class="urlextern" title="https://forum.openwrt.org/t/solved-routing-riddle-driving-me-crazy/182754/4" rel="ugc nofollow">https://forum.openwrt.org/t/solved-routing-riddle-driving-me-crazy/182754/4</a> and in this thread <a href="https://forum.openwrt.org/t/solved-wireguarde-site2site-script-firewall-zone-problem/182709" class="urlextern" title="https://forum.openwrt.org/t/solved-wireguarde-site2site-script-firewall-zone-problem/182709" rel="ugc nofollow">https://forum.openwrt.org/t/solved-wireguarde-site2site-script-firewall-zone-problem/182709</a><br/>
+
+* optimzing, tuning, extra stuff to make things easier to understand / documented:<br/>
+
+→ Try to give your Wireguard Network Interface a <abbr title="Internet Protocol">IP</abbr> (Range) and allow the Peer that <abbr title="Internet Protocol">IP</abbr> Range as suggested here: <a href="https://forum.openwrt.org/t/solved-routing-riddle-driving-me-crazy/182754/15" class="urlextern" title="https://forum.openwrt.org/t/solved-routing-riddle-driving-me-crazy/182754/15" rel="ugc nofollow">https://forum.openwrt.org/t/solved-routing-riddle-driving-me-crazy/182754/15</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;4. Troubleshooting&quot;,&quot;hid&quot;:&quot;troubleshooting&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:6,&quot;range&quot;:&quot;12962-&quot;} -->

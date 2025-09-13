@@ -1,0 +1,584 @@
+
+<h1 class="sectionedit1" id="virtualbox_advanced">VirtualBox Advanced</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;meta:infobox:wip&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__meta:infobox:wip" id="plugin_include__meta__infobox__wip">
+<div class="level1">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_center wrap_wip plugin_wrap" style="width: 70%;">
+<p>
+<strong>Work in Progress!</strong><br/>
+
+This page is a continuous work in progress. You can edit this page to contribute information. 
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;meta:infobox:wip&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;VirtualBox Advanced&quot;,&quot;hid&quot;:&quot;virtualbox_advanced&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-89&quot;} -->
+<h2 class="sectionedit6" id="overview">Overview</h2>
+<div class="level2">
+
+<p>
+This guide extends the basic VirtualBox HowTo with broader setup recommendations, samples and common “gotcha-s”.
+</p>
+
+<p>
+NOTE: Use a wired virtualbox host (unless you are really confident with virtualbox i.e. 80211 bridging issues ).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Overview&quot;,&quot;hid&quot;:&quot;overview&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;90-337&quot;} -->
+<h2 class="sectionedit7" id="prerequisite_concepts">Prerequisite Concepts</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Prerequisite Concepts&quot;,&quot;hid&quot;:&quot;prerequisite_concepts&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;338-371&quot;} -->
+<h3 class="sectionedit8" id="x86_64_basics">x86_64 Basics</h3>
+<div class="level3">
+
+<p>
+As the operating system within VirtualBox is basically an x86_64 host, having a general grasp of the hard drive partition setup, bootloader operation et. al. is beneficial. Particularly, when you need to undertake more advanced network interface setup within the VM and then translate that to VBox nics. In other words, lack of confidence performing bare metal config will compound troubleshooting if you are unable to clearly differentiate what is physical and what is virtual. In this case perhaps using an old pc or spare usb disk to test on real hardware first is a good first step.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;x86_64 Basics&quot;,&quot;hid&quot;:&quot;x86_64_basics&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:8,&quot;range&quot;:&quot;372-983&quot;} -->
+<h3 class="sectionedit9" id="squashfs_vs_ext4">squashfs vs ext4</h3>
+<div class="level3">
+
+<p>
+You&#039;ll likely need to select between a combined squashfs vs ext4 OpenWrt image to use<sup><a href="#fn__1" id="fnt__1" class="fn_top">1)</a></sup>. For most hardware supported by OpenWrt, <strong>combined-squashfs</strong> is recommended (and in many cases the only type of image offered). For x86 hardware where space is not an issue, OpenWrt is offered also in <strong>combined-ext4</strong> images. Let&#039;s look at what are the differences.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;squashfs vs ext4&quot;,&quot;hid&quot;:&quot;squashfs_vs_ext4&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:9,&quot;range&quot;:&quot;984-1456&quot;} -->
+<h3 class="sectionedit10" id="where_is_my_router">Where is my router?</h3>
+<div class="level3">
+
+<p>
+<a href="/_media/media/netdiag1c.png" class="media" title="media:netdiag1c.png"><img src="/_media/media/netdiag1c.png?w=600&amp;tok=ebf41f" class="media" loading="lazy" alt="" width="600" /></a>
+</p>
+
+</div>
+
+<h4 id="using_squashfs">Using squashfs:</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> sysupgrade at any time to update the kernel, which is useful if you are tracking snapshot to have the latest and greatest </div>
+</li>
+<li class="level1"><div class="li"> factory reset</div>
+</li>
+<li class="level1"><div class="li"> the default read-write partition in a squashfs image is 128MB, it&#039;s uncommon to actually fill it up with common package additions</div>
+</li>
+<li class="level1"><div class="li"> If you need more space for data you can always increase the virtual disk size and add a data partition (which will be preserved on sysupgrade), or even better add more virtual drives you would use just for storage.</div>
+</li>
+</ul>
+
+<p>
+Squashfs images are neat when you are using the <a href="/docs/guide-user/additional-software/imagebuilder" class="wikilink1" title="docs:guide-user:additional-software:imagebuilder" data-wiki-id="docs:guide-user:additional-software:imagebuilder">Imagebuilder</a>  to integrate all packages you want in a single re-settable image. You can install with sysupgrade, and not lose any of your “installed packages” as you have integrated them in the base firmware image.
+</p>
+
+<p>
+Since you have Virtualbox anyway, why not have a Debian or Ubuntu VM and use the Imagebuilder too. It&#039;s a very convenient way of tracking snapshot(master) to have the latest and greatest, and the only practical way to do so for most other devices supported by OpenWrt, so this is more or less the best “choice” for OpenWrt veterans that have deployed many devices and are using the imagebuilder already.<br/>
+
+NB: With Imagebuilder, the size of the read-write partition is irrelevant as all packages are embedded in the squashfs read-only partition that is enlarged as needed, so 128MB is available for config only.
+</p>
+
+</div>
+
+<h4 id="using_ext4">Using ext4:</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> With ext4 you lose the ability to sysupgrade but you can keep updating packages over and over. ( todo: clarify see final sentence )</div>
+</li>
+<li class="level1"><div class="li"> Depending on your hdd durability, there is more wear but most users have zero issues. Kindof mute for vm&#039;s.</div>
+</li>
+<li class="level1"><div class="li"> Updating the kernel must be done manually by mounting the first partition (<strong>/dev/sda1</strong> if you have only one disk) and replacing the “<strong>vmlinuz</strong>” file you find in the <strong>/boot</strong> folder with the file with the same name you find in the download folder <a href="https://downloads.openwrt.org/releases/18.06.4/targets/x86/64/" class="urlextern" title="https://downloads.openwrt.org/releases/18.06.4/targets/x86/64/" rel="ugc nofollow">https://downloads.openwrt.org/releases/18.06.4/targets/x86/64/</a> , then installing the “<strong>kernel_xxxx.ipk</strong>” package you find here <a href="https://downloads.openwrt.org/releases/18.06.4/targets/x86/64/packages/" class="urlextern" title="https://downloads.openwrt.org/releases/18.06.4/targets/x86/64/packages/" rel="ugc nofollow">https://downloads.openwrt.org/releases/18.06.4/targets/x86/64/packages/</a> for example if you just updated to 18.06.04 stable release, and then reboot. \\That&#039;s a virtual package, it exists only to tell the system what kernel version is installed but does not actually install anything. The reason this is not done is that the kernel installation in 99% of OpenWrt targets happens through Sysupgrade process, not through packages, so none took the time and effort to actually have kernel upgrades done properly in this fashion. But anyway, it&#039;s easy enough to script around this issue I guess.</div>
+</li>
+<li class="level1"><div class="li"> With ext4 you can increase the partition size to your heart&#039;s content, but you will need to do it “offline”, i.e. by booting a Gparted liveCD in your Virtualbox VM, as the default ext4 image is too small (technical reason: <em>the filesystem does not contain enough inodes at this size</em>) to allow online resizing (<em>ext4 can be enlarged without using a liveCD if it is big enough at the start</em>)</div>
+</li>
+</ul>
+
+<p>
+This type of image mimics a more conventional Linux distro like Debian or Ubuntu, where you have packages and you keep updating or installing them as needed. But afaik this is a bit of a pain to do if you try to follow snapshot, as OpenWrt does not implement the ability to have multiple ( non-identical ) kernels with kernel modules (the Linux “device drivers”) installed at the same time, and select what kernel to boot when you reboot. Although it is possible to manually edit grub.cfg to support this manually using differing rootfs partitions for each kernel ( without sysupgrade support )
+</p>
+
+<p>
+So when you go and update the kernel or the kernel modules (packages that start with <strong>kmod-xxxx.ipk</strong>) you will probably experience breakage or will have to fight against opkg that refuses to install them as they are not compatible with the kernel in use. I <em>think</em> that you could actually do this if you install the kernel first, which is a virtual package, and then install the kmod packages and then reboot immediately, but I never tried so <abbr title="Your mileage may vary">YMMV</abbr>.
+</p>
+
+<p>
+Therefore, using sysupgrade to flash a new combined-ext.bin will typically zap the “boot” and “rootfs” partitions, config is migratable, packages are not.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Where is my router?&quot;,&quot;hid&quot;:&quot;where_is_my_router&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:10,&quot;range&quot;:&quot;1457-5821&quot;} -->
+<h3 class="sectionedit11" id="virtualbox_networking_basics">VirtualBox Networking Basics</h3>
+<div class="level3">
+
+<p>
+Knowledge of the basic network types offered by VirtualBox will help you immensely...
+</p>
+<ul>
+<li class="level1"><div class="li"> Take a few minutes to draw a simple diagram of how a HOST network maps to a GUEST machines networks/interfaces will save you much drama and need to reconfigure down the track. <sup><a href="#fn__2" id="fnt__2" class="fn_top">2)</a></sup></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;VirtualBox Networking Basics&quot;,&quot;hid&quot;:&quot;virtualbox_networking_basics&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:11,&quot;range&quot;:&quot;5822-6180&quot;} -->
+<h2 class="sectionedit12" id="networking_ideas">Networking Ideas</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Networking Ideas&quot;,&quot;hid&quot;:&quot;networking_ideas&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:12,&quot;range&quot;:&quot;6181-6209&quot;} -->
+<h3 class="sectionedit13" id="example_1">Example 1</h3>
+<div class="level3">
+
+<p>
+Example 1 is useful for testing both <abbr title="Local Area Network">LAN</abbr> and <abbr title="Wide Area Network">WAN</abbr> sides of OpenWrt.
+</p>
+<ul>
+<li class="level1"><div class="li"> All connections use the same physical network and separation is logical only. </div>
+</li>
+<li class="level1"><div class="li"> Both sides of the router are accessible. </div>
+</li>
+<li class="level1"><div class="li"> Changing the gateway and dns on your HOST will send your traffic via OpenWrt ( dual-nat ).</div>
+</li>
+</ul>
+
+<p>
+<a href="/_media/media/netdiag1.png" class="media" title="media:netdiag1.png"><img src="/_media/media/netdiag1.png?w=600&amp;tok=1c39eb" class="media" loading="lazy" alt="" width="600" /></a>
+</p>
+<pre class="code bash">OpenWrt VM
+vmnic0     bridged     LAN     192.168.1.1                   <span class="br0">&#40;</span>disable dhcp server<span class="br0">&#41;</span>
+vmnic1     bridged     WAN     <span class="br0">&#40;</span>dhcp from normal network<span class="br0">&#41;</span>
+&nbsp;
+HostOS
+hostnic0   dhcp                <span class="br0">&#40;</span>or normal setting<span class="br0">&#41;</span>
+hostnic0:<span class="nu0">2</span> 192.168.1.2</pre>
+
+<p>
+This configuration is highly adaptable... with the caveats of not using the OpenWrt dhcp server, and the shared physical medium ( lesser isolation ). You could easily run an openvpn client and assign <abbr title="Local Area Network">LAN</abbr> hosts the 192.168.1.x range etc. so send them via the OpenWrt VM.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Example 1&quot;,&quot;hid&quot;:&quot;example_1&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:13,&quot;range&quot;:&quot;6210-7085&quot;} -->
+<h3 class="sectionedit14" id="linux_virtualbox_auto_create">Linux VirtualBox Auto Create</h3>
+<div class="level3">
+
+<p>
+NOTE: Requires: wget, gunzip and VBoxManage ( VirtualBox )
+</p>
+<pre class="code bash"><span class="co0">#!/bin/bash</span>
+&nbsp;
+<span class="re2">sNAME</span>=<span class="st0">&quot;openwrtx64-<span class="es5">`date +%Y%m%d-%H%M`</span>&quot;</span>
+<span class="re2">dirCACHE</span>=<span class="st0">&quot;<span class="es3">${HOME}</span>/cache&quot;</span>; <span class="kw2">mkdir</span> <span class="re5">-p</span> <span class="re1">$dirCACHE</span>
+<span class="re2">VMFOLD</span>=<span class="st0">&quot;<span class="es5">`cat ~/.config/VirtualBox/VirtualBox.xml | grep -i SystemProperties | cut -d'&quot;' -f2`</span>&quot;</span>
+<span class="re2">VDI</span>=<span class="st0">&quot;<span class="es3">${sNAME}</span>.vdi&quot;</span>
+<span class="re2">DISKSIZE</span>=<span class="st_h">'512000000'</span>
+<span class="re2">VMNAME</span>=<span class="st0">&quot;<span class="es3">${sNAME}</span>&quot;</span>
+<span class="re2">IMGC</span>=<span class="st0">&quot;<span class="es3">${dirCACHE}</span>/openwrt-18.06.4-x86-64-combined-ext4.img.gz&quot;</span>
+<span class="re2">URL</span>=<span class="st0">&quot;https://downloads.openwrt.org/releases/18.06.4/targets/x86/64/openwrt-18.06.4-x86-64-combined-ext4.img.gz&quot;</span>
+<span class="re2">WGET</span>=<span class="st0">&quot;wget&quot;</span>; <span class="re2">GUNZIP</span>=<span class="st0">&quot;gunzip&quot;</span>; <span class="re2">VBOXMANAGE</span>=<span class="st0">&quot;VBoxManage&quot;</span>
+&nbsp;
+<span class="kw3">echo</span> <span class="st0">&quot;    Creating VM: <span class="es2">$VMNAME</span>&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;          Cache: <span class="es3">${HOME}</span>/cache&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;       Disksize: <span class="es2">$DISKSIZE</span>&quot;</span>
+<span class="kw2">sleep</span> <span class="nu0">2</span>
+&nbsp;
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="sy0">!</span> <span class="re5">-f</span> <span class="st0">&quot;<span class="es3">${IMGC}</span>&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;Downloading Image: <span class="es2">$URL</span>&quot;</span>
+    <span class="re1">$WGET</span> <span class="st0">&quot;<span class="es3">${URL}</span>&quot;</span> <span class="re5">-O</span> <span class="st0">&quot;<span class="es3">${IMGC}</span>&quot;</span> <span class="sy0">||</span> <span class="kw3">echo</span> <span class="st0">&quot;Failed to download: <span class="es3">${URL}</span>&quot;</span> <span class="sy0">&amp;&amp;</span> <span class="kw3">exit</span> <span class="nu0">1</span>
+<span class="kw1">else</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;Using cached Image: <span class="es2">$IMGC</span>&quot;</span>
+<span class="kw1">fi</span>
+<span class="kw2">sleep</span> <span class="nu0">2</span>
+&nbsp;
+<span class="re1">$VBOXMANAGE</span> createvm <span class="re5">--name</span> <span class="re1">$VMNAME</span> <span class="re5">--register</span>
+&nbsp;
+<span class="re1">$VBOXMANAGE</span> modifyvm <span class="re1">$VMNAME</span> \
+    <span class="re5">--description</span> <span class="st0">&quot;openwrt vbox&quot;</span> \
+    <span class="re5">--ostype</span> <span class="st0">&quot;Linux26&quot;</span> \
+    <span class="re5">--memory</span> <span class="st0">&quot;512&quot;</span> \
+    <span class="re5">--cpus</span> <span class="st0">&quot;1&quot;</span> \
+    <span class="re5">--nic1</span> <span class="st0">&quot;bridged&quot;</span> \
+    <span class="re5">--nictype1</span> 82540EM \
+    <span class="re5">--nic2</span> <span class="st0">&quot;bridged&quot;</span> \
+    <span class="re5">--nictype2</span> 82540EM
+&nbsp;
+<span class="re1">$VBOXMANAGE</span> storagectl <span class="re1">$VMNAME</span> \
+    <span class="re5">--name</span> <span class="st0">&quot;SATA Controller&quot;</span> \
+    <span class="re5">--add</span> <span class="st0">&quot;sata&quot;</span> \
+    <span class="re5">--portcount</span> <span class="st0">&quot;4&quot;</span> \
+    <span class="re5">--hostiocache</span> <span class="st0">&quot;on&quot;</span> \
+    <span class="re5">--bootable</span> <span class="st0">&quot;on&quot;</span> <span class="sy0">&amp;&amp;</span> \
+&nbsp;
+<span class="re1">$GUNZIP</span> <span class="re5">--stdout</span> <span class="st0">&quot;<span class="es3">${IMGC}</span>&quot;</span> <span class="sy0">|</span> <span class="re1">$VBOXMANAGE</span> convertfromraw <span class="re5">--format</span> VDI stdin <span class="co1">${VMFOLD}</span><span class="sy0">/</span><span class="co1">${VMNAME}</span><span class="sy0">/</span><span class="co1">${VDI}</span> <span class="re1">$DISKSIZE</span>
+&nbsp;
+<span class="re1">$VBOXMANAGE</span> storageattach <span class="re1">$VMNAME</span> \
+    <span class="re5">--storagectl</span> <span class="st0">&quot;SATA Controller&quot;</span> \
+    <span class="re5">--port</span> <span class="st0">&quot;1&quot;</span> \
+    <span class="re5">--type</span> <span class="st0">&quot;hdd&quot;</span> \
+    <span class="re5">--nonrotational</span> <span class="st0">&quot;on&quot;</span> \
+    <span class="re5">--medium</span> <span class="re1">$VMFOLD</span><span class="sy0">/</span><span class="co1">${VMNAME}</span><span class="sy0">/</span><span class="re1">$VDI</span>
+&nbsp;
+&nbsp;
+<span class="kw3">echo</span> <span class="st0">&quot;Open the VNIC in VirtualBox to populate bridged adapter name&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;############################################################&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;       DISABLE DHCP on router!                              &quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;############################################################&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;&quot;</span>
+&nbsp;
+<span class="kw3">exit</span> <span class="nu0">0</span></pre>
+
+</div>
+
+<h4 id="add_some_shaping">Add some shaping</h4>
+<div class="level4">
+
+<p>
+As virtualbox built in shaping only works in one direction... example 1 is the perfect network architecture to perform shaping using the built in virtualbox bandwidth limits. It is possible to change the speed on the fly while the vm is running.
+</p>
+
+<p>
+( NOTE: “wan” in the script below refers to the vm-nic1(second) )
+</p>
+<pre class="code bash"><span class="co0">#!/bin/bash</span>
+&nbsp;
+<span class="re2">VMNAME</span>=<span class="st0">&quot;openwrtx64-20191002-2352&quot;</span>
+<span class="re2">lannicspeed</span>=<span class="st0">&quot;350k&quot;</span> <span class="co0"># .35mb/s use m for mbps</span>
+<span class="re2">wannicspeed</span>=<span class="st0">&quot;360k&quot;</span> <span class="co0">#</span>
+&nbsp;
+VBoxManage bandwidthctl <span class="st0">&quot;<span class="es2">$VMNAME</span>&quot;</span> add Limitlan <span class="re5">--type</span> network <span class="re5">--limit</span> <span class="re1">$lannicspeed</span>
+VBoxManage bandwidthctl <span class="st0">&quot;<span class="es2">$VMNAME</span>&quot;</span> add Limitwan <span class="re5">--type</span> network <span class="re5">--limit</span> <span class="re1">$wannicspeed</span>
+VBoxManage modifyvm <span class="st0">&quot;<span class="es2">$VMNAME</span>&quot;</span> <span class="re5">--nicbandwidthgroup1</span> Limitlan <span class="co0">#assign to nic1</span>
+VBoxManage modifyvm <span class="st0">&quot;<span class="es2">$VMNAME</span>&quot;</span> <span class="re5">--nicbandwidthgroup2</span> Limitwan <span class="co0">#assign to nic2</span></pre>
+
+</div>
+
+<h4 id="tagging_for_vm_s">Tagging for VM&#039;s</h4>
+<div class="level4">
+
+<p>
+Note: example ip link is non-permanent... see your distro for appropriate place to configure your host nic for a vlan.
+</p>
+
+<p>
+You can use a single cable as a “trunk”. This essentially turns your wired link into a managed switch as you will tag <abbr title="Virtual Local Area Network">VLAN</abbr> per vm upstream on the wired link.
+</p>
+
+<p>
+This can be used for clients... with openwrt on a “real router” running several vlans over a single <abbr title="Local Area Network">LAN</abbr> port. Or you could use this method for an OpenWrtVM... tag several of it&#039;s interfaces outside of the guest software... “mimicking” a managed switch.
+</p>
+
+<p>
+This example shows clientVM&#039;s to an upstream OpenWrt router.
+</p>
+<pre class="code bash"><span class="co0">######################################################### Step1 ONHOST</span>
+<span class="re2">NIC</span>=<span class="st0">&quot;enp0s25&quot;</span>
+<span class="kw2">ip link</span> add <span class="kw2">link</span> <span class="re1">$NIC</span> name <span class="re1">$NIC</span>.50 <span class="kw3">type</span> vlan <span class="kw2">id</span> <span class="nu0">50</span>
+<span class="kw2">ip link</span> <span class="kw1">set</span> dev <span class="re1">$NIC</span>.50 up
+&nbsp;
+<span class="co0">######################################################### Step2</span>
+In VirtualBox change bridge <span class="kw1">for</span> a VM to interface NIC.50
+&nbsp;
+<span class="co0">######################################################### Step3 In Openwrt</span>
+<span class="co0">#-Go to switch... add vlan 50 tagged on same port as pc/server + cpu1</span>
+<span class="co0">#-Go to interfaces... add interface... NAME + INTERFACE:ethNcpu.50 + IP:192.168.50.1 etc. etc.</span>
+&nbsp;
+&nbsp;
+<span class="co0">################################## debugging on host</span>
+<span class="co0">#ip -d link show $NIC.50</span>
+<span class="co0">#ip link delete $NIC.50</span>
+<span class="co0">#tcpdump -nnei $NIC -vvv</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Linux VirtualBox Auto Create&quot;,&quot;hid&quot;:&quot;linux_virtualbox_auto_create&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:14,&quot;range&quot;:&quot;7086-11091&quot;} -->
+<h3 class="sectionedit15" id="example1b_samesegment-same-subnet_prerouter">Example:1b SameSegment-same-Subnet PreRouter</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="advantages">Advantages</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> no dual nat</div>
+</li>
+<li class="level1"><div class="li"> seamless client redirection via dhcp gateway re-assignment</div>
+</li>
+<li class="level1"><div class="li"> reduces management / configuration overhead due to single subnet/range</div>
+</li>
+<li class="level1"><div class="li"> cpu and memory intensive services can be run on your best hardware</div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="disadvantages">Disadvantages</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> firewall is dependent on edge router</div>
+</li>
+<li class="level1"><div class="li"> introduces second point of failure for clients using the “middle” router</div>
+</li>
+<li class="level1"><div class="li"> vm host / guest power consumption</div>
+</li>
+</ul>
+
+<p>
+<a href="/_media/media/netdiag1b.png" class="media" title="media:netdiag1b.png"><img src="/_media/media/netdiag1b.png?w=600&amp;tok=161963" class="media" loading="lazy" alt="" width="600" /></a>
+</p>
+
+<p>
+As show in the diagram;
+</p>
+<ul>
+<li class="level1"><div class="li"> Only the <abbr title="Local Area Network">LAN</abbr> interface is bridged, with a static ip on your <abbr title="Local Area Network">LAN</abbr> subnet</div>
+</li>
+<li class="level1"><div class="li"> The <abbr title="Local Area Network">LAN</abbr> interface has both gateway and dns servers set to the edge router</div>
+</li>
+<li class="level1"><div class="li"> Clients gateway and/or dns pointed to the VM should you wish to use say <abbr title="Virtual Private Network">VPN</abbr> etc. there...</div>
+</li>
+</ul>
+
+<p>
+You now have a powerful internal router for <abbr title="Virtual Private Network">VPN</abbr> and any other service you wish. Leaving the edge router to do simple routing, nat and firewalling tasks. Give some clients your normal <abbr title="Local Area Network">LAN</abbr> gateway and some clients the OpenWrt VM, and presto! poor mans <abbr title="Policy Based Routing">PBR</abbr> ;).
+</p>
+
+</div>
+
+<h4 id="cli_basic_network_access_setup_vi_dhcp">CLI Basic Network Access Setup (vi dhcp)</h4>
+<div class="level4">
+
+<p>
+* use gateway and dns options for static ip
+</p>
+
+<p>
+<video class="media" width="600" height="240" controls="controls">
+<source src="/_media/media/vbox-simple-opkg-as-client.webm" type="video/webm" />
+<a href="/_media/media/vbox-simple-opkg-as-client.webm?cache=" class="media mediafile mf_webm" title="media:vbox-simple-opkg-as-client.webm (1.9 MB)">vbox-simple-opkg-as-client.webm</a></video>
+
+</p>
+
+</div>
+
+<h4 id="cli_install_luci_on_snapshot">CLI Install LUCI on snapshot</h4>
+<div class="level4">
+
+<p>
+<video class="media" width="600" height="240" controls="controls">
+<source src="/_media/media/vbox-simple-opkg-add-luci-to-snapshot.webm" type="video/webm" />
+<a href="/_media/media/vbox-simple-opkg-add-luci-to-snapshot.webm?cache=" class="media mediafile mf_webm" title="media:vbox-simple-opkg-add-luci-to-snapshot.webm (6.4 MB)">vbox-simple-opkg-add-luci-to-snapshot.webm</a></video>
+
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Example:1b SameSegment-same-Subnet PreRouter&quot;,&quot;hid&quot;:&quot;example1b_samesegment-same-subnet_prerouter&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:15,&quot;range&quot;:&quot;11092-12401&quot;} -->
+<h3 class="sectionedit16" id="buildroot_export">Buildroot Export</h3>
+<div class="level3">
+
+<p>
+When testing anything not hardware specific. Using the buildroot and firing it up straight away can be a big time saver. The sample script shows basic buildroot to vbox quick setup. 
+</p>
+<pre class="code bash"><span class="co0">#!/bin/bash</span>
+&nbsp;
+<span class="re2">sNAME</span>=<span class="st0">&quot;openwrtx64-<span class="es5">`date +%Y%m%d-%H%M`</span>&quot;</span>
+<span class="re2">VMFOLD</span>=<span class="st0">&quot;<span class="es5">`cat ~/.config/VirtualBox/VirtualBox.xml | grep -i SystemProperties | cut -d'&quot;' -f2`</span>&quot;</span>
+<span class="re2">VDI</span>=<span class="st0">&quot;<span class="es3">${sNAME}</span>.vdi&quot;</span>; <span class="re2">DISKSIZE</span>=<span class="st_h">'512000000'</span>; <span class="re2">VDIOSZ</span>=<span class="st_h">'1920'</span>; <span class="re2">VIDMEM</span>=<span class="st0">&quot;16&quot;</span>
+<span class="re2">VMNAME</span>=<span class="st0">&quot;<span class="es3">${sNAME}</span>&quot;</span>
+<span class="re2">VBOXMANAGE</span>=<span class="st0">&quot;VBoxManage&quot;</span>
+<span class="re2">brvdi</span>=<span class="st0">&quot;bin/targets/x86/64/openwrt-x86-64-combined-ext4.vdi&quot;</span>
+&nbsp;
+<span class="kw2">cat</span> .config <span class="sy0">|</span> <span class="kw2">grep</span> <span class="re5">-q</span> <span class="st_h">'^CONFIG_VMDK_IMAGES=y'</span> <span class="sy0">||</span> <span class="kw3">echo</span> <span class="st0">&quot;Enable vm-image creation and run make&quot;</span> <span class="sy0">&amp;&amp;</span> <span class="kw3">exit</span> <span class="nu0">1</span>
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="sy0">!</span> <span class="re5">-f</span> <span class="st0">&quot;<span class="es3">${brvdi}</span>&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span> <span class="kw3">echo</span> <span class="st0">&quot;You no built vdi at: <span class="es2">$brvdi</span> ... ran make?&quot;</span> <span class="sy0">&amp;&amp;</span> <span class="kw3">exit</span> <span class="nu0">2</span>
+&nbsp;
+<span class="kw3">echo</span> <span class="st0">&quot;Creating VM: <span class="es2">$VMNAME</span>&quot;</span> <span class="sy0">&amp;&amp;</span> <span class="kw2">sleep</span> <span class="nu0">2</span>
+<span class="re1">$VBOXMANAGE</span> createvm <span class="re5">--name</span> <span class="re1">$VMNAME</span> <span class="re5">--register</span> <span class="nu0">2</span><span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null <span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null
+&nbsp;
+<span class="kw3">echo</span> <span class="st0">&quot;Copying buildroot vdi to <span class="es3">${VMFOLD}</span>/<span class="es3">${VMNAME}</span>/<span class="es3">${VDI}</span>&quot;</span>
+<span class="kw2">cp</span> <span class="re1">$brvdi</span> <span class="co1">${VMFOLD}</span><span class="sy0">/</span><span class="co1">${VMNAME}</span><span class="sy0">/</span><span class="co1">${VDI}</span>
+&nbsp;
+<span class="re1">$VBOXMANAGE</span> modifyvm <span class="re1">$VMNAME</span> <span class="re5">--description</span> <span class="st0">&quot;openwrt vbox&quot;</span> <span class="re5">--ostype</span> <span class="st0">&quot;Linux26&quot;</span> \
+    <span class="re5">--memory</span> <span class="st0">&quot;512&quot;</span> <span class="re5">--vram</span> <span class="st0">&quot;<span class="es2">$VIDMEM</span>&quot;</span> <span class="re5">--cpus</span> <span class="st0">&quot;1&quot;</span> \
+    <span class="re5">--nic1</span> <span class="st0">&quot;nat&quot;</span> <span class="re5">--nictype1</span> 82540EM \
+    <span class="re5">--nic2</span> <span class="st0">&quot;nat&quot;</span> <span class="re5">--nictype2</span> 82540EM <span class="nu0">2</span><span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null <span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null
+&nbsp;
+<span class="re1">$VBOXMANAGE</span> storagectl <span class="re1">$VMNAME</span> <span class="re5">--name</span> <span class="st0">&quot;SATA Controller&quot;</span> <span class="re5">--add</span> <span class="st0">&quot;sata&quot;</span> \
+    <span class="re5">--portcount</span> <span class="st0">&quot;4&quot;</span> <span class="re5">--hostiocache</span> <span class="st0">&quot;on&quot;</span> \
+    <span class="re5">--bootable</span> <span class="st0">&quot;on&quot;</span> <span class="nu0">2</span><span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null <span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null
+<span class="re1">$VBOXMANAGE</span> storageattach <span class="re1">$VMNAME</span> <span class="re5">--storagectl</span> <span class="st0">&quot;SATA Controller&quot;</span> \
+    <span class="re5">--port</span> <span class="st0">&quot;1&quot;</span> <span class="re5">--type</span> <span class="st0">&quot;hdd&quot;</span> <span class="re5">--nonrotational</span> <span class="st0">&quot;on&quot;</span> \
+    <span class="re5">--medium</span> <span class="re1">$VMFOLD</span><span class="sy0">/</span><span class="co1">${VMNAME}</span><span class="sy0">/</span><span class="re1">$VDI</span> <span class="nu0">2</span><span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null <span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null
+&nbsp;
+<span class="kw3">exit</span> <span class="nu0">0</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Buildroot Export&quot;,&quot;hid&quot;:&quot;buildroot_export&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:16,&quot;range&quot;:&quot;12402-13917&quot;} -->
+<h3 class="sectionedit17" id="openvswitch">Openvswitch</h3>
+<div class="level3">
+
+<p>
+Openvswitch can be useful when you wish to go beyond basic virtualbox networking options. For a basic test. Try running your VM <abbr title="Local Area Network">LAN</abbr> interface bridged to a vswitch bridge.
+</p>
+<pre class="code bash"><span class="kw2">sudo</span> <span class="kw2">apt-get install</span> <span class="re5">-y</span> openvswitch-switch bridge-utils
+<span class="kw2">sudo</span> ovs-vsctl add-br br201
+<span class="kw2">sudo</span> <span class="kw2">ifconfig</span> br201 192.168.1.2 netmask 255.255.255.0 up</pre>
+
+<p>
+Then change the correct VM&gt;bridged-to interface to br201 in VirtualBox.
+</p>
+
+<p>
+NOTE: You may need to set the vbox-nic promiscous mode to Allow if bridging to a host bridge
+<a href="https://forum.openwrt.org/t/only-the-first-interface-in-br-lan-is-working-properly-with-a-virtualbox-x86-64-openwrt/62539/5" class="urlextern" title="https://forum.openwrt.org/t/only-the-first-interface-in-br-lan-is-working-properly-with-a-virtualbox-x86-64-openwrt/62539/5" rel="ugc nofollow">https://forum.openwrt.org/t/only-the-first-interface-in-br-lan-is-working-properly-with-a-virtualbox-x86-64-openwrt/62539/5</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Openvswitch&quot;,&quot;hid&quot;:&quot;openvswitch&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:17,&quot;range&quot;:&quot;13918-14565&quot;} -->
+<h3 class="sectionedit18" id="todo_serial_and_ssh_console_examples">ToDo Serial and SSH console examples</h3>
+<div class="level3">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;ToDo Serial and SSH console examples&quot;,&quot;hid&quot;:&quot;todo_serial_and_ssh_console_examples&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:18,&quot;range&quot;:&quot;14566-14613&quot;} -->
+<h3 class="sectionedit19" id="video_of_boot">Video of Boot</h3>
+<div class="level3">
+
+<p>
+For boot-time debugging purposes... you would generally want to attach a vbox-console. One nice and easy trick is to use the capture facility of VirtualBox. Not so handy for copy paste but this method has it&#039;s own advantages.
+</p>
+
+<p>
+Settings ⇒ Display ⇒ Recording [x] Enable Recording
+</p>
+
+<p>
+( NB: you must repeat this every boot, you can find the default .webm file in the VirtualBox machines directory )
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Video of Boot&quot;,&quot;hid&quot;:&quot;video_of_boot&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:19,&quot;range&quot;:&quot;14614-15033&quot;} -->
+<h2 class="sectionedit20" id="tips_beyond_the_basic">Tips beyond the Basic</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> vnic0 ( <abbr title="Local Area Network">LAN</abbr> ) is key. Get access to it... Know how it works at each level of abstraction.</div>
+</li>
+<li class="level1"><div class="li"> Don&#039;t test 500 things at once... check each connection piece by piece. No <abbr title="Wide Area Network">WAN</abbr> access in a VM is the same as no <abbr title="Wide Area Network">WAN</abbr> access on any network, etc. etc. etc. Simplify and conquer.</div>
+</li>
+<li class="level1"><div class="li"> If the VM is to be used for mission critical traffic... test thoroughly, and configure all HOST settings in a persistent manner.</div>
+</li>
+<li class="level1"><div class="li"> If you really need to isolate clients. Seriously consider using 2 HOST NICs. </div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Tips beyond the Basic&quot;,&quot;hid&quot;:&quot;tips_beyond_the_basic&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:20,&quot;range&quot;:&quot;15034-15556&quot;} -->
+<h2 class="sectionedit21" id="gotcha-s">Gotcha-s</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Gotcha-s&quot;,&quot;hid&quot;:&quot;gotcha-s&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:21,&quot;range&quot;:&quot;15557-15577&quot;} -->
+<h3 class="sectionedit22" id="initial_vmnicx_lan_access">Initial vmnicX&gt;LAN access</h3>
+<div class="level3">
+
+<p>
+If your having a hard time accessing the OpenWrtVBox-<abbr title="Local Area Network">LAN</abbr> ( LUCI )
+</p>
+<ol>
+<li class="level1"><div class="li"> Check the network layers</div>
+</li>
+<li class="level1"><div class="li"> Your HOST or CLIENT ip in 192.168.1.x</div>
+</li>
+<li class="level1"><div class="li"> No other network 192.168.1.x in use!</div>
+</li>
+<li class="level1"><div class="li"> Use the VirtualBox <abbr title="Graphical User Interface">GUI</abbr> to access the OpenWrtVbox commandline ( ifconfig OR ping OR edit /etc/config/network and /etc/init.d/network restart</div>
+</li>
+<li class="level1"><div class="li"> Check the VirtualBox <abbr title="Graphical User Interface">GUI</abbr> and selectively bridge each vnic and check that “Connected” is ticked. If the CLIENT is another VM... Change the network type to bridged also.</div>
+</li>
+</ol>
+
+<p>
+NOTE:
+</p>
+<ul>
+<li class="level1"><div class="li"> You may need to clone eth0 for eth2, eth3 etc, if you have more than two virtual nics.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Initial vmnicX&gt;LAN access&quot;,&quot;hid&quot;:&quot;initial_vmnicx_lan_access&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:22,&quot;range&quot;:&quot;15578-16206&quot;} -->
+<h3 class="sectionedit23" id="i_ran_out_of_space">I ran out of space</h3>
+<div class="level3">
+
+<p>
+Easy! Power Down the VM, add a new disk ( VirtualBox → Machine-Settings → Storage → Add Storage Attachment → Add New Disk → Create New Disk) then follow <sup><a href="#fn__3" id="fnt__3" class="fn_top">3)</a></sup> from step 3-ish... to setup /overlay storage.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;I ran out of space&quot;,&quot;hid&quot;:&quot;i_ran_out_of_space&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:23,&quot;range&quot;:&quot;16207-16521&quot;} -->
+<h3 class="sectionedit24" id="can_i_make_it_simpler">Can I make it simpler?</h3>
+<div class="level3">
+
+<p>
+Sure! Use hostonly ( no dhcp ← VirtualBox Network Settings ) for OpenWrtVBoxLAN and a SECOND VM with it&#039;s single VNIC also set to hostonly as the client. Set OpenWrtVBox VNIC2-<abbr title="Wide Area Network">WAN</abbr> to bridged.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Can I make it simpler?&quot;,&quot;hid&quot;:&quot;can_i_make_it_simpler&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:24,&quot;range&quot;:&quot;16522-16748&quot;} -->
+<h2 class="sectionedit25" id="questions_you_should_have_answers_to">Questions you should have answers to</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> What are your disk requirements? ( many packages will need an additional disk as overlay, resizing the default partition within an official img or using the buildroot to specify disk parameters from the get-go )</div>
+</li>
+<li class="level1"><div class="li"> How many Network Interfaces will the GUEST require? ( i.e.; <abbr title="Local Area Network">LAN</abbr>, <abbr title="Wide Area Network">WAN</abbr> and SPARE )</div>
+</li>
+<li class="level1"><div class="li"> Which physical or HOST interfaces/networks will these GUEST interfaces be mapped to?</div>
+</li>
+<li class="level1"><div class="li"> On what network will your GUEST client/s reside? Are you comfortable troubleshooting basic connectivity?</div>
+</li>
+<li class="level1"><div class="li"> Disk space available on the host? Its lovely to generate a router with 30GB space in the buildroot... but do you want to be cloning/using/backing up that much?</div>
+</li>
+<li class="level1"><div class="li"> Do you need to start the VM with networking disconnected to disable dhcp or change the <abbr title="Local Area Network">LAN</abbr> ipaddress?</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Questions you should have answers to&quot;,&quot;hid&quot;:&quot;questions_you_should_have_answers_to&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:25,&quot;range&quot;:&quot;16749-17567&quot;} -->
+<h3 class="sectionedit26" id="resources">Resources</h3>
+<div class="level3">
+
+<p>
+VirtualBox Networking Overview
+<a href="https://www.youtube.com/watch?v=cDF4X7RmV4Q" class="urlextern" title="https://www.youtube.com/watch?v=cDF4X7RmV4Q" rel="ugc nofollow">https://www.youtube.com/watch?v=cDF4X7RmV4Q</a>
+</p>
+
+<p>
+OpenWrt x86 Basics
+<a href="/docs/guide-user/installation/openwrt_x86" class="wikilink1" title="docs:guide-user:installation:openwrt_x86" data-wiki-id="docs:guide-user:installation:openwrt_x86">OpenWrt on x86 hardware aka PC or Servers</a>
+</p>
+
+<p>
+[3] <a href="/docs/guide-user/virtualization/virtualbox-vm" class="wikilink1" title="docs:guide-user:virtualization:virtualbox-vm" data-wiki-id="docs:guide-user:virtualization:virtualbox-vm">OpenWrt on VirtualBox HowTo</a>
+</p>
+
+<p>
+[5] Image filesystems and alteration in detail
+<a href="https://quantumwarp.com/kb/articles/25-dsl-broadband/899-run-lede-as-a-virtualbox-virtual-machine" class="urlextern" title="https://quantumwarp.com/kb/articles/25-dsl-broadband/899-run-lede-as-a-virtualbox-virtual-machine" rel="ugc nofollow">https://quantumwarp.com/kb/articles/25-dsl-broadband/899-run-lede-as-a-virtualbox-virtual-machine</a>
+</p>
+
+<p>
+[7] forum re: macos 80211 bridging issues
+<a href="https://forum.openwrt.org/t/virtualbox-openwrt-works-fine-but-clients-connecting-to-vm-router-have-no-internet/71398" class="urlextern" title="https://forum.openwrt.org/t/virtualbox-openwrt-works-fine-but-clients-connecting-to-vm-router-have-no-internet/71398" rel="ugc nofollow">https://forum.openwrt.org/t/virtualbox-openwrt-works-fine-but-clients-connecting-to-vm-router-have-no-internet/71398</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Resources&quot;,&quot;hid&quot;:&quot;resources&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:26,&quot;range&quot;:&quot;17568-&quot;} --><div class="footnotes">
+<div class="fn"><sup><a href="#fnt__1" id="fn__1" class="fn_bot">1)</a></sup> 
+<div class="content"><a href="/docs/guide-user/installation/openwrt_x86" class="wikilink1" title="docs:guide-user:installation:openwrt_x86" data-wiki-id="docs:guide-user:installation:openwrt_x86">OpenWrt on x86 hardware aka PC or Servers</a></div></div>
+<div class="fn"><sup><a href="#fnt__2" id="fn__2" class="fn_bot">2)</a></sup> 
+<div class="content"><a href="https://www.youtube.com/watch?v=cDF4X7RmV4Q" class="urlextern" title="https://www.youtube.com/watch?v=cDF4X7RmV4Q" rel="ugc nofollow">https://www.youtube.com/watch?v=cDF4X7RmV4Q</a></div></div>
+<div class="fn"><sup><a href="#fnt__3" id="fn__3" class="fn_bot">3)</a></sup> 
+<div class="content"><a href="/docs/guide-user/additional-software/extroot_configuration" class="wikilink1" title="docs:guide-user:additional-software:extroot_configuration" data-wiki-id="docs:guide-user:additional-software:extroot_configuration">Adding Overlay</a></div></div>
+</div>

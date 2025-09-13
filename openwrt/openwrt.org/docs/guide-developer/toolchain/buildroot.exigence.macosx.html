@@ -1,0 +1,870 @@
+
+<h1 class="sectionedit1" id="build_system_setup_macos">Build system setup macOS</h1>
+<div class="level1">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap">
+<p>
+This method is NOT OFFICIALLY supported.
+A native <a href="/docs/guide-developer/toolchain/install-buildsystem" class="wikilink1" title="docs:guide-developer:toolchain:install-buildsystem" data-wiki-id="docs:guide-developer:toolchain:install-buildsystem">GNU/Linux environment</a> is recommended.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+Tested with <a href="https://en.wikipedia.org/wiki/MacOS" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/MacOS">macOS</a> 10.15.7 (Darwin v19.6.0), <a href="https://en.wikipedia.org/wiki/Xcode" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Xcode">Xcode</a> 12.1 build 12A7403, &amp; packages from homebrew.<br/>
+
+Tested with <a href="https://en.wikipedia.org/wiki/MacOS" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/MacOS">macOS</a> 11.6 (Darwin v20.6.0) <a href="https://en.wikipedia.org/wiki/Xcode" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Xcode">Xcode</a> 13.0 build 13A233, arm64 kernel, &amp; packages from homebrew.
+</p>
+
+<p>
+● to view macOS version numbers, etc, run <strong>:</strong> <code>sw_vers</code><br/>
+
+● to view Darwin version numbers, etc, run <strong>:</strong> <code>sysctl kern.osrelease</code><br/>
+
+<br/>
+
+</p>
+
+</div>
+
+<h4 id="macos_darwin_unix">macOS &amp; Darwin Unix:</h4>
+<div class="level4">
+
+<p>
+You can skip this section <em>(if you want to)</em>, &amp; goto next section <code>A. Obtain build toolchain</code>.<br/>
+
+Brief/short info on macOS and Darwin Unix <strong>:</strong> <a href="https://en.wikipedia.org/wiki/MacOS" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/MacOS">macOS</a> contains APSL <em>(Apple Public Source License)</em> &amp; BSD <em>(Berkeley Software Distribution)</em> and others licensed opensource<sup><a href="https://github.com/apple/darwin-xnu" class="urlextern" title="https://github.com/apple/darwin-xnu" rel="ugc nofollow">1</a>, <a href="https://code.google.com/p/voodoo-kernel/source/checkout" class="urlextern" title="https://code.google.com/p/voodoo-kernel/source/checkout" rel="ugc nofollow">2</a>, <a href="https://opensource.apple.com/" class="urlextern" title="https://opensource.apple.com/" rel="ugc nofollow">3</a></sup> <a href="https://en.wikipedia.org/wiki/Darwin_(operating_system)" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Darwin_(operating_system)">Darwin</a> Unix based XNU<sup><a href="https://en.wikipedia.org/wiki/XNU" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/XNU">1</a></sup> hybrid core/kernel, &amp; also contains Darwin unix as internal subsystem to support commandline based tools (from various Unix &amp; Linux distros). Darwin supports POSIX <abbr title="Application Programming Interface">API</abbr> because of its BSD unix based lineage and because of largely FreeBSD userland tools, etc. Most drivers, &amp; <abbr title="Graphical User Interface">GUI</abbr> layer&#039;s most components are proprietary (not-opensource) licensed. Build tools need to be compatible with “darwin”.
+</p>
+<ul>
+<li class="level1"><div class="li"> In macOS v10.15.x <em>(Catalina)</em> &amp; earlier versions, the Kernel modules, hardware drivers, etc are known-as &amp; usually loaded as kext <em>(kernel extension)</em> inside kernel space/layer, &amp; uses <a href="https://en.wikipedia.org/wiki/Loadable_kernel_module" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Loadable_kernel_module">LKM</a> with KPI <em>(kernel programming interface)</em> &amp; d-KPI<sup><a href="https://developer.apple.com/support/kernel-extensions/" class="urlextern" title="https://developer.apple.com/support/kernel-extensions/" rel="ugc nofollow">1</a></sup> <em>(deprecated-KPI)</em>. But, since macOS v11 <em>(Big Sur)</em> &amp; newer versions, the newer sext/sysext <em>(system extension)</em> and (older) kext without d-KPI are used in user space/layer. And newer dext <em>(driver extension)</em> in macOS v11 &amp; later also runs in user space/layout, and replaces earlier I/O kit. So hardware/software developer/MFR should still supply sext/dext &amp; kext (without d-KPI). Earlier macOS/darwin used HFS partition, now uses APFS.</div>
+</li>
+<li class="level1"><div class="li"> A derivative, OpenDarwin project released last stable v7.2.1 on July 16, 2004, then shutdown on July 25, 2006. Some free software community, ISC, etc particiapted with Apple to develop OpenDarwin<sup><a href="https://sourceforge.net/projects/darwinsource/" class="urlextern" title="https://sourceforge.net/projects/darwinsource/" rel="ugc nofollow">1</a></sup>, and some ideas were used to build GNU-Darwin<sup><a href="http://gnu-darwin.org/" class="urlextern" title="http://gnu-darwin.org/" rel="ugc nofollow">1</a>, <a href="https://sourceforge.net/projects/gnu-darwin/" class="urlextern" title="https://sourceforge.net/projects/gnu-darwin/" rel="ugc nofollow">2</a></sup>. Another derivative, PureDarwin<sup><a href="https://github.com/PureDarwin/PureDarwin/wiki/Xmas" class="urlextern" title="https://github.com/PureDarwin/PureDarwin/wiki/Xmas" rel="ugc nofollow">1</a></sup> released a preview based Darwin 9 with X11 <abbr title="Graphical User Interface">GUI</abbr> in 2015, followed by a command-line only 17.4 Beta based on Darwin 17 in 2019.</div>
+</li>
+<li class="level1"><div class="li"> Drivers<strong>:</strong> Wireless: <a href="http://wirelessdriver.sourceforge.net/" class="urlextern" title="http://wirelessdriver.sourceforge.net/" rel="ugc nofollow">1</a>, <a href="http://sourceforge.net/projects/iwi2200" class="urlextern" title="http://sourceforge.net/projects/iwi2200" rel="ugc nofollow">2</a>. NIC: <a href="http://sourceforge.net/projects/darwin-tulip/" class="urlextern" title="http://sourceforge.net/projects/darwin-tulip/" rel="ugc nofollow">1</a>, <a href="http://sourceforge.net/projects/darwin-rtl8139" class="urlextern" title="http://sourceforge.net/projects/darwin-rtl8139" rel="ugc nofollow">2</a>, <a href="http://sourceforge.net/projects/rtl8150lm" class="urlextern" title="http://sourceforge.net/projects/rtl8150lm" rel="ugc nofollow">3</a>. Zyxel modem: <a href="http://sourceforge.net/projects/darwinmodems" class="urlextern" title="http://sourceforge.net/projects/darwinmodems" rel="ugc nofollow">1</a>. Card-readers: <a href="http://pccardata.sourceforge.net/" class="urlextern" title="http://pccardata.sourceforge.net/" rel="ugc nofollow">1</a>. Ext2 &amp; Ext3 (Linux filesystem support) under macOS: <a href="http://sourceforge.net/projects/ext2fsx/" class="urlextern" title="http://sourceforge.net/projects/ext2fsx/" rel="ugc nofollow">1</a>, <a href="http://sourceforge.net/projects/ext2fuse" class="urlextern" title="http://sourceforge.net/projects/ext2fuse" rel="ugc nofollow">2</a>.</div>
+</li>
+</ul>
+
+<p>
+<br/>
+
+</p>
+
+</div>
+
+<h4 id="a_obtain_build_toolchain">A. Obtain build toolchain:</h4>
+<div class="level4">
+
+<p>
+Obtain build toolchain that is more suitable for Apple hardware &amp; macOS &amp; Darwin Unix.
+</p>
+
+<p>
+● Install <em class="u">Xcode</em> or <em class="u">CLT</em><strong>:</strong>
+</p>
+<ol>
+<li class="level1 node"><div class="li"> Obtain Xcode<sup><a href="https://en.wikipedia.org/wiki/Xcode" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Xcode">1</a></sup> from <a href="https://developer.apple.com/support/xcode/" class="urlextern" title="https://developer.apple.com/support/xcode/" rel="ugc nofollow">here</a>. Note<strong>:</strong> installer file download is over/near 5 <abbr title="Gigabyte">GB</abbr>, and needs 17+ <abbr title="Gigabyte">GB</abbr> space. Xcode 11.5 : 16,958,217,326 bytes (10.5 <abbr title="Gigabyte">GB</abbr> on disk).</div>
+<ul>
+<li class="level2"><div class="li"> to view installed Xcode version number, run this command <strong>:</strong> <code>xcodebuild -version</code> . If output not-showing version number then Xcode is not-installed.</div>
+</li>
+</ul>
+</li>
+<li class="level1 node"><div class="li"> If you prefer to not obtain Xcode, then one of the alternative is<strong>:</strong></div>
+<ul>
+<li class="level2"><div class="li"> obtain <a href="https://stackoverflow.com/questions/9329243/" class="urlextern" title="https://stackoverflow.com/questions/9329243/" rel="ugc nofollow">Command-Line-Tools</a><sup><a href="https://en.wikipedia.org/wiki/Xcode" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Xcode">1</a></sup> (<strong>CLT</strong>) from <a href="https://developer.apple.com/download/" class="urlextern" title="https://developer.apple.com/download/" rel="ugc nofollow">here</a>, or Load it from <code>App Store</code> in macOS, or use below command, or obtain apple-gcc package via package manager software. CLT is also known as Command Line Developer Tools. Note<strong>:</strong> installer download is under/near 300 <abbr title="Megabyte">MB</abbr>, and may need around ~ 2 <abbr title="Gigabyte">GB</abbr> space.</div>
+</li>
+<li class="level2 node"><div class="li"> inside <code>Terminal</code><sup><a href="https://en.wikipedia.org/wiki/Terminal_(macOS)" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Terminal_(macOS)">1</a></sup> utility/app, run this command to load CLT<strong>:</strong> <pre class="code bash">xcode-select <span class="re5">--install</span></pre>
+</div>
+<ul>
+<li class="level3"><div class="li"> to view installed CLT version number, run this command <strong>:</strong> <code>pkgutil --pkg-info=com.apple.pkg.CLTools_Executables</code> . If output not-showing verison number or showing msg that <em>“...No receipt...”</em> then CLT is not installed, or its bundled inside+with Xcode. To view pre-installed pkgs you may run <strong>:</strong> <code>pkgutil --pkgs</code></div>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+
+<p>
+● To view toolchain version numbers, directory, etc info, run this command<strong>:</strong> 
+</p>
+<pre class="code bash"><span class="kw2">gcc</span> <span class="re5">-v</span> <span class="sy0">&amp;&amp;</span> llvm-gcc <span class="re5">-v</span> <span class="sy0">&amp;&amp;</span> clang <span class="re5">-v</span></pre>
+
+<p>
+● you may also run <code>xcrun clang</code> command, &amp; see what it outputs<strong>:</strong> 
+</p>
+<pre class="code bash">UserMacBook:~ username$  xcrun clang
+clang: error: no input files</pre>
+<ul>
+<li class="level1"><div class="li"> if output is NOT this message <code>clang: error: no input files</code>, then either installation has error or executable files are not in PATH env var correctly.</div>
+</li>
+</ul>
+
+<p>
+● Build toolchain (Xcode or CLT) from apple is used (in first stage) to create a software components for openwrt build purpose, then (in second stage) those software components are used to create the final openwrt components, in order to create openwrt firmware, etc, that are widely compatible with cross-platform.<br/>
+
+<br/>
+
+</p>
+
+</div>
+
+<h4 id="b_view_hidden_filesfolders">B. View hidden files/folders:</h4>
+<div class="level4">
+
+<p>
+● We need to view full filename, file extensions, all files &amp; directories, etc including hidden ones, very accurately, so that there is lesser mistakes.<br/>
+
+● Use <strong>Finder</strong> to start <strong>Terminal</strong><sup><a href="https://en.wikipedia.org/wiki/Terminal_(macOS)" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Terminal_(macOS)">1</a></sup> in macOS<strong>:</strong>
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>Finder</code> is very similar to <code>Windows-Explorer</code> file-browser app/tool. In macOS &gt; click on any empty area in Desktop screen &gt; then in top-side  menu, click on <code>Window</code> &gt; click on <code>Bring All to Front</code> &gt; in left-pane (in left side column) of <code>Finder</code>, go under <code>Favorites</code> and click on the <code>Applications</code> &gt; then scroll down &amp; go into <code>Utilities</code> sub-folder &gt; then click on <code>Terminal</code> or <code>Terminal.app</code> to start it. macOS <code>Terminal</code> is very similar to Windows <code>Command-Prompt</code>, a command-line interface (CLI) tool.</div>
+</li>
+<li class="level1"><div class="li"> Hotkeys to start <code>Finder</code> instantly <strong>:</strong> <code>[Alt/Option<strong>⌥</strong>]</code> + <code>[Command<strong>⌘</strong>]</code> + <code>[Space-bar]</code> then close the Search tab.</div>
+</li>
+<li class="level1"><div class="li"> Hotkeys to start <code>Terminal</code> instantly <strong>:</strong> None. ( Note: Keep <code>Terminal</code> running, after a reboot <code>Terminal</code> will auto-start if you check-marked the option: Load previous running apps after reboot ).<br/>
+</div>
+</li>
+</ul>
+
+<p>
+● Run below command inside <code>Terminal</code><strong>:</strong> 
+</p>
+<pre class="code bash">defaults <span class="kw2">write</span> com.apple.Finder AppleShowAllFiles <span class="kw2">true</span></pre>
+<ul>
+<li class="level1"><div class="li"> above only makes the files viewable inside file-browser software, it does not actually change any file-attributes.<br/>
+</div>
+</li>
+</ul>
+
+<p>
+● then you must reboot Mac-computer OR run (any one of the) below command<strong>:</strong>
+</p>
+<ul>
+<li class="level1"><div class="li"> <pre class="code bash"><span class="sy0">/</span>usr<span class="sy0">/</span>bin<span class="sy0">/</span><span class="kw2">sudo</span> <span class="sy0">/</span>usr<span class="sy0">/</span>bin<span class="sy0">/</span><span class="kw2">killall</span> Finder <span class="sy0">/</span>System<span class="sy0">/</span>Library<span class="sy0">/</span>CoreServices<span class="sy0">/</span>Finder.app</pre>
+
+<p>
+ or, run just this: 
+</p>
+<pre class="code bash"><span class="sy0">/</span>usr<span class="sy0">/</span>bin<span class="sy0">/</span><span class="kw2">sudo</span> <span class="sy0">/</span>usr<span class="sy0">/</span>bin<span class="sy0">/</span><span class="kw2">killall</span> Finder</pre>
+
+<p>
+ or, just this: 
+</p>
+<pre class="code bash"><span class="kw2">sudo</span> <span class="kw2">killall</span> Finder</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> then <code>Finder</code> will auto start, and all hidden files+folders will by-default begin to be shown to user in macOS Finder.<br/>
+</div>
+</li>
+</ul>
+
+<p>
+● in macOS <code>Finder</code> or inside any other file browsing window in macOS, user can also press below THREE buttons altogether ONCE to show all HIDDEN files/folders<strong>:</strong>
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>[Command<strong>⌘</strong>]</code> + <code>[Shift<strong>⇧</strong>]</code> + <code>[.&gt;]</code></div>
+</li>
+<li class="level1"><div class="li"> if user press-es above three buttons again, file-browsing-window will HIDE the HIDDEN files/folders.<br/>
+</div>
+</li>
+</ul>
+
+<p>
+● By default in macOS, <code>Finder</code> will keep most of the <strong>file extension</strong> hidden. But we need to see all file&#039;s extension to see FULL filename, so we can be sure &amp; not make mistake. To view all file&#039;s extension, do below steps<strong>:</strong>
+</p>
+<ul>
+<li class="level1"><div class="li"> in macOS &gt; start “Finder” app &gt; goto main menu &gt; <code>Finder</code> &gt; <code>Preferences</code> &gt; <code>Advanced</code> &gt; select the <code>Show All Filename Extensions</code> option.<br/>
+</div>
+</li>
+</ul>
+
+<p>
+<br/>
+
+</p>
+
+</div>
+
+<h4 id="c_install_package-manager">C. Install Package-Manager:</h4>
+<div class="level4">
+
+<p>
+Install any one of the (3rd-party) <a href="https://en.wikipedia.org/wiki/List_of_software_package_management_systems" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/List_of_software_package_management_systems">package manager</a> (<strong>pkg-mngr</strong>) software in macOS<strong>:</strong>
+</p>
+
+<p>
+(1) Homebrew, or (2) MacPorts, or (3) pkgsrc.
+</p>
+<ul>
+<li class="level1"><div class="li"> Notice/CAUTION <strong>:</strong> Usually most of the time, using source <em>(or binary)</em> packages distributed from primary/original author/developer is much much better than next-level (aka: downstream) package distributors: like, <abbr title="Operating System">OS</abbr>/distro developer <em>(dev)</em>, computer MFR <em>(manufacturer)</em>, etc distributed packages, And usually most of the time <abbr title="Operating System">OS</abbr>/distro dev&#039;s or computer MFR&#039;s distributed package is better than 3rd-party Package-Manager <em>(pkg-mngr)</em> maintainer distributed package. But often <abbr title="Operating System">OS</abbr>/distro dev or computer MFR does not update their pre-included packages, or uses older version, or does not include option for user to obtain other/related packages (from <abbr title="Operating System">OS</abbr>/distro dev or computer MFR). So in such cases, next best option is: obtain the <em>(src/bin)</em> package from original author&#039;s website for your <abbr title="Operating System">OS</abbr>/distro via secure conneciton. <em>(Package&#039;s source (src) code/file needs to be compiled to build package&#039;s binary/executable (bin) file⒮)</em>. If original author shares only source, then that means author wants you to compile source. So your next best option is: compile the source obtained from original author/developer, after you patched the source to make it compatible &amp; compilable for your <abbr title="Operating System">OS</abbr>/distro. Compile <em>(compilation)</em> process builds package&#039;s binary <em>(aka: executable)</em>, etc file(s). If previous steps are not possible for you, <em>(because, “patching” requires software development, and <abbr title="Operating System">OS</abbr>/distro platform, and harwdare platform based knowledge, etc)</em> then in such cases using 3rd-party package-manager <em>(pkg-mngr)</em> may be necessary for you. Some <em>(3rd-party)</em> pkg-mngr by default downloads package&#039;s source <em>(and dependencies / pre-requisites)</em> &amp; also auto compiles it in your <abbr title="Operating System">OS</abbr>/distro to create/build binary file(s). Usually package&#039;s maintainer patches the original-source to make it suitable for compile/run in target <abbr title="Operating System">OS</abbr>/distro. Some <em>(3rd-party)</em> pkg-mngr downloads binary that is pre-built with already patched source for your <abbr title="Operating System">OS</abbr>/distro. When binaries are properly compiled &amp; built in your own <abbr title="Operating System">OS</abbr>/distro then that is more trustworthy &amp; better, than faster &amp; directly download (pre-built) binaries. “Trust” is more important &amp; safer &amp; secure, than “Fast”/“Slow”. macOS has native pkg-mngr known as <code>App Store</code>, it has various or too many unfair restrictions &amp; walls, set by macOS dev apple, does not allow various types of open-source apps, etc, So that is why sometime we need to use 3rd-party pkg-mngr. You must not download &amp; compile &amp; use source <em>(src)</em> or binary <em>(bin)</em> from any non-original author website or post. Either download src/bin over secure/encrypted connection from original-author&#039;s website, OR, you must use OpenPGP/GPG/PGP based authentication to make sure downloaded src/bin is indeed actually released by actual original author. Pkg-manager tool internally includes option to use <em>(some form of)</em> authentication &amp; verification for any download.</div>
+</li>
+</ul>
+
+<p>
+<strong>1</strong>. <strong><a href="https://Brew.sh/" class="urlextern" title="https://Brew.sh/" rel="ugc nofollow">Homebrew</a>:</strong><br/>
+
+it is opensource &amp; free <em>(3rd-party)</em> pkg-mngr for macOS, etc. Homebrew was built 7yrs after MacPorts pkg-mngr <em>(formerly known as <code>DarwinPorts</code>)</em>.
+</p>
+
+<p>
+● Notice / WARNING / <em class="u">CAUTION</em> <strong>:</strong> homebrew is opensource pkg-mngr but this tool uses Google Analytics to collect usage telemetry. If you use homebrew: use OPT OUT option/command,  
+</p>
+<pre class="code bash">brew analytics off</pre>
+
+<p>
+ or by setting 
+</p>
+<pre class="code bash"><span class="kw3">export</span> <span class="re2">HOMEBREW_NO_ANALYTICS</span>=<span class="nu0">1</span></pre>
+
+<p>
+<strong>2</strong>. <strong><a href="https://www.MacPorts.org/" class="urlextern" title="https://www.MacPorts.org/" rel="ugc nofollow">MacPorts</a>:</strong><br/>
+
+it is opensource &amp; free <em>(3rd party)</em> pkg-mngr <em>(package manager)</em> for macOS, etc, &amp; it does not steal your usage/private data. MacPorts <a href="https://guide.macports.org/" class="urlextern" title="https://guide.macports.org/" rel="ugc nofollow">guide</a>. It can obtain source or binary or both <em>(for most)</em> package. After downloading source, it can auto compile in your <abbr title="Operating System">OS</abbr>/distro to create/build trustworthy binary files. MacPorts was created 7yrs before homebrew. <a href="https://en.wikipedia.org/wiki/MacPorts" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/MacPorts">wp</a>.<br/>
+
+● download/obtain MacPorts installer dmg/pkg file, install it. More info <a href="https://www.macports.org/install.php" class="urlextern" title="https://www.macports.org/install.php" rel="ugc nofollow">here</a>.<br/>
+
+● Before MacPorts is installed, your <code>~/.bash_profile</code> file (inside your home directory) may look close to like this<strong>:</strong> 
+</p>
+<pre class="code bash"><span class="co0"># .bash_profile for BASH</span>
+<span class="co0"># PROMPT_COMMAND=update_terminal_cwd</span>
+<span class="re2">PS1</span>=<span class="st_h">'\h:\W \u\$ '</span>
+<span class="re2">PS2</span>=<span class="st_h">'&gt; '</span>
+<span class="re2">PS4</span>=<span class="st_h">'+ '</span>
+<span class="re2">PATH</span>=<span class="st0">&quot;/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin&quot;</span>
+<span class="kw3">export</span> PATH</pre>
+
+<p>
+● MacPorts installer webpage will instruct you to add <code>macports</code> pkg-mngr executable file locations in the end of your PATH variable, like this<strong>:</strong> 
+</p>
+<pre class="code bash"><span class="re2">PATH</span>=<span class="st0">&quot;<span class="es2">$PATH</span>:/opt/macports/bin:/opt/macports/sbin&quot;</span></pre>
+<ul>
+<li class="level1"><div class="li"> after you add above line manually in <code>~/.bash_profile</code> file, it will look like below<strong>:</strong> <pre class="code bash"><span class="co0"># .bash_profile for BASH</span>
+<span class="co0"># PROMPT_COMMAND=update_terminal_cwd</span>
+<span class="re2">PS1</span>=<span class="st_h">'\h:\W \u\$ '</span>
+<span class="re2">PS2</span>=<span class="st_h">'&gt; '</span>
+<span class="re2">PS4</span>=<span class="st_h">'+ '</span>
+<span class="re2">PATH</span>=<span class="st0">&quot;/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin&quot;</span>
+<span class="re2">PATH</span>=<span class="st0">&quot;<span class="es2">$PATH</span>:/opt/macports/bin:/opt/macports/sbin&quot;</span>
+<span class="kw3">export</span> PATH</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> you can use this command to edit the <code>~/.bash_profile</code> file<strong>:</strong> <pre class="code bash"><span class="kw2">sudo</span> <span class="kw2">nano</span> ~<span class="sy0">/</span>.bash_profile</pre>
+</div>
+</li>
+</ul>
+
+<p>
+● When MacPorts is installed, installer will add locations in PATH where macports port package executables are stored, inside the <code>~/.bash_profile</code> file. In that way, your macOS user account can find+use the installed macports port package files, after you login. But we have to change it little bit.<br/>
+Here is what you will usually see in <code>~/.bash_profile</code> file (after macports is installed)<strong>:</strong> 
+</p>
+<pre class="code bash"><span class="co0"># .bash_profile for BASH</span>
+<span class="co0"># PROMPT_COMMAND=update_terminal_cwd</span>
+<span class="re2">PS1</span>=<span class="st_h">'\h:\W \u\$ '</span>
+<span class="re2">PS2</span>=<span class="st_h">'&gt; '</span>
+<span class="re2">PS4</span>=<span class="st_h">'+ '</span>
+<span class="re2">PATH</span>=<span class="st0">&quot;/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin&quot;</span>
+<span class="re2">PATH</span>=<span class="st0">&quot;<span class="es2">$PATH</span>:/opt/macports/bin:/opt/macports/sbin&quot;</span>
+&nbsp;
+<span class="co0">##</span>
+<span class="co0"># Your previous /Users/&lt;YOUR-USER-NAME&gt;/.bash_profile file was backed up as /Users/&lt;YOUR-USER-NAME&gt;/.bash_profile.macports-saved_2021-08-29_at_16:38:31</span>
+<span class="co0">##</span>
+&nbsp;
+<span class="co0"># MacPorts Installer addition on 2021-08-29_at_16:38:31: adding an appropriate PATH variable for use with MacPorts.</span>
+<span class="kw3">export</span> <span class="re2">PATH</span>=<span class="st0">&quot;/opt/local/bin:/opt/local/sbin:<span class="es2">$PATH</span>&quot;</span>
+<span class="co0"># Finished adapting your PATH environment variable for use with MacPorts.</span></pre>
+
+<p>
+● <strong>Change above codes</strong>, into below code<strong>:</strong> 
+</p>
+<pre class="code bash"><span class="co0"># .bash_profile for BASH</span>
+<span class="co0"># PROMPT_COMMAND=update_terminal_cwd</span>
+<span class="re2">PS1</span>=<span class="st_h">'\h:\W \u\$ '</span>
+<span class="re2">PS2</span>=<span class="st_h">'&gt; '</span>
+<span class="re2">PS4</span>=<span class="st_h">'+ '</span>
+<span class="re2">PATH</span>=<span class="st0">&quot;/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin&quot;</span>
+<span class="re2">PATH</span>=<span class="st0">&quot;<span class="es2">$PATH</span>:/opt/macports/bin:/opt/macports/sbin&quot;</span>
+&nbsp;
+<span class="co0">##</span>
+<span class="co0"># Your previous /Users/&lt;YOUR-USER-NAME&gt;/.bash_profile file was backed up as /Users/&lt;YOUR-USER-NAME&gt;/.bash_profile.macports-saved_2021-08-29_at_16:38:31</span>
+<span class="co0">##</span>
+&nbsp;
+<span class="co0"># MacPorts Installer addition on 2021-08-29_at_16:38:31: adding an appropriate PATH variable for use with MacPorts.</span>
+<span class="co0"># export PATH=&quot;/opt/local/bin:/opt/local/sbin:$PATH&quot;</span>
+<span class="kw3">export</span> PATH
+<span class="co0"># Finished adapting your PATH environment variable for use with MacPorts.</span></pre>
+<ul>
+<li class="level1"><div class="li"> in above we have disabled MacPorts based port package locations from PATH, but locations of MacPorts pkg-mngr itself are kept in PATH. The “PATH” is an essential environment variable which indicates the sequence of directories/folders where to look for a specific (executable) program. The changes we made, will allow newly installed (MacPorts) packages stay out of touch of other software which does not need to use them. These (MacPorts) packages are needed for development/build purpose of OpenWRT, so we will create a separate executable file (<strong><code>env.sh</code></strong>) to load PATH (and other build environment variables), which is suitable for using inside a shell-manager&#039;s specific shell TAB(s) only, for openwrt build/development purpose. See step/section <strong>F</strong> in below for details on creating this <code>env.sh</code> file.</div>
+</li>
+</ul>
+
+<p>
+Tips for MacPorts users<strong>:</strong>
+</p>
+<ul>
+<li class="level1"><div class="li"> to search for a pkg: <code>port search --name --glob &#039;*pkgName*&#039; </code></div>
+</li>
+<li class="level1"><div class="li"> to view info on a pkg: <code>port info pkgName</code></div>
+</li>
+<li class="level1"><div class="li"> to view what depencies are needed for a pkg: <code>port deps pkgName</code></div>
+</li>
+<li class="level1"><div class="li"> to install a pkg: <code>sudo port install pkgName</code></div>
+</li>
+</ul>
+
+<p>
+<strong>3</strong>. <strong><a href="https://www.pkgsrc.org/" class="urlextern" title="https://www.pkgsrc.org/" rel="ugc nofollow">pkgsrc</a>:</strong><br/>
+
+it is opensource &amp; free <em>(3rd-party)</em> pkg-mngr <em>(package-manager)</em> for NetBSD unix <abbr title="Operating System">OS</abbr>, but can also be used by other <abbr title="Operating System">OS</abbr>, including macOS/darwin. It can obtain binary packages. Download: <a href="https://pkgsrc.joyent.com/" class="urlextern" title="https://pkgsrc.joyent.com/" rel="ugc nofollow">dev</a>, Src: <a href="https://github.com/NetBSD/pkgsrc.git" class="urlextern" title="https://github.com/NetBSD/pkgsrc.git" rel="ugc nofollow">gh</a>, More info: <a href="https://en.wikipedia.org/wiki/Pkgsrc" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Pkgsrc">wp</a>.
+</p>
+
+<p>
+<em class="u">Warning</em> <strong>:</strong> macOS keeps the default PATH in <code>/etc/paths</code> file, but <strong>do not edit/change it</strong>, because such change can affect entire or many parts of macOS system. We only need to change build environment only for 1 or 2 shell instance(s), and not for entire macOS system, and also not for all other apps in macOS.<br/>
+
+<br/>
+
+</p>
+
+</div>
+
+<h4 id="d_create_dedicated_case-sensitive_filesystem">D. Create Dedicated Case-Sensitive Filesystem:</h4>
+<div class="level4">
+
+<p>
+Create a dedicated case-sensitive filesystem for OpenWRT build/compile purpose<strong>:</strong><br/>
+
+● We will be using a sparsebundle to allow us to have a case sensitive filesystem.<br/>
+
+● The size that you provide will be the max size of the volume for working with OpenWrt. Execute below commands inside a Terminal shell instance<strong>:</strong> 
+</p>
+<pre class="code bash"><span class="kw3">cd</span> ~
+hdiutil create <span class="re5">-size</span> 20g <span class="re5">-type</span> SPARSE <span class="re5">-fs</span> <span class="st0">&quot;Case-sensitive HFS+&quot;</span> <span class="re5">-volname</span> OpenWrt OpenWrt.sparseimage
+hdiutil attach OpenWrt.sparseimage</pre>
+<ul>
+<li class="level1"><div class="li"> the command <code>cd ~</code> in above is taking developer-user inside the HOME directory of user-account in macOS, then <code>OpenWrt.sparseimage</code> file is created there. But if you want to create the SPARSE image file in a different directory, then change the <code>cd ~</code> line &amp; go inside your preferred volume/directory.</div>
+</li>
+</ul>
+
+<p>
+● Optional/Informational<strong>:</strong>
+</p>
+<ul>
+<li class="level1"><div class="li"> if you want to open the <code>OpenWRT</code> Volume (aka: Drive, aka: Disk) after creating then use below command as 3rd-command line in above<strong>:</strong> <pre class="code bash">hdiutil attach OpenWrt.sparseimage <span class="re5">-autoopenrw</span></pre>
+</div>
+</li>
+<li class="level1"><div class="li"> after a reboot, if <code>OpenWRT</code> volume is not available in your macOS, then run<strong>:</strong> <pre class="code bash"><span class="kw3">cd</span> ~ <span class="sy0">&amp;&amp;</span> hdiutil attach OpenWrt.sparseimage <span class="re5">-autoopenrw</span></pre>
+</div>
+</li>
+<li class="level1"><div class="li"> if you want to keep the <code>OpenWRT</code> volume always attached, then<strong>:</strong> <pre class="code bash"><span class="kw3">cd</span> ~ <span class="sy0">&amp;&amp;</span> <span class="kw2">sudo</span> hdiutil attach OpenWrt.sparseimage <span class="re5">-notremovable</span> <span class="re5">-autoopenrw</span></pre>
+</div>
+</li>
+<li class="level1"><div class="li"> if you want to detach (aka: unmount) the <code>OpenWRT</code> volume, then<strong>:</strong> <pre class="code bash">hdiutil detach <span class="sy0">/</span>Volumes<span class="sy0">/</span>OpenWrt</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> More info on <code>hdiutil</code> is <a href="https://www.unix.com/man-page/OSX/1/hdiutil/" class="urlextern" title="https://www.unix.com/man-page/OSX/1/hdiutil/" rel="ugc nofollow">here</a>.<br/>
+</div>
+</li>
+</ul>
+
+<p>
+<br/>
+
+</p>
+
+</div>
+
+<h4 id="e_goto_openwrt_build_volume">E. Goto OpenWRT build volume:</h4>
+<div class="level4">
+
+<p>
+Go inside the OpenWRT build volume, with below command, in Terminal<strong>:</strong> 
+</p>
+<pre class="code bash"><span class="kw3">cd</span> <span class="sy0">/</span>Volumes<span class="sy0">/</span>OpenWrt</pre>
+
+<p>
+<br/>
+
+</p>
+
+</div>
+
+<h4 id="f_create_location_indicator_build_environment_file">F. Create location indicator &amp; build environment file:</h4>
+<div class="level4">
+
+<p>
+● Create a file called <strong><code>env.sh</code></strong> inside <code>/Volumes/OpenWrt</code> to indicate location of installed packages. It will also help us to create openwrt build friendly environment, inside a specific shell <a href="https://en.wikipedia.org/wiki/Tab_(interface)" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Tab_(interface)">tab</a>/instance in shell-manager software like <code>Terminal</code>.
+</p>
+<ul>
+<li class="level1"><div class="li"> This is to allow packages from pkg-mngr (which we will install in next step) to be used, instead of the macOS provided ones.</div>
+</li>
+</ul>
+
+<p>
+Based on your pkg-mngr <em>(package-manager)</em>, follow one of the below appropriate section<strong>:</strong>
+</p>
+
+<p>
+● For <strong>x86_64</strong> Apple hardware, &amp; when you have <strong>MacPorts</strong> pkg-mngr, then create <code>env.sh</code> file with below content, save it inside <code>/Volumes/OpenWrt</code> location<strong>:</strong> 
+</p>
+<dl class="file">
+<dt><a href="/_export/code/docs/guide-developer/toolchain/buildroot.exigence.macosx?codeblock=21" title="Download Snippet" class="mediafile mf_sh">env.sh</a></dt>
+<dd><pre class="code file bash"><span class="co0">#!/opt/local/bin/bash</span>
+<span class="re2">PS1</span>=<span class="st_h">'\h:\W \u\$ '</span>;<span class="re2">PS2</span>=<span class="st_h">'&gt; '</span>;<span class="re2">PS4</span>=<span class="st_h">'+ '</span>;
+<span class="co0"># Bring PATH lines from the ~/.bash_profile file into below:</span>
+<span class="re2">PATH</span>=<span class="st0">&quot;/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin&quot;</span>
+<span class="re2">PATH</span>=<span class="st0">&quot;<span class="es2">$PATH</span>:/opt/macports/bin:/opt/macports/sbin&quot;</span>
+<span class="co0"># Adding path of macports port packages, in ahead of others:</span>
+<span class="re2">PATH</span>=<span class="st0">&quot;/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:/opt/local/libexec:/opt/local/x86_64-apple-darwin19.6.0/bin:<span class="es2">$PATH</span>&quot;</span>;
+<span class="co0"># Load PATH into currently running shell:</span>
+<span class="kw3">export</span> PATH;
+<span class="co0"># Load other environment variables:</span>
+<span class="kw3">export</span> <span class="re2">JAVA_HOME</span>=<span class="sy0">/</span>Library<span class="sy0">/</span>Java<span class="sy0">/</span>JavaVirtualMachines<span class="sy0">/</span>openjdk7-zulu<span class="sy0">/</span>Contents<span class="sy0">/</span>Home</pre>
+</dd></dl>
+<ul>
+<li class="level1"><div class="li"> turn the <code>env.sh</code> file an executable shell script file with this command<strong>:</strong> <pre class="code bash"><span class="kw2">chmod</span> +x <span class="sy0">/</span>Volumes<span class="sy0">/</span>OpenWrt<span class="sy0">/</span>env.sh</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> For <strong>MacPorts</strong> create <code>MacPorts.sh</code> file in your home <code>~/</code> directory with this command<strong>:</strong> <pre class="code bash"><span class="kw2">sudo</span> <span class="kw2">nano</span> ~<span class="sy0">/</span>MacPorts.sh</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> find the PATH variables lines in your <code>~/.bash_profile</code> file, and add into below content, then copy all from below &amp; paste into <code>~/MacPorts.sh</code> file. You can also download below code as a file, then change upper 2 PATH variables, to match with your PATH inside your <code>~/.bash_profile</code> file<strong>:</strong> <dl class="file">
+<dt><a href="/_export/code/docs/guide-developer/toolchain/buildroot.exigence.macosx?codeblock=24" title="Download Snippet" class="mediafile mf_sh">MacPorts.sh</a></dt>
+<dd><pre class="code file bash"><span class="co0">#!/opt/local/bin/bash</span>
+<span class="re2">PS1</span>=<span class="st_h">'\h:\W \u\$ '</span>;<span class="re2">PS2</span>=<span class="st_h">'&gt; '</span>;<span class="re2">PS4</span>=<span class="st_h">'+ '</span>;
+<span class="co0"># Bring PATH lines from the ~/.bash_profile file into below:</span>
+<span class="re2">PATH</span>=<span class="st0">&quot;/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin&quot;</span>
+<span class="re2">PATH</span>=<span class="st0">&quot;<span class="es2">$PATH</span>:/opt/macports/bin:/opt/macports/sbin&quot;</span>
+<span class="co0"># Bring last PATH line from the /Volumes/OpenWrt/env.sh file into below:</span>
+<span class="re2">PATH</span>=<span class="st0">&quot;/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:/opt/local/libexec:/opt/local/x86_64-apple-darwin19.6.0/bin:<span class="es2">$PATH</span>&quot;</span>;
+<span class="co0"># Load PATH into currently running shell program:</span>
+<span class="kw3">export</span> PATH;
+<span class="co0"># Load other environment variables:</span>
+<span class="kw3">export</span> <span class="re2">JAVA_HOME</span>=<span class="sy0">/</span>Library<span class="sy0">/</span>Java<span class="sy0">/</span>JavaVirtualMachines<span class="sy0">/</span>openjdk7-zulu<span class="sy0">/</span>Contents<span class="sy0">/</span>Home</pre>
+</dd></dl>
+</div>
+</li>
+<li class="level1"><div class="li"> turn the <code>MacPorts.sh</code> file an executable shell script file with this command<strong>:</strong> <pre class="code bash"><span class="kw2">chmod</span> +x ~<span class="sy0">/</span>MacPorts.sh</pre>
+</div>
+</li>
+</ul>
+
+<p>
+● For <strong>x86_64</strong> Apple hardware, &amp; when you have <strong>homebrew</strong>, then create <code>env.sh</code> file with below content<strong>:</strong> 
+</p>
+<pre class="code bash"><span class="re2">PATH</span>=<span class="st0">&quot;/usr/local/opt/make/libexec/gnubin:<span class="es2">$PATH</span>&quot;</span>
+<span class="re2">PATH</span>=<span class="st0">&quot;/usr/local/opt/gnu-getopt/bin:<span class="es2">$PATH</span>&quot;</span>
+<span class="re2">PATH</span>=<span class="st0">&quot;/usr/local/opt/gettext/bin:<span class="es2">$PATH</span>&quot;</span>
+<span class="re2">PATH</span>=<span class="st0">&quot;/usr/local/opt/coreutils/libexec/gnubin:<span class="es2">$PATH</span>&quot;</span>
+<span class="re2">PATH</span>=<span class="st0">&quot;/usr/local/opt/findutils/libexec/gnubin:<span class="es2">$PATH</span>&quot;</span>
+<span class="kw3">export</span> PATH</pre>
+
+<p>
+● For <strong>arm64</strong> (Apple Silicon(M1)) Apple hardware, &amp; when you have <strong>homebrew</strong>, then create <code>env.sh</code> file with below content<strong>:</strong> 
+</p>
+<pre class="code bash"><span class="re2">PATH</span>=<span class="st0">&quot;/opt/homebrew/opt/make/libexec/gnubin:<span class="es2">$PATH</span>&quot;</span>
+<span class="re2">PATH</span>=<span class="st0">&quot;/opt/homebrew/opt/gnu-getopt/bin:<span class="es2">$PATH</span>&quot;</span>
+<span class="re2">PATH</span>=<span class="st0">&quot;/opt/homebrew/opt/gettext/bin:<span class="es2">$PATH</span>&quot;</span>
+<span class="re2">PATH</span>=<span class="st0">&quot;/opt/homebrew/opt/coreutils/libexec/gnubin:<span class="es2">$PATH</span>&quot;</span>
+<span class="re2">PATH</span>=<span class="st0">&quot;/opt/homebrew/opt/findutils/libexec/gnubin:<span class="es2">$PATH</span>&quot;</span>
+<span class="kw3">export</span> PATH</pre>
+
+<p>
+<br/>
+
+</p>
+
+<p>
+● Optional<strong>:</strong>
+</p>
+<ul>
+<li class="level1"><div class="li"> you may check <a href="https://docs.brew.sh/Installation" class="urlextern" title="https://docs.brew.sh/Installation" rel="ugc nofollow">homebrew official page</a> or <a href="https://guide.macports.org/" class="urlextern" title="https://guide.macports.org/" rel="ugc nofollow">MacPorts-guide</a> if you need more information related to PATH variable, or other info on pkg-mngr.</div>
+</li>
+<li class="level1"><div class="li"> turn <code>env.sh</code> file an executable shell script file<strong>:</strong> <code>chmod +x /Volumes/OpenWrt/env.sh</code></div>
+</li>
+</ul>
+
+<p>
+<br/>
+
+</p>
+
+</div>
+
+<h4 id="g_install_necessary_packages">G. Install necessary packages:</h4>
+<div class="level4">
+
+<p>
+Install necessary packages via pkg-mngr, packages which help to build openwrt components. Use below commands inside a shell instance/tab in <code>Terminal</code>. Note: Packages will be installed inside macOS default volume, not inside <code>/Volumes/OpenWrt</code>
+</p>
+
+<p>
+Based on your pkg-mngr <em>(package-manager)</em> follow one of the below appropriate section<strong>:</strong>
+</p>
+
+<p>
+● if you have <strong>homebrew</strong> pkg-mngr then run this command<strong>:</strong> 
+</p>
+<pre class="code bash">brew <span class="kw2">install</span> coreutils findutils <span class="kw2">gawk</span> <span class="kw2">grep</span> gnu-getopt gnu-tar <span class="kw2">wget</span> diffutils git-extras quilt <span class="kw2">svn</span> <span class="kw2">make</span> ncurses pkg-config</pre>
+<ul>
+<li class="level1"><div class="li"> in above, homebrew command does <strong>not</strong> include the pre-requisites (aka: dependencies) packages mentioned <a href="/docs/guide-developer/toolchain/install-buildsystem" class="wikilink1" title="docs:guide-developer:toolchain:install-buildsystem" data-wiki-id="docs:guide-developer:toolchain:install-buildsystem">here</a>.</div>
+</li>
+</ul>
+
+<p>
+● if you have <strong>MacPorts</strong> pkg-mngr then run below 2 commands<strong>:</strong> 
+</p>
+<pre class="code bash"><span class="kw3">source</span> ~<span class="sy0">/</span>MacPorts.sh
+<span class="kw2">sudo</span> port <span class="kw2">install</span> libiconv gettext-runtime coreutils findutils gwhich <span class="kw2">gawk</span> zlib pcre <span class="kw2">bzip2</span> ncurses <span class="kw2">grep</span> <span class="kw2">getopt</span> gettext-tools-libs <span class="kw2">gettext</span> diffutils sharutils util-linux libxslt libxml2 help2man readline gtime gnutar <span class="kw2">unzip</span> <span class="kw2">zip</span> lzma xz libelf fastjar libusb libftdi0 expat sqlite3 openssl3 openssl kerberos5 dbus lz4 libunistring nettle icu gnutls p11-kit <span class="kw2">wget</span> quilt subversion <span class="kw2">gmake</span> pkgconfig libzip cdrtools ccache curl xxhashlib rsync libidn perl5 p5.28-xml-parser p5.30-xml-parser p5-extutils-makemaker p5-data-dumper boost-jam boost boost-build <span class="kw2">bash</span> bash-completion binutils <span class="kw2">m4</span> <span class="kw2">flex</span> intltool patchutils swig git-extras <span class="kw2">git</span> openjdk17 openjdk7-zulu luajit libtool glib2 <span class="kw2">file</span> python27 python310 libzzip mercurial asciidoc sdcc gnu-classpath</pre>
+<ul>
+<li class="level1"><div class="li"> in above, MacPorts command includes the pre-requisites (aka: dependencies) packages mentioned <a href="/docs/guide-developer/toolchain/install-buildsystem" class="wikilink1" title="docs:guide-developer:toolchain:install-buildsystem" data-wiki-id="docs:guide-developer:toolchain:install-buildsystem">here</a>. Space initially used by all of these packages <strong>:</strong> 4,190,442,792 bytes (2.57 <abbr title="Gigabyte">GB</abbr> on disk) for 129,623 items, (as of March-11, 2022). Note<strong>:</strong> As different packages are continuously modified &amp; improved by their devs or releaser or adopter or maintainer, so their occupying space size &amp; items count will be different in your computer in different time.<br/>
+</div>
+</li>
+</ul>
+
+<p>
+● Optional tools via MacPorts<strong>:</strong>
+</p>
+<ul>
+<li class="level1"><div class="li"> if you need <code>picocom</code> tool to communicate with router via <a href="/docs/techref/hardware/port.serial" class="wikilink1" title="docs:techref:hardware:port.serial" data-wiki-id="docs:techref:hardware:port.serial">serial</a> adapter/cable<sup><a href="/docs/techref/hardware/port.serial.cables" class="wikilink1" title="docs:techref:hardware:port.serial.cables" data-wiki-id="docs:techref:hardware:port.serial.cables">1</a></sup> connection, then<strong>:</strong> <pre class="code bash"><span class="kw2">sudo</span> port <span class="kw2">install</span> picocom</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> if you need last stable <code>openssh</code> (aka: <code>ssh</code>), <code>sftp</code>, <code>scp</code> tools for <a href="/docs/guide-quick-start/sshadministration" class="wikilink1" title="docs:guide-quick-start:sshadministration" data-wiki-id="docs:guide-quick-start:sshadministration">secure</a> communication or file-transfer, then<strong>:</strong> <pre class="code bash"><span class="kw2">sudo</span> port <span class="kw2">install</span> openssh</pre>
+</div>
+</li>
+<li class="level1 node"><div class="li"> if you need to use last stable <code>telnet</code><sup><a href="/toh/netgear/telnet.console" class="wikilink1" title="toh:netgear:telnet.console" data-wiki-id="toh:netgear:telnet.console">1</a></sup>, <code>ftp</code>, <code>rsh</code>, <code>rlogin</code>, <code>tftp</code><sup><a href="/docs/guide-user/troubleshooting/tftpserver" class="wikilink1" title="docs:guide-user:troubleshooting:tftpserver" data-wiki-id="docs:guide-user:troubleshooting:tftpserver">1</a></sup> tools and corresponding daemons/servers, then<strong>:</strong> <pre class="code bash"><span class="kw2">sudo</span> port <span class="kw2">install</span> inetutils</pre>
+</div>
+<ul>
+<li class="level2"><div class="li"> if you need other type of bundled packages, then look here: <a href="https://ports.macports.org/search/?q=utils&amp;name=on" class="urlextern" title="https://ports.macports.org/search/?q=utils&amp;name=on" rel="ugc nofollow">1</a>.</div>
+</li>
+<li class="level2"><div class="li"> if you need other <abbr title="Trivial File Transfer Protocol">TFTP</abbr> daemon/server (<code>tftpd</code>), then you may try below. <abbr title="Trivial File Transfer Protocol">TFTP</abbr> server alows to <a href="/docs/guide-user/troubleshooting/tftpserver" class="wikilink1" title="docs:guide-user:troubleshooting:tftpserver" data-wiki-id="docs:guide-user:troubleshooting:tftpserver">receive</a> files from router, or allows (bricked) router to boot from <abbr title="Trivial File Transfer Protocol">TFTP</abbr> server, etc<strong>:</strong> <pre class="code bash"><span class="kw2">sudo</span> port <span class="kw2">install</span> tftp-hpa</pre>
+</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> if you need these type of tools, (more info: <a href="https://ports.macports.org/category/cross/" class="urlextern" title="https://ports.macports.org/category/cross/" rel="ugc nofollow">1</a>), then<strong>:</strong> <pre class="code bash"><span class="kw2">sudo</span> port <span class="kw2">install</span> arm-elf-binutils i386-elf-binutils m68k-elf-binutils mips-elf-binutils x86_64-elf-binutils</pre>
+</div>
+</li>
+</ul>
+
+<p>
+<br/>
+
+</p>
+
+</div>
+
+<h4 id="h_optional-stepstart_build_friendly_shell">H. Optional-step: Start build friendly shell:</h4>
+<div class="level4">
+
+<p>
+macOS by default uses a very old version of <code>bash</code> <a href="https://en.wikipedia.org/wiki/Comparison_of_command_shells" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Comparison_of_command_shells">shell</a>. So, we can+should start a build/compile friendly common last+stable or recent version of <strong>bash</strong> shell inside macOS-Terminal&#039;s specific <code>tab</code>, as such recent version can be obtained &amp; used by most developer users. Shell-manager software <code>Terminal</code> can run multiple shell instances, by using multiple Terminal-tabs. Select one (or more) Terminal-tab(s) to use for openwrt build purpose, then run below command to have same (last+stable) build environment.
+</p>
+
+<p>
+● If you installed new <strong>bash</strong> package, then start new bash shell inside a specific tab in Terminal, (when you have <strong>MacPorts</strong> based bash package), with this command<strong>:</strong> 
+</p>
+<pre class="code bash"><span class="kw3">exec</span> <span class="sy0">/</span>opt<span class="sy0">/</span>local<span class="sy0">/</span>bin<span class="sy0">/</span><span class="kw2">bash</span></pre>
+
+<p>
+● optional<strong>:</strong>
+</p>
+<ul>
+<li class="level1"><div class="li"> approve/permit new bash shell in macOS with this command<strong>:</strong><br/>
+<code>echo “/opt/local/bin/bash” | sudo tee -a /private/etc/shells</code></div>
+</li>
+<li class="level1"><div class="li"> if you want to continue to use the new bash always, then: click on apple <strong></strong> symbol in topside apple menu-bar &gt; <code>System Preferences...</code> &gt; <code>Users &amp; Groups</code> &gt; Unlock the 🔒pane &gt; control click on your user-name &gt; select <code>Advanced Options...</code> &gt; then update/change the <code>Login shell</code> into <code>/opt/local/bin/bash</code> &gt; <code>ok</code>.</div>
+</li>
+</ul>
+
+<p>
+<br/>
+
+</p>
+
+</div>
+
+<h4 id="i_load_build_environment">I. Load build environment:</h4>
+<div class="level4">
+
+<p>
+We need to load build package locations indicator file as shell environment. OpenWRT developing (aka: building, aka: compiling, aka: compilation) is done inside a suitable (aka: build friendly) shell environment. So, we have to allow openwrt build commands to find packages that we installed via pkg-mngr, by loading build package location indicator file <strong><code>env.sh</code></strong> into one of the <code>Terminal</code> shell environment tab, to create that openwrt build friendly &amp; suitable shell environment.
+</p>
+
+<p>
+When developing (aka: building, aka: compiling), run below command to set up build-friendly PATH (and other) variable(s). This leaves your system in a clean state without symlinking. 
+</p>
+<pre class="code bash"><span class="kw3">source</span> <span class="sy0">/</span>Volumes<span class="sy0">/</span>OpenWrt<span class="sy0">/</span>env.sh</pre>
+<ul>
+<li class="level1"><div class="li"> Optional <strong>:</strong> So from next time or after a reboot, when you want to enter into openwrt build mode, then run below 2 commands inside a specific tab in Terminal, when you have MacPorts based bash package<strong>:</strong> <pre class="code bash"><span class="kw3">exec</span> <span class="sy0">/</span>opt<span class="sy0">/</span>local<span class="sy0">/</span>bin<span class="sy0">/</span><span class="kw2">bash</span>
+<span class="kw3">source</span> <span class="sy0">/</span>Volumes<span class="sy0">/</span>OpenWrt<span class="sy0">/</span>env.sh</pre>
+</div>
+</li>
+</ul>
+
+<p>
+<br/>
+
+</p>
+
+</div>
+
+<h4 id="j_build">J. Build:</h4>
+<div class="level4">
+
+<p>
+Now proceed normally, (that is, start to follow build related other steps/procedures shown in parent/previous page).
+<br/>
+
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Build system setup macOS&quot;,&quot;hid&quot;:&quot;build_system_setup_macos&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-28835&quot;} -->
+<h1 class="sectionedit4" id="other_tools">Other Tools:</h1>
+<div class="level1">
+
+<p>
+Some users may need below some of the tool.
+<br/>
+
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Other Tools:&quot;,&quot;hid&quot;:&quot;other_tools&quot;,&quot;codeblockOffset&quot;:38,&quot;secid&quot;:4,&quot;range&quot;:&quot;28836-28910&quot;} -->
+<h2 class="sectionedit5" id="b43-fwcutter">B43-FWCutter</h2>
+<div class="level2">
+
+<p>
+Users who are developing openwrt firmware for Broadcom (BCM) 43xx chipset, <em>(to use in OpenWRT)</em>, those users need this b43-fwcutter tool to extract wireless drivers from firmware.
+</p>
+<ul>
+<li class="level1"><div class="li"> More info <a href="https://wireless.wiki.kernel.org/en/users/drivers/b43" class="urlextern" title="https://wireless.wiki.kernel.org/en/users/drivers/b43" rel="ugc nofollow">here</a>.</div>
+</li>
+<li class="level1 node"><div class="li"> Package manager <code>homebrew</code> has this tool, and <code>MacPorts</code> does not.</div>
+<ul>
+<li class="level2"><div class="li"> Users of <code>MacPorts</code> can obtain source<sup><a href="https://bues.ch/cms/hacking/misc.html#linux_b43_driver_firmware_tools" class="urlextern" title="https://bues.ch/cms/hacking/misc.html#linux_b43_driver_firmware_tools" rel="ugc nofollow">1</a>, <a href="https://cgit.freebsd.org/ports/tree/sysutils/b43-fwcutter" class="urlextern" title="https://cgit.freebsd.org/ports/tree/sysutils/b43-fwcutter" rel="ugc nofollow">2</a>, <a href="https://github.com/mbuesch/b43-tools" class="urlextern" title="https://github.com/mbuesch/b43-tools" rel="ugc nofollow">3</a>, <a href="https://sourceforge.net/projects/bcm43xx.berlios/files/" class="urlextern" title="https://sourceforge.net/projects/bcm43xx.berlios/files/" rel="ugc nofollow">4</a></sup> &amp; compile, or get <a href="https://freebsd.pkgs.org/13/freebsd-amd64/b43-fwcutter-019.pkg.html" class="urlextern" title="https://freebsd.pkgs.org/13/freebsd-amd64/b43-fwcutter-019.pkg.html" rel="ugc nofollow">it</a><sup><a href="https://pkg.freebsd.org/FreeBSD:13:amd64/latest/All/b43-fwcutter-019.pkg" class="urlextern" title="https://pkg.freebsd.org/FreeBSD:13:amd64/latest/All/b43-fwcutter-019.pkg" rel="ugc nofollow">1</a></sup> from FreeBSD pkg.</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+<br/>
+
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;B43-FWCutter&quot;,&quot;hid&quot;:&quot;b43-fwcutter&quot;,&quot;codeblockOffset&quot;:38,&quot;secid&quot;:5,&quot;range&quot;:&quot;28911-29781&quot;} -->
+<h2 class="sectionedit6" id="golang_related">Golang related</h2>
+<div class="level2">
+
+<p>
+Golang<sup><a href="https://en.wikipedia.org/wiki/Go_(programming_language)" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Go_(programming_language)">1</a></sup>: For darwin/arm64 and linux/aarch64 golang package (feed “packages”) golang C-bootstrap method doesn&#039;t work, but it is possible to use external golang bootstrap. On MacOS arm64 the easiest way is to install golang using brew and use installed golang as bootstrap:<br/>
+
+</p>
+<ul>
+<li class="level1"><div class="li"> <pre class="code bash">brew <span class="kw2">install</span> golang</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Then set CONFIG_GOLANG_EXTERNAL_BOOTSTRAP_ROOT=“/opt/homebrew/opt/go/libexec” in .config file</div>
+</li>
+</ul>
+
+<p>
+<br/>
+
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Golang related&quot;,&quot;hid&quot;:&quot;golang_related&quot;,&quot;codeblockOffset&quot;:38,&quot;secid&quot;:6,&quot;range&quot;:&quot;29782-30272&quot;} -->
+<h1 class="sectionedit7" id="optional_tools">Optional Tools:</h1>
+<div class="level1">
+
+<p>
+optional tools, drivers, software, etc for macOS, to assist into build/compile process, &amp; to increase security.
+<br/>
+
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Optional Tools:&quot;,&quot;hid&quot;:&quot;optional_tools&quot;,&quot;codeblockOffset&quot;:39,&quot;secid&quot;:7,&quot;range&quot;:&quot;30273-30418&quot;} -->
+<h2 class="sectionedit8" id="software_tools">Software Tools:</h2>
+<div class="level2">
+
+<p>
+No need to install these, unless you specifically need such tool/app/utility to assist your build related works. Here is a small list of some optional/extra tools related to openwrt software code build &amp; test &amp; usage &amp; diagnostics, etc, and also list of some optional/extra tools related to network device test/diagnostics, etc to run/use in macOS (apple macintosh operating system) and apple hardware. For more, goto <a href="https://en.wikipedia.org/wiki/List_of_Macintosh_software" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/List_of_Macintosh_software">wp</a>.
+</p>
+
+<p>
+● <em class="u">XQuartz</em> (<a href="https://www.xquartz.org/" class="urlextern" title="https://www.xquartz.org/" rel="ugc nofollow">dev</a>, <a href="https://en.wikipedia.org/wiki/XQuartz" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/XQuartz">wp</a>, <a href="https://github.com/XQuartz/XQuartz" class="urlextern" title="https://github.com/XQuartz/XQuartz" rel="ugc nofollow">src</a>, <a href="https://github.com/XQuartz/XQuartz/releases/" class="urlextern" title="https://github.com/XQuartz/XQuartz/releases/" rel="ugc nofollow">dnld</a>) : it allows cross-platform (GNU-Linux, etc) apps/tools (which were developed to use <code>X11</code> <abbr title="Graphical User Interface">GUI</abbr>), to run on macOS &amp; use macOS&#039;s native <code>Quartz</code> <abbr title="Graphical User Interface">GUI</abbr>, etc. Many <abbr title="Graphical User Interface">GUI</abbr> apps/tools need this. It is opensource tool.
+</p>
+
+<p>
+● <em class="u">PeaZip</em> (<a href="https://peazip.github.io/" class="urlextern" title="https://peazip.github.io/" rel="ugc nofollow">dev</a>, <a href="https://sourceforge.net/projects/peazip/files/" class="urlextern" title="https://sourceforge.net/projects/peazip/files/" rel="ugc nofollow">dnld</a>, <a href="https://github.com/peazip/PeaZip" class="urlextern" title="https://github.com/peazip/PeaZip" rel="ugc nofollow">src</a>, <a href="https://en.wikipedia.org/wiki/PeaZip" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/PeaZip">wp</a>, <a href="https://en.wikipedia.org/wiki/Comparison_of_file_archivers" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Comparison_of_file_archivers">comparison</a>) : it is a free &amp; opensource archiver (zip, compress) &amp; unarchiver (unzip, decompress) app/tool. <abbr title="Graphical User Interface">GUI</abbr> <em>(Graphical User Interface)</em> based. Allows to create: 7Z, ARC, Brotli, BZ2 (BZip), GZ (GZip), PAQ/ZPAQ, PEA, QUAD/BALZ/BCM, sfx, TAR, WIM, XZ, ZPAQ, ZIP, Zstandard, etc, and peazip allows to Open &amp; Extract 200+ file types: ACE, CAB, DEB, ISO, RAR, UDF, ZIPX, etc. Do not download this app from any other website.
+</p>
+
+<p>
+● <em class="u">GnuPG for OSX</em> (<a href="https://sourceforge.net/projects/gpgosx/" class="urlextern" title="https://sourceforge.net/projects/gpgosx/" rel="ugc nofollow">dev</a>, <a href="https://sourceforge.net/projects/gpgosx/files/" class="urlextern" title="https://sourceforge.net/projects/gpgosx/files/" rel="ugc nofollow">dnld</a>) : verifies file&#039;s/message&#039;s authenticity. <a href="https://gnupg.org/" class="urlextern" title="https://gnupg.org/" rel="ugc nofollow">GnuPG</a> is aka <em>(also known as)</em> <a href="https://en.wikipedia.org/wiki/GNU_Privacy_Guard" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/GNU_Privacy_Guard">GPG</a>. We need this tool to verify/authenticate downloaded files <em>(or messages)</em> to find-out whether files <em>(or messages)</em> are indeed what actual file <em>(or message)</em> creator/author/developer actually released/shared/created/sent, So this tool will indicate/tell us whether received files <em>(or messages)</em> were modified/altered/changed/abused/corrupted by someone or some-device in the middle of file/msg travel path or during file/msg travel path, or this tool will indicate to us NO modification was done during file/msg travel path.  File&#039;s <em>(or message&#039;s)</em> actual creator/developer shares their <em>(GnuPG/GPG or PGP or <a href="https://en.wikipedia.org/wiki/Pretty_Good_Privacy#OpenPGP" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Pretty_Good_Privacy#OpenPGP">OpenPGP</a> based)</em> crypto <em>(<a href="https://en.wikipedia.org/wiki/Public-key_cryptography" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Public-key_cryptography">cryptographic</a>)</em> digital <strong>pub</strong>-key file as <strong>pub</strong> file or as <strong>asc</strong> file with public. Most trustworthy way to obtain such pub-key is: goto a <a href="https://en.wikipedia.org/wiki/Key_signing_party" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Key_signing_party">KSP</a> or conference and meet actual file/msg creator/developer &amp; obtain pub-key file directly, (or else, the next (slightly-less) trustworthy solution is: use <a href="https://en.wikipedia.org/wiki/Web_of_trust" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Web_of_trust">WoT</a> &amp; inspect pub-key components to compare &amp; verify a pub-key&#039;s authenticity). File/msg creator/developer <a href="https://en.wikipedia.org/wiki/Digital_signature" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Digital_signature">signs</a> main-file <em>(or main-msg)</em> with their <strong>prv</strong>-key, &amp; that creates an unique <strong>sig</strong> <em>(signature)</em> file for a main-file <em>(or main-msg)</em>, then file/msg creator/dev shares main-file <em>(or main-msg)</em> &amp; sig-file with public. This (GnuPG) tool can use sig-file, pub-key file, &amp; main-file <em>(or main-msg)</em>, &amp; can indicate if the main-file <em>(or main-msg)</em> was actually released by the actual holder of the pub-key, or not. Install a <abbr title="Graphical User Interface">GUI</abbr> frontend / wrapper for this tool.
+</p>
+<ul>
+<li class="level1"><div class="li"> to know directory location of installed <code>gpg2</code> which your system will find (via PATH env var) &amp; use, run <strong>:</strong> <code>which gpg2</code></div>
+</li>
+<li class="level1"><div class="li"> the GnuPG tool can also be loaded via MacPorts pkg-mngr, when you run this command <strong>:</strong> <code>sudo port install gnupg2</code></div>
+</li>
+<li class="level1"><div class="li"> <em class="u">GpgFrontend</em> (<a href="https://www.gpgfrontend.pub/" class="urlextern" title="https://www.gpgfrontend.pub/" rel="ugc nofollow">dev</a>, <a href="https://github.com/saturneric/GpgFrontend" class="urlextern" title="https://github.com/saturneric/GpgFrontend" rel="ugc nofollow">src</a>, <a href="https://github.com/saturneric/GpgFrontend/releases" class="urlextern" title="https://github.com/saturneric/GpgFrontend/releases" rel="ugc nofollow">dnld</a>) : opensource, free tool to authenticate file, to authenticate message, etc. it contains OpenPGP crypto tool and can also function as a frontend / wrapper for GnuPG. See <code>GnuPG for OSX</code> item in above.</div>
+</li>
+</ul>
+
+<p>
+● <em class="u">DevUtils</em> (<a href="https://github.com/DevUtilsApp/DevUtils-app" class="urlextern" title="https://github.com/DevUtilsApp/DevUtils-app" rel="ugc nofollow">dev</a>, <a href="https://devutils.app/" class="urlextern" title="https://devutils.app/" rel="ugc nofollow">dnld</a>, <a href="https://apps.apple.com/us/app/id1533756032" class="urlextern" title="https://apps.apple.com/us/app/id1533756032" rel="ugc nofollow">appstore</a>) : it has various functionalities to perform various development related activities. App is free &amp; opensource, but source-code requires a payment.
+</p>
+<ul>
+<li class="level1"><div class="li"> Various tools/apps for Build, Deployment, etc are here: <a href="https://github.com/smashism/awesome-macadmin-tools" class="urlextern" title="https://github.com/smashism/awesome-macadmin-tools" rel="ugc nofollow">1</a>.</div>
+</li>
+</ul>
+
+<p>
+● <em class="u">TimeUTC</em> (<a href="https://apps.apple.com/us/app/timeutc/id1293572792?mt=12" class="urlextern" title="https://apps.apple.com/us/app/timeutc/id1293572792?mt=12" rel="ugc nofollow">AppStore</a>) : it can add a second date &amp; clock in your  topside apple  menu bar, to display current UTC time &amp; date. freeware.
+</p>
+
+<p>
+● <em class="u">PumpKIN</em> (<a href="https://kin.klever.net/pumpkin/" class="urlextern" title="https://kin.klever.net/pumpkin/" rel="ugc nofollow">dev</a>, <a href="https://kin.klever.net/pumpkin/repository/" class="urlextern" title="https://kin.klever.net/pumpkin/repository/" rel="ugc nofollow">src</a><sup><a href="https://github.com/hacker/pumpkin" class="urlextern" title="https://github.com/hacker/pumpkin" rel="ugc nofollow">2</a></sup>, <a href="https://kin.klever.net/pumpkin/binaries/" class="urlextern" title="https://kin.klever.net/pumpkin/binaries/" rel="ugc nofollow">dnld</a>) : opensource &amp; free &amp; <abbr title="Graphical User Interface">GUI</abbr> based. it is a <abbr title="Trivial File Transfer Protocol">TFTP</abbr> server &amp; client app, <em>(with builtin <abbr title="Trivial File Transfer Protocol">TFTP</abbr> server &amp; client functionalities)</em>. For macOS <em>(and Windows)</em>. It was tested &amp; can run on macOS <code>Mountain Lion</code>. <abbr title="Trivial File Transfer Protocol">TFTP</abbr> can abused/exploited to do harmful things, so keep it firewalled or disable it after you are done working with this app, and also disable it when you pause to work on something else. Do not keep this running. More info <a href="/docs/guide-user/troubleshooting/tftpserver" class="wikilink1" title="docs:guide-user:troubleshooting:tftpserver" data-wiki-id="docs:guide-user:troubleshooting:tftpserver">here</a>.
+</p>
+
+<p>
+● <em class="u">FileZilla</em> (<a href="https://filezilla-project.org/" class="urlextern" title="https://filezilla-project.org/" rel="ugc nofollow">dev</a>, <a href="https://filezilla-project.org/download.php?type=client" class="urlextern" title="https://filezilla-project.org/download.php?type=client" rel="ugc nofollow">dnld</a>, <a href="https://svn.filezilla-project.org/filezilla/FileZilla3/" class="urlextern" title="https://svn.filezilla-project.org/filezilla/FileZilla3/" rel="ugc nofollow">src</a>, <a href="https://en.wikipedia.org/wiki/Comparison_of_FTP_client_software" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Comparison_of_FTP_client_software">comparison</a>) : it is a client app for <abbr title="File Transfer Protocol">FTP</abbr>, <abbr title="File Transfer Protocol">FTP</abbr> over <abbr title="Transport Layer Security">TLS</abbr> (FTPS), <abbr title="SSH File Transfer Protocol">SFTP</abbr> <abbr title="Secure Shell">SSH</abbr>, <abbr title="SSH File Transfer Protocol">SFTP</abbr>. Opensource &amp; free &amp; <abbr title="Graphical User Interface">GUI</abbr> based. Do not download this app from any other website.
+</p>
+
+<p>
+● <em class="u">ProFTPD</em> (<a href="http://www.proftpd.org/ProFTPD" class="urlextern" title="http://www.proftpd.org/ProFTPD" rel="ugc nofollow">dev</a>, <a href="https://github.com/proftpd/proftpd/releases" class="urlextern" title="https://github.com/proftpd/proftpd/releases" rel="ugc nofollow">dnld</a>, <a href="https://github.com/proftpd/proftpd" class="urlextern" title="https://github.com/proftpd/proftpd" rel="ugc nofollow">src</a>, <a href="https://en.wikipedia.org/wiki/Comparison_of_FTP_client_software" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Comparison_of_FTP_client_software">comparison</a>) : For <abbr title="File Transfer Protocol">FTP</abbr> / FTPS / <abbr title="SSH File Transfer Protocol">SFTP</abbr> server. opensource &amp; free. CLI based. Get a <abbr title="Graphical User Interface">GUI</abbr> frontend / wrapper for this tool.
+</p>
+<ul>
+<li class="level1"><div class="li"> And also get web (<abbr title="Graphical User Interface">GUI</abbr>) based admin interface app <em class="u">proFTPd-admin</em> (from <a href="https://sourceforge.net/projects/proftpd-adm/" class="urlextern" title="https://sourceforge.net/projects/proftpd-adm/" rel="ugc nofollow">here</a>) for ProFTPD. Do not keep this app running, when you pause to work on something else. It can be abused / exploited to do harmful things.</div>
+</li>
+</ul>
+
+<p>
+● <em class="u">Github Desktop for Mac</em> (<a href="https://desktop.github.com/" class="urlextern" title="https://desktop.github.com/" rel="ugc nofollow">dev</a>) : allows a developer user to access &amp; collaborate &amp; develop software, etc on Github.com site. <abbr title="Graphical User Interface">GUI</abbr> based free app.
+</p>
+
+<p>
+● <em class="u">TextMate</em> (<a href="https://github.com/textmate/textmate" class="urlextern" title="https://github.com/textmate/textmate" rel="ugc nofollow">dev</a>, <a href="https://macromates.com/download" class="urlextern" title="https://macromates.com/download" rel="ugc nofollow">dnld</a>, <a href="https://en.wikipedia.org/wiki/Comparison_of_text_editors" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Comparison_of_text_editors">comparison</a>) : a text editor. Opensource &amp; <abbr title="Graphical User Interface">GUI</abbr> based free app. Few features : multi tabs, multi windows, regex based search &amp; replacement, etc.
+</p>
+
+<p>
+● <em class="u">Kate</em> (<a href="https://kate-editor.org/" class="urlextern" title="https://kate-editor.org/" rel="ugc nofollow">dev</a>, <a href="https://kate-editor.org/get-it/" class="urlextern" title="https://kate-editor.org/get-it/" rel="ugc nofollow">dnld</a>) : opensource &amp; free code/text editor.
+</p>
+
+<p>
+● <em class="u">LuLu</em> (<a href="https://github.com/objective-see/LuLu" class="urlextern" title="https://github.com/objective-see/LuLu" rel="ugc nofollow">dev</a>) : it is <abbr title="Graphical User Interface">GUI</abbr> based &amp; free &amp; opensource firewall app to control outbound internet data traffic of apps/tools in macOS.
+</p>
+
+<p>
+● <em class="u">Loading</em> (<a href="https://github.com/BonzaiThePenguin/Loading" class="urlextern" title="https://github.com/BonzaiThePenguin/Loading" rel="ugc nofollow">dev</a>) : it can show a spinning progress wheel in  menu bar when network is being used by app/tool. Clicking the icon can show the apps/tools that are using network, &amp; holding down the option key can show individual processes. Opensource, free &amp; <abbr title="Graphical User Interface">GUI</abbr> based tool.
+</p>
+
+<p>
+● <em class="u">OpenSSH <em>(Portable)</em></em> (<a href="https://www.openssh.com/" class="urlextern" title="https://www.openssh.com/" rel="ugc nofollow">dev</a>, <a href="https://github.com/openssh/openssh-portable" class="urlextern" title="https://github.com/openssh/openssh-portable" rel="ugc nofollow">src</a>, <a href="https://www.openssh.com/portable.html#http" class="urlextern" title="https://www.openssh.com/portable.html#http" rel="ugc nofollow">dnld-src</a>, <a href="https://en.wikipedia.org/wiki/Comparison_of_SSH_clients" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Comparison_of_SSH_clients">comparison</a>) : opensource &amp; free. it is a remote-access client tool to connect with <abbr title="Secure Shell">SSH</abbr>-servers<sup><a href="https://en.wikipedia.org/wiki/Comparison_of_SSH_servers" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Comparison_of_SSH_servers">1</a></sup>. It can encrypt all traffic into <abbr title="Secure Shell">SSH</abbr>-server to eliminate eavesdropping, connection hijacking, and other attacks, it has large suite of secure tunneling capabilities, several authentication methods, and sophisticated configuration options. Includes ssh, scp, sftp<sup><a href="https://en.wikipedia.org/wiki/SSH_File_Transfer_Protocol" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/SSH_File_Transfer_Protocol">1</a></sup>, ssh-add, ssh-agent, ssh-keygen, ssh-keyscan. Source can be compiled/built in macOS, or download openssh from macports pkg-mngr, or download dependencies via macports &amp; then build/compile. CLI based. Get a <abbr title="Graphical User Interface">GUI</abbr> wrapper / frontend for this tool.
+</p>
+
+<p>
+● <em class="u">Fugu</em> (<a href="http://rsug.itd.umich.edu/software/fugu" class="urlextern" title="http://rsug.itd.umich.edu/software/fugu" rel="ugc nofollow">dev</a>, <a href="https://sourceforge.net/p/fugussh/" class="urlextern" title="https://sourceforge.net/p/fugussh/" rel="ugc nofollow">src</a>-2, <a href="https://en.wikipedia.org/wiki/Fugu_(software)" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Fugu_(software)">wp</a>) : a free &amp; opensource &amp; <abbr title="Graphical User Interface">GUI</abbr> based frontend / wrapper for OpenSSH ssh,sftp,scp, etc commandline tools. Very old, but still useful to handle <abbr title="Secure Shell">SSH</abbr> keys, etc. It is a <abbr title="SSH File Transfer Protocol">SFTP</abbr> client, <abbr title="Secure Shell">SSH</abbr> app.
+</p>
+
+<p>
+● <em class="u">PuTTY</em> (<a href="https://www.chiark.greenend.org.uk/~sgtatham/putty/" class="urlextern" title="https://www.chiark.greenend.org.uk/~sgtatham/putty/" rel="ugc nofollow">dev</a>, <a href="https://en.wikipedia.org/wiki/PuTTY" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/PuTTY">wp</a>, <a href="https://git.tartarus.org/?p=simon/putty.git" class="urlextern" title="https://git.tartarus.org/?p=simon/putty.git" rel="ugc nofollow">src</a>) : it is a free &amp; open-source terminal emulator, serial console and network file transfer tool, &amp; supports several network protocols: SCP, <abbr title="Secure Shell">SSH</abbr>, Telnet, rlogin, and raw socket connection. Actually developed for Windows <abbr title="Operating System">OS</abbr>, but has been ported into MacPorts pkg-mngr to use in macOS. <abbr title="Graphical User Interface">GUI</abbr> based. To install via Macports pkg-mngr, run<strong>:</strong> <code>sudo port install putty</code>
+</p>
+<ul>
+<li class="level1"><div class="li"> PuTTY in MacPorts needs these dependencies <em>(these wil be auto-loaded by macports)</em><strong>:</strong> pkgconfig, gtk2. And <code>gtk2</code> needs these dependenicies<strong>:</strong> gtk-doc, pkgconfig, perl5, autoconf, automake, libtool, xz, atk, pango, gdk-pixbuf2, gobject-introspection, xorg-libXi, xorg-libXrandr, xorg-libXcursor, xorg-libXinerama, xorg-libXdamage, xorg-libXcomposite, xorg-libXfixes, shared-mime-info, hicolor-icon-theme.</div>
+</li>
+</ul>
+
+<p>
+● <em class="u">Coccinellida</em> (<a href="https://sourceforge.net/projects/coccinellida/" class="urlextern" title="https://sourceforge.net/projects/coccinellida/" rel="ugc nofollow">dev</a>, <a href="https://sourceforge.net/projects/coccinellida/files/" class="urlextern" title="https://sourceforge.net/projects/coccinellida/files/" rel="ugc nofollow">dnld</a>) : a simple <abbr title="Secure Shell">SSH</abbr> tunnel manager app. opensource, free. <abbr title="Graphical User Interface">GUI</abbr> based.
+</p>
+
+<p>
+● <em class="u">STM <em>(<abbr title="Secure Shell">SSH</abbr> Tunnel Manager)</em></em> (<a href="https://www.tynsoe.org/stm/" class="urlextern" title="https://www.tynsoe.org/stm/" rel="ugc nofollow">dev</a>, <a href="https://www.tynsoe.org/stm/documentation/" class="urlextern" title="https://www.tynsoe.org/stm/documentation/" rel="ugc nofollow">doc</a>, <a href="http://itunes.apple.com/us/app/ssh-tunnel-manager/id424470626?mt=12" class="urlextern" title="http://itunes.apple.com/us/app/ssh-tunnel-manager/id424470626?mt=12" rel="ugc nofollow">appstore</a>) : it can manage multiple ssh tunnels / connections: local, remote, socks-proxy, etc. it is a <abbr title="Graphical User Interface">GUI</abbr> based fronend / wrapper for ssh tool, but for socks-proxy it can use builtin ssh on some situations. freeware. not-opensource. <abbr title="Graphical User Interface">GUI</abbr> based &amp; also frontend for <abbr title="Secure Shell">SSH</abbr>.
+</p>
+
+<p>
+● <em class="u">OpenVPN Connect</em> (<a href="https://openvpn.net/" class="urlextern" title="https://openvpn.net/" rel="ugc nofollow">dev</a>, <a href="https://openvpn.net/download-open-vpn/" class="urlextern" title="https://openvpn.net/download-open-vpn/" rel="ugc nofollow">dnld</a>, <a href="https://itunes.apple.com/us/app/openvpn-connect/id590379981?mt=8" class="urlextern" title="https://itunes.apple.com/us/app/openvpn-connect/id590379981?mt=8" rel="ugc nofollow">appstore</a>, <a href="https://openvpn.net/community-downloads/" class="urlextern" title="https://openvpn.net/community-downloads/" rel="ugc nofollow">community-dnld</a>, <a href="https://en.wikipedia.org/wiki/OpenVPN" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/OpenVPN">wp</a>) : opensource &amp; free. <abbr title="Virtual Private Network">VPN</abbr> <em>(virtual private network)</em> connector client tool. <abbr title="Graphical User Interface">GUI</abbr> based. <em>(There are many other types of <abbr title="Virtual Private Network">VPN</abbr><sup><a href="https://en.wikipedia.org/wiki/Virtual_private_network" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Virtual_private_network">1</a></sup> connector client/server app/tool)</em>.
+</p>
+
+<p>
+● <em class="u">TunnelBlick</em> (<a href="https://github.com/Tunnelblick/Tunnelblick" class="urlextern" title="https://github.com/Tunnelblick/Tunnelblick" rel="ugc nofollow">dev</a>) : a free &amp; opensource &amp; <abbr title="Graphical User Interface">GUI</abbr> based frontend / wrapper for OpenVPN commandline tool.
+</p>
+
+<p>
+● <em class="u">WireShark</em> (<a href="https://www.wireshark.org/" class="urlextern" title="https://www.wireshark.org/" rel="ugc nofollow">dev</a>, <a href="https://www.wireshark.org/#download" class="urlextern" title="https://www.wireshark.org/#download" rel="ugc nofollow">dnld</a>, <a href="https://gitlab.com/wireshark/wireshark.git" class="urlextern" title="https://gitlab.com/wireshark/wireshark.git" rel="ugc nofollow">src</a>, <a href="https://en.wikipedia.org/wiki/Comparison_of_packet_analyzers" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Comparison_of_packet_analyzers">comparison</a>, <a href="https://gitlab.com/wireshark/wireshark/-/wikis/home" class="urlextern" title="https://gitlab.com/wireshark/wireshark/-/wikis/home" rel="ugc nofollow">wiki</a>) : it is a network data packet analyzer (aka: network protocol analyzer = NPA) software. Opensource, free &amp; <abbr title="Graphical User Interface">GUI</abbr> based.
+</p>
+
+<p>
+● <em class="u">VirtualBox</em> (<a href="https://www.virtualbox.org/" class="urlextern" title="https://www.virtualbox.org/" rel="ugc nofollow">dev</a>, <a href="https://www.virtualbox.org/wiki/Downloads" class="urlextern" title="https://www.virtualbox.org/wiki/Downloads" rel="ugc nofollow">dnld</a>, <a href="https://en.wikipedia.org/wiki/Comparison_of_platform_virtualization_software" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Comparison_of_platform_virtualization_software">comparison</a><sup><a href="https://en.wikipedia.org/wiki/Comparison_of_application_virtualization_software" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Comparison_of_application_virtualization_software">2</a></sup>) : a free &amp; opensource &amp; <abbr title="Graphical User Interface">GUI</abbr> based virtualizer software (from Oracle) to create (software based) virtual-machine (VM) inside a hardware based host machine. So with this app, user can run+use multiple+different operating systems (<abbr title="Operating System">OS</abbr>) simultaneously. User can create VM as client, VM as server, client+server VM, Desktop <abbr title="Operating System">OS</abbr> VM, Mobile <abbr title="Operating System">OS</abbr> VM, etc, etc. First version used codes from QEMU. It can emulate these (hardware) architectures as VM: x86, x86-64.
+</p>
+
+<p>
+● <em class="u">QEMU</em> (<a href="https://www.qemu.org/" class="urlextern" title="https://www.qemu.org/" rel="ugc nofollow">dev</a>, <a href="https://www.qemu.org/download/#macos" class="urlextern" title="https://www.qemu.org/download/#macos" rel="ugc nofollow">dnld</a>, <a href="https://git.qemu.org/git/qemu.git" class="urlextern" title="https://git.qemu.org/git/qemu.git" rel="ugc nofollow">src</a>, <a href="https://en.wikipedia.org/wiki/QEMU" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/QEMU">wp</a>) : it is free &amp; opensource. It is a generic &amp; open source machine emulator and virtualizer. It can emulate various (hardware) architectures as VM, such as: x86, x86-64, MIPS64 (up to Release 6), SPARC (sun4m and sun4u) (32/64), ARM (Integrator/CP and Versatile/PB), SuperH, PowerPC (PReP and Power Macintosh), ETRAX CRIS, MicroBlaze, and RISC-V, OpenRisc32, Alpha, LM32, M68k, S/390, SH4, Unicore32, Xtensa, etc.
+</p>
+
+<p>
+● <em class="u">NTFS for Mac</em> (Microsoft NTFS for Mac By Tuxera) (<a href="https://ntfsformac.tuxera.com/" class="urlextern" title="https://ntfsformac.tuxera.com/" rel="ugc nofollow">dev</a>) : The functionality or ability to read NTFS partitions inside macOS is very helpful feature to transfer file(s) between Windows NTFS partition HDD/SSD and your APFS <em>(apple macOS file-system)</em>. This “NTFS for Mac” by Tuxera tool is not free <em>(aka: as freedom of software)</em>, it is proprietary (non-opensource) tool. Only trial version is freeware for 15days, tiral version has some helpful functionalities. Full functionalities <em>(after 15 days trial)</em> requires a payment.
+</p>
+<ul>
+<li class="level1"><div class="li"> HDD/SSD storage device MFR (aka: manufacturers) also includes <code>NTFS for Mac</code> (<em class="u">Microsoft NTFS for Mac By Paragon</em><sup><a href="https://www.paragon-software.com/home/ntfs-mac/" class="urlextern" title="https://www.paragon-software.com/home/ntfs-mac/" rel="ugc nofollow">1</a></sup>, etc) software for macOS, with their some HDD/SSD storage device, So if you purchased such HDD/SSD or if your HDD/SSD drive <em>(in your computer)</em> matches with MFR&#039;s such HDD/SSD then you may use that full-version <code>NTFS for Mac</code> <em>(by Paragon)</em> software (by obtaining it from HDD/SSD MFR&#039;s website). a 10-day trial-version is here: <a href="https://www.paragon-software.com/home/ntfs-mac/" class="urlextern" title="https://www.paragon-software.com/home/ntfs-mac/" rel="ugc nofollow">1</a>.</div>
+</li>
+<li class="level1"><div class="li"> Earlier helpful software <em class="u">FUSE for macOS</em><sup><a href="https://osxfuse.github.io/" class="urlextern" title="https://osxfuse.github.io/" rel="ugc nofollow">1</a>, <a href="https://github.com/libfuse/libfuse" class="urlextern" title="https://github.com/libfuse/libfuse" rel="ugc nofollow">2</a>, <a href="https://en.wikipedia.org/wiki/Filesystem_in_Userspace" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Filesystem_in_Userspace">3</a></sup> is not anymore <code>free</code> (as in freedom of software) for macOS, it is now proprietary for macOS. The <em class="u">Mounty for NTFS</em><sup><a href="https://mounty.app/" class="urlextern" title="https://mounty.app/" rel="ugc nofollow">1</a></sup> and <em class="u">NTFS-3G</em><sup><a href="https://github.com/tuxera/ntfs-3g" class="urlextern" title="https://github.com/tuxera/ntfs-3g" rel="ugc nofollow">1</a>, <a href="https://www.tuxera.com/community/ntfs-3g-download/" class="urlextern" title="https://www.tuxera.com/community/ntfs-3g-download/" rel="ugc nofollow">2</a></sup> are free &amp; opensource, but slow. Linux kernel v5.15 &amp; onward has began to support NTFS<sup><a href="https://www.kernel.org/doc/html/latest/filesystems/ntfs3.html" class="urlextern" title="https://www.kernel.org/doc/html/latest/filesystems/ntfs3.html" rel="ugc nofollow">1</a></sup> 3.1 &amp; earlier versions, NTFS driver was provided by Paragon.</div>
+</li>
+</ul>
+
+<p>
+● <em class="u">GPT fdisk <em>(gdisk)</em></em> (<a href="https://www.rodsbooks.com/gdisk/" class="urlextern" title="https://www.rodsbooks.com/gdisk/" rel="ugc nofollow">dev</a>, <a href="https://sourceforge.net/projects/gptfdisk/files/" class="urlextern" title="https://sourceforge.net/projects/gptfdisk/files/" rel="ugc nofollow">dnld</a>, <a href="https://en.wikipedia.org/wiki/List_of_disk_partitioning_software" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/List_of_disk_partitioning_software">list</a>) : opensource &amp; free partition manager tool. gdisk has TUI <em>(text-based semi-graphical user interface)</em> interface. gdisk can edit GUID partition table (GPT) definitions in Linux, FreeBSD, MacOS X, or Windows, it can convert MBR to GPT without data loss, convert BSD disklabels to GPT without data loss, create hybrid MBR or convert GPT to MBR without data loss, repair damaged GPT data structures, repair damaged MBR data structures (FixParts). macOS 10.11.x (“El Capitan”) and later created some areas <em>(and layers)</em> of partitions “rootless”, so users need to either disable<sup><a href="http://osxdaily.com/2015/10/05/disable-rootless-system-integrity-protection-mac-os-x/" class="urlextern" title="http://osxdaily.com/2015/10/05/disable-rootless-system-integrity-protection-mac-os-x/" rel="ugc nofollow">1</a></sup> SIP <em>(System Integrity Protection)</em>, or Run it from a bootable USB/CD/DVD storage disk/media (by using partition manager tools like: <em class="u">PartedMagic</em><sup><a href="https://PartedMagic.com/" class="urlextern" title="https://PartedMagic.com/" rel="ugc nofollow">1</a></sup>). Obviously using trustworthy bootable disk is better idea+method. gdisk can work on external / USB media / disk / drive fine (without disabling SIP in macOS). it can also be installed via MacPorts pkg-mngr: <code>sudo port install gptfdisk</code>
+</p>
+<ul>
+<li class="level1"><div class="li"> <em class="u">Paragon Hard Disk Manager for Mac</em> (<a href="https://www.paragon-software.com/hdm-mac/" class="urlextern" title="https://www.paragon-software.com/hdm-mac/" rel="ugc nofollow">dev</a>) : it is a commercial &amp; non-opensource software, <abbr title="Graphical User Interface">GUI</abbr> based. it can manage drive/disk partitions. a 10-day trial version is <a href="https://main-site-preproduction.paragon-software.com/us/hdm-mac/#" class="urlextern" title="https://main-site-preproduction.paragon-software.com/us/hdm-mac/#" rel="ugc nofollow">here</a> for macOS. A community edition of <em>(<em class="u">Paragon Partition Manager</em>)</em> is avilable which is not-trial &amp; can continue to function for non-commercial use purpose only, but available only for Windows 7 &amp; higher <abbr title="Operating System">OS</abbr>, <a href="https://www.paragon-software.com/free/pm-express/" class="urlextern" title="https://www.paragon-software.com/free/pm-express/" rel="ugc nofollow">here</a>.</div>
+</li>
+</ul>
+
+<p>
+● <em class="u">UNetbootin</em> (<a href="https://unetbootin.github.io/" class="urlextern" title="https://unetbootin.github.io/" rel="ugc nofollow">dev</a>, <a href="https://sourceforge.net/projects/unetbootin/files/UNetbootin/" class="urlextern" title="https://sourceforge.net/projects/unetbootin/files/UNetbootin/" rel="ugc nofollow">dnld</a><sup><a href="https://github.com/unetbootin/unetbootin/releases/" class="urlextern" title="https://github.com/unetbootin/unetbootin/releases/" rel="ugc nofollow">2</a></sup>, <a href="https://en.wikipedia.org/wiki/List_of_tools_to_create_Live_USB_systems" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/List_of_tools_to_create_Live_USB_systems">list</a>, <a href="https://en.wikipedia.org/wiki/Comparison_of_boot_loaders" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Comparison_of_boot_loaders">comparison</a>) : opensource &amp; free boot disk creator. <abbr title="Graphical User Interface">GUI</abbr> based. it allows to create bootable Live USB drives for booting Ubuntu, Fedora, and other Linux distributions without burning a CD. It can run on <em>(Windows, Linux, and)</em> macOS. You can either let UNetbootin download one of the many distributions supported out-of-the-box for you, or you can supply your own <em>(Linux, etc)</em> .iso file.
+</p>
+
+<p>
+● <em class="u">Clonezilla</em> (<a href="https://clonezilla.org/" class="urlextern" title="https://clonezilla.org/" rel="ugc nofollow">dev</a>, <a href="https://sourceforge.net/projects/clonezilla/files/clonezilla_live_stable/" class="urlextern" title="https://sourceforge.net/projects/clonezilla/files/clonezilla_live_stable/" rel="ugc nofollow">src</a>, <a href="https://clonezilla.org/downloads.php" class="urlextern" title="https://clonezilla.org/downloads.php" rel="ugc nofollow">dnld</a>, <a href="https://en.wikipedia.org/wiki/Comparison_of_disk_cloning_software" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Comparison_of_disk_cloning_software">comparison</a>-(clone), <a href="https://en.wikipedia.org/wiki/Comparison_of_disc_image_software" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Comparison_of_disc_image_software">comparison</a>-(img), <a href="https://en.wikipedia.org/wiki/List_of_disk_cloning_software" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/List_of_disk_cloning_software">list</a>-(clone), <a href="https://en.wikipedia.org/wiki/List_of_data_recovery_software" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/List_of_data_recovery_software">list</a>-(recovery) ) : it is opensource &amp; free tool to clone/backup/copy drive &amp; partitions, from Linux <abbr title="Operating System">OS</abbr>. it has TUI <em>(text-based semi-graphical user interface)</em> based interface. Supports: FAT12, FAT16, FAT32, NTFS, ext2, ext3, ext4, ReiserFS, Reiser4, xfs, jfs, btrfs, f2fs, NILFS2, HFS+, UFS, minix, VMFS3. Obtain Clonezilla&#039;s bootable disk img file from Clonezilla dev site, After you boot from that, it will load Debian Linux &amp; it will run Clonezilla. Usually it can be used on <em>(almost)</em> any computer (including Mac). Notice: Partitions which are proprietary &amp; very recent &amp; no <abbr title="Application Programming Interface">API</abbr>/access solution is yet found, support for those partitions are not yet available in this software.
+</p>
+<ul>
+<li class="level1"><div class="li"> You can also use <em>(opensource)</em> <em class="u">RescueZilla</em><sup><a href="https://RescueZilla.com/" class="urlextern" title="https://RescueZilla.com/" rel="ugc nofollow">1</a></sup> which is a Clonezilla <abbr title="Graphical User Interface">GUI</abbr> version from another developer, obtain from here: <a href="https://github.com/rescuezilla/rescuezilla" class="urlextern" title="https://github.com/rescuezilla/rescuezilla" rel="ugc nofollow">1</a>, <em>(it also requires booting from USB/external media/disk)</em>. You can also try <em>(opensource)</em> <em class="u">Redo Rescue</em><sup><a href="http://RedoRescue.com/" class="urlextern" title="http://RedoRescue.com/" rel="ugc nofollow">1</a></sup> <em>(formerly “Redo Backup &amp; Recovery”)</em> software from here: <a href="https://sourceforge.net/projects/redobackup/files/" class="urlextern" title="https://sourceforge.net/projects/redobackup/files/" rel="ugc nofollow">dnld</a> <a href="https://github.com/redorescue/redorescue" class="urlextern" title="https://github.com/redorescue/redorescue" rel="ugc nofollow">src</a>, it is partly based on Clonezila, <em>(and it also requires booting from USB/external media/disk)</em>.</div>
+</li>
+<li class="level1"><div class="li"> <em class="u">Acronis True Image 2021 for Mac</em> (<a href="https://www.acronis.com/en-us/support/trueimage/2021mac/" class="urlextern" title="https://www.acronis.com/en-us/support/trueimage/2021mac/" rel="ugc nofollow">dev</a>) : it is non-opensource &amp; commercial software to clone/backup/copy drive &amp; partitions. <abbr title="Graphical User Interface">GUI</abbr> based. 30-day trial version is available <a href="https://www.acronis.com/en-us/support/trueimage/2021mac/" class="urlextern" title="https://www.acronis.com/en-us/support/trueimage/2021mac/" rel="ugc nofollow">here</a>. Supports: FAT32, NTFS, HFS+, APFS, ext2, ext3, ext4 and ReiserFS. Some HDD/SSD storage drive MFR <em>(manufacturers)</em> include this with their HDD/SSD, so if you&#039;ve purchased drive or if your drive in your computer matches thier drive, then you can obtain the full-version from HDD/SSD MFR&#039;s website.</div>
+</li>
+</ul>
+
+<p>
+● <em class="u">Deluge</em> (<a href="https://deluge-torrent.org/" class="urlextern" title="https://deluge-torrent.org/" rel="ugc nofollow">dev</a>, <a href="https://ftp.osuosl.org/pub/deluge/mac_osx/?C=M;O=D" class="urlextern" title="https://ftp.osuosl.org/pub/deluge/mac_osx/?C=M;O=D" rel="ugc nofollow">dnld</a>, <a href="https://en.wikipedia.org/wiki/Comparison_of_BitTorrent_clients" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Comparison_of_BitTorrent_clients">comparison</a>) : a bittorrent network based file-sharing software. free &amp; opensource. Encrypt or Password protect files before sharing, &amp; share password via a separate (private) channel. Filename can have contact info if you wish to be contacted, but remember that such contact info will also be abused by someone out there. More info <a href="https://dev.deluge-torrent.org/wiki/Installing/MacOSX#MacPorts" class="urlextern" title="https://dev.deluge-torrent.org/wiki/Installing/MacOSX#MacPorts" rel="ugc nofollow">here</a>.
+</p>
+
+<p>
+● <em class="u">Thunderbird</em> (<a href="https://www.thunderbird.net/" class="urlextern" title="https://www.thunderbird.net/" rel="ugc nofollow">dev</a>, <a href="https://www.thunderbird.net/thunderbird/all/" class="urlextern" title="https://www.thunderbird.net/thunderbird/all/" rel="ugc nofollow">dnld</a>, <a href="https://hg.mozilla.org/comm-central" class="urlextern" title="https://hg.mozilla.org/comm-central" rel="ugc nofollow">src</a>, <a href="https://en.wikipedia.org/wiki/Comparison_of_email_clients" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Comparison_of_email_clients">comparison</a>) : multi data communication-protocol supporting client, but more commonly known as an Email client app <em>(for viewing, reading, sending emails)</em>, so it is a PIM<sup><a href="https://en.wikipedia.org/wiki/Personal_information_manager" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Personal_information_manager">1</a></sup>/PDM<sup><a href="https://en.wikipedia.org/wiki/Personal_data_manager" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Personal_data_manager">1</a></sup> client <em>(that supports personal/private information like: emails, address-book, calendar dates, emails, instant messages, passwords, alerts, browsing site data, etc, etc)</em>. Thunderbird is free &amp; opensource. It is also client app/tool for: newsfeeds<sup><a href="https://en.wikipedia.org/wiki/List_of_Usenet_newsreaders" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/List_of_Usenet_newsreaders">1</a></sup>/newsgroups<sup><a href="https://en.wikipedia.org/wiki/List_of_newsgroups" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/List_of_newsgroups">1</a>, <a href="https://en.wikipedia.org/wiki/Comparison_of_Usenet_newsreaders" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Comparison_of_Usenet_newsreaders">2</a></sup> <em>(NNTP<sup><a href="https://en.wikipedia.org/wiki/NNTP" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/NNTP">1</a></sup> client, NNTPS)</em> , web feeds<sup><a href="https://en.wikipedia.org/wiki/Comparison_of_feed_aggregators" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Comparison_of_feed_aggregators">1</a>, <a href="https://support.mozilla.org/en-US/kb/how-subscribe-news-feeds-and-blogs" class="urlextern" title="https://support.mozilla.org/en-US/kb/how-subscribe-news-feeds-and-blogs" rel="ugc nofollow">2</a></sup> <em>(news aggregators<sup><a href="https://en.wikipedia.org/wiki/News_aggregator" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/News_aggregator">1</a></sup>, like: Atom<sup><a href="https://en.wikipedia.org/wiki/Atom_(Web_standard)" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Atom_(Web_standard)">1</a></sup>, RSS<sup><a href="https://en.wikipedia.org/wiki/RSS" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/RSS">1</a></sup>, etc)</em> client, instant messaging<sup><a href="https://support.mozilla.org/en-US/kb/instant-messaging-and-chat" class="urlextern" title="https://support.mozilla.org/en-US/kb/instant-messaging-and-chat" rel="ugc nofollow">1</a></sup> <em>(aka: chat<sup><a href="https://en.wikipedia.org/wiki/Chat_client" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Chat_client">1</a></sup> networks, like <abbr title="Internet Relay Chat">IRC</abbr><sup><a href="https://en.wikipedia.org/wiki/IRC" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/IRC">1</a></sup>, XMPP<sup><a href="https://en.wikipedia.org/wiki/XMPP" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/XMPP">1</a></sup>, Google-Talk, <del>Twitter</del>, Odnoklassniki, etc)</em> client, address auto-completion (<abbr title="Lightweight Directory Access Protocol">LDAP</abbr>) client, etc. Thunderbird contains core/engine of Mozilla Firefox web-browser, which allows thunderbird to connect with various types of web-servers / web-sites to use various web-services as <abbr title="Hypertext Transfer Protocol">HTTP</abbr>/<abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> protocols cleints &amp; as other protocols cleints, and firefox web-browser core also allows thunderbird to open<sup><a href="https://addons.thunderbird.net/thunderbird/addon/browseintab/" class="urlextern" title="https://addons.thunderbird.net/thunderbird/addon/browseintab/" rel="ugc nofollow">1</a>, <a href="https://addons.thunderbird.net/thunderbird/addon/new-tab-button/" class="urlextern" title="https://addons.thunderbird.net/thunderbird/addon/new-tab-button/" rel="ugc nofollow">2</a>, <a href="https://addons.thunderbird.net/thunderbird/addon/open-tab/" class="urlextern" title="https://addons.thunderbird.net/thunderbird/addon/open-tab/" rel="ugc nofollow">3</a></sup> multiple web-browser tab(s) <em>(inside thunderbird)</em> to be used by users, manually. Send yourself <em>(a <abbr title="HyperText Markup Language">HTML</abbr> based)</em> email <em>(or chat-msg)</em> with <abbr title="Uniform Resource Locator">URL</abbr>-links to various web-site services, then inside thinderbird right-click on link <em>(inside email or chat-msg)</em> &amp; select the option to open the link inside a New Tab inside thunderbird<sup><a href="https://stackoverflow.com/questions/63253091/" class="urlextern" title="https://stackoverflow.com/questions/63253091/" rel="ugc nofollow">1</a></sup>, in this way you can use/access various WebMails<sup><a href="https://stackoverflow.com/questions/63253091/" class="urlextern" title="https://stackoverflow.com/questions/63253091/" rel="ugc nofollow">1</a>, <a href="https://en.wikipedia.org/wiki/Comparison_of_webmail_providers" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Comparison_of_webmail_providers">2</a></sup>, Twitter<sup><a href="https://m.twitter.com/" class="urlextern" title="https://m.twitter.com/" rel="ugc nofollow">1</a></sup>, etc. More info on how to approve cookies &amp; JS for such web-service website and dependent 3rd-party web-services <em>(inside thunderbird)</em>, are explained <a href="https://stackoverflow.com/questions/63253091/" class="urlextern" title="https://stackoverflow.com/questions/63253091/" rel="ugc nofollow">here</a>. Thunderbird addons can also allow access to various web-services more easily: Google-Chat<sup><a href="https://addons.thunderbird.net/thunderbird/addon/google-chat-tab/" class="urlextern" title="https://addons.thunderbird.net/thunderbird/addon/google-chat-tab/" rel="ugc nofollow">1</a></sup>, Skype-WebApp<sup><a href="https://addons.thunderbird.net/thunderbird/addon/skypewebapp/" class="urlextern" title="https://addons.thunderbird.net/thunderbird/addon/skypewebapp/" rel="ugc nofollow">1</a></sup>, Telegram-Web<sup><a href="https://addons.thunderbird.net/thunderbird/addon/telegramwebapp/" class="urlextern" title="https://addons.thunderbird.net/thunderbird/addon/telegramwebapp/" rel="ugc nofollow">1</a>, <a href="https://addons.thunderbird.net/thunderbird/addon/telegram-web-in-thunderbird/" class="urlextern" title="https://addons.thunderbird.net/thunderbird/addon/telegram-web-in-thunderbird/" rel="ugc nofollow">2</a></sup>, Google-Voice<sup><a href="https://addons.thunderbird.net/thunderbird/addon/open-google-voice/" class="urlextern" title="https://addons.thunderbird.net/thunderbird/addon/open-google-voice/" rel="ugc nofollow">1</a></sup>, ProtonMail-Encryption-Status<sup><a href="https://addons.thunderbird.net/thunderbird/addon/protonmail-encryption-status/" class="urlextern" title="https://addons.thunderbird.net/thunderbird/addon/protonmail-encryption-status/" rel="ugc nofollow">1</a></sup>, regimail<sup><a href="https://addons.thunderbird.net/thunderbird/addon/regimail/" class="urlextern" title="https://addons.thunderbird.net/thunderbird/addon/regimail/" rel="ugc nofollow">1</a></sup>, Google-Calendar<sup><a href="https://addons.thunderbird.net/thunderbird/addon/gcaltab/" class="urlextern" title="https://addons.thunderbird.net/thunderbird/addon/gcaltab/" rel="ugc nofollow">1</a>, <a href="https://addons.thunderbird.net/thunderbird/addon/google-calendar-plugin/" class="urlextern" title="https://addons.thunderbird.net/thunderbird/addon/google-calendar-plugin/" rel="ugc nofollow">2</a></sup>, M-Hub Lite<sup><a href="https://addons.thunderbird.net/thunderbird/addon/m-hub-lite_microsft-office-365/" class="urlextern" title="https://addons.thunderbird.net/thunderbird/addon/m-hub-lite_microsft-office-365/" rel="ugc nofollow">1</a></sup>, TbSync<sup><a href="https://addons.thunderbird.net/thunderbird/addon/tbsync/" class="urlextern" title="https://addons.thunderbird.net/thunderbird/addon/tbsync/" rel="ugc nofollow">1</a></sup>, Exquilla-for-Exchange<sup><a href="https://addons.thunderbird.net/thunderbird/addon/exquilla-exchange-web-services/" class="urlextern" title="https://addons.thunderbird.net/thunderbird/addon/exquilla-exchange-web-services/" rel="ugc nofollow">1</a></sup>, Google-Contacts<sup><a href="https://addons.thunderbird.net/thunderbird/addon/google-contacts/" class="urlextern" title="https://addons.thunderbird.net/thunderbird/addon/google-contacts/" rel="ugc nofollow">1</a>, <a href="https://addons.thunderbird.net/thunderbird/addon/gcontactsync/" class="urlextern" title="https://addons.thunderbird.net/thunderbird/addon/gcontactsync/" rel="ugc nofollow">2</a></sup>, Outlook AddressBook Enabler<sup><a href="https://addons.thunderbird.net/thunderbird/addon/outlook-address-book-enabler/" class="urlextern" title="https://addons.thunderbird.net/thunderbird/addon/outlook-address-book-enabler/" rel="ugc nofollow">1</a></sup>, Display Mail User-Agnet T<sup><a href="https://addons.thunderbird.net/thunderbird/addon/display-mail-user-agent-t/" class="urlextern" title="https://addons.thunderbird.net/thunderbird/addon/display-mail-user-agent-t/" rel="ugc nofollow">1</a></sup> <em>(Display Email Writer&#039;s Email-Client)</em>, Google-Keep-(tab)<sup><a href="https://addons.thunderbird.net/thunderbird/addon/google-keep-tab/" class="urlextern" title="https://addons.thunderbird.net/thunderbird/addon/google-keep-tab/" rel="ugc nofollow">1</a></sup>, Owl (OWA) for Exchange<sup><a href="https://addons.thunderbird.net/thunderbird/addon/owl-for-exchange/" class="urlextern" title="https://addons.thunderbird.net/thunderbird/addon/owl-for-exchange/" rel="ugc nofollow">1</a></sup>. This type of app is very helpful to keep multi channel communications with openwrt &amp; other various project developers, and to test your own servers. Get firefox addon uBlock Origin<sup><a href="https://addons.mozilla.org/firefox/addon/ublock-origin/" class="urlextern" title="https://addons.mozilla.org/firefox/addon/ublock-origin/" rel="ugc nofollow">1</a></sup>, &amp; load into Thunderbird, that addon allows you to stop un-approved Advertisements that are using+stealing your computing (CPU, GPU, etc) resources, &amp; internet <em>(limited &amp; costly)</em> data allotments from your <abbr title="Internet Service Provider">ISP</abbr>, etc, without your consent/permission/approval, and these advertisers also DO NOT PAY you any FEE after they used your computing &amp; data resources.
+</p>
+
+<p>
+● <em class="u">Apparency</em> (<a href="https://www.mothersruin.com/software/Apparency/" class="urlextern" title="https://www.mothersruin.com/software/Apparency/" rel="ugc nofollow">dev</a>, <a href="https://www.mothersruin.com/software/Apparency/get.html" class="urlextern" title="https://www.mothersruin.com/software/Apparency/get.html" rel="ugc nofollow">dnld</a>) : it can inspect software application bundles (pkg, app, etc) for macOS, &amp; then it can show info on code signing requirements, notarization, signatures, included frameworks, etc. it is a freeware.
+</p>
+
+<p>
+● <em class="u">AppCleaner</em> (<a href="https://freemacsoft.net/appcleaner/" class="urlextern" title="https://freemacsoft.net/appcleaner/" rel="ugc nofollow">dev</a>) : open <code>Finder</code> &gt; goto <code>Application</code> in any finder-tab &gt; open this <code>AppCleaner</code> app, then drag the app that you want to remove/uninstall from <code>Application</code> folder/directory, &amp; drop it inside the <code>AppCleaner</code>, it will inspect &amp; find-out &amp; show all elements used by that unwanted app, &amp; also show you option to Remove. it is freeware.
+<br/>
+
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Software Tools:&quot;,&quot;hid&quot;:&quot;software_tools&quot;,&quot;codeblockOffset&quot;:39,&quot;secid&quot;:8,&quot;range&quot;:&quot;30419-56316&quot;} -->
+<h2 class="sectionedit9" id="drivers">Drivers:</h2>
+<div class="level2">
+
+<p>
+various <em>(opensource)</em> drivers for macOS, are mentioned (with website links) in this page, inside the topside <code>macOS &amp; Darwin Unix</code> section.
+</p>
+
+<p>
+Serial-to-UART, USB-to-UART, USB-to-JTAG, etc cable/adapter&#039;s macOS/darwin drivers, to communicate with router <em>(from apple mac computer)</em>, are usually provided by the cable/adapter device&#039;s manufacturer. a slow but opensource serial-to-UART driver is also available. For more info goto <a href="/docs/techref/hardware/port.serial" class="wikilink1" title="docs:techref:hardware:port.serial" data-wiki-id="docs:techref:hardware:port.serial">here</a>.
+<br/>
+
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Drivers:&quot;,&quot;hid&quot;:&quot;drivers&quot;,&quot;codeblockOffset&quot;:39,&quot;secid&quot;:9,&quot;range&quot;:&quot;56317-&quot;} -->

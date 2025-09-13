@@ -1,0 +1,170 @@
+
+<h1 class="sectionedit1" id="preserving_openwrt_packages">Preserving OpenWrt packages</h1>
+<div class="level1">
+
+<p>
+See also:
+<a href="/docs/guide-user/installation/attended.sysupgrade" class="wikilink1" title="docs:guide-user:installation:attended.sysupgrade" data-wiki-id="docs:guide-user:installation:attended.sysupgrade">Attended Sysupgrade</a>,
+<a href="/docs/guide-user/advanced/opkg_extras" class="wikilink1" title="docs:guide-user:advanced:opkg_extras" data-wiki-id="docs:guide-user:advanced:opkg_extras">Opkg extras</a>,
+<a href="/docs/guide-user/advanced/hotplug_extras" class="wikilink1" title="docs:guide-user:advanced:hotplug_extras" data-wiki-id="docs:guide-user:advanced:hotplug_extras">Hotplug extras</a>
+</p>
+
+<p>
+Manually removed/installed packages are not preserved by default during firmware upgrade.
+There are different solutions to this problem.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Preserving OpenWrt packages&quot;,&quot;hid&quot;:&quot;preserving_openwrt_packages&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-378&quot;} -->
+<h2 class="sectionedit2" id="solutions">Solutions</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Solutions&quot;,&quot;hid&quot;:&quot;solutions&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;379-400&quot;} -->
+<h3 class="sectionedit3" id="sysupgrade">Sysupgrade</h3>
+<div class="level3">
+
+<p>
+Include user-installed packages in your backup with <a href="/docs/techref/sysupgrade" class="wikilink1" title="docs:techref:sysupgrade" data-wiki-id="docs:techref:sysupgrade">sysupgrade</a>.
+</p>
+<pre class="code bash">sysupgrade <span class="re5">-k</span> <span class="re5">-b</span> - \
+<span class="sy0">|</span> <span class="kw2">tar</span> <span class="re5">-O</span> <span class="re5">-z</span> <span class="re5">-x</span> <span class="re5">-f</span> - etc<span class="sy0">/</span>backup<span class="sy0">/</span>installed_packages.txt \
+<span class="sy0">|</span> <span class="kw2">awk</span> <span class="re5">-e</span> <span class="st_h">'/\s(overlay|unknown)$/{print $1}'</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Sysupgrade&quot;,&quot;hid&quot;:&quot;sysupgrade&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;401-645&quot;} -->
+<h3 class="sectionedit4" id="opkgscript_by_richb-hanover">Opkgscript by richb-hanover</h3>
+<div class="level3">
+
+<p>
+Copy <a href="https://github.com/richb-hanover/OpenWrtScripts/blob/master/opkgscript.sh" class="urlextern" title="https://github.com/richb-hanover/OpenWrtScripts/blob/master/opkgscript.sh" rel="ugc nofollow">opkgscript</a> to your router.
+Ideally in a directory which will be preserved after flashing so you don&#039;t have to copy it again.
+Make it executable:
+</p>
+<pre class="code bash"><span class="kw2">chmod</span> +x <span class="sy0">/</span>path<span class="sy0">/</span>to<span class="sy0">/</span>the<span class="sy0">/</span>opkgscript.sh</pre>
+
+<p>
+Create a snapshot of the installed packages:
+</p>
+<pre class="code bash"><span class="sy0">/</span>path<span class="sy0">/</span>to<span class="sy0">/</span>the<span class="sy0">/</span>opkgscript.sh <span class="re5">-v</span> <span class="kw2">write</span></pre>
+
+<p>
+By default the script will save the list in /etc/config/opkg.installed, which is preserved over flashing.
+When you log back in after the upgrade configure the internet connectivity, run and wait until it finished with the installation:
+</p>
+<pre class="code bash"><span class="sy0">/</span>path<span class="sy0">/</span>to<span class="sy0">/</span>the<span class="sy0">/</span>opkgscript.sh <span class="re5">-v</span> <span class="kw2">install</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Opkgscript by richb-hanover&quot;,&quot;hid&quot;:&quot;opkgscript_by_richb-hanover&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:4,&quot;range&quot;:&quot;646-1368&quot;} -->
+<h3 class="sectionedit5" id="script_by_gsenna">Script by gsenna</h3>
+<div class="level3">
+
+<p>
+<a href="https://forum.openwrt.org/viewtopic.php?id=43480" class="urlextern" title="https://forum.openwrt.org/viewtopic.php?id=43480" rel="ugc nofollow">Default packages attitude 12.09rc2 tplink 1043nd</a>
+</p>
+<pre class="code bash"><span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>listuserpackages.sh
+<span class="kw3">echo</span> <span class="sy0">&gt;&amp;</span><span class="nu0">2</span> User-installed packages are the following:
+<span class="kw2">sed</span> <span class="re5">-ne</span> <span class="st_h">'/^Package:[[:blank:]]*/ {
+    s///
+    h
+}
+/user installed/ {
+    g
+    p
+}'</span> <span class="sy0">/</span>usr<span class="sy0">/</span>lib<span class="sy0">/</span>opkg<span class="sy0">/</span>status
+EOF
+<span class="kw2">chmod</span> +x <span class="sy0">/</span>tmp<span class="sy0">/</span>listuserpackages.sh
+<span class="sy0">/</span>tmp<span class="sy0">/</span>listuserpackages.sh</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Script by gsenna&quot;,&quot;hid&quot;:&quot;script_by_gsenna&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:5,&quot;range&quot;:&quot;1369-1781&quot;} -->
+<h3 class="sectionedit6" id="script_by_valentijn">Script by valentijn</h3>
+<div class="level3">
+
+<p>
+This script will only output a list of user and default installed packages.
+</p>
+<pre class="code bash"><span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>listuserpackages.awk
+<span class="co0">#!/usr/bin/awk -f</span>
+<span class="sy0">/</span>^Package:<span class="sy0">/</span><span class="br0">&#123;</span><span class="re2">PKG</span>= <span class="re4">$2</span><span class="br0">&#125;</span>
+<span class="sy0">/</span>^Status: .<span class="sy0">*</span>user installed<span class="sy0">/</span><span class="br0">&#123;</span>print PKG<span class="br0">&#125;</span>
+EOF
+<span class="kw2">chmod</span> +x <span class="sy0">/</span>tmp<span class="sy0">/</span>listuserpackages.awk
+<span class="sy0">/</span>tmp<span class="sy0">/</span>listuserpackages.awk <span class="sy0">/</span>usr<span class="sy0">/</span>lib<span class="sy0">/</span>opkg<span class="sy0">/</span>status</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Script by valentijn&quot;,&quot;hid&quot;:&quot;script_by_valentijn&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:6,&quot;range&quot;:&quot;1782-2114&quot;} -->
+<h3 class="sectionedit7" id="script_by_tboege">Script by tboege</h3>
+<div class="level3">
+
+<p>
+Shows every package installed after the rom was build (flash_time), if no packages are depending on it.
+Packages, that are manually installed may be omitted, since one of the listed packages must depends of such a package, all manually installed packages will be installed, if the listed packages are installed.
+</p>
+<pre class="code bash"><span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>listuserpackages.awk
+<span class="co0">#!/usr/bin/awk -f</span>
+BEGIN <span class="br0">&#123;</span>
+    ARGV<span class="br0">&#91;</span>ARGC++<span class="br0">&#93;</span> = <span class="st0">&quot;/usr/lib/opkg/status&quot;</span>
+    <span class="re2">cmd</span>=<span class="st0">&quot;opkg info busybox | grep '^Installed-Time: '&quot;</span>
+    cmd <span class="sy0">|</span> getline FLASH_TIME
+    close<span class="br0">&#40;</span>cmd<span class="br0">&#41;</span>
+    <span class="re2">FLASH_TIME</span>=substr<span class="br0">&#40;</span>FLASH_TIME,<span class="nu0">17</span><span class="br0">&#41;</span>
+<span class="br0">&#125;</span>
+<span class="sy0">/</span>^Package:<span class="sy0">/</span><span class="br0">&#123;</span><span class="re2">PKG</span>= <span class="re4">$2</span><span class="br0">&#125;</span>
+<span class="sy0">/</span>^Installed-Time:<span class="sy0">/</span><span class="br0">&#123;</span>
+    <span class="re2">INSTALLED_TIME</span>= <span class="re4">$2</span>
+    <span class="co0"># Find all packages installed after FLASH_TIME</span>
+    <span class="kw1">if</span> <span class="br0">&#40;</span> INSTALLED_TIME <span class="sy0">&gt;</span> FLASH_TIME <span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="re2">cmd</span>=<span class="st0">&quot;opkg whatdepends &quot;</span> PKG <span class="st0">&quot; | wc -l&quot;</span>
+        cmd <span class="sy0">|</span> getline WHATDEPENDS
+        close<span class="br0">&#40;</span>cmd<span class="br0">&#41;</span>
+        <span class="co0"># If nothing depends on the package, it is installed by user</span>
+        <span class="kw1">if</span> <span class="br0">&#40;</span> WHATDEPENDS == <span class="nu0">3</span> <span class="br0">&#41;</span> print PKG
+    <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+EOF
+<span class="kw2">chmod</span> +x <span class="sy0">/</span>tmp<span class="sy0">/</span>listuserpackages.awk
+<span class="sy0">/</span>tmp<span class="sy0">/</span>listuserpackages.awk</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Script by tboege&quot;,&quot;hid&quot;:&quot;script_by_tboege&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:7,&quot;range&quot;:&quot;2115-3162&quot;} -->
+<h3 class="sectionedit8" id="script_by_mforkel_and_rafciq">Script by mforkel and Rafciq</h3>
+<div class="level3">
+
+<p>
+<a href="https://forum.openwrt.org/viewtopic.php?id=42739" class="urlextern" title="https://forum.openwrt.org/viewtopic.php?id=42739" rel="ugc nofollow">Identify packages to be re-installed after system upgrade</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Script by mforkel and Rafciq&quot;,&quot;hid&quot;:&quot;script_by_mforkel_and_rafciq&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:8,&quot;range&quot;:&quot;3163-3313&quot;} -->
+<h3 class="sectionedit9" id="legacy_scripts">Legacy scripts</h3>
+<div class="level3">
+
+<p>
+This command will list all packages related to any file in the whole file system that has changed from the default OpenWrt default version.
+</p>
+
+<p>
+Note that the script may list several packages that are part of the default OpenWrt install and will have their changed configuration files automatically backed up and restored.
+In addition, packages installed as dependencies of other packages may show here.
+It is only important to note the names of packages that you directly installed manually.
+Any dependencies of these packages will automatically be reinstalled if required.
+</p>
+<pre class="code bash"><span class="co0"># OpenWrt 14.07 or earlier</span>
+<span class="kw2">find</span> <span class="sy0">/</span>overlay \
+<span class="sy0">|</span> <span class="kw1">while</span> <span class="kw3">read</span> <span class="re5">-r</span> FILE
+<span class="kw1">do</span> opkg search <span class="st0">&quot;<span class="es3">${FILE#/overlay}</span>&quot;</span>
+<span class="kw1">done</span> \
+<span class="sy0">|</span> <span class="kw2">sed</span> <span class="re5">-n</span> <span class="re5">-e</span> <span class="st0">&quot;s/\s.*//p&quot;</span> \
+<span class="sy0">|</span> <span class="kw2">sort</span> <span class="re5">-u</span>
+&nbsp;
+<span class="co0"># OpenWrt 15.05 or later</span>
+<span class="kw2">find</span> <span class="sy0">/</span>overlay<span class="sy0">/</span>upper \
+<span class="sy0">|</span> <span class="kw1">while</span> <span class="kw3">read</span> <span class="re5">-r</span> FILE
+<span class="kw1">do</span> opkg search <span class="st0">&quot;<span class="es3">${FILE#/overlay/upper}</span>&quot;</span>
+<span class="kw1">done</span> \
+<span class="sy0">|</span> <span class="kw2">sed</span> <span class="re5">-n</span> <span class="re5">-e</span> <span class="st0">&quot;s/\s.*//p&quot;</span> \
+<span class="sy0">|</span> <span class="kw2">sort</span> <span class="re5">-u</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Legacy scripts&quot;,&quot;hid&quot;:&quot;legacy_scripts&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:9,&quot;range&quot;:&quot;3314-&quot;} -->

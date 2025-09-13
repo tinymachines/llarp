@@ -1,0 +1,418 @@
+#!/bin/bash
+
+# LLARP CLI - OpenWRT Configuration Management with AI-driven features
+# A modern CLI interface for the OpenWRT configuration management toolkit
+
+set -euo pipefail
+
+# Version
+VERSION="1.0.0"
+
+# Initialize colors - check for --no-color flag
+USE_COLORS=true
+for arg in "$@"; do
+    if [[ "$arg" == "--no-color" ]]; then
+        USE_COLORS=false
+        break
+    fi
+done
+
+# Colors for output
+if [[ "$USE_COLORS" == "true" ]] && [[ -t 1 ]]; then
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    YELLOW='\033[1;33m'
+    BLUE='\033[0;34m'
+    PURPLE='\033[0;35m'
+    CYAN='\033[0;36m'
+    NC='\033[0m'
+else
+    RED=''
+    GREEN=''
+    YELLOW=''
+    BLUE=''
+    PURPLE=''
+    CYAN=''
+    NC=''
+fi
+
+# Configuration file paths
+CONFIG_DIR="$HOME/.config/llarp"
+CONFIG_FILE="$CONFIG_DIR/config.json"
+ROUTERS_FILE="$CONFIG_DIR/routers.json"
+
+# Default values
+DEFAULT_OUTPUT_DIR="./router_configs"
+
+# Ensure config directory exists
+mkdir -p "$CONFIG_DIR"
+
+# Initialize config files if they don't exist
+init_config() {
+    if [[ ! -f "$CONFIG_FILE" ]]; then
+        cat > "$CONFIG_FILE" << EOF
+{
+  "version": "$VERSION",
+  "default_output_dir": "$DEFAULT_OUTPUT_DIR",
+  "ssh_options": "-o ConnectTimeout=10 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+}
+EOF
+    fi
+    
+    if [[ ! -f "$ROUTERS_FILE" ]]; then
+        cat > "$ROUTERS_FILE" << EOF
+{
+  "target_router": null,
+  "routers": {}
+}
+EOF
+    fi
+}
+
+# Load configuration
+load_config() {
+    init_config
+    if command -v jq >/dev/null 2>&1; then
+        DEFAULT_OUTPUT_DIR=$(jq -r '.default_output_dir // "./router_configs"' "$CONFIG_FILE")
+        SSH_OPTIONS=$(jq -r '.ssh_options // "-o ConnectTimeout=10 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"' "$CONFIG_FILE")
+    else
+        echo -e "${YELLOW}Warning: jq not installed. Using default configuration.${NC}"
+        SSH_OPTIONS="-o ConnectTimeout=10 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+    fi
+}
+
+# Get current target router
+get_target_router() {
+    if command -v jq >/dev/null 2>&1; then
+        jq -r '.target_router // empty' "$ROUTERS_FILE" 2>/dev/null || echo ""
+    else
+        echo ""
+    fi
+}
+
+# Set target router
+set_target_router() {
+    local router_ip="$1"
+    
+    # Validate IP format (basic validation)
+    if ! [[ $router_ip =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+        echo -e "${RED}Error: Invalid IP address format${NC}"
+        return 1
+    fi
+    
+    # Test connection
+    echo -e "${YELLOW}Testing connection to $router_ip...${NC}"
+    if ! ssh $SSH_OPTIONS root@$router_ip "exit" 2>/dev/null; then
+        echo -e "${RED}Error: Cannot connect to router at $router_ip${NC}"
+        echo "Make sure SSH key authentication is configured for root@$router_ip"
+        return 1
+    fi
+    
+    # Get router hostname
+    local hostname
+    hostname=$(ssh $SSH_OPTIONS root@$router_ip "uci get system.@system[0].hostname 2>/dev/null || echo 'unknown'" | tr -d '\r')
+    
+    # Update configuration
+    if command -v jq >/dev/null 2>&1; then
+        local temp_file=$(mktemp)
+        jq --arg ip "$router_ip" --arg hostname "$hostname" \
+           '.target_router = $ip | .routers[$ip] = {"hostname": $hostname, "last_connected": (now | strftime("%Y-%m-%d %H:%M:%S UTC"))}' \
+           "$ROUTERS_FILE" > "$temp_file" && mv "$temp_file" "$ROUTERS_FILE"
+    else
+        echo -e "${YELLOW}Warning: jq not installed. Router targeting may not work properly.${NC}"
+    fi
+    
+    echo -e "${GREEN}✓ Target router set to: $hostname ($router_ip)${NC}"
+}
+
+# List configured routers
+list_routers() {
+    local target_router
+    target_router=$(get_target_router)
+    
+    echo -e "${CYAN}Configured Routers:${NC}"
+    echo "===================="
+    
+    if command -v jq >/dev/null 2>&1 && [[ -f "$ROUTERS_FILE" ]]; then
+        local routers
+        routers=$(jq -r '.routers | to_entries[] | "\(.key) \(.value.hostname) \(.value.last_connected)"' "$ROUTERS_FILE" 2>/dev/null)
+        
+        if [[ -z "$routers" ]]; then
+            echo "No routers configured yet."
+            echo "Use: llarp-cli target <router_ip> to add a router"
+        else
+            printf "%-15s %-15s %-20s %s\n" "IP ADDRESS" "HOSTNAME" "LAST CONNECTED" "STATUS"
+            printf "%-15s %-15s %-20s %s\n" "----------" "--------" "--------------" "------"
+            
+            while IFS=' ' read -r ip hostname last_connected; do
+                local status="    "
+                if [[ "$ip" == "$target_router" ]]; then
+                    status="${GREEN}[TARGET]${NC}"
+                fi
+                printf "%-15s %-15s %-20s %s\n" "$ip" "$hostname" "$last_connected" "$status"
+            done <<< "$routers"
+        fi
+    else
+        echo "Configuration not available (jq required)"
+    fi
+    
+    echo ""
+    if [[ -n "$target_router" ]]; then
+        echo -e "Current target: ${GREEN}$target_router${NC}"
+    else
+        echo -e "No target router set. Use: ${YELLOW}llarp-cli target <router_ip>${NC}"
+    fi
+}
+
+# Get router directory path
+get_router_dir() {
+    local router_ip="$1"
+    local timestamp="${2:-$(date +"%Y%m%d_%H%M%S")}"
+    local hostname
+    
+    if command -v jq >/dev/null 2>&1; then
+        hostname=$(jq -r --arg ip "$router_ip" '.routers[$ip].hostname // "unknown"' "$ROUTERS_FILE" 2>/dev/null)
+    else
+        hostname="unknown"
+    fi
+    
+    echo "${DEFAULT_OUTPUT_DIR}/${hostname}_${router_ip}_${timestamp}"
+}
+
+# Scan target router
+scan_router() {
+    local router_ip="${1:-$(get_target_router)}"
+    
+    if [[ -z "$router_ip" ]]; then
+        echo -e "${RED}Error: No target router specified${NC}"
+        echo "Use: llarp-cli target <router_ip> to set a target router"
+        echo "Or: llarp-cli scan <router_ip> to scan a specific router"
+        return 1
+    fi
+    
+    local router_dir
+    router_dir=$(get_router_dir "$router_ip")
+    
+    echo -e "${BLUE}🔍 Scanning router: $router_ip${NC}"
+    echo -e "${BLUE}📁 Output directory: $router_dir${NC}"
+    
+    # Call the existing scan script
+    ./openwrt-config-scan.sh "$router_ip" "$DEFAULT_OUTPUT_DIR"
+}
+
+# Apply configuration to target router
+apply_config() {
+    local source_router_ip="$1"
+    local target_router_ip="${2:-$(get_target_router)}"
+    local options="${3:-}"
+    
+    if [[ -z "$target_router_ip" ]]; then
+        echo -e "${RED}Error: No target router specified${NC}"
+        echo "Use: llarp-cli target <router_ip> to set a target router"
+        return 1
+    fi
+    
+    # Find the most recent config directory for source router
+    local source_dir
+    source_dir=$(find "$DEFAULT_OUTPUT_DIR" -name "*${source_router_ip}*" -type d | head -1)
+    
+    if [[ -z "$source_dir" ]]; then
+        echo -e "${RED}Error: No configuration found for router $source_router_ip${NC}"
+        echo "Run: llarp-cli scan $source_router_ip first"
+        return 1
+    fi
+    
+    echo -e "${BLUE}🔧 Applying configuration from $source_router_ip to $target_router_ip${NC}"
+    echo -e "${BLUE}📁 Source config: $source_dir${NC}"
+    
+    # Call the existing apply script
+    ./openwrt-config-apply.sh "$target_router_ip" "$source_dir" $options
+}
+
+# AI-driven configuration analysis
+analyze_config() {
+    local router_ip="${1:-$(get_target_router)}"
+    
+    if [[ -z "$router_ip" ]]; then
+        echo -e "${RED}Error: No target router specified${NC}"
+        return 1
+    fi
+    
+    # Find the most recent config directory
+    local config_dir
+    config_dir=$(find "$DEFAULT_OUTPUT_DIR" -name "*${router_ip}*" -type d | head -1)
+    
+    if [[ -z "$config_dir" ]]; then
+        echo -e "${RED}Error: No configuration found for router $router_ip${NC}"
+        echo "Run: llarp-cli scan $router_ip first"
+        return 1
+    fi
+    
+    echo -e "${PURPLE}🤖 AI Configuration Analysis for $router_ip${NC}"
+    echo "=============================================="
+    
+    # Basic analysis without external AI for now
+    echo -e "${CYAN}📊 Configuration Summary:${NC}"
+    
+    if [[ -f "$config_dir/summary_report.txt" ]]; then
+        cat "$config_dir/summary_report.txt"
+    fi
+    
+    echo -e "\n${CYAN}🔍 Security Analysis:${NC}"
+    
+    # Check for common security issues
+    local security_issues=0
+    
+    if [[ -f "$config_dir/configs/dropbear" ]]; then
+        if grep -q "RootPasswordAuth.*on" "$config_dir/configs/dropbear" 2>/dev/null; then
+            echo -e "${RED}⚠️  SSH password authentication enabled (security risk)${NC}"
+            ((security_issues++))
+        fi
+    fi
+    
+    if [[ -f "$config_dir/configs/firewall" ]]; then
+        if grep -q "option.*input.*ACCEPT" "$config_dir/configs/firewall" 2>/dev/null; then
+            echo -e "${YELLOW}⚠️  Firewall may be overly permissive${NC}"
+            ((security_issues++))
+        fi
+    fi
+    
+    if [[ $security_issues -eq 0 ]]; then
+        echo -e "${GREEN}✓ No obvious security issues detected${NC}"
+    fi
+    
+    echo -e "\n${CYAN}💡 Optimization Suggestions:${NC}"
+    
+    # Check system resources
+    if [[ -f "$config_dir/system/meminfo" ]]; then
+        local mem_total
+        mem_total=$(grep "MemTotal" "$config_dir/system/meminfo" | awk '{print $2}' || echo "0")
+        if [[ $mem_total -lt 131072 ]]; then  # Less than 128MB
+            echo -e "${YELLOW}💾 Low memory system detected ($((mem_total/1024))MB) - consider lightweight configuration${NC}"
+        fi
+    fi
+    
+    # Check for unused services
+    if [[ -f "$config_dir/services/service_status" ]]; then
+        echo -e "${BLUE}🔧 Consider reviewing running services for optimization opportunities${NC}"
+    fi
+}
+
+# Show help
+show_help() {
+    echo -e "${CYAN}LLARP CLI v$VERSION${NC}"
+    echo "OpenWRT Configuration Management with AI-driven features"
+    echo ""
+    
+    echo -e "${YELLOW}USAGE:${NC}"
+    echo "    llarp-cli <command> [options]"
+    echo ""
+    
+    echo -e "${YELLOW}COMMANDS:${NC}"
+    echo -e "    ${GREEN}target <router_ip>${NC}     Set target router IP address"
+    echo -e "    ${GREEN}list${NC}                  List configured routers"
+    echo -e "    ${GREEN}scan [router_ip]${NC}      Scan target router (or specified router)"
+    echo -e "    ${GREEN}apply <source_ip> [target_ip] [options]${NC}"
+    echo "                            Apply config from source to target router"
+    echo -e "    ${GREEN}analyze [router_ip]${NC}   AI-driven configuration analysis"
+    echo -e "    ${GREEN}batch <router_list>${NC}   Batch scan multiple routers"
+    echo -e "    ${GREEN}compare <ip1> <ip2>${NC}   Compare configurations between routers"
+    echo -e "    ${GREEN}version${NC}               Show version information"
+    echo -e "    ${GREEN}help${NC}                  Show this help message"
+    echo ""
+    
+    echo -e "${YELLOW}APPLY OPTIONS:${NC}"
+    echo "    --dry-run              Preview changes without applying"
+    echo "    --selective            Choose which configs to apply"
+    echo "    --no-backup            Skip backup of current config"
+    echo "    --force                Apply without confirmation"
+    echo ""
+    
+    echo -e "${YELLOW}EXAMPLES:${NC}"
+    echo "    llarp-cli target 192.168.1.1"
+    echo "    llarp-cli scan"
+    echo "    llarp-cli scan 192.168.1.2"
+    echo "    llarp-cli apply 192.168.1.1 192.168.1.2 --dry-run"
+    echo "    llarp-cli analyze"
+    echo "    llarp-cli list"
+    echo ""
+    
+    echo -e "${YELLOW}CONFIGURATION:${NC}"
+    echo "    Config files: $CONFIG_DIR/"
+    echo "    Default output: $DEFAULT_OUTPUT_DIR"
+    echo ""
+    
+    echo -e "${YELLOW}REQUIREMENTS:${NC}"
+    echo "    - SSH key authentication configured for root@router_ip"
+    echo "    - jq (recommended for full functionality)"
+    echo "    - Standard Unix tools (bash, ssh, scp)"
+    echo "    Use --no-color to disable colored output"
+    echo ""
+}
+
+# Main command dispatcher
+main() {
+    load_config
+    
+    case "${1:-help}" in
+        "target")
+            if [[ $# -lt 2 ]]; then
+                echo -e "${RED}Error: Router IP required${NC}"
+                echo "Usage: llarp-cli target <router_ip>"
+                exit 1
+            fi
+            set_target_router "$2"
+            ;;
+        "list")
+            list_routers
+            ;;
+        "scan")
+            scan_router "${2:-}"
+            ;;
+        "apply")
+            if [[ $# -lt 2 ]]; then
+                echo -e "${RED}Error: Source router IP required${NC}"
+                echo "Usage: llarp-cli apply <source_router_ip> [target_router_ip] [options]"
+                exit 1
+            fi
+            apply_config "$2" "${3:-}" "${4:-}"
+            ;;
+        "analyze")
+            analyze_config "${2:-}"
+            ;;
+        "batch")
+            if [[ $# -lt 2 ]]; then
+                echo -e "${RED}Error: Router list file required${NC}"
+                echo "Usage: llarp-cli batch <router_list_file>"
+                exit 1
+            fi
+            echo -e "${BLUE}🔍 Batch scanning routers from: $2${NC}"
+            ./openwrt-batch-scanner.sh "$2" "$DEFAULT_OUTPUT_DIR"
+            ;;
+        "compare")
+            if [[ $# -lt 3 ]]; then
+                echo -e "${RED}Error: Two router IPs required${NC}"
+                echo "Usage: llarp-cli compare <router_ip1> <router_ip2>"
+                exit 1
+            fi
+            echo -e "${BLUE}🔍 Comparing configurations: $2 vs $3${NC}"
+            # This would need implementation
+            echo -e "${YELLOW}Compare feature coming soon!${NC}"
+            ;;
+        "version")
+            echo "LLARP CLI v$VERSION"
+            ;;
+        "help"|"-h"|"--help")
+            show_help
+            ;;
+        *)
+            echo -e "${RED}Unknown command: $1${NC}"
+            echo ""
+            show_help
+            exit 1
+            ;;
+    esac
+}
+
+# Run main function with all arguments
+main "$@"

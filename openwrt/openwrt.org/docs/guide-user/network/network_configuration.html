@@ -1,0 +1,674 @@
+
+<h1 class="sectionedit1" id="network_configurationetcconfignetwork">Network configuration /etc/config/network</h1>
+<div class="level1">
+
+<p>
+See also:
+<a href="/docs/guide-user/network/ipv4/configuration" class="wikilink1" title="docs:guide-user:network:ipv4:configuration" data-wiki-id="docs:guide-user:network:ipv4:configuration">IPv4 configuration</a>,
+<a href="/docs/guide-user/network/ipv6/configuration" class="wikilink1" title="docs:guide-user:network:ipv6:configuration" data-wiki-id="docs:guide-user:network:ipv6:configuration">IPv6 configuration</a>,
+<a href="/docs/guide-user/network/routing/routes_configuration" class="wikilink1" title="docs:guide-user:network:routing:routes_configuration" data-wiki-id="docs:guide-user:network:routing:routes_configuration">Static routes</a>,
+<a href="/docs/guide-user/network/wan/wan_interface_protocols" class="wikilink1" title="docs:guide-user:network:wan:wan_interface_protocols" data-wiki-id="docs:guide-user:network:wan:wan_interface_protocols">WAN interface protocols</a>,
+<a href="/docs/guide-developer/network-scripting#examples" class="wikilink1" title="docs:guide-developer:network-scripting" data-wiki-id="docs:guide-developer:network-scripting">Network scripting</a>,
+<a href="/docs/guide-user/network/protocol.dhcp" class="wikilink1" title="docs:guide-user:network:protocol.dhcp" data-wiki-id="docs:guide-user:network:protocol.dhcp">DHCP client scripting</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Network configuration \/etc\/config\/network&quot;,&quot;hid&quot;:&quot;network_configurationetcconfignetwork&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-489&quot;} -->
+<h2 class="sectionedit2" id="overview">Overview</h2>
+<div class="level2">
+
+<p>
+The default OpenWrt network stack of a typical home router looks like this:
+</p>
+<div class="table sectionedit3"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> LuCI → Network </th><th class="col1"> Comment </th><th class="col2" colspan="8"> Example </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> Firewall </td><td class="col1"> Rules for traffic between zones </td><td class="col2 centeralign" colspan="8">  Forwarding Rules, Traffic Rules, Custom Rules  </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> Firewall / Interfaces </td><td class="col1"> Network zone configuration </td><td class="col2 centeralign" colspan="2">  <abbr title="Wide Area Network">WAN</abbr> (Zone)  </td><td class="col4 centeralign" colspan="6">  <abbr title="Local Area Network">LAN</abbr> (Zone)  </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> Interfaces → Interfaces </td><td class="col1"> <abbr title="Internet Protocol">IP</abbr> configuration </td><td class="col2 centeralign">  <abbr title="Wide Area Network">WAN</abbr>  </td><td class="col3 centeralign">  WAN6  </td><td class="col4 centeralign" colspan="6">  <abbr title="Local Area Network">LAN</abbr>  </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> Interfaces → Devices </td><td class="col1"> Devices and bridge configuration </td><td class="col2 centeralign" colspan="2">  eth0  </td><td class="col4 centeralign" colspan="6">  br-lan (bridge config)  </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0"> Switch / Wireless </td><td class="col1"> VLANs and wireless SSIDs </td><td class="col2 centeralign" colspan="2">  <abbr title="Virtual Local Area Network">VLAN</abbr> 2 (eth0.2)  </td><td class="col4 centeralign" colspan="4">  <abbr title="Virtual Local Area Network">VLAN</abbr> 1 (eth0.1)  </td><td class="col8 centeralign">  OpenWrt  </td><td class="col9 centeralign">  OpenWrt  </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0"> Switch / Wireless </td><td class="col1"> Internal jack labels and radio labels </td><td class="col2 centeralign" colspan="2">  <abbr title="Wide Area Network">WAN</abbr> (Interface)  </td><td class="col4 centeralign">  <abbr title="Local Area Network">LAN</abbr> 1  </td><td class="col5 centeralign">  <abbr title="Local Area Network">LAN</abbr> 2  </td><td class="col6 centeralign">  <abbr title="Local Area Network">LAN</abbr> 3  </td><td class="col7 centeralign">  <abbr title="Local Area Network">LAN</abbr> 4  </td><td class="col8 centeralign">  radio0  </td><td class="col9 centeralign">  radio1  </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0"> - </td><td class="col1"> Common vendor labels on backside of a device </td><td class="col2 centeralign" colspan="2">  “Internet”  </td><td class="col4 centeralign">  “1”  </td><td class="col5 centeralign">  “2”  </td><td class="col6 centeralign">  “3”  </td><td class="col7 centeralign">  “4”  </td><td class="col8 centeralign">  “n/ac”  </td><td class="col9 centeralign">  “b/g/n”  </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;588-1396&quot;} -->
+<p>
+Your device may vary slightly in features or numbering scheme.
+A minimal network configuration for a router usually consists of at least two <em>interfaces</em> (<code>lan</code> and <code>wan</code>) and their associated <em>devices</em> (<code>br-lan</code> and <code>eth0</code>), as well as a <em>switch</em> section if applicable.
+</p>
+
+<p>
+Note that the labels <abbr title="Wide Area Network">WAN</abbr> and <abbr title="Local Area Network">LAN</abbr> can mean different things depending on the context.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Overview&quot;,&quot;hid&quot;:&quot;overview&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;490-1769&quot;} -->
+<h2 class="sectionedit4" id="managing_configuration">Managing configuration</h2>
+<div class="level2">
+
+<p>
+The central network configuration is handled by the UCI <strong>network</strong> subsystem, and stored in the file <code>/etc/config/network</code>.
+This UCI subsystem is responsible for defining <em>switch VLANs</em>, <em>interface configurations</em> and <em>network routes</em>.
+After network configuration customization you need to reload or restart the <code>network</code> service to apply the changes.
+</p>
+
+<p>
+The <code>network</code> service manages both wired and wireless networking with <a href="/docs/guide-developer/netifid" class="wikilink1" title="docs:guide-developer:netifid" data-wiki-id="docs:guide-developer:netifid">netifid</a> and <a href="https://github.com/openwrt/openwrt/blob/main/package/base-files/files/sbin/wifi" class="urlextern" title="https://github.com/openwrt/openwrt/blob/main/package/base-files/files/sbin/wifi" rel="ugc nofollow">wifi</a> respectively.
+</p>
+
+<p>
+Individual interfaces can be brought up with <code>ifup <em>name</em></code> or down with <code>ifdown <em>name</em></code> where <em>name</em> corresponds to the <em>logical interface name</em> of the corresponding <code>config interface</code> section.
+Keep in mind that <code>ifup</code> is normally enough to reload an interface since it includes <code>ifdown</code>.
+</p>
+
+<p>
+Note that wireless interfaces are managed externally and <code>ifup</code> may break the relation to existing bridges.
+In such a case it is required to run <code>wifi up</code> after <code>ifup</code> in order to re-establish the bridge connection.
+</p>
+<pre class="code bash"><span class="co0"># Soft network reload</span>
+service network reload
+&nbsp;
+<span class="co0"># Hard network restart</span>
+service network restart
+&nbsp;
+<span class="co0"># Reconnect interface</span>
+<span class="kw2">ifdown</span> wan6
+<span class="kw2">ifup</span> wan6
+&nbsp;
+<span class="co0"># Wireless reload</span>
+wifi down
+wifi up
+&nbsp;
+<span class="co0"># List interfaces</span>
+ubus list network.interface.<span class="sy0">*</span>
+&nbsp;
+<span class="co0"># Status information</span>
+ifstatus wan6</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Managing configuration&quot;,&quot;hid&quot;:&quot;managing_configuration&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;1770-3193&quot;} -->
+<h2 class="sectionedit5" id="example_configuration">Example configuration</h2>
+<div class="level2">
+
+<p>
+Here an example network UCI subsystem with default settings for a TL-WR1043ND:
+</p>
+<pre class="code bash">config interface <span class="st_h">'loopback'</span>
+	option device <span class="st_h">'lo'</span>
+	option proto <span class="st_h">'static'</span>
+	option ipaddr <span class="st_h">'127.0.0.1'</span>
+	option netmask <span class="st_h">'255.0.0.0'</span>
+&nbsp;
+config globals <span class="st_h">'globals'</span>
+	option ula_prefix <span class="st_h">'fd27:70fa:5c1d::/48'</span>
+&nbsp;
+config device <span class="st_h">'lan_br'</span>
+	option name <span class="st_h">'br-lan'</span>
+	option <span class="kw3">type</span> <span class="st_h">'bridge'</span>
+	list ports <span class="st_h">'eth0.1'</span>
+&nbsp;
+config interface <span class="st_h">'lan'</span>
+	option device <span class="st_h">'br-lan'</span>
+	option proto <span class="st_h">'static'</span>
+	option netmask <span class="st_h">'255.255.255.0'</span>
+	option ip6assign <span class="st_h">'60'</span>
+	option ipaddr <span class="st_h">'192.168.1.1'</span>
+&nbsp;
+config interface <span class="st_h">'wan'</span>
+	option device <span class="st_h">'eth0.2'</span>
+	option proto <span class="st_h">'dhcp'</span>
+&nbsp;
+config interface <span class="st_h">'wan6'</span>
+	option device <span class="st_h">'eth0.2'</span>
+	option proto <span class="st_h">'dhcpv6'</span>
+&nbsp;
+config switch
+	option name <span class="st_h">'switch0'</span>
+	option reset <span class="st_h">'1'</span>
+	option enable_vlan <span class="st_h">'1'</span>
+&nbsp;
+config switch_vlan
+	option device <span class="st_h">'switch0'</span>
+	option vlan <span class="st_h">'1'</span>
+	option ports <span class="st_h">'1 2 3 4 5t'</span>
+&nbsp;
+config switch_vlan
+	option device <span class="st_h">'switch0'</span>
+	option vlan <span class="st_h">'2'</span>
+	option ports <span class="st_h">'0 5t'</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Example configuration&quot;,&quot;hid&quot;:&quot;example_configuration&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:5,&quot;range&quot;:&quot;3194-4158&quot;} -->
+<h2 class="sectionedit6" id="section_globals">Section &quot;globals&quot;</h2>
+<div class="level2">
+
+<p>
+The <code>globals</code> section contains interface-independent options affecting the network configuration in general.
+</p>
+<pre class="code bash">config globals <span class="st_h">'globals'</span>
+	option ula_prefix <span class="st_h">'fd27:70fa:5c1d::/48'</span></pre>
+<div class="table sectionedit7"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign"> Name                 </th><th class="col1 leftalign"> Type                     </th><th class="col2 leftalign"> Required  </th><th class="col3 leftalign"> Default     </th><th class="col4 leftalign"> Description                                                                                              </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> <code>ula_prefix</code>       </td><td class="col1 leftalign"> <abbr title="Internet Protocol version 6">IPv6</abbr>-prefix or <code>auto</code>  </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <em>(none)</em>  </td><td class="col4 leftalign"> <abbr title="Internet Protocol version 6">IPv6</abbr> <a href="https://en.wikipedia.org/wiki/Unique_local_address" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Unique_local_address">ULA</a> prefix for this device: <code>auto</code> - auto-generate a new ULA prefix   </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> <code>packet_steering</code>  </td><td class="col1 leftalign"> number                   </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> 0           </td><td class="col4 leftalign"> Use every CPU to handle packet traffic. <code>0</code> - disabled, <code>1</code> - enabled, <code>2</code> - enabled for all CPUs  </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> <code>tcp_l3mdev</code>       </td><td class="col1 leftalign"> boolean                  </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> 0           </td><td class="col4 leftalign"> Toggles net.ipv4.tcp_l3mdev_accept flag (For VRF)                                                        </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"> <code>udp_l3mdev</code>       </td><td class="col1 leftalign"> boolean                  </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> 0           </td><td class="col4 leftalign"> Toggles net.ipv4.udp_l3mdev_accept flag (For VRF)                                                        </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table1&quot;,&quot;secid&quot;:7,&quot;range&quot;:&quot;4388-5312&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Section \&quot;globals\&quot;&quot;,&quot;hid&quot;:&quot;section_globals&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:6,&quot;range&quot;:&quot;4159-5313&quot;} -->
+<h2 class="sectionedit8" id="section_device">Section &quot;device&quot;</h2>
+<div class="level2">
+
+<p>
+The <code>device</code> section is optional when L2 and L3 is the same device, i.e. MAC and <abbr title="Internet Protocol">IP</abbr> on the same physical interface.
+</p>
+<pre class="code bash">config device <span class="st_h">'lan_br'</span>
+	option name <span class="st_h">'br-lan'</span>
+	option <span class="kw3">type</span> <span class="st_h">'bridge'</span>
+	list ports <span class="st_h">'eth0.1'</span></pre>
+
+<p>
+Other example: <strong>enable flow control</strong> for interface eth2:
+</p>
+<pre class="code">config device                          
+        option name &#039;eth2&#039;                        
+        option rxpause &#039;1&#039;             
+        option txpause &#039;1&#039;</pre>
+<div class="table sectionedit9"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign"> Name         </th><th class="col1 leftalign"> Type    </th><th class="col2 leftalign"> Required  </th><th class="col3 leftalign"> Default     </th><th class="col4 leftalign"> Description                                                                                                                                                                                                                                            </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> <code>name</code>     </td><td class="col1 leftalign"> string  </td><td class="col2 leftalign"> yes       </td><td class="col3 leftalign"> <em>(none)</em>  </td><td class="col4 leftalign"> L3 device name.<br/>
+Needs to match the <code>device</code> option of the respective <code>interface</code> section                                                                                                                                                         </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> <code>macaddr</code>  </td><td class="col1 leftalign"> string  </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <em>(none)</em>  </td><td class="col4 leftalign"> MAC address overriding the default one for this device, e.g. <code>62:11:22:aa:bb:cc</code>                                                                                                                                                                     </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> <code>type</code>     </td><td class="col1 leftalign"> string  </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <em>(none)</em>  </td><td class="col4 leftalign"> If set to <code>bridge</code>, creates a bridge of the given <code>name</code> using L2 devices listed in <code>ports</code> and wireless interfaces assigned using the <code>network</code> option in the <a href="/docs/guide-user/network/wifi/basic#wi-fi_interfaces" class="wikilink1" title="docs:guide-user:network:wifi:basic" data-wiki-id="docs:guide-user:network:wifi:basic">wireless configuration</a>  </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"> <code>ifname</code>   </td><td class="col1 leftalign"> string  </td><td class="col2 leftalign"> no(*)     </td><td class="col3 leftalign"> <em>(none)</em>  </td><td class="col4 leftalign"> The base L2 device required when using the <code>macvlan</code> device type. Install the <a href="/packages/pkgdata/kmod-macvlan" class="wikilink1" title="packages:pkgdata:kmod-macvlan" data-wiki-id="packages:pkgdata:kmod-macvlan">kmod-macvlan</a> package if necessary.                                                                                                                </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 leftalign"> <code>ports</code>    </td><td class="col1 leftalign"> list    </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <em>(none)</em>  </td><td class="col4 leftalign"> List of L2 device names.                                                                                                                                                                                                                               </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0 leftalign"> <code>rxpause</code>  </td><td class="col1 leftalign"> string  </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <em>(none)</em>  </td><td class="col4 leftalign"> controls the receive (RX) flow control. Setting it to <code>1</code> enables RX pause frames, which allows the interface to signal the sender to pause transmission when overwhelmed by incoming data.                                                          </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0 leftalign"> <code>txpause</code>  </td><td class="col1 leftalign"> string  </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <em>(none)</em>  </td><td class="col4 leftalign"> controls the transmission flow control (TX). Setting the value to <code>1</code> enables TX pause frames, allowing the interface to temporarily stop sending data when the receiver indicates that it is overloaded.                                            </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0 leftalign"> <code>autoneg</code>  </td><td class="col1 leftalign"> string  </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <em>(none)</em>  </td><td class="col4 leftalign"> by setting to <code>1</code> enables auto-negotiation that determines whether the interface will automatically negotiate the best link parameters (such as speed, duplex mode) with the connected device.                                                       </td>
+	</tr>
+	<tr class="row9">
+		<td class="col0 leftalign"> <code>table</code>    </td><td class="col1 leftalign"> string  </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> 10          </td><td class="col4 leftalign"> When <code>type</code> is set to <code>vrf</code>, set routing table name or number here                                                                                                                                                                                 </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table2&quot;,&quot;secid&quot;:9,&quot;range&quot;:&quot;5804-8823&quot;} -->
+<p>
+TODO: move everything related to bridges and layer 2 here.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Section \&quot;device\&quot;&quot;,&quot;hid&quot;:&quot;section_device&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:8,&quot;range&quot;:&quot;5314-8885&quot;} -->
+<h2 class="sectionedit10" id="section_interface">Section &quot;interface&quot;</h2>
+<div class="level2">
+
+<p>
+Sections of the type <code>interface</code> declare logical networks serving as containers for <abbr title="Internet Protocol">IP</abbr> address settings, <a href="/docs/guide-user/network/network_interface_alias" class="wikilink1" title="docs:guide-user:network:network_interface_alias" data-wiki-id="docs:guide-user:network:network_interface_alias">aliases</a>, <a href="/docs/guide-user/network/routing/routes_configuration" class="wikilink1" title="docs:guide-user:network:routing:routes_configuration" data-wiki-id="docs:guide-user:network:routing:routes_configuration">routes</a>, physical interface names and <a href="/docs/guide-user/firewall/start" class="wikilink1" title="docs:guide-user:firewall:start" data-wiki-id="docs:guide-user:firewall:start">firewall rules</a> - they play a central role within the OpenWrt configuration concept.
+</p>
+
+<p>
+A minimal interface declaration consists of the following lines:
+</p>
+<pre class="code bash">config <span class="st_h">'interface'</span> <span class="st_h">'wan'</span>
+	option <span class="st_h">'proto'</span> <span class="st_h">'dhcp'</span>
+	option <span class="st_h">'device'</span> <span class="st_h">'eth0.2'</span></pre>
+<ul>
+<li class="level1"><div class="li"> <code>wan</code> is a unique <em>logical interface name</em></div>
+</li>
+<li class="level1"><div class="li"> <code>dhcp</code> specifies the <em>interface protocol</em>, <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> in this example</div>
+</li>
+<li class="level1"><div class="li"> <code>eth0.2</code> is the <em>physical interface</em> associated with this section</div>
+</li>
+</ul>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:11,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap">
+<p>
+The Linux kernel limits the <em>physical interface name</em> length to max 14 usable characters including the automatically added prefix that is added for some protocols (e.g.<code>6in4</code>, <code>pppoa-</code>, <code>pppoe-</code>, <code>gre4t-</code>) or with bridges (<code>br-</code>).
+</p>
+
+<p>
+Depending on the protocol type, the <em>logical interface name</em> may thus be limited to only 8 characters.
+E.g. <code>abcde6789</code> is a valid interface name for a normal interface using dhcp, but not for a pppoe interface where the final name would be <code>pppoe-abcde6789</code>, which is more than 14 chars.
+</p>
+
+<p>
+If using .<abbr title="Virtual Local Area Network">VLAN</abbr> notation, an additional 5 characters may be needed, limiting the “parent” interface name to 3 characters for protocols such as GRE.
+<code>abcd.NNNN</code> ⇒ <code>gre4t-abc.NNNN</code> for 14 characters.
+</p>
+
+<p>
+Using a too long name will lead to silent errors, with interface creation or modification not being successful. Example of this silent error when using br- and different length .<abbr title="Virtual Local Area Network">VLAN</abbr> notation can be seen in the forum at <a href="https://forum.openwrt.org/t/network-interface-warning-has-a-issue/182420/14" class="urlextern" title="https://forum.openwrt.org/t/network-interface-warning-has-a-issue/182420/14" rel="ugc nofollow">https://forum.openwrt.org/t/network-interface-warning-has-a-issue/182420/14</a>
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:12,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+The <em>interface protocol</em> may be one of the following:
+</p>
+<div class="table sectionedit13"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Protocol </th><th class="col1"> Description </th><th class="col2"> Program </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> <code>static</code> </td><td class="col1"> Static configuration with fixed address and netmask </td><td class="col2"> <code>ip</code>/<code>ifconfig</code> </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> <code>dhcp</code> </td><td class="col1"> Address and netmask are assigned by <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> </td><td class="col2"> <code>udhcpc</code> (Busybox) </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> <code>dhcpv6</code> </td><td class="col1"> Address and netmask are assigned by DHCPv6 </td><td class="col2"> <code>odhcpc6c</code> </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> <code>ppp</code> </td><td class="col1"> PPP protocol - dialup modem connections </td><td class="col2"> <code>pppd</code> </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0"> <code>pppoe</code> </td><td class="col1"> PPP over Ethernet - DSL broadband connection </td><td class="col2"> <code>pppd</code> + <code>plugin rp-pppoe.so</code> </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0"> <code>pppoa</code> </td><td class="col1"> PPP over ATM - DSL connection using a builtin modem </td><td class="col2"> <code>pppd</code> + plugin ... </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0"> <code>3g</code> </td><td class="col1"> CDMA, UMTS or GPRS connection using an AT-style 3G modem </td><td class="col2"> <code>comgt</code> </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0"> <code>qmi</code> </td><td class="col1"> USB modems using QMI protocol </td><td class="col2"> <code>uqmi</code> </td>
+	</tr>
+	<tr class="row9">
+		<td class="col0"> <code>ncm</code> </td><td class="col1"> USB modems using NCM protocol </td><td class="col2"> <code>comgt-ncm</code> + ? </td>
+	</tr>
+	<tr class="row10">
+		<td class="col0"> <code>wwan</code> </td><td class="col1"> USB modems with protocol autodetection </td><td class="col2"> <code>wwan</code> </td>
+	</tr>
+	<tr class="row11">
+		<td class="col0"> <code>hnet</code> </td><td class="col1"> Self-managing home network (<abbr title="Homenet Control Protocol">HNCP</abbr>) </td><td class="col2"> <code>hnet-full</code> </td>
+	</tr>
+	<tr class="row12">
+		<td class="col0"> <code>pptp</code> </td><td class="col1"> Connection via PPtP <abbr title="Virtual Private Network">VPN</abbr> </td><td class="col2"> ? </td>
+	</tr>
+	<tr class="row13">
+		<td class="col0"> <code>6in4</code> </td><td class="col1"> <abbr title="Internet Protocol version 6">IPv6</abbr>-in-<abbr title="Internet Protocol version 4">IPv4</abbr> tunnel for use with Tunnel Brokers like HE.net </td><td class="col2"> ? </td>
+	</tr>
+	<tr class="row14">
+		<td class="col0"> <code>aiccu</code> </td><td class="col1"> Anything-in-anything tunnel </td><td class="col2"> <code>aiccu</code> </td>
+	</tr>
+	<tr class="row15">
+		<td class="col0"> <code>6to4</code> </td><td class="col1"> Stateless <abbr title="Internet Protocol version 6">IPv6</abbr> over <abbr title="Internet Protocol version 4">IPv4</abbr> transport </td><td class="col2"> ? </td>
+	</tr>
+	<tr class="row16">
+		<td class="col0"> <code>6rd</code> </td><td class="col1"> <abbr title="Internet Protocol version 6">IPv6</abbr> rapid deployment </td><td class="col2"> <code>6rd</code> </td>
+	</tr>
+	<tr class="row17">
+		<td class="col0"> <code>dslite</code> </td><td class="col1"> Dual-Stack Lite </td><td class="col2"> <code>ds-lite</code> </td>
+	</tr>
+	<tr class="row18">
+		<td class="col0"> <code>l2tp</code> </td><td class="col1"> PPP over L2TP Pseudowire Tunnel </td><td class="col2"> <code>xl2tpd</code> </td>
+	</tr>
+	<tr class="row19">
+		<td class="col0"> <code>relay</code> </td><td class="col1"> relayd pseudo-bridge </td><td class="col2"> <code>relayd</code> </td>
+	</tr>
+	<tr class="row20">
+		<td class="col0"> <code>gre</code>, <code>gretap</code> </td><td class="col1"> GRE over <abbr title="Internet Protocol version 4">IPv4</abbr> </td><td class="col2"> <code>gre</code> + <code>kmod-gre</code> </td>
+	</tr>
+	<tr class="row21">
+		<td class="col0"> <code>grev6</code>, <code>grev6tap</code> </td><td class="col1"> GRE over <abbr title="Internet Protocol version 6">IPv6</abbr> </td><td class="col2"> <code>gre</code> + <code>kmod-gre6</code> </td>
+	</tr>
+	<tr class="row22">
+		<td class="col0"> <code>vti</code> </td><td class="col1"> VTI over <abbr title="Internet Protocol version 4">IPv4</abbr> </td><td class="col2"> <code>vti</code> + <code>kmod-ip_vti</code> </td>
+	</tr>
+	<tr class="row23">
+		<td class="col0"> <code>vtiv6</code> </td><td class="col1"> VTI over <abbr title="Internet Protocol version 6">IPv6</abbr> </td><td class="col2"> <code>vti</code> + <code>kmod-ip6_vti</code> </td>
+	</tr>
+	<tr class="row24">
+		<td class="col0"> <code>vxlan</code> </td><td class="col1"> VXLAN protocol for layer 2 virtualization, see <a href="/docs/guide-user/network/tunneling_interface_protocols" class="wikilink1" title="docs:guide-user:network:tunneling_interface_protocols" data-wiki-id="docs:guide-user:network:tunneling_interface_protocols">here</a> for further information and a configuration example </td><td class="col2"> <code>vxlan</code> + <code>kmod-vxlan</code> + <code>ip-full</code> </td>
+	</tr>
+	<tr class="row25">
+		<td class="col0"> <code>none</code> </td><td class="col1"> Unspecified protocol, therefore all the other interface settings will be ignored (like disabling the configuration) </td><td class="col2"> - </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table3&quot;,&quot;secid&quot;:13,&quot;range&quot;:&quot;10781-12688&quot;} -->
+<p>
+Depending on the used <em>interface protocol</em> several other options may be required for a complete interface declaration.
+The corresponding options for each protocol are listed below.
+Options marked as “yes” in the “Required” column <em>must</em> be defined in the interface section if the corresponding protocol is used, options marked as “no” <em>may</em> be defined but can be omitted as well.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> If an interface section has no protocol defined (not even <code>none</code> ), the other settings are completely ignored.
+The result is that, if the interface section is mentioning a physical network interface (i.e. eth0), this will be down even if a cable is connected (with proto &#039;none&#039; the interface is up).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Section \&quot;interface\&quot;&quot;,&quot;hid&quot;:&quot;section_interface&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:10,&quot;range&quot;:&quot;8886-13383&quot;} -->
+<h3 class="sectionedit14" id="common_options">Common options</h3>
+<div class="level3">
+
+<p>
+Common options options valid for all protocol types.
+</p>
+<div class="table sectionedit15"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Name </th><th class="col1"> Type </th><th class="col2"> Required </th><th class="col3"> Default </th><th class="col4"> Description </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> <code>device</code> </td><td class="col1"> string </td><td class="col2"> yes(*) </td><td class="col3"> <em>(none)</em> </td><td class="col4"> L3 device name, such as <code>eth0.1</code>, <code>eth2</code>, <code>tun0</code>, <code>br-lan</code>, etc.<br/>
+Needs to match the <code>name</code> option of the respective <code>device</code> section.<br/>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Do not specify wireless interfaces as their names and behavior can be dynamic and unpredictable, instead assign wireless interfaces to bridges using the <code>network</code> option in <a href="/docs/guide-user/network/wifi/basic#wi-fi_interfaces" class="wikilink1" title="docs:guide-user:network:wifi:basic" data-wiki-id="docs:guide-user:network:wifi:basic">wireless configuration</a>.<br/>
+This option may be empty or missing if only a wireless interface references this network or if the protocol is <code>pptp</code>, <code>pppoa</code>, <code>6in4</code>, etc. </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> <code>mtu</code> </td><td class="col1"> number </td><td class="col2"> no </td><td class="col3"> <em>(none)</em> </td><td class="col4"> Override the default <abbr title="Maximum Transmission Unit">MTU</abbr> on this interface </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> <code>auto</code> </td><td class="col1"> boolean </td><td class="col2"> no </td><td class="col3"> <code>0</code> for proto <code>none</code>, else <code>1</code> </td><td class="col4"> Specifies whether to bring up interface on boot </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> <code>ipv6</code> </td><td class="col1"> boolean </td><td class="col2"> no </td><td class="col3"> <code>1</code> </td><td class="col4"> Specifies whether to enable (1) or disable (0) <abbr title="Internet Protocol version 6">IPv6</abbr> on this interface (Barrier Breaker and later only) </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0"> <code>force_link</code> </td><td class="col1"> boolean </td><td class="col2"> no </td><td class="col3"> <code>1</code> for protocol <code>static</code>, else <code>0</code> </td><td class="col4"> Specifies whether ip address, route, and optionally gateway are assigned to the interface regardless of the link being active (&#039;1&#039;) or only after the link has become active (&#039;0&#039;); when set to &#039;1&#039;, carrier sense events do not invoke hotplug handlers </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0"> <code>disabled</code> </td><td class="col1"> boolean </td><td class="col2"> no </td><td class="col3"> <code>0</code> </td><td class="col4"> enable or disable the interface section </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0"> <code>ip4table</code> </td><td class="col1"> string </td><td class="col2"> no </td><td class="col3"> <em>(none)</em> </td><td class="col4"> <abbr title="Internet Protocol version 4">IPv4</abbr> routing table for routes of this interface, see: <code>ip rule show; ip route show table &lt;ip4table&gt;</code> </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0"> <code>ip6table</code> </td><td class="col1"> string </td><td class="col2"> no </td><td class="col3"> <em>(none)</em> </td><td class="col4"> <abbr title="Internet Protocol version 6">IPv6</abbr> routing table for routes of this interface, see: <code>ip -6 rule show; ip -6 route show table &lt;ip6table&gt;</code> </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table4&quot;,&quot;secid&quot;:15,&quot;range&quot;:&quot;13463-15176&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Common options&quot;,&quot;hid&quot;:&quot;common_options&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:14,&quot;range&quot;:&quot;13384-15177&quot;} -->
+<h3 class="sectionedit16" id="bridge_options">Bridge options</h3>
+<div class="level3">
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> All bridge settings are optional.
+</p>
+<div class="table sectionedit17"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Name </th><th class="col1"> Type </th><th class="col2"> Default </th><th class="col3"> Range </th><th class="col4"> Description </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> <code>bridge_empty</code> </td><td class="col1"> boolean </td><td class="col2"> <code>0</code> </td><td class="col3"> <code>0</code>, <code>1</code> </td><td class="col4"> Enables creating empty bridges </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> <code>vlan_filtering</code> </td><td class="col1"> boolean </td><td class="col2"> <code>0</code> </td><td class="col3"> <code>0</code>, <code>1</code> </td><td class="col4"> Enables <strong><abbr title="Virtual Local Area Network">VLAN</abbr></strong> aware bridge mode </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> <code>igmp_snooping</code> </td><td class="col1"> boolean </td><td class="col2"> <code>0</code> </td><td class="col3"> <code>0</code>, <code>1</code> </td><td class="col4"> Enables <strong>IGMP</strong> snooping on the bridge, an optimization that only sends multicast traffic to ports with multicast clients or routers </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> <code>multicast_querier</code> </td><td class="col1"> boolean </td><td class="col2"> (<code>igmp_snooping</code> setting) </td><td class="col3"> <code>0</code>, <code>1</code> </td><td class="col4"> <strong>IGMP</strong> Enables the bridge as a multicast querier, which keeps the multicast group to port mappings current. Only one querier is elected per subnet </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0"> <code>query_interval</code> </td><td class="col1"> number </td><td class="col2"> <code>12500</code> </td><td class="col3"> - </td><td class="col4"> <strong>IGMP</strong> Interval in 1/100 seconds between querier general queries (so default is 125 seconds) </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0"> <code>query_response_interval</code> </td><td class="col1"> number </td><td class="col2"> <code>1000</code> </td><td class="col3"> (less than <code>query_interval</code>) </td><td class="col4"> <strong>IGMP</strong> Max time in 1/100 seconds responses to queries should be sent (increase to make IGMP less bursty) </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0"> <code>last_member_interval</code> </td><td class="col1"> number </td><td class="col2"> <code>100</code> </td><td class="col3"> - </td><td class="col4"> <strong>IGMP</strong> Max time in 1/100s responses to queries after “leave group” messages (the leave latency) </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0"> <code>hash_max</code> </td><td class="col1"> number </td><td class="col2"> <code>512</code> </td><td class="col3"> - </td><td class="col4"> <strong>IGMP</strong> Size of kernel multicast hash table (larger to avoid collisions that disable snooping) </td>
+	</tr>
+	<tr class="row9">
+		<td class="col0"> <code>robustness</code> </td><td class="col1"> number </td><td class="col2"> <code>2</code> </td><td class="col3"> - </td><td class="col4"> <strong>IGMP</strong> Sets Startup Query Count and Last Member Count. Also combined with <code>query_interval</code> and <code>query_response_interval</code> to calculate Group Membership Interval and “other querier” timeout (both other values must be set) </td>
+	</tr>
+	<tr class="row10">
+		<td class="col0"> <code>stp</code> </td><td class="col1"> boolean </td><td class="col2"> <code>0</code> </td><td class="col3"> <code>0</code>, <code>1</code> </td><td class="col4"> Enables the Spanning Tree Protocol (<strong>STP</strong>) which prevents network loops (and resulting packet storms) </td>
+	</tr>
+	<tr class="row11">
+		<td class="col0"> <code>forward_delay</code> </td><td class="col1"> number </td><td class="col2"> <code>2</code><img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> </td><td class="col3"> <code>2</code> - <code>30</code> </td><td class="col4"> <strong>STP</strong> Delay in seconds between port state transitions from Listening → Learning → Forwarding (i.e. bridge ports will be blocked for 2x this value when brought up) <img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> <strong>NOTE</strong> The default <code>2</code> is below the minimum 802.1D standard of <code>4</code>, and STP will be ignored by conforming switches. Set to at least <code>4</code> to work with non-OpenWrt switches! </td>
+	</tr>
+	<tr class="row12">
+		<td class="col0"> <code>hello_time</code> </td><td class="col1"> number </td><td class="col2"> <code>2</code> </td><td class="col3"> <code>1</code> - <code>10</code> </td><td class="col4"> <strong>STP</strong> Seconds between STP packets </td>
+	</tr>
+	<tr class="row13">
+		<td class="col0"> <code>priority</code> </td><td class="col1"> number </td><td class="col2"> <code>32767</code> </td><td class="col3"> <code>0</code> - <code>65535</code> </td><td class="col4"> <strong>STP</strong> Bridge Priority. Lowest priority bridge becomes the Root of the Spanning Tree; most switches default to <code>32768</code> </td>
+	</tr>
+	<tr class="row14">
+		<td class="col0"> <code>ageing_time</code> </td><td class="col1"> number </td><td class="col2"> <code>300</code> </td><td class="col3"> <code>10</code> - <code>1000000</code> </td><td class="col4"> <strong>STP</strong> Expire in seconds for dynamic MAC entries in the Filtering DB </td>
+	</tr>
+	<tr class="row15">
+		<td class="col0"> <code>max_age</code> </td><td class="col1"> number </td><td class="col2"> <code>20</code> </td><td class="col3"> <code>6</code> - <code>40</code> </td><td class="col4"> <strong>STP</strong> After current Root Bridge absent this many seconds, attempt to become the Root Bridge (effects the speed a dead bridge is identified) </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table5&quot;,&quot;secid&quot;:17,&quot;range&quot;:&quot;15242-17953&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Bridge options&quot;,&quot;hid&quot;:&quot;bridge_options&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:16,&quot;range&quot;:&quot;15178-17954&quot;} -->
+<h2 class="sectionedit18" id="switch_configuration_dsabridge-vlan">Switch configuration (DSA / bridge-vlan)</h2>
+<div class="level2">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:19,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_info plugin_wrap">
+<p>
+This only applies to <strong>OpenWrt 21.02 and later</strong>, and only for targets that have switched to a DSA driver.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:20,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+<img src="/lib/images/smileys/fixme.svg" class="icon smiley" alt="FIXME" />, see:
+<a href="/docs/guide-user/network/dsa/start" class="wikilink1" title="docs:guide-user:network:dsa:start" data-wiki-id="docs:guide-user:network:dsa:start">DSA networking</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Switch configuration (DSA \/ bridge-vlan)&quot;,&quot;hid&quot;:&quot;switch_configuration_dsabridge-vlan&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:18,&quot;range&quot;:&quot;17955-18201&quot;} -->
+<h2 class="sectionedit21" id="switch_configuration_legacy_swconfig">Switch configuration (legacy swconfig)</h2>
+<div class="level2">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:22,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_info plugin_wrap">
+<p>
+As of OpenWrt 21.02, swconfig is being phased out and is being replaced with DSA.
+</p>
+
+<p>
+This guide applies to all versions of OpenWrt before 21.02.
+It also applies to non-DSA targets in OpenWrt 21.02.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:23,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+For many users, the default switch configuration is sufficient.
+Should the user need to configure the switch differently, LuCI, UCI, or direct editing of <code>/etc/config/network</code> may be used to achieve different configurations.
+Prior to any reconfiguration of the switch, an understanding of the default configuration is important.
+As an example, some devices have a single switch-connected interface, and other have two or more.
+</p>
+
+<p>
+See also:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="/docs/techref/swconfig" class="wikilink1" title="docs:techref:swconfig" data-wiki-id="docs:techref:swconfig">swconfig</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/network/vlan/switch_configuration" class="wikilink1" title="docs:guide-user:network:vlan:switch_configuration" data-wiki-id="docs:guide-user:network:vlan:switch_configuration">VLAN</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/network/vlan/switch" class="wikilink1" title="docs:guide-user:network:vlan:switch" data-wiki-id="docs:guide-user:network:vlan:switch">Switch Documentation</a> (Older content, but does give discuss single-interface configuration)</div>
+</li>
+</ul>
+
+<p>
+The identifier for the switch(es) may be obtained using:
+</p>
+<pre class="code bash"><span class="co0"># swconfig list</span>
+Found: switch0 - ag71xx-mdio.0</pre>
+
+<p>
+With the identifier known, the configuration can be viewed:
+</p>
+<pre class="code bash"><span class="co0"># swconfig dev switch0 show</span>
+Global attributes:
+	enable_vlan: <span class="nu0">1</span>
+	enable_mirror_rx: <span class="nu0">0</span>
+	enable_mirror_tx: <span class="nu0">0</span>
+	mirror_monitor_port: <span class="nu0">0</span>
+	mirror_source_port: <span class="nu0">0</span>
+	arl_age_time: <span class="nu0">300</span>
+	arl_table: address resolution table
+<span class="br0">&#91;</span>...<span class="br0">&#93;</span></pre>
+
+<p>
+There are three types of switch-related configuration stanzas, <code>switch</code>, <code>switch_vlan</code>, and <code>switch_port</code>.
+</p>
+
+<p>
+Not all options are available on all hardware.
+Some limitations may be found with <code>swconfig dev &lt;dev&gt; help</code>.
+After making changes, check the output of <code>swconfig</code> to determine if the configuration was accepted by the switch hardware.
+</p>
+
+<p>
+<img src="/lib/images/smileys/fixme.svg" class="icon smiley" alt="FIXME" />: The list of options may be incomplete.
+The details of each option need additional discovery and documentation, including checking of the underlying code.
+The source of restrictions on value ranges has yet to be identified.
+Valid values should be confirmed in the code.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Switch configuration (legacy swconfig)&quot;,&quot;hid&quot;:&quot;switch_configuration_legacy_swconfig&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:21,&quot;range&quot;:&quot;18202-20198&quot;} -->
+<h3 class="sectionedit24" id="section_switch">Section &quot;switch&quot;</h3>
+<div class="level3">
+<div class="table sectionedit25"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Option Name </th><th class="col1"> Type </th><th class="col2"> Required </th><th class="col3"> Default </th><th class="col4"> Impact </th><th class="col5"> Notes </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> <code>name</code> </td><td class="col1"> string </td><td class="col2"> yes </td><td class="col3"> (none) </td><td class="col4"> defines which switch to configure </td><td class="col5"> </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> <code>reset</code> </td><td class="col1"> boolean </td><td class="col2"> </td><td class="col3"> 1 </td><td class="col4"> </td><td class="col5"> </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> <code>enable_vlan</code> </td><td class="col1"> boolean </td><td class="col2"> </td><td class="col3"> 1 </td><td class="col4"> </td><td class="col5"> Default may differ by hardware </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> <code>enable_mirror_rx</code> </td><td class="col1"> boolean </td><td class="col2"> no </td><td class="col3"> 0 </td><td class="col4"> Mirror received packets from the <code>mirror_source_port</code> to the <code>mirror_monitor_port</code> </td><td class="col5"> </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0"> <code>enable_mirror_tx</code> </td><td class="col1"> boolean </td><td class="col2"> no </td><td class="col3"> 0 </td><td class="col4"> Mirror transmitted packets from the <code>mirror_source_port</code> to the <code>mirror_monitor_port</code> </td><td class="col5"> </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0"> <code>mirror_monitor_port</code> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> 0 </td><td class="col4"> Switch port to which packets are mirrored </td><td class="col5"> </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0"> <code>mirror_source_port</code> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> 0 </td><td class="col4"> Switch port from which packets are mirrored </td><td class="col5"> </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0"> <code>arl_age_time</code> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> 300 </td><td class="col4"> Adjust the address-resolution (MAC) table&#039;s aging time (seconds)</td><td class="col5"> Default may differ by hardware </td>
+	</tr>
+	<tr class="row9">
+		<td class="col0"> <code>igmp_snooping</code> </td><td class="col1"> boolean </td><td class="col2"> no </td><td class="col3"> 0 </td><td class="col4"> Enable IGMP snooping </td><td class="col5"> Unconfirmed if can be set. Unknown how it interacts with interface- or port-level IGMP snooping. </td>
+	</tr>
+	<tr class="row10">
+		<td class="col0"> <code>igmp_v3</code> </td><td class="col1"> boolean </td><td class="col2"> no </td><td class="col3"> 0 </td><td class="col4"> </td><td class="col5"> Unconfirmed if can be set. Unknown how it interacts with interface- or port-level IGMP snooping. </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table6&quot;,&quot;secid&quot;:25,&quot;range&quot;:&quot;20226-21366&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Section \&quot;switch\&quot;&quot;,&quot;hid&quot;:&quot;section_switch&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:24,&quot;range&quot;:&quot;20199-21367&quot;} -->
+<h3 class="sectionedit26" id="section_switch_vlan">Section &quot;switch_vlan&quot;</h3>
+<div class="level3">
+<div class="table sectionedit27"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Option Name </th><th class="col1"> Type </th><th class="col2"> Required </th><th class="col3"> Default </th><th class="col4"> Impact </th><th class="col5"> Notes </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> <code>description</code> </td><td class="col1"> string </td><td class="col2"> no </td><td class="col3"> (none) </td><td class="col4"> A human-readable description of the <abbr title="Virtual Local Area Network">VLAN</abbr> configuration </td><td class="col5"> </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> <code>device</code> </td><td class="col1"> string </td><td class="col2"> yes </td><td class="col3"> (none) </td><td class="col4"> defines which switch to configure </td><td class="col5"> </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> <code>vlan</code> </td><td class="col1"> integer </td><td class="col2"> yes </td><td class="col3"> (none) </td><td class="col4"> The vlan “table index” to configure </td><td class="col5"> May be limited to 127 or another number. See the output of <code>swconfig dev &lt;dev&gt; help</code> for limit. Sets defaults for <abbr title="Virtual Local Area Network">VLAN</abbr> tag and PVID. </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> <code>vid</code> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> <code>vlan</code> </td><td class="col4"> The <abbr title="Virtual Local Area Network">VLAN</abbr> tag number to use </td><td class="col5"> See the output of <code>swconfig dev &lt;dev&gt; help</code> for limit. VLANs 0 and 4095 are often considered “special use”. </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0"> <code>ports</code> </td><td class="col1"> string </td><td class="col2"> yes </td><td class="col3"> (none) </td><td class="col4"> A string of space-separated port indicies that should be associated with the <abbr title="Virtual Local Area Network">VLAN</abbr>. Adding the suffix <code>t</code> to a port indicates that egress packets should be tagged, for example <code>&#039;0 1 3t 5t</code>&#039; </td><td class="col5"> The suffixes <code>*</code> and <code>u</code> are referred to in <a href="/docs/guide-user/network/vlan/switch" class="wikilink1" title="docs:guide-user:network:vlan:switch" data-wiki-id="docs:guide-user:network:vlan:switch">docs:guide-user:network:switch</a> with reference to certain Broadcom switches in the context of older releases. </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table7&quot;,&quot;secid&quot;:27,&quot;range&quot;:&quot;21400-22463&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Section \&quot;switch_vlan\&quot;&quot;,&quot;hid&quot;:&quot;section_switch_vlan&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:26,&quot;range&quot;:&quot;21368-22464&quot;} -->
+<h3 class="sectionedit28" id="section_switch_port">Section &quot;switch_port&quot;</h3>
+<div class="level3">
+<div class="table sectionedit29"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Option Name </th><th class="col1"> Type </th><th class="col2"> Required </th><th class="col3"> Default </th><th class="col4"> Impact </th><th class="col5"> Notes </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> <code>device</code> </td><td class="col1"> string </td><td class="col2"> yes </td><td class="col3"> (none) </td><td class="col4"> defines which switch to configure </td><td class="col5"> </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> <code>port</code> </td><td class="col1"> integer </td><td class="col2"> yes </td><td class="col3"> (none) </td><td class="col4"> The port index to configure </td><td class="col5"> </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> <code>pvid</code> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> † </td><td class="col4"> Port PVID; the <abbr title="Virtual Local Area Network">VLAN</abbr> tag†† to assign to untagged ingress packets </td><td class="col5"> †Typically defaults one of the <abbr title="Virtual Local Area Network">VLAN</abbr> tags associated with the port. Logic not clear when there are multiple VLANs on the port. &#039;0&#039; can occur. Certain values have been rejected; logic not clear on limitations. ††<em>May</em> refer to the <abbr title="Virtual Local Area Network">VLAN</abbr> “index” rather than the <abbr title="Virtual Local Area Network">VLAN</abbr> tag itself (unconfirmed).</td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> <code>enable_eee</code> </td><td class="col1"> boolean </td><td class="col2"> no </td><td class="col3"> 0 </td><td class="col4"> Enable “energy saving” features </td><td class="col5"> </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0"> <code>igmp_snooping</code> </td><td class="col1"> boolean </td><td class="col2"> no </td><td class="col3"> 0 </td><td class="col4"> Enable IGMP snooping </td><td class="col5"> Unconfirmed if can be set. Unknown how it interacts with interface- or switch-level IGMP snooping. </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0"> <code>igmp_v3</code> </td><td class="col1"> boolean </td><td class="col2"> no </td><td class="col3"> 0 </td><td class="col4"> </td><td class="col5"> Unconfirmed if can be set. Unknown how it interacts with interface- or switch-level IGMP snooping. </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table8&quot;,&quot;secid&quot;:29,&quot;range&quot;:&quot;22497-23483&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Section \&quot;switch_port\&quot;&quot;,&quot;hid&quot;:&quot;section_switch_port&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:28,&quot;range&quot;:&quot;22465-&quot;} -->

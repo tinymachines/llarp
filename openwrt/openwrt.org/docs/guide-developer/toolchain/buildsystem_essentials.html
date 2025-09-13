@@ -1,0 +1,261 @@
+
+<h1 class="sectionedit1" id="build_system_essentials">Build system essentials</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Build system essentials&quot;,&quot;hid&quot;:&quot;build_system_essentials&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-38&quot;} -->
+<h2 class="sectionedit2" id="introduction">Introduction</h2>
+<div class="level2">
+
+<p>
+The build system is used to build OpenWrt from the source code and requires significant hardware resources, time and knowledge.
+You can apply custom patches and build individual packages and OpenWrt images with specific compilation flags and options.
+As an alternative, you can use the <a href="/docs/guide-user/additional-software/imagebuilder" class="wikilink1" title="docs:guide-user:additional-software:imagebuilder" data-wiki-id="docs:guide-user:additional-software:imagebuilder">Image Builder</a> to build OpenWrt images much faster and simpler at the cost of limited customization.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Introduction&quot;,&quot;hid&quot;:&quot;introduction&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;39-503&quot;} -->
+<h2 class="sectionedit3" id="prerequisites">Prerequisites</h2>
+<div class="level2">
+
+<p>
+The build system is based on a <a href="https://en.wikipedia.org/wiki/Buildroot" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Buildroot">buildroot</a> and requires a GNU/Linux environment with a case-sensitive file system.
+This can be achieved by running a native or a virtualized <a href="https://en.wikipedia.org/wiki/Linux" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Linux">Linux</a> distribution using <a href="https://en.wikipedia.org/wiki/VirtualBox" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/VirtualBox">VirtualBox</a>, <a href="https://en.wikipedia.org/wiki/VMware" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/VMware">VMware</a>, <a href="https://en.wikipedia.org/wiki/QEMU" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/QEMU">QEMU</a>, etc.
+Also some users have positive experience with <a href="https://en.wikipedia.org/wiki/Windows_Subsystem_for_Linux" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Windows_Subsystem_for_Linux">WSL</a> and <a href="https://en.wikipedia.org/wiki/MacOS" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/MacOS">macOS</a>, but those are not officially supported.
+</p>
+
+<p>
+To generate a flashable firmware image file with default packages, you should have at least 10-15 <abbr title="Gigabyte">GB</abbr> of free disk space (better if more) and at least 2 <abbr title="Gigabyte">GB</abbr> of RAM for the compilation stage.
+4 <abbr title="Gigabyte">GB</abbr> of RAM are required for compilation of x86 images.
+Doing additional optimization such as enabling LTO compile flag would also increase RAM consumption during build.
+</p>
+
+<p>
+The more additional packages you add in the image, the more space is required, but the space requirements should increase slowly, most of the storage requirements are for the build infrastructure and core components of the firmware image.
+</p>
+
+<p>
+Do note that these numbers are rough estimates only, you may very well be able to do it with less on some devices, but it&#039;s not guaranteed.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Prerequisites&quot;,&quot;hid&quot;:&quot;prerequisites&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;504-1721&quot;} -->
+<h2 class="sectionedit4" id="description">Description</h2>
+<div class="level2">
+
+<p>
+The <strong>build system</strong> is a set of <a href="https://en.wikipedia.org/wiki/Make_(software)#Makefiles" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Make_(software)#Makefiles">Makefiles</a> and <a href="https://en.wikipedia.org/wiki/Patch_(computing)" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Patch_(computing)">patches </a> that automates the process of building a <a href="https://en.wikipedia.org/wiki/Cross_compiler" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Cross_compiler">cross-compilation</a> <a href="https://en.wikipedia.org/wiki/Toolchain" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Toolchain">toolchain</a> and then using it to build the Linux kernel, the <a href="http://gnulinux.in/forum/what-root-file-system" class="urlextern" title="http://gnulinux.in/forum/what-root-file-system" rel="ugc nofollow">root filesystem</a> and possibly other pieces of software (such as <a href="https://en.wikipedia.org/wiki/Das_U-Boot" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Das_U-Boot">uboot</a>) required to run OpenWrt on a specific device.
+A typical toolchain consists of:
+</p>
+<ul>
+<li class="level1"><div class="li"> A compiler, such as <a href="https://en.wikipedia.org/wiki/GNU Compiler Collection" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/GNU Compiler Collection">gcc</a></div>
+</li>
+<li class="level1"><div class="li"> Binary utilities such as an assembler and a linker; for example <a href="https://en.wikipedia.org/wiki/GNU Binutils" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/GNU Binutils">binutils</a> </div>
+</li>
+<li class="level1"><div class="li"> A <a href="https://en.wikipedia.org/wiki/C standard library" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/C standard library">C standard library</a>, such as glibc, musl, uClibc or dietlibc</div>
+</li>
+</ul>
+
+<p>
+Usually a toolchain generates code for the same instruction set architecture (ISA) that it runs on (<a href="https://en.wikipedia.org/wiki/x86_64" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/x86_64">x86_64</a> in the case of most PCs and servers).
+However with OpenWrt this is not true.
+Most routers have processors that use a different architecture than the one we are using to run the build system.
+If we were to use our build system&#039;s toolchain to build OpenWrt for our router, it would generate code that would not work on our router.
+Nothing from the host system can be used.
+Everything, including the C standard library, the Linux kernel and all userspace programs, must be compiled with this cross-compilation toolchain.
+</p>
+
+<p>
+Let&#039;s look at an example.
+We are building OpenWrt on an x86_64 system for a router that uses a MIPS32 architecture, so we can&#039;t use the same toolchain we use to generate programs we run on our x86_64 system.
+We need to first build a toolchain for the MIPS32 system, and then build all of the things that it needs to run OpenWrt using that toolchain.
+</p>
+
+<p>
+The process of creating a cross compiler can be tricky.
+It&#039;s not something that&#039;s regularly attempted and so there&#039;s a certain amount of mystery and black magic associated with it.
+When you&#039;re dealing with embedded devices you&#039;ll often be provided with a binary copy of a compiler and basic libraries rather than instructions for creating your own - it&#039;s a time saving step but at the same time often means you&#039;ll be using a rather dated set of tools.
+It&#039;s also common to be provided with a patched copy of the Linux kernel from the board or chip vendor, but this is also dated and it can be difficult to spot exactly what has been changed to make the kernel run on the embedded platform.
+</p>
+
+<p>
+While it is possible to manually create your toolchain, and then build OpenWrt with it, this is difficult and error-prone.
+The OpenWrt build system takes a different approach to building a firmware: it downloads, patches and compiles everything from scratch, including the cross compiler.
+Or to put it in simpler terms, OpenWrt&#039;s build system doesn&#039;t contain any executables or even sources.
+It is an automated system for downloading the sources, patching them to work with the given platform and compiling them correctly for the platform.
+What this means is that just by changing the template, you can change any step in the process.
+And of course the side benefit of this is that builds are automated, which saves time and guarantees the same result every time.
+</p>
+
+<p>
+For example if a new kernel is released, a simple change to one of the Makefiles will download the latest kernel, patch it to run on the requested platform and produce a new firmware image.
+There&#039;s no work to be done trying to track down an unmodified copy of the existing kernel to see what changes had been made - the patches are already provided and the process ends up almost completely transparent.
+This doesn&#039;t just apply to the kernel, but to anything included with OpenWrt - it&#039;s this strategy that allows OpenWrt to stay on the bleeding edge with the latest compilers, kernels and applications.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Description&quot;,&quot;hid&quot;:&quot;description&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;1722-5509&quot;} -->
+<h2 class="sectionedit5" id="directory_structure">Directory structure</h2>
+<div class="level2">
+
+<p>
+There are four key directories in the build system:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>tools</code> - contains various utilities required for building toolchain and packages (e.g. autoconf automake), or for image generation (e.g. mkimage, squashfs). Some of these utilities could also be installed in the host system, but we include them in the OpenWrt source so that we don&#039;t have to worry about different versions used in various Linux distributions causing breakage, or to support building on macOS.</div>
+</li>
+<li class="level1"><div class="li"> <code>toolchain</code> - refers to the compiler, the c library, and common tools which will be used to build the firmware image. The result of this is two new directories, <code>toolchain_build_&lt;arch&gt;</code> which is a temporary directory used for building the toolchain for a specific architecture, and <code>staging_dir_&lt;arch&gt;</code> where the resulting toolchain is installed. You won&#039;t need to do anything with the <code>toolchain</code> directory unless you intend to add a new version of one of the components above.</div>
+</li>
+<li class="level1"><div class="li"> <code>target</code> - refers to the embedded platform, this contains items which are specific to a specific embedded platform. Of particular interest here is the <code>target/linux</code> directory which is broken down by platform and contains the kernel config and patches to the kernel for a particular platform. There&#039;s also the <code>target/image</code> directory which describes how to package a firmware for a specific platform.</div>
+</li>
+<li class="level1"><div class="li"> <code>package</code> - is for exactly that - packages. In an OpenWrt firmware, almost everything is an ipk, a software package which can be added to the firmware to provide new features or removed to save space.</div>
+</li>
+<li class="level1"><div class="li"> <code>dl</code> - anything downloaded by the toolchain, target or package steps will be placed in this directory.</div>
+</li>
+</ul>
+
+<p>
+Both the <code>target</code> and <code>package</code> steps will use the directory <code>build_&lt;arch&gt;</code> as a temporary directory for compiling.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Directory structure&quot;,&quot;hid&quot;:&quot;directory_structure&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;5510-7353&quot;} -->
+<h2 class="sectionedit6" id="difference_between_build_dir_and_staging_dir">Difference between build_dir and staging_dir</h2>
+<div class="level2">
+
+<p>
+The directory <code>build_dir</code> is used to unpack all the source archives and to compile them in.
+</p>
+
+<p>
+The directory <code>staging_dir</code> is used to “install” all the compiled programs into, ready either for use in building further packages, or for preparing the firmware image.
+</p>
+
+<p>
+There are three areas under <code>build_dir</code>:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>build_dir/host</code>, for compiling all the tools that run on the host computer (OpenWrt builds its own version of <code>sed</code> and many other tools from source). This area will be used for compiling programs that run only on your host.</div>
+</li>
+<li class="level1"><div class="li"> <code>build_dir/toolchain...</code> for compiling the cross-C compiler and C standard library components that will be used to build the packages. This area will be used for compiling programs that run only on your host (the cross C compiler, for example) and also, libraries designed to run on the target that are linked to - e.g. uClibc, libm, pthreads, etc.</div>
+</li>
+<li class="level1"><div class="li"> <code>build_dir/target...</code> for compiling the actual packages, and the Linux kernel, for the target system</div>
+</li>
+</ul>
+
+<p>
+Under staging, there are also three areas:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>staging_dir/host</code> is a mini Linux root with its own <code>bin/</code>, <code>lib/</code>, etc. that the host tools are installed into; the rest of the build system then prefixes its PATH with directories in this area</div>
+</li>
+<li class="level1"><div class="li"> <code>staging_dir/toolchain...</code> is a mini Linux root with its own <code>bin/</code>, <code>lib/</code>, etc that contains the cross C compiler used to build the rest of the firmware. You can actually use that to compile simple C programs outside of OpenWrt that can be loaded onto the firmware. The C compiler might be something like: <code>staging_dir/toolchain-mips_34kc_gcc-4.8-linaro_uClibc-0.9.33.2/bin/mips-openwrt-linux-uclibc-gcc</code>. You can see the version of the CPU, the C library and gcc encoded into it; this allows multiple targets to be built in the same area concurrently.</div>
+</li>
+<li class="level1"><div class="li"> <code>staging_dir/target.../root-...</code> contains “installed” versions of each target package again arranged with <code>bin/</code>, <code>lib/</code>, this will become the actual root directory that with some tweaking will get zipped up into the firmware image, something like <code>root-ar71xx</code>. There are some other files in <code>staging_dir/target...</code> primarily used for generating the packages and development packages, etc.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Difference between build_dir and staging_dir&quot;,&quot;hid&quot;:&quot;difference_between_build_dir_and_staging_dir&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;7354-9640&quot;} -->
+<h2 class="sectionedit7" id="features">Features</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Makes it easy to port software</div>
+</li>
+<li class="level1"><div class="li"> Uses kconfig (Linux Kernel menuconfig) for configuration of features</div>
+</li>
+<li class="level1"><div class="li"> Provides integrated cross-compiler toolchain (gcc, ld, ...)</div>
+</li>
+<li class="level1"><div class="li"> Provides abstraction for autotools (automake, autoconf), cmake, scons</div>
+</li>
+<li class="level1"><div class="li"> Handles standard download, patch, configure, compile and packaging workflow</div>
+</li>
+<li class="level1"><div class="li"> Provides a number of common fixups for badly behaving packages</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Features&quot;,&quot;hid&quot;:&quot;features&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;9641-10055&quot;} -->
+<h2 class="sectionedit8" id="make_targets">Make targets</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Offers a number of high level make targets for standard package workflows</div>
+</li>
+<li class="level1"><div class="li"> Targets always in the format <code>component/name/action</code>, e.g. <code>toolchain/gdb/compile</code> or <code>package/mtd/install</code></div>
+</li>
+<li class="level1"><div class="li"> Prepare a package source tree: <code>package/foo/prepare</code></div>
+</li>
+<li class="level1"><div class="li"> Compile a package: <code>package/foo/compile</code></div>
+</li>
+<li class="level1"><div class="li"> Clean a package: <code>package/foo/clean</code></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Make targets&quot;,&quot;hid&quot;:&quot;make_targets&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:8,&quot;range&quot;:&quot;10056-10426&quot;} -->
+<h2 class="sectionedit9" id="build_sequence">Build sequence</h2>
+<div class="level2">
+<ol>
+<li class="level1"><div class="li"> <code>tools</code> – automake, autoconf, sed, cmake</div>
+</li>
+<li class="level1"><div class="li"> <code>toolchain/binutils</code> – as, ld, ...</div>
+</li>
+<li class="level1"><div class="li"> <code>toolchain/gcc</code> – gcc, g++, cpp, ...</div>
+</li>
+<li class="level1"><div class="li"> <code>target/linux</code> – kernel modules</div>
+</li>
+<li class="level1"><div class="li"> <code>package</code> – core and feed packages</div>
+</li>
+<li class="level1"><div class="li"> <code>target/linux</code> – kernel image</div>
+</li>
+<li class="level1"><div class="li"> <code>target/linux/image</code> – firmware image file generation</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Build sequence&quot;,&quot;hid&quot;:&quot;build_sequence&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:9,&quot;range&quot;:&quot;10427-10774&quot;} -->
+<h2 class="sectionedit10" id="patch_management">Patch management</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Many packages will not work as-is and need patches to work on the target or to even compile</div>
+</li>
+<li class="level1"><div class="li"> The build system integrates <a href="https://en.wikipedia.org/wiki/Quilt (software)" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Quilt (software)">quilt</a> for easy patch management</div>
+</li>
+<li class="level1"><div class="li"> Turn package patches into quilt series: <code>make package/foo/prepare QUILT=1</code></div>
+</li>
+<li class="level1"><div class="li"> Update patches from modified series: <code>make package/foo/update</code></div>
+</li>
+<li class="level1"><div class="li"> Automatically rebase patches after an update: <code>make package/foo/refresh</code></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Patch management&quot;,&quot;hid&quot;:&quot;patch_management&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:10,&quot;range&quot;:&quot;10775-11217&quot;} -->
+<h2 class="sectionedit11" id="packaging_considerations">Packaging considerations</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Main objective is small memory and size footprint</div>
+</li>
+<li class="level1"><div class="li"> Features that make no sense on embedded systems are disabled through configure or patched out</div>
+</li>
+<li class="level1"><div class="li"> Packages must be compatible regardless of the host system, they should be self contained</div>
+</li>
+<li class="level1"><div class="li"> Shipped “configure” scripts are often faulty or unusable in a cross-compile setting, autoreconf or patching is often needed</div>
+</li>
+<li class="level1"><div class="li"> Build variants and kconfig includes allow for configurable compile-time settings</div>
+</li>
+<li class="level1"><div class="li"> There is no standard way for porting software, in many cases it “just works” but often the package build process needs tweaks</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Packaging considerations&quot;,&quot;hid&quot;:&quot;packaging_considerations&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:11,&quot;range&quot;:&quot;11218-11843&quot;} -->
+<h2 class="sectionedit12" id="references">References</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <a href="https://forum.openwrt.org/viewtopic.php?pid=31794#p31794" class="urlextern" title="https://forum.openwrt.org/viewtopic.php?pid=31794#p31794" rel="ugc nofollow">OpenWrt Forums: An introduction to OpenWrt Buildroot</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;References&quot;,&quot;hid&quot;:&quot;references&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:12,&quot;range&quot;:&quot;11844-&quot;} -->

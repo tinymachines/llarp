@@ -1,0 +1,208 @@
+
+<h1 class="sectionedit1" id="iptvudp_multicast">IPTV / UDP multicast</h1>
+<div class="level1">
+
+<p>
+Lots of ISPs provide their users with an <abbr title="Internet Protocol Television">IPTV</abbr> service, usually done via <abbr title="Internet Protocol version 4">IPv4</abbr> <abbr title="User Datagram Protocol">UDP</abbr> multicasting. This document aims to explain how to make it work for most common scenarios.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;IPTV \/ UDP multicast&quot;,&quot;hid&quot;:&quot;iptvudp_multicast&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-208&quot;} -->
+<h2 class="sectionedit2" id="basic_concepts">Basic concepts</h2>
+<div class="level2">
+
+<p>
+When a host wants to start receiving <abbr title="User Datagram Protocol">UDP</abbr> multicast traffic, it needs to subscribe itself to a “<abbr title="User Datagram Protocol">UDP</abbr> multicast group”. In <abbr title="Internet Protocol version 4">IPv4</abbr> Control of multicast groups is achieved with IGMP protocol. In <abbr title="Internet Protocol version 6">IPv6</abbr> its accomplished with special Multicast Listener Discovery (MLD) packets in the ICMPv6 protocol. Once a host is subscribed, all the traffic for this group is sent to it using <a href="http://en.wikipedia.org/wiki/IP_multicast#Layer_2_delivery" class="urlextern" title="http://en.wikipedia.org/wiki/IP_multicast#Layer_2_delivery" rel="ugc nofollow">broadcast L2 frames</a>. This detail is important because common bridges just pass all the broadcast traffic to all the ports. So if you use Linux to bridge wireless and wired networks (usual scenario for home LANs) and you subscribe to a multicast group from one of the wired clients, the wireless will be flooded too. The Linux kernel and most managed switches are able to use IGMP snooping to decide which ports need to be flooded. This feature is disabled by default in OpenWrt software bridges but can be enabled with a single line in the configuration for the bridge. When enabled, it should prevent unnecessary traffic on ports that were not actually subscribing such as WiFi ports when only a wired client has requested multicast.
+</p>
+
+<p>
+Another important consideration is that multicasting over wireless doesn&#039;t usually work as one might expect since it uses the lowest possible bitrate (to enable all clients to “hear” it) and also employs special tricks for power-saving. Basically, this makes multicasting useless for <abbr title="Internet Protocol Television">IPTV</abbr> over WiFi as it limits the total bandwidth to a few megabits. The solution is to convert the multicast stream into a unicast stream sent just to the one WiFi client that wants to hear it. The udpxy program is capable of making this conversion.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Basic concepts&quot;,&quot;hid&quot;:&quot;basic_concepts&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;209-1937&quot;} -->
+<h3 class="sectionedit3" id="using_igmpproxy_for_ipv4_multicast_streams">Using igmpproxy for IPv4 multicast streams</h3>
+<div class="level3">
+
+<p>
+In the usual scenario, <abbr title="Local Area Network">LAN</abbr> clients such as smart TVs wish to receive multicast streams from an <abbr title="Internet Service Provider">ISP</abbr> <abbr title="Internet Protocol Television">IPTV</abbr> service operating on <abbr title="Internet Protocol version 4">IPv4</abbr>. Since the <abbr title="Local Area Network">LAN</abbr> clients are behind the OpenWrt router they can not simply send an IGMP request and start receiving the relevant TV data as only other machines on the <abbr title="Local Area Network">LAN</abbr> will hear the IGMP request. Instead the OpenWrt router must act as a router for multicast packets and igmpproxy does this by listening for and proxying the IGMP requests to the <abbr title="Internet Service Provider">ISP</abbr> as well, and then enabling forwarding of the <abbr title="User Datagram Protocol">UDP</abbr> packets from <abbr title="Wide Area Network">WAN</abbr> to <abbr title="Local Area Network">LAN</abbr>.
+</p>
+
+<p>
+OpenWrt has the package <a href="https://github.com/pali/igmpproxy" class="urlextern" title="https://github.com/pali/igmpproxy" rel="ugc nofollow">igmpproxy utility</a> to do that. It listens on a “downstream” (<abbr title="Local Area Network">LAN</abbr>) interface for IGMP requests, when it hears them, it makes a similar request on the upstream (<abbr title="Wide Area Network">WAN</abbr>) side. This request is heard by <abbr title="Internet Service Provider">ISP</abbr> equipment (or even just a smart switch on <abbr title="Wide Area Network">WAN</abbr>) and when upstream routers are configured correctly the flow of multicast data will begin to arrive on <abbr title="Wide Area Network">WAN</abbr> shortly after the request is sent. The igmpproxy adds routes and rules to the kernel which cause the kernel to forward these multicast <abbr title="User Datagram Protocol">UDP</abbr> packets received on the <abbr title="Wide Area Network">WAN</abbr> to the <abbr title="Local Area Network">LAN</abbr> where they are received by the original requester.
+</p>
+
+<p>
+First you need to install the package
+</p>
+
+<p>
+<code>opkg install igmpproxy</code>
+</p>
+
+<p>
+You need to edit <code>/etc/config/igmpproxy</code> according to your setup. For a usual situation with a simple <abbr title="Wide Area Network">WAN</abbr> and <abbr title="Local Area Network">LAN</abbr> network:
+</p>
+<pre class="code">config igmpproxy
+        option quickleave 1
+
+config phyint
+        option network wan
+        option zone wan # the upstream firewall zone for forward rules
+        option direction upstream
+        list altnet 0.0.0.0/0 # a description of allowed source addresses for multicast packets
+
+config phyint
+        option network lan
+        option zone lan #the downstream firewall zone for forward rules
+        option direction downstream</pre>
+
+</div>
+
+<h4 id="network_interface_settings">Network interface settings</h4>
+<div class="level4">
+
+<p>
+To avoid flooding all ports of your <abbr title="Local Area Network">LAN</abbr> bridge, including WiFi, you can enable IGMP snooping on your <abbr title="Local Area Network">LAN</abbr> interface:
+</p>
+
+<p>
+<code>/etc/config/network</code>
+</p>
+<pre class="code">config interface lan
+        option type bridge
+        option igmp_snooping 1
+        ...</pre>
+
+</div>
+
+<h4 id="firewall_settings">Firewall settings</h4>
+<div class="level4">
+
+<p>
+In older versions of igmpproxy it used to require firewall rules. However current versions insert the rules automatically during start-up of the igmpproxy daemon.
+</p>
+
+<p>
+You will see two rules inserted into the appropriate forward chain, in iptables-save format they would look like:
+</p>
+<pre class="code">-A zone_wan_forward -d 239.255.255.250/32 -p udp -m comment --comment &quot;!fw3: ubus:igmpproxy[instance1] rule 1&quot; -j zone_lan_dest_DROP
+-A zone_wan_forward -d 224.0.0.0/4 -p udp -m comment --comment &quot;!fw3: ubus:igmpproxy[instance1] rule 2&quot; -j zone_lan_dest_ACCEPT</pre>
+
+<p>
+The first rule drops SSDP packets that would cause <abbr title="Wide Area Network">WAN</abbr> side services to be advertised on your <abbr title="Local Area Network">LAN</abbr>. The second rule allows forwarding of any other multicast packets. However forwarding will only occur for those packets where igmpproxy will insert routing rules.
+</p>
+
+<p>
+In some circumstances it *may* be useful to set multicast packets to have a time to live that allows them to transit the OpenWrt router without dying. Adding a line such as this to the /etc/firewall.user may be required:
+</p>
+<pre class="code">iptables -t mangle -A PREROUTING -i eth0 -d 224.0.0.0/4 -p udp -j TTL --ttl-set 2</pre>
+
+<p>
+This will cause multicast <abbr title="User Datagram Protocol">UDP</abbr> packets to have a <abbr title="Time To Live">TTL</abbr> of 2 prior to being routed by OpenWrt allowing them to be sent out the <abbr title="Local Area Network">LAN</abbr> interface with <abbr title="Time To Live">TTL</abbr>=1. You can increase the value further if you need to route the packets further across sub-networks in your personal network. This rule may especially be required if you use VLC to provide a testing multicast stream on the <abbr title="Wide Area Network">WAN</abbr> side, as by default it outputs a <abbr title="Time To Live">TTL</abbr>=1 preventing routing.
+</p>
+
+</div>
+
+<h4 id="force_igmp_version">Force IGMP version</h4>
+<div class="level4">
+
+<p>
+In some situations the upstream traffic requires IGMPv2. To force the OpenWrt kernel to use IGMPv2 on all interfaces if necessary, you can add the following line to /etc/sysctl.conf. Try it without first and only add if you experience a problem.
+</p>
+<pre class="code">net.ipv4.conf.all.force_igmp_version=2</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Using igmpproxy for IPv4 multicast streams&quot;,&quot;hid&quot;:&quot;using_igmpproxy_for_ipv4_multicast_streams&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;1938-6046&quot;} -->
+<h3 class="sectionedit4" id="custom_multicast_application_running_in_the_router">Custom multicast application running in the router</h3>
+<div class="level3">
+
+<p>
+If you got a custom software running in the router, which want to listen or send data to the multicast, then add the below route so that all the wireless clients and the router can listen/send to the multicast group.
+</p>
+<pre class="code">route add -net 224.0.0.0 netmask 224.0.0.0 wlan0</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Custom multicast application running in the router&quot;,&quot;hid&quot;:&quot;custom_multicast_application_running_in_the_router&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:4,&quot;range&quot;:&quot;6047-6389&quot;} -->
+<h3 class="sectionedit5" id="multicast_streams_over_wifi_with_unicast_conversion_udpxy">Multicast Streams Over WiFi with Unicast conversion (udpxy)</h3>
+<div class="level3">
+
+<p>
+If you wish to access multicast streams over WiFi, the bandwidth efficient way is to convert it to unicast so that high speed modulation can be used. The udpxy package enables this functionality. 
+</p>
+
+<p>
+Install the luci-app-udpxy package:
+</p>
+<pre class="code">opkg update; opkg install luci-app-udpxy</pre>
+
+<p>
+Go to Luci &gt; Services &gt; udpxy
+</p>
+
+<p>
+Click Enabled, enter the <abbr title="Internet Protocol">IP</abbr> address of the <abbr title="Local Area Network">LAN</abbr> interface into “Bind <abbr title="Internet Protocol">IP</abbr>/Interface” (default 192.168.1.1) enter a port number not in use already on the router (default is 4022) 
+</p>
+
+<p>
+Most other fields can be left blank, click save and apply. 
+</p>
+
+<p>
+Now if you have a multicast stream you wish to listen to, and your router has default 192.168.1.1 address and you want to hear an example multicast rtp stream sent to 224.0.1.2 on port 345 you can enter into the browser on your <abbr title="Local Area Network">LAN</abbr> machine:
+</p>
+
+<p>
+<code><a href="http://192.168.1.1:4022/rtp/224.0.1.2:345/" class="urlextern" title="http://192.168.1.1:4022/rtp/224.0.1.2:345/" rel="ugc nofollow">http://192.168.1.1:4022/rtp/224.0.1.2:345/</a></code>
+</p>
+
+<p>
+and udpxy running on the router will listen for the rtp stream and convert it into an MPEG-TS stream and send it to your device.
+</p>
+
+<p>
+For more information about udpxy see: <a href="http://www.udpxy.com/download/udpxy/README.txt" class="urlextern" title="http://www.udpxy.com/download/udpxy/README.txt" rel="ugc nofollow"> udpxy README</a>
+</p>
+
+</div>
+
+<h4 id="using_igmpproxy_and_udpxy_together">Using igmpproxy and udpxy together</h4>
+<div class="level4">
+
+<p>
+When using igmpproxy together with udpxy, the igmpproxy will already create the required firewall rules and nothing is required.
+</p>
+
+</div>
+
+<h4 id="firewall_configuration_for_udpxy">Firewall configuration for udpxy</h4>
+<div class="level4">
+
+<p>
+ALERT: this may be out of date information?
+</p>
+
+<p>
+When using udpxy you need to accept IGMP traffic and also you need to allow it for INPUT:
+</p>
+<pre class="code">config rule
+        option src      wan
+        option proto    igmp
+        option target   ACCEPT
+config rule
+        option src      wan
+        option proto    udp
+        option dest_ip  224.0.0.0/4
+        option target   ACCEPT</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Multicast Streams Over WiFi with Unicast conversion (udpxy)&quot;,&quot;hid&quot;:&quot;multicast_streams_over_wifi_with_unicast_conversion_udpxy&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:5,&quot;range&quot;:&quot;6390-8148&quot;} -->
+<h2 class="sectionedit6" id="ipv6">IPv6</h2>
+<div class="level2">
+
+<p>
+<abbr title="Internet Protocol version 6">IPv6</abbr> uses MLD see <a href="https://en.wikipedia.org/wiki/Multicast_Listener_Discovery" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Multicast_Listener_Discovery">Multicast_Listener_Discovery</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;IPv6&quot;,&quot;hid&quot;:&quot;ipv6&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:6,&quot;range&quot;:&quot;8149-&quot;} -->

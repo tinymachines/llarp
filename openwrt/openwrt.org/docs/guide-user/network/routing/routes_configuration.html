@@ -1,0 +1,212 @@
+
+<h1 class="sectionedit1" id="static_routes">Static routes</h1>
+<div class="level1">
+
+<p>
+Netifd supports static <em><abbr title="Internet Protocol">IP</abbr> route</em> declarations which are required to implement basic routing.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Static routes&quot;,&quot;hid&quot;:&quot;static_routes&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-125&quot;} -->
+<h2 class="sectionedit2" id="ipv4_routes">IPv4 routes</h2>
+<div class="level2">
+
+<p>
+Static <em><abbr title="Internet Protocol version 4">IPv4</abbr> routes</em> can be defined on specific interfaces using <code>route</code> sections. As for <em>aliases</em>, multiple sections can be attached to an interface. The <code>route</code> sections are stored in the uci file <code>/etc/config/network</code>.
+</p>
+
+<p>
+A minimal example looks like this:
+</p>
+<pre class="code bash">config route <span class="st_h">'route_example_1'</span>
+        option interface <span class="st_h">'lan'</span>
+        option target <span class="st_h">'172.16.123.0'</span>
+        option netmask <span class="st_h">'255.255.255.0'</span>
+        option gateway <span class="st_h">'172.16.123.100'</span></pre>
+<ul>
+<li class="level1"><div class="li"> <code>lan</code> is the <em>logical interface name</em> of the parent interface</div>
+</li>
+<li class="level1"><div class="li"> <code>172.16.123.0</code> is the <em>network address</em> of the route</div>
+</li>
+<li class="level1"><div class="li"> <code>255.255.255.0</code> specifies the <em>route netmask</em></div>
+</li>
+</ul>
+
+<p>
+Another example, creating a default route for table 100 with the gateway <code>10.72.197.110</code>:
+</p>
+<pre class="code bash">config route <span class="st_h">'route_example_2'</span>
+        option interface <span class="st_h">'vpn'</span>
+        option target <span class="st_h">'0.0.0.0/0'</span>
+        option table <span class="st_h">'100'</span>
+        option gateway <span class="st_h">'10.72.197.110'</span></pre>
+<ul>
+<li class="level1"><div class="li"> <code>vpn</code> is the <em>logical interface name</em> of the parent interface</div>
+</li>
+<li class="level1"><div class="li"> <code>0.0.0.0/0</code> is the <em>subnet address</em> all includes all IPs, because we use a subnet we don&#039;t need to use netmask</div>
+</li>
+<li class="level1"><div class="li"> <code>100</code> is the specific <em>table number</em>, if you want it to be shown as a name, add it to <code>/etc/iproute2/rt_tables</code></div>
+</li>
+</ul>
+
+<p>
+This is a persistent equivalent to the runtime command:
+</p>
+<pre class="code bash"><span class="kw2">ip route</span> add default via 10.72.197.110 table <span class="nu0">100</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;IPv4 routes&quot;,&quot;hid&quot;:&quot;ipv4_routes&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;126-1519&quot;} -->
+<h3 class="sectionedit3" id="options_for_ipv4_routes">Options for IPv4 routes</h3>
+<div class="level3">
+<div class="table sectionedit4"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign"> Name           </th><th class="col1 leftalign"> Type              </th><th class="col2 leftalign"> Required  </th><th class="col3 leftalign"> Default            </th><th class="col4 leftalign"> Description                                                                                                                                                                                                                                                      </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> <code>interface</code>  </td><td class="col1 leftalign"> string            </td><td class="col2 leftalign"> yes       </td><td class="col3 leftalign"> <em>(none)</em>         </td><td class="col4 leftalign"> Specifies the <em>logical interface name</em> of the parent (or master) interface this route belongs to; must refer to one of the defined <code>interface</code> sections                                                                                                      </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> <code>target</code>     </td><td class="col1 leftalign"> ip address        </td><td class="col2 leftalign"> yes       </td><td class="col3 leftalign"> <em>(none)</em>         </td><td class="col4 leftalign"> Network address                                                                                                                                                                                                                                                  </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> <code>netmask</code>    </td><td class="col1 leftalign"> netmask           </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <em>(none)</em>         </td><td class="col4 leftalign"> Route netmask. If omitted, <code>255.255.255.255</code> is assumed which makes <code>target</code> a <em>host address</em>                                                                                                                                                              </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"> <code>gateway</code>    </td><td class="col1 leftalign"> ip address        </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <em>(none)</em>         </td><td class="col4 leftalign"> Network gateway. If omitted, the <code>gateway</code> from the parent interface is taken if any, otherwise creates a <code>link</code> scope route; if set to <code>0.0.0.0</code> no gateway will be specified for the route                                                               </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 leftalign"> <code>metric</code>     </td><td class="col1 leftalign"> number            </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <code>0</code>              </td><td class="col4 leftalign"> Specifies the <em>route metric</em> to use                                                                                                                                                                                                                            </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0 leftalign"> <code>mtu</code>        </td><td class="col1 leftalign"> number            </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <em>interface <abbr title="Maximum Transmission Unit">MTU</abbr></em>  </td><td class="col4 leftalign"> Defines a specific <abbr title="Maximum Transmission Unit">MTU</abbr> for this route                                                                                                                                                                                                                            </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0 leftalign"> <code>table</code>      </td><td class="col1 leftalign"> routing table     </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <code>main</code>           </td><td class="col4 leftalign"> Defines the table ID to use for the route. The ID can be either a numeric table index ranging from 0 to 65535 or a symbolic alias declared in <code>/etc/iproute2/rt_tables</code>. The special aliases local (255), main (254) and default (253) are recognized as well  </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0 leftalign"> <code>source</code>     </td><td class="col1 leftalign"> ip address        </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <em>(none)</em>         </td><td class="col4 leftalign"> The preferred source address when sending to destinations covered by the target                                                                                                                                                                                  </td>
+	</tr>
+	<tr class="row9">
+		<td class="col0 leftalign"> <code>onlink</code>     </td><td class="col1 leftalign"> boolean           </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <code>0</code>              </td><td class="col4 leftalign"> When enabled gateway is on link even if the gateway does not match any interface prefix                                                                                                                                                                          </td>
+	</tr>
+	<tr class="row10">
+		<td class="col0 leftalign"> <code>type</code>       </td><td class="col1 leftalign"> string            </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <code>unicast</code>        </td><td class="col4 leftalign"> One of the types outlined in the routing types table below                                                                                                                                                                                                       </td>
+	</tr>
+	<tr class="row11">
+		<td class="col0 leftalign"> <code>proto</code>      </td><td class="col1 leftalign"> routing protocol  </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <code>static</code>         </td><td class="col4 leftalign"> Defines the protocol ID for the route. The ID can be either a numeric value ranging from 0 to 255 or a symbolic alias declared in <code>/etc/iproute2/rt_protos</code>. i.e. <code>kernel</code>, <code>boot</code>, <code>ra</code>, <code>redirect</code>, <code>static</code>                                       </td>
+	</tr>
+	<tr class="row12">
+		<td class="col0 leftalign"> <code>disabled</code>   </td><td class="col1 leftalign"> boolean           </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <code>0</code>              </td><td class="col4 leftalign"> Specifies if the static route should be set or not, available since OpenWrt &gt;= 21.02.                                                                                                                                                                            </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;1554-5856&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Options for IPv4 routes&quot;,&quot;hid&quot;:&quot;options_for_ipv4_routes&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:3,&quot;range&quot;:&quot;1520-5857&quot;} -->
+<h2 class="sectionedit5" id="ipv6_routes">IPv6 routes</h2>
+<div class="level2">
+
+<p>
+<em><abbr title="Internet Protocol version 6">IPv6</abbr> routes</em> can be specified as well by defining one or more <code>route6</code> sections.
+</p>
+
+<p>
+A minimal example looks like this:
+</p>
+<pre class="code bash">config route6
+        option interface <span class="st_h">'lan'</span>
+        option target <span class="st_h">'2001:0DB8:100:F00:BA3::1/64'</span>
+        option gateway <span class="st_h">'2001:0DB8:99::1'</span></pre>
+<ul>
+<li class="level1"><div class="li"> <code>lan</code> is the <em>logical interface name</em> of the parent interface</div>
+</li>
+<li class="level1"><div class="li"> <code>2001:0DB8:100:F00:BA3::1/64</code> is the routed <em><abbr title="Internet Protocol version 6">IPv6</abbr> subnet</em> in CIDR notation</div>
+</li>
+<li class="level1"><div class="li"> <code>2001:0DB8:99::1</code> specifies the <em><abbr title="Internet Protocol version 6">IPv6</abbr> gateway</em> for this route</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;IPv6 routes&quot;,&quot;hid&quot;:&quot;ipv6_routes&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:5,&quot;range&quot;:&quot;5858-6387&quot;} -->
+<h3 class="sectionedit6" id="options_for_ipv6_routes">Options for IPv6 routes</h3>
+<div class="level3">
+<div class="table sectionedit7"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign"> Name           </th><th class="col1 leftalign"> Type              </th><th class="col2 leftalign"> Required  </th><th class="col3 leftalign"> Default            </th><th class="col4 leftalign"> Description                                                                                                                                                                                                                                                  </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> <code>interface</code>  </td><td class="col1 leftalign"> string            </td><td class="col2 leftalign"> yes       </td><td class="col3 leftalign"> <em>(none)</em>         </td><td class="col4 leftalign"> Specifies the <em>logical interface name</em> of the parent (or master) interface this route belongs to; must refer to one of the defined <code>interface</code> sections                                                                                                  </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> <code>target</code>     </td><td class="col1 leftalign"> ipv6 address      </td><td class="col2 leftalign"> yes       </td><td class="col3 leftalign"> <em>(none)</em>         </td><td class="col4 leftalign"> <abbr title="Internet Protocol version 6">IPv6</abbr> network address                                                                                                                                                                                                                                         </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> <code>gateway</code>    </td><td class="col1 leftalign"> ipv6 address      </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <em>(none)</em>         </td><td class="col4 leftalign"> <abbr title="Internet Protocol version 6">IPv6</abbr> gateway. If omitted, the <code>gateway</code> from the parent interface is taken                                                                                                                                                                                 </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"> <code>metric</code>     </td><td class="col1 leftalign"> number            </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <code>0</code>              </td><td class="col4 leftalign"> Specifies the <em>route metric</em> to use                                                                                                                                                                                                                        </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 leftalign"> <code>mtu</code>        </td><td class="col1 leftalign"> number            </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <em>interface <abbr title="Maximum Transmission Unit">MTU</abbr></em>  </td><td class="col4 leftalign"> Defines a specific <abbr title="Maximum Transmission Unit">MTU</abbr> for this route                                                                                                                                                                                                                        </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0 leftalign"> <code>table</code>      </td><td class="col1 leftalign"> routing table     </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <code>main</code>           </td><td class="col4 leftalign"> Defines the table ID to use for the route. The ID can be either a numeric table index ranging from 0 to 65535 or a symbolic alias declared in /etc/iproute2/rt_tables. The special aliases local (255), main (254) and default (253) are recognized as well  </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0 leftalign"> <code>source</code>     </td><td class="col1 leftalign"> ip address        </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <em>(none)</em>         </td><td class="col4 leftalign"> The route source address in source-address dependent routes. It&#039;s called “from” in the ip command.                                                                                                                                                           </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0 leftalign"> <code>onlink</code>     </td><td class="col1 leftalign"> boolean           </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <code>0</code>              </td><td class="col4 leftalign"> When enabled gateway is on link even if the gateway does not match any interface prefix                                                                                                                                                                      </td>
+	</tr>
+	<tr class="row9">
+		<td class="col0 leftalign"> <code>type</code>       </td><td class="col1 leftalign"> string            </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <code>unicast</code>        </td><td class="col4 leftalign"> One of the types outlined in the Routing Types table below                                                                                                                                                                                                   </td>
+	</tr>
+	<tr class="row10">
+		<td class="col0 leftalign"> <code>proto</code>      </td><td class="col1 leftalign"> routing protocol  </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <code>static</code>         </td><td class="col4 leftalign"> Defines the protocol ID for the route. The ID can be either a numeric value ranging from 0 to 255 or a symbolic alias declared in <code>/etc/iproute2/rt_protos</code>. i.e. <code>kernel</code>, <code>boot</code>, <code>ra</code>, <code>redirect</code>, <code>static</code>                                   </td>
+	</tr>
+	<tr class="row11">
+		<td class="col0 leftalign"> <code>disabled</code>   </td><td class="col1 leftalign"> boolean           </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <code>0</code>              </td><td class="col4 leftalign"> Specifies if the static route should be set or not, available since OpenWrt &gt;= 21.02.                                                                                                                                                                        </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table1&quot;,&quot;secid&quot;:7,&quot;range&quot;:&quot;6422-10345&quot;} -->
+</div>
+
+<h4 id="routing_types">Routing types</h4>
+<div class="level4">
+<div class="table sectionedit8"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Type </th><th class="col1"> Description </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> <code>unicast</code> </td><td class="col1"> the route entry describes real paths to the destinations covered by the route prefix. </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> <code>local</code> </td><td class="col1"> the destinations are assigned to this host. The packets are looped back and delivered locally. </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> <code>broadcast</code> </td><td class="col1"> the destinations are broadcast addresses. The packets are sent as link broadcasts. </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> <code>multicast</code> </td><td class="col1"> a special type used for multicast routing.  It is not present in normal routing tables. </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0"> <code>unreachable</code> </td><td class="col1"> these destinations are unreachable. Packets are discarded and the <abbr title="Internet Control Message Protocol">ICMP</abbr> message host unreachable is generated. The local senders get an EHOSTUNREACH error. </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0"> <code>prohibit</code> </td><td class="col1"> these destinations are unreachable. Packets are discarded and the <abbr title="Internet Control Message Protocol">ICMP</abbr> message communication administratively prohibited is generated. The local senders get an EACCES error. </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0"> <code>blackhole</code> </td><td class="col1"> these destinations are unreachable. Packets are discarded silently. The local senders get an EINVAL error. </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0"> <code>anycast</code> </td><td class="col1"> the destinations are anycast addresses assigned to this host. They are mainly equivalent to local with one difference: such addresses are invalid when used as the source address of any packet. </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table2&quot;,&quot;secid&quot;:8,&quot;range&quot;:&quot;10369-11525&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Options for IPv6 routes&quot;,&quot;hid&quot;:&quot;options_for_ipv6_routes&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:6,&quot;range&quot;:&quot;6388-&quot;} -->

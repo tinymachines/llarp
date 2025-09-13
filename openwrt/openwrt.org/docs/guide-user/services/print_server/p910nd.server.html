@@ -1,0 +1,950 @@
+
+<h1 class="sectionedit1" id="p910nd_printer_server">p910nd Printer Server</h1>
+<div class="level1">
+
+<p>
+<a href="http://man.cx/p910nd" class="interwiki iw_man" title="http://man.cx/p910nd">p910nd</a> is a small <strong><em><span style='color:green; '>non-spooling</span></em></strong> printer daemon intended for disk-less workstations. Jobs are being passed directly to the printer. Normally a lpr daemon on a spooling host connects to it with a <abbr title="Transmission Control Protocol">TCP</abbr> connection on port 910n (where n=0, 1, or 2 for lp0, 1 and 2 respectively). p910nd is particularly useful for diskless Linux workstations booted via Etherboot that have a printer hanging off them. Common Unix Printing System (CUPS) supports this protocol, it&#039;s called the AppSocket protocol and has the scheme socket://. LPRng also supports this protocol and the syntax is lp=remotehost%9100 in /etc/printcap.
+</p>
+
+<p>
+Alternatives to <code>p910nd</code> can be found at the <a href="/docs/guide-user/services/print_server/start" class="wikilink1" title="docs:guide-user:services:print_server:start" data-wiki-id="docs:guide-user:services:print_server:start">Print Server overview</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;p910nd Printer Server&quot;,&quot;hid&quot;:&quot;p910nd_printer_server&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-805&quot;} -->
+<h2 class="sectionedit2" id="requirements">Requirements</h2>
+<div class="level2">
+<ol>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/storage/usb-installing" class="wikilink1" title="docs:guide-user:storage:usb-installing" data-wiki-id="docs:guide-user:storage:usb-installing">usb-installing</a> or support for the parallel port</div>
+</li>
+<li class="level1"><div class="li"> modify your <code><a href="/docs/guide-user/firewall/start" class="wikilink1" title="docs:guide-user:firewall:start" data-wiki-id="docs:guide-user:firewall:start">/etc/config/firewall</a></code> to accept packets on on <abbr title="Transmission Control Protocol">TCP</abbr> port 9100: <pre class="code">#Allow attached network printer
+config &#039;rule&#039;
+        option &#039;src&#039; &#039;lan&#039;
+        option &#039;proto&#039; &#039;tcp&#039;
+        option &#039;dest_port&#039; &#039;9100&#039;
+        option &#039;target&#039; &#039;ACCEPT&#039;</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> install support for printers:</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Requirements&quot;,&quot;hid&quot;:&quot;requirements&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;806-1242&quot;} -->
+<h3 class="sectionedit3" id="usb_port">USB port</h3>
+<div class="level3">
+<pre class="code">opkg update
+opkg install kmod-usb-printer</pre>
+
+<p>
+Now plug in the printer, run <code>dmesg</code> and look for lines similar to the following ones:
+</p>
+<pre class="code">hub.c: new USB ice 01:02.0-1, assigned address 2
+printer.c: usblp0: USB Bidirectional printer  2 if 0 alt 0 proto 2 vid 0x04A9 pid 0x1094
+usb.c: USB disconnect on ice 01:02.0-1 address 2
+hub.c: new USB ice 01:02.0-1, assigned address 3
+printer.c: usblp1: USB Bidirectional printer  3 if 0 alt 0 proto 2 vid 0x04A9 pid 0x1094</pre>
+
+<p>
+On older versions the device /dev/usb/usblp0 is created. More recent versions create the normal /dev/lp0 device, even for usb printers. (Attitude Adjustment 12.09 actually creates /dev/usb/lp0).
+</p>
+
+<p>
+<strong><code>TIP:</code></strong> p910nd is reported as working with some noname USB-to-Parport adapter/converter as well
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;USB port&quot;,&quot;hid&quot;:&quot;usb_port&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;1243-2046&quot;} -->
+<h3 class="sectionedit4" id="parallel_port">Parallel port</h3>
+<div class="level3">
+<pre class="code">opkg update
+opkg install kmod-lp</pre>
+
+<p>
+Check the output of the <code>dmesg</code>.
+If there is a device node <code>/dev/printers/0</code> then the installation succeeded.
+</p>
+
+<p>
+<strong><code>TIP:</code></strong> p910nd is reported as working with some noname USB-to-Parport adapter/converter as well
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Parallel port&quot;,&quot;hid&quot;:&quot;parallel_port&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:4,&quot;range&quot;:&quot;2047-2337&quot;} -->
+<h2 class="sectionedit5" id="installation">Installation</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation&quot;,&quot;hid&quot;:&quot;installation&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:5,&quot;range&quot;:&quot;2338-2362&quot;} -->
+<h3 class="sectionedit6" id="command_line">Command line</h3>
+<div class="level3">
+
+<p>
+<a href="/docs/guide-user/additional-software/opkg" class="wikilink1" title="docs:guide-user:additional-software:opkg" data-wiki-id="docs:guide-user:additional-software:opkg">opkg</a>
+</p>
+<pre class="code">opkg update
+opkg install p910nd</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Command line&quot;,&quot;hid&quot;:&quot;command_line&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:6,&quot;range&quot;:&quot;2363-2478&quot;} -->
+<h3 class="sectionedit7" id="luci">LuCI</h3>
+<div class="level3">
+
+<p>
+or through <a href="/docs/guide-user/luci/luci.essentials" class="wikilink1" title="docs:guide-user:luci:luci.essentials" data-wiki-id="docs:guide-user:luci:luci.essentials">luci.essentials</a>: Select <code>Administration</code> View and the <code>System</code>→<code>Software</code>). In case of an error, try to update the package list.
+</p>
+
+<p>
+Install packages: <code>luci-app-p910nd</code> and <code>p910nd</code>. The configuration is done (<code>Administration</code> view) via <code>Services</code> → <code>p910nd - Printer Server</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;LuCI&quot;,&quot;hid&quot;:&quot;luci&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:7,&quot;range&quot;:&quot;2479-2823&quot;} -->
+<h2 class="sectionedit8" id="configuration_part1_the_server">Configuration Part1 – The Server</h2>
+<div class="level2">
+
+<p>
+→<code><a href="/docs/guide-user/services/print_server/p910nd" class="wikilink1" title="docs:guide-user:services:print_server:p910nd" data-wiki-id="docs:guide-user:services:print_server:p910nd">/etc/config/p910nd</a></code>
+</p>
+
+<p>
+We recommend to configure manually. But for lazy bones, there might be instructions at <a href="/docs/guide-user/network/zeroconfig/start" class="wikilink1" title="docs:guide-user:network:zeroconfig:start" data-wiki-id="docs:guide-user:network:zeroconfig:start">Zero configuration network setup</a> to utilize auto-magic software.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration Part1 \u2013 The Server&quot;,&quot;hid&quot;:&quot;configuration_part1_the_server&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:8,&quot;range&quot;:&quot;2824-3145&quot;} -->
+<h3 class="sectionedit9" id="suppress_spooled_jobs_when_printer_is_powered_on">Suppress spooled jobs when printer is powered on</h3>
+<div class="level3">
+
+<p>
+If your printer (mine hl-2030) spits out garbage after poweron, p910nd might be the cause. Add this to /etc/hotplug.d/usb/20-printer
+</p>
+<pre class="code file bash"><span class="co0">#!/bin/sh</span>
+<span class="co0"># Copyright (C) 2006 OpenWrt.org</span>
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es2">$PRODUCT</span>&quot;</span> = <span class="st0">&quot;4f9/27/100&quot;</span> <span class="br0">&#93;</span>
+<span class="kw1">then</span>
+<span class="kw1">case</span> <span class="st0">&quot;<span class="es2">$ACTION</span>&quot;</span> <span class="kw1">in</span>
+        add<span class="br0">&#41;</span>
+        <span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>p910nd stop
+        <span class="kw3">echo</span> <span class="st0">&quot;<span class="es5">`date`</span>: Brother HL-2030 added&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>hl-<span class="nu0">2030</span>
+        <span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>p910nd start <span class="sy0">&gt;&gt;</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>hl-<span class="nu0">2030</span>
+        <span class="kw3">echo</span> <span class="st0">&quot;Done.&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>hl-<span class="nu0">2030</span>
+        <span class="sy0">;;</span>
+        remove<span class="br0">&#41;</span>
+        <span class="kw3">echo</span> <span class="st0">&quot;<span class="es5">`date`</span>: Brother HL-2030 removed&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>hl-<span class="nu0">2030</span>
+        <span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>p910nd stop <span class="sy0">&gt;&gt;</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>hl-<span class="nu0">2030</span>
+        <span class="kw3">echo</span> <span class="st0">&quot;Done.&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>hl-<span class="nu0">2030</span>
+        <span class="sy0">;;</span>
+<span class="kw1">esac</span>
+<span class="kw1">fi</span></pre>
+
+<p>
+Where “$PRODUCT” = “4f9/27/100” is your printers VendorId/ProductId/BcdVersion(1.00 = 100). Get it with lsusb -v
+</p>
+
+<p>
+You might need to add “-INT” to the kill command in /etc/init.d/p910nd to actually have the stop work.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Suppress spooled jobs when printer is powered on&quot;,&quot;hid&quot;:&quot;suppress_spooled_jobs_when_printer_is_powered_on&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:9,&quot;range&quot;:&quot;3146-4062&quot;} -->
+<h2 class="sectionedit10" id="advertise_the_printer_via_txt_records_optional">Advertise the printer via TXT records (optional)</h2>
+<div class="level2">
+
+<p>
+To avoid having to install the printer on multiple clients, it can be advertised via txt-records so that ZeroConf capable clients can pick it up automatically.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Advertise the printer via TXT records (optional)&quot;,&quot;hid&quot;:&quot;advertise_the_printer_via_txt_records_optional&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:10,&quot;range&quot;:&quot;4063-4285&quot;} -->
+<h3 class="sectionedit11" id="with_dnsmasq">With dnsmasq</h3>
+<div class="level3">
+
+<p>
+ZeroConf use txt-records to advertise services on a local network. With a lot of annoying config options we can use dnsmasq which is included by default in OpenWrt to accomplish this.
+</p>
+
+<p>
+Create or edit the file <code>/etc/dnsmasq.conf</code> and add the lines below.
+</p>
+<pre class="code">expand-hosts
+domain=lan
+local=/lan/
+
+txt-record=lan,&quot;v=spf1 a -all&quot;
+
+# Default Base
+ptr-record=b._dns-sd._udp.0.1.168.192.in-addr.arpa,lan
+ptr-record=db._dns-sd._udp.0.1.168.192.in-addr.arpa,lan
+ptr-record=r._dns-sd._udp.0.1.168.192.in-addr.arpa,lan
+ptr-record=dr._dns-sd._udp.0.1.168.192.in-addr.arpa,lan
+ptr-record=lb._dns-sd._udp.0.1.168.192.in-addr.arpa,lan
+
+# Services
+ptr-record=_services._dns-sd._udp.lan,_pdl-datastream._tcp.lan
+
+#printer
+ptr-record=_pdl-datastream._tcp.lan,HP-LaserJet-1200._pdl-datastream._tcp.lan
+srv-host=HP-LaserJet-1200._pdl-datastream._tcp.lan,HP-LaserJet-1200.lan,9100
+txt-record=HP-LaserJet-1200._pdl-datastream._tcp.lan,ty=HP LaserJet 1200,note=Basement,product=(HP LaserJet 1200),usb_MFG=HP,usb_MDL=HP LaserJet 1200,txtvers=1,qtotal=1,priority=20,Color=F,pdl=application/vnd.hp-PCL</pre>
+<ul>
+<li class="level1"><div class="li"> txt-record= records are formatted host,name=value,name=value,etc</div>
+</li>
+<li class="level1"><div class="li"> The <code>lan</code> keyword in the txt record refers to OpenWrt&#039;s default local domain name - you need to change it if you use a different local domain.</div>
+</li>
+<li class="level1"><div class="li"> The <code>0.1.168.192</code> keyword in the ptr record refers to OpenWrt&#039;s default network range, octets reversed - you need to change it if you use a different range.</div>
+</li>
+<li class="level1"><div class="li"> The <code>product</code>, <code>pdl</code>, <code>usb_MFG</code> and <code>usb_MDL</code> attributes specify printer properties</div>
+</li>
+<li class="level1"><div class="li"> <code>_pdl-datastream</code> mime type maps to the “HP JetDirect” service type. other options are <code>_printer</code> and <code>_ipp</code> (but then those printers normally have ethernet builtin)</div>
+</li>
+<li class="level1"><div class="li"> <code>HP-LaserJet-1200</code> Is both a <abbr title="Domain Name System">DNS</abbr> hostname and the printer name. Because of this you need to follow the LDH rule (letters, digits, hyphen). Avahi does not have this restriction.</div>
+</li>
+<li class="level1"><div class="li"> You can split the txt-record but I have found that most bonjour clients expect to get all information in a single record (I would like to be proven wrong).</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;With dnsmasq&quot;,&quot;hid&quot;:&quot;with_dnsmasq&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:11,&quot;range&quot;:&quot;4286-6397&quot;} -->
+<h3 class="sectionedit12" id="with_zeroconf">With Zeroconf</h3>
+<div class="level3">
+
+<p>
+→ See <a href="/docs/guide-user/network/zeroconfig/zeroconf" class="wikilink1" title="docs:guide-user:network:zeroconfig:zeroconf" data-wiki-id="docs:guide-user:network:zeroconfig:zeroconf">Zero configuration networking in OpenWrt</a> and try to use the <a href="/docs/guide-developer/mdns" class="wikilink1" title="docs:guide-developer:mdns" data-wiki-id="docs:guide-developer:mdns">mdns</a> instead of Avahi.
+</p>
+
+<p>
+Similar to the dnsmasq variant above, the same can be done using Avahi.
+</p>
+<pre class="code bash">opkg update
+opkg <span class="kw2">install</span> avahi-daemon</pre>
+
+<p>
+Apple&#039;s <a href="http://developer.apple.com/bonjour/" class="urlextern" title="http://developer.apple.com/bonjour/" rel="ugc nofollow">Bonjour Printing Specification</a> discusses pretty much what needs to be done to advertise a printer over the network.
+</p>
+<ul>
+<li class="level1"><div class="li"> <img src="/lib/images/smileys/fixme.svg" class="icon smiley" alt="FIXME" /> <em>The Apple “Bonjour Printing Specification” at <a href="https://developer.apple.com/bonjour/" class="urlextern" title="https://developer.apple.com/bonjour/" rel="ugc nofollow">Developer.apple.com</a> section 7.6 notes that printers that don&#039;t provide the LPR service should still advertise that service (as “unsupported”); presumably that involves declaring a second service with a particular key to indicate “unsupported” - this looks impossible with Avahi.</em></div>
+</li>
+</ul>
+
+<p>
+For example Brother HL-2030, a “softprinter” (does not support Postscript or PCL, all processing is done on the client) shared via p910nd:
+</p>
+
+<p>
+Create the file <code>/etc/avahi/services/printer.service</code>:
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-user/services/print_server/p910nd.server?codeblock=8" title="Download Snippet" class="mediafile mf_service">/etc/avahi/services/printer.service</a></dt>
+<dd><pre class="code xml"><span class="sc3"><span class="re1">&lt;?xml</span> <span class="re0">version</span>=<span class="st0">&quot;1.0&quot;</span> <span class="re0">standalone</span>=<span class="st0">'no'</span><span class="re2">?&gt;</span></span><span class="sc-1">&lt;!--*-nxml-*--&gt;</span>
+<span class="sc0">&lt;!DOCTYPE service-group SYSTEM &quot;avahi-service.dtd&quot;&gt;</span>
+&nbsp;
+<span class="sc3"><span class="re1">&lt;service-group<span class="re2">&gt;</span></span></span>
+  <span class="sc3"><span class="re1">&lt;name</span> <span class="re0">replace-wildcards</span>=<span class="st0">&quot;yes&quot;</span><span class="re2">&gt;</span></span>Brother HL-2030 Laserprinter on %h<span class="sc3"><span class="re1">&lt;/name<span class="re2">&gt;</span></span></span>
+  <span class="sc3"><span class="re1">&lt;service<span class="re2">&gt;</span></span></span>
+    <span class="sc3"><span class="re1">&lt;type<span class="re2">&gt;</span></span></span>_pdl-datastream._tcp<span class="sc3"><span class="re1">&lt;/type<span class="re2">&gt;</span></span></span>
+    <span class="sc3"><span class="re1">&lt;port<span class="re2">&gt;</span></span></span>9100<span class="sc3"><span class="re1">&lt;/port<span class="re2">&gt;</span></span></span>
+    <span class="sc3"><span class="re1">&lt;txt-record<span class="re2">&gt;</span></span></span>qtotal=1<span class="sc3"><span class="re1">&lt;/txt-record<span class="re2">&gt;</span></span></span>
+    <span class="sc3"><span class="re1">&lt;txt-record<span class="re2">&gt;</span></span></span>note=room 2<span class="sc3"><span class="re1">&lt;/txt-record<span class="re2">&gt;</span></span></span>
+    <span class="sc3"><span class="re1">&lt;txt-record<span class="re2">&gt;</span></span></span>ty=Brother HL-2030 Laserdrucker<span class="sc3"><span class="re1">&lt;/txt-record<span class="re2">&gt;</span></span></span>
+    <span class="sc3"><span class="re1">&lt;txt-record<span class="re2">&gt;</span></span></span>product=(Brother HL-2030 series)<span class="sc3"><span class="re1">&lt;/txt-record<span class="re2">&gt;</span></span></span>
+    <span class="sc3"><span class="re1">&lt;txt-record<span class="re2">&gt;</span></span></span>usb_MFG=Brother<span class="sc3"><span class="re1">&lt;/txt-record<span class="re2">&gt;</span></span></span>
+    <span class="sc3"><span class="re1">&lt;txt-record<span class="re2">&gt;</span></span></span>usb_MDL=HL-2030 series<span class="sc3"><span class="re1">&lt;/txt-record<span class="re2">&gt;</span></span></span>
+    <span class="sc3"><span class="re1">&lt;txt-record<span class="re2">&gt;</span></span></span>Color=F<span class="sc3"><span class="re1">&lt;/txt-record<span class="re2">&gt;</span></span></span>
+    <span class="sc3"><span class="re1">&lt;txt-record<span class="re2">&gt;</span></span></span>Duplex=F<span class="sc3"><span class="re1">&lt;/txt-record<span class="re2">&gt;</span></span></span>
+    <span class="sc3"><span class="re1">&lt;txt-record<span class="re2">&gt;</span></span></span>Bind=F<span class="sc3"><span class="re1">&lt;/txt-record<span class="re2">&gt;</span></span></span>
+    <span class="sc3"><span class="re1">&lt;txt-record<span class="re2">&gt;</span></span></span>Collate=F<span class="sc3"><span class="re1">&lt;/txt-record<span class="re2">&gt;</span></span></span>
+    <span class="sc3"><span class="re1">&lt;txt-record<span class="re2">&gt;</span></span></span>Sort=F<span class="sc3"><span class="re1">&lt;/txt-record<span class="re2">&gt;</span></span></span>
+    <span class="sc3"><span class="re1">&lt;txt-record<span class="re2">&gt;</span></span></span>Staple=F<span class="sc3"><span class="re1">&lt;/txt-record<span class="re2">&gt;</span></span></span>
+    <span class="sc3"><span class="re1">&lt;txt-record<span class="re2">&gt;</span></span></span>Punch=F<span class="sc3"><span class="re1">&lt;/txt-record<span class="re2">&gt;</span></span></span>
+    <span class="sc3"><span class="re1">&lt;txt-record<span class="re2">&gt;</span></span></span>PaperMax=legal-A4<span class="sc3"><span class="re1">&lt;/txt-record<span class="re2">&gt;</span></span></span>
+  <span class="sc3"><span class="re1">&lt;/service<span class="re2">&gt;</span></span></span>
+<span class="sc3"><span class="re1">&lt;/service-group<span class="re2">&gt;</span></span></span></pre>
+</dd></dl>
+<ul>
+<li class="level1"><div class="li"> The service type is <code>_pdl-datastream._tcp</code>, the <a href="http://en.wikipedia.org/wiki/Page_description_language" class="urlextern" title="http://en.wikipedia.org/wiki/Page_description_language" rel="ugc nofollow">&quot;needs a driver&quot;</a> printer type</div>
+</li>
+<li class="level1"><div class="li"> The <code>usb_MFG</code> and <code>usb_MDL</code> TXT records are required. <code>product</code> is used as a fallback in case the other two doesn&#039;t exist.</div>
+</li>
+<li class="level1"><div class="li"> To fill out the <code>txt-record</code>s with <code>usb_MFG</code> and <code>usb_MDL</code>, then look up the PPD document for your printer on <a href="http://www.openprinting.org/" class="urlextern" title="http://www.openprinting.org/" rel="ugc nofollow">OpenPrinting.org</a> and search for the line beginning with <code>*1284DeviceID:</code>.  This line contains multiple KEY:VALUE pairs separated by <code>;</code>, but you just need the two called MFG and MDL (Manufacturer and Model).</div>
+</li>
+<li class="level1"><div class="li"> The <code>txt-record</code>s called <code>Color</code>, <code>Duplex</code>, <code>Bind</code>, <code>Collate</code>, <code>Sort</code>, <code>Staple</code> and <code>Punch</code> all take the values <code>F</code>=False, <code>T</code>=True, and <code>U</code>=unknown.  The printer driver installed should override these values with correct defaults.</div>
+</li>
+<li class="level1"><div class="li"> The <code>txt-record</code> called <code>PaperMax</code> should always be <code>legal-A4</code>.</div>
+</li>
+</ul>
+
+<p>
+The printer will now show up in any ZeroConf client (tested with <abbr title="Operating System">OS</abbr> X 10.4.10 and Ubuntu 12.04).
+</p>
+<ul>
+<li class="level1"><div class="li"> If you share a subnet between wired and wireless and the ZeroConf traffic only shows up on the wired side, you might need be missing a broadcast address (<strong>bcast</strong>):</div>
+</li>
+</ul>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-user/services/print_server/p910nd.server?codeblock=9" title="Download Snippet" class="mediafile mf_">/etc/config/network</a></dt>
+<dd><pre class="code">#part of /etc/config/network
+config &#039;interface&#039; &#039;lan&#039;
+	option &#039;type&#039; &#039;bridge&#039;
+	option &#039;ifname&#039; &#039;eth0.0&#039;
+	option &#039;proto&#039; &#039;static&#039;
+	option &#039;ipaddr&#039; &#039;192.168.1.3&#039;
+	option &#039;netmask&#039; &#039;255.255.255.0
+	option &#039;bcast&#039; &#039;192.168.1.255&#039;</pre>
+</dd></dl>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;With Zeroconf&quot;,&quot;hid&quot;:&quot;with_zeroconf&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:12,&quot;range&quot;:&quot;6398-9927&quot;} -->
+<h2 class="sectionedit13" id="configuration_part_2_the_clients">Configuration Part 2 – The Clients</h2>
+<div class="level2">
+
+<p>
+<strong>NOTE:</strong> The default port used by <code>p910nd</code> is <abbr title="Transmission Control Protocol">TCP</abbr> 9100 on the device <code>/dev/usb/lp0</code>.
+</p>
+
+<p>
+You can check the ports on which <code>p910nd</code> is listening with the command 
+</p>
+<pre class="code">netstat -an</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration Part 2 \u2013 The Clients&quot;,&quot;hid&quot;:&quot;configuration_part_2_the_clients&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:13,&quot;range&quot;:&quot;9928-10167&quot;} -->
+<h3 class="sectionedit14" id="linux_clients">Linux clients</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="cups">CUPS</h4>
+<div class="level4">
+
+<p>
+Assuming the printer driver is installed locally, it&#039;s a simple matter of entering <a href="http://localhost:631/admin" class="urlextern" title="http://localhost:631/admin" rel="ugc nofollow">http://localhost:631/admin</a> in your favorite web-browser, and pressing add printer under the “Printers” pane. Then:
+</p>
+<ul>
+<li class="level1"><div class="li"> Enter something into the information fields and press continue.</div>
+</li>
+<li class="level1"><div class="li"> Select “AppSocket/HP JetDirect” and press continue.</div>
+</li>
+<li class="level1"><div class="li"> Write “socket://&lt;&lt;<abbr title="Internet Protocol">IP</abbr>&gt;&gt;:&lt;&lt;port&gt;&gt;”. Here you have to fill in the appropriate info in the &lt;&lt;&gt;&gt; fields. Press continue.</div>
+</li>
+<li class="level1"><div class="li"> Select the appropriate manufacturer and press continue.</div>
+</li>
+<li class="level1"><div class="li"> Select the appropriate printer and press continue.</div>
+</li>
+<li class="level1"><div class="li"> Voila...</div>
+</li>
+</ul>
+
+<p>
+Then you use your new printer like you would a local one.
+</p>
+
+</div>
+
+<h4 id="kprinter_kde">kprinter (KDE)</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> Start kprinter</div>
+</li>
+<li class="level1"><div class="li"> Select &#039;Add printer&#039;</div>
+</li>
+<li class="level1"><div class="li"> Select Network printer (<abbr title="Transmission Control Protocol">TCP</abbr>)</div>
+</li>
+<li class="level1"><div class="li"> Use 192.168.1.1 (the router&#039;s <abbr title="Internet Protocol">IP</abbr> address) as the printer&#039;s <abbr title="Internet Protocol">IP</abbr></div>
+</li>
+<li class="level1"><div class="li"> Fill in the port you want to use (normally defaults to 9100)</div>
+</li>
+<li class="level1"><div class="li"> Pick manufacturer and model</div>
+</li>
+<li class="level1"><div class="li"> Pick the recommended driver</div>
+</li>
+<li class="level1"><div class="li"> Then you can new print a test page or change the settings of the printer further</div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="gnome">Gnome</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> Select System → Administration → Printing</div>
+</li>
+<li class="level1"><div class="li"> Select New Printer</div>
+</li>
+<li class="level1"><div class="li"> Select Network Printer and “HP JetDirect”</div>
+</li>
+<li class="level1"><div class="li"> Enter your WRT&#039;s <abbr title="Internet Protocol">IP</abbr> address and port 9100.</div>
+</li>
+<li class="level1"><div class="li"> Select your printer&#039;s make and model. Continue forward and apply settings.</div>
+</li>
+<li class="level1"><div class="li"> Check the properties to ensure you are using A4 or US Letter size as appropriate.</div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="with_dnssd_zeroconf">With dnssd (zeroconf)</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> ☑ “Show printers shared by other systems” in your cups settings either on <a href="http://localhost:631/admin" class="urlextern" title="http://localhost:631/admin" rel="ugc nofollow">http://localhost:631/admin</a>, or with <strong>system-config-printer</strong>, server → settings</div>
+</li>
+<li class="level1"><div class="li"> Add a Network Printer - your printer should appear as one of the options.</div>
+</li>
+<li class="level1"><div class="li"> The printer driver will be chosen based on the dnssd record you set up earlier.</div>
+</li>
+<li class="level1"><div class="li"> Forward, Apply.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Linux clients&quot;,&quot;hid&quot;:&quot;linux_clients&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:14,&quot;range&quot;:&quot;10168-11938&quot;} -->
+<h3 class="sectionedit15" id="os_x">OS X</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="version_1046_up_to_10102">Version 10.4.6 up to 10.10.2</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> select system preferences</div>
+</li>
+<li class="level1"><div class="li"> Print &amp; Fax</div>
+</li>
+<li class="level1"><div class="li"> Click on + button</div>
+</li>
+<li class="level1"><div class="li"> Click on <abbr title="Internet Protocol">IP</abbr> Printer</div>
+</li>
+<li class="level1"><div class="li"> set Protocol: HP Jet Direct - Socket, Address: : and then select brand and printer.</div>
+</li>
+<li class="level1"><div class="li"> Type a name if you don&#039;t want the <abbr title="Internet Protocol">IP</abbr> address for a name.</div>
+</li>
+<li class="level1"><div class="li"> close the Printer Browser.</div>
+</li>
+</ul>
+
+<p>
+Note that many Epson and Canon Inkjet printers (and maybe other brands) do not provide a really full-CUPS driver. If you do not get anything printed try to install the <a href="http://gimp-print.sourceforge.net/MacOSX.php" class="urlextern" title="http://gimp-print.sourceforge.net/MacOSX.php" rel="ugc nofollow">Gutenprint</a> drivers and select them instead.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;OS X&quot;,&quot;hid&quot;:&quot;os_x&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:15,&quot;range&quot;:&quot;11939-12523&quot;} -->
+<h3 class="sectionedit16" id="windows_clients">Windows clients</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="windows_7">Windows 7</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> Click on the Start button and select Devices and Printers.</div>
+</li>
+<li class="level1"><div class="li"> Click on “Add a printer.”</div>
+</li>
+<li class="level1"><div class="li"> In the Add Printer dialog select “Add a local printer.”</div>
+</li>
+<li class="level1"><div class="li"> Select “Create a new port:” and set the type of port to “Standard <abbr title="Transmission Control Protocol">TCP</abbr>/<abbr title="Internet Protocol">IP</abbr> Port”. Then click Next.</div>
+</li>
+<li class="level1"><div class="li"> In the “Hostname or <abbr title="Internet Protocol">IP</abbr> address:” field enter the <abbr title="Internet Protocol">IP</abbr> address of your router.</div>
+</li>
+<li class="level1"><div class="li"> The “Port name:” field may be set to something you like.</div>
+</li>
+<li class="level1"><div class="li"> De-select “Query the printer and automatically select the driver to use,” then click next.</div>
+</li>
+<li class="level1"><div class="li"> The computer will then attempt to detect the <abbr title="Transmission Control Protocol">TCP</abbr>/<abbr title="Internet Protocol">IP</abbr> port. This will take some time and will most likely fail. Failing this step is not a problem.</div>
+</li>
+<li class="level1"><div class="li"> On the “Additional port information required” page set the device type to Custom and click “Settings...”</div>
+</li>
+<li class="level1"><div class="li"> Verify the Printer Name or <abbr title="Internet Protocol">IP</abbr> Address. The Protocol should be set to “Raw” and the Raw Settings Port Number should be 9100. Leave LPR Settings and SNMP Status Enabled empty or de-selected. Then click OK.</div>
+</li>
+<li class="level1"><div class="li"> Select the correct printer driver and click next. You may need to install drivers if they are not already available.</div>
+</li>
+<li class="level1"><div class="li"> Finish the remaining printer installation wizard steps as needed. The printer should now be installed and working!</div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="windows_2000xpvista">Windows 2000/XP/Vista</h4>
+<div class="level4">
+
+<p>
+The following instructions should work on all versions of windows from 2000 onwards, and have been tested in both Windows 2000 and Windows Vista.
+</p>
+<ul>
+<li class="level1"><div class="li"> Install your printer software as you would if it were a local printer.</div>
+</li>
+<li class="level1"><div class="li"> Go to your printer properties in the control panel/printer settings.</div>
+</li>
+<li class="level1"><div class="li"> Select the tab “Ports”.</div>
+</li>
+<li class="level1"><div class="li"> Select “Add Port”.</div>
+</li>
+<li class="level1"><div class="li"> Select “Standard <abbr title="Transmission Control Protocol">TCP</abbr>/<abbr title="Internet Protocol">IP</abbr> Port” and click on “New Port...”.</div>
+</li>
+<li class="level1"><div class="li"> Follow the wizard. In the field “Printer Name or <abbr title="Internet Protocol">IP</abbr> Address”, enter the <abbr title="Internet Protocol">IP</abbr> address of your router.</div>
+</li>
+<li class="level1"><div class="li"> Windows will send a couple of <abbr title="User Datagram Protocol">UDP</abbr> packets to port 161 of the Router. You can safely discard them.</div>
+</li>
+<li class="level1"><div class="li"> You will need to select a Device Type. Select “Custom” and click “Settings...”.</div>
+</li>
+<li class="level1"><div class="li"> Be sure the protocol is “Raw” and the port number is correct (i.e. 9100).</div>
+</li>
+<li class="level1"><div class="li"> Finish the Settings wizard and close the Add Port window. The newly created Port should now be selected.</div>
+</li>
+<li class="level1"><div class="li"> You printer should be configred now. Be sure that your firewall allows communication to the chosen port.</div>
+</li>
+<li class="level1"><div class="li"> You may print a test page to see if all went well.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Windows clients&quot;,&quot;hid&quot;:&quot;windows_clients&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:16,&quot;range&quot;:&quot;12524-14844&quot;} -->
+<h2 class="sectionedit17" id="troubleshooting">Troubleshooting</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Problem : the printer status shows “Attempting to connect to socket://:” in the client CUPS interface (http://localhost:631) and nothing works</div>
+</li>
+<li class="level1"><div class="li"> Solution : make sure you installed both USB 1.1 and USB 2.0 modules</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> Problem : the printer doesn&#039;t print anything or needs tens of minutes before starting to print</div>
+</li>
+<li class="level1"><div class="li"> Solution : make sure that there is enough free disk space on your OpenWRT device such that the printing jobs can be stored temporarily</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> Problem: Canon printer stops printing after 80-90% of the page and holds paper</div>
+</li>
+<li class="level1"><div class="li"> Solution: turn off bidirectional mode</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> Problem: Samsung printer scx-4200 series print only error messages under  windows XP /7</div>
+</li>
+<li class="level1"><div class="li"> Solution: turn  Enable advanced printing features on the Advanced tab of the printer properties in windows. Solution was find <a href="https://sites.google.com/site/wl520gu/" class="urlextern" title="https://sites.google.com/site/wl520gu/" rel="ugc nofollow">here </a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Troubleshooting&quot;,&quot;hid&quot;:&quot;troubleshooting&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:17,&quot;range&quot;:&quot;14845-15738&quot;} -->
+<h3 class="sectionedit18" id="not_supported_printers">Not supported printers</h3>
+<div class="level3">
+
+<p>
+Not supported printers shall be reported upstream! → <a href="http://p910nd.sourceforge.net/" class="urlextern" title="http://p910nd.sourceforge.net/" rel="ugc nofollow">http://p910nd.sourceforge.net/</a>
+</p>
+
+<p>
+Some Canon Printers are not working in bidirectional mode in combination with Windows NT based <abbr title="Operating System">OS</abbr>.
+Reported printers that are only working properly in unidirectional mode:
+</p>
+<ul>
+<li class="level1"><div class="li"> Canon Pixma iP3000</div>
+</li>
+<li class="level1"><div class="li"> Canon Pixma iP3500</div>
+</li>
+<li class="level1"><div class="li"> Canon Pixma iP4000</div>
+</li>
+<li class="level1"><div class="li"> Canon Pixma iP4200</div>
+</li>
+<li class="level1"><div class="li"> Canon Pixma iP4500</div>
+</li>
+<li class="level1"><div class="li"> Canon Pixma iP4700</div>
+</li>
+<li class="level1"><div class="li"> Canon MP250</div>
+</li>
+<li class="level1"><div class="li"> Canon MP600 (Uses the ehci-hcd module (USB 2.0))</div>
+</li>
+<li class="level1"><div class="li"> Canon i560 (Make sure that the uhci kernel module is loaded since it seems to be usb 1.1)</div>
+</li>
+</ul>
+
+<p>
+Please add not working combinations here:
+</p>
+<ul>
+<li class="level1"><div class="li"> Canon Pixma iP3600 does not even work in unidirectional mode on Windows XP</div>
+</li>
+<li class="level1"><div class="li"> Konica Minolta PagePro 1300W doesn&#039;t seem to work in bidirectional mode under Windows XP.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Not supported printers&quot;,&quot;hid&quot;:&quot;not_supported_printers&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:18,&quot;range&quot;:&quot;15739-16553&quot;} -->
+<h3 class="sectionedit19" id="p910nd_process_stdout_to_system_log">p910nd process stdout to system log</h3>
+<div class="level3">
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Warning : This will/can add a considerable amount of messages to your System Log which is a fixed size buffer in memory, by default, consisting of up to 16 KB utf-8/<abbr title="American Standard Code for Information Interchange">ASCII</abbr> encoded characters.
+</p>
+
+<p>
+You can relay the p910nd process messages by modifying the p910nd init.d script by adding a couple <a href="/docs/guide-developer/procd-init-scripts#service_parameters" class="wikilink1" title="docs:guide-developer:procd-init-scripts" data-wiki-id="docs:guide-developer:procd-init-scripts">service parameters</a>.
+</p>
+<pre class="code file diff">diff --git a/etc/init.d/p910nd b/etc/init.d/p910nd
+<span class="re3">--- a/etc/init.d/p910nd</span>
+<span class="re4">+++ b/etc/init.d/p910nd</span>
+<span class="re6">@@ -53,7 +53,26 @@ start_p910nd<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span></span>
+                config_get mdns_mdl &quot;$section&quot; mdns_mdl
+                config_get mdns_cmd &quot;$section&quot; mdns_cmd
+                <span class="br0">&#91;</span> &quot;$mdns&quot; -gt <span class="nu0">0</span> <span class="br0">&#93;</span> &amp;&amp; procd_add_mdns &quot;pdl-datastream&quot; &quot;tcp&quot; &quot;$<span class="br0">&#40;</span><span class="br0">&#40;</span>p
+ort+<span class="nu0">9100</span><span class="br0">&#41;</span><span class="br0">&#41;</span>&quot; &quot;note=$mdns_note&quot; &quot;ty=$mdns_ty&quot; &quot;product=$mdns_product&quot; &quot;usb_MFG=$md
+ns_mfg&quot; &quot;usb_MDL=$mdns_mdl&quot; &quot;usb_CMD=$mdns_cmd&quot;
+<span class="re8">+</span>
+<span class="re8">+               procd_set_param stdout 1 # relay stdout to logd</span>
+<span class="re8">+               procd_set_param stderr 1 # relay stderr to logd</span>
+&nbsp;
+                procd_close_instance
+        fi
+ <span class="br0">&#125;</span></pre>
+
+<p>
+<em>note:</em> you will need to restart the service for this to take effect
+</p>
+<pre class="code">/etc/init.d/p910nd restart</pre>
+
+<p>
+Under <strong>Luci → Status → System Log</strong> we will be able to see the debug info:
+<em>e.g. printing a blank page</em>
+</p>
+<pre class="code">Tue Oct 20 13:50:52 2020 daemon.info p910nd[1545]: Connection from 192.168.1.123 port 2484 accepted
+Tue Oct 20 13:50:52 2020 daemon.info p910nd[1545]: read 1494 bytes from network
+Tue Oct 20 13:50:52 2020 daemon.info p910nd[1545]: wrote 1494 bytes to printer
+Tue Oct 20 13:50:52 2020 daemon.info p910nd[1545]: read: eof
+Tue Oct 20 13:50:52 2020 daemon.info p910nd[1545]: Finished job: 1494/1494 bytes sent to printer, 0/0 bytes sent to network</pre>
+
+<p>
+This can also be read via ssh with the command logread
+</p>
+<pre class="code"> root@OpenWrt:~# logread -e p910nd </pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;p910nd process stdout to system log&quot;,&quot;hid&quot;:&quot;p910nd_process_stdout_to_system_log&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:19,&quot;range&quot;:&quot;16554-18426&quot;} -->
+<h2 class="sectionedit20" id="ideas">&quot;Ideas&quot;</h2>
+<div class="level2">
+
+<p>
+To run HP LaserJet 1005/1018/1020/1022 on OpenWrt Backfire 10.03.1-RC5 do:
+</p>
+
+<p>
+<em class="u">Preparations on client computer:</em>
+</p>
+
+<p>
+First install the foo2zjs drivers from <a href="http://foo2zjs.rkkda.com/" class="urlextern" title="http://foo2zjs.rkkda.com/" rel="ugc nofollow">http://foo2zjs.rkkda.com/</a> on your client computer (in case of a linux client).
+The instructions are taken from <a href="http://foo2zjs.rkkda.com/" class="urlextern" title="http://foo2zjs.rkkda.com/" rel="ugc nofollow">http://foo2zjs.rkkda.com/</a>.
+</p>
+
+<p>
+Click the link, or cut and paste the whole command line below to download the driver.
+</p>
+<pre class="code">$ wget -O foo2zjs.tar.gz http://foo2zjs.rkkda.com/foo2zjs.tar.gz</pre>
+
+<p>
+Now unpack it:
+</p>
+<pre class="code">$ tar zxf foo2zjs.tar.gz
+$ cd foo2zjs</pre>
+
+<p>
+Compile and install it. The INSTALL file contains more detailed instructions.
+</p>
+<pre class="code">$ make</pre>
+
+<p>
+Get extra files from the web, such as .ICM profiles for color correction and firmware.
+Select the model number for your printer:
+</p>
+<pre class="code">$ ./getweb 2430     # Get Minolta 2430 DL .ICM files
+$ ./getweb 2300     # Get Minolta 2300 DL .ICM files
+$ ./getweb 2200     # Get Minolta 2200 DL .ICM files
+$ ./getweb cpwl     # Get Minolta Color PageWorks/Pro L .ICM files
+$ ./getweb 1020     # Get HP LaserJet 1020 firmware file
+$ ./getweb 1018     # Get HP LaserJet 1018 firmware file
+$ ./getweb 1005     # Get HP LaserJet 1005 firmware file
+$ ./getweb 1000     # Get HP LaserJet 1000 firmware file</pre>
+
+<p>
+Install driver, foomatic XML files, and extra files:
+</p>
+<pre class="code">$ su                        OR      $ sudo make install
+# make install</pre>
+
+<p>
+(Optional) Configure hotplug (USB; HP LJ 1000/1005/1018/1020):
+</p>
+
+<p>
+Hint: The hotplug script is used to transfer the printer firmware file (for example &#039;sihp1020.dl&#039;) to the printer. If you don&#039;t use the printer directly plugged in into the client computer but only via your router box with p910nd, then this hotplug installation is not needed here (see below, behind section &#039;Preparations on router:&#039; - hotplug will be configured in the router device).
+</p>
+<pre class="code"># make install-hotplug      OR      $ sudo make install-hotplug</pre>
+
+<p>
+(Optional) If you use CUPS, restart the spooler:
+</p>
+<pre class="code"># make cups                 OR      $ sudo make cups</pre>
+
+<p>
+<em class="u">Preparations on router:</em>
+</p>
+
+<p>
+Next you need to transfer <code>sihp1020.dl</code> to your Asus box.
+</p>
+
+<p>
+On the Asus device you should install the following packages:
+</p>
+<pre class="code">opkg update
+opkg install kmod-usb-printer p910nd</pre>
+
+<p>
+Next:
+</p>
+<pre class="code">/etc/init.d/p910nd start
+/etc/init.d/p910nd enable</pre>
+
+<p>
+Finally you need to create a script that uploads the firmware to your printer after you&#039;ve plugged it in.
+</p>
+
+<p>
+For a quick test, you could just use netcat for loading the firmware manually to the printer (from the client computer, via the router with p910nd established).
+Enter the following command on the client computer:
+</p>
+<pre class="code">nc -q2 192.168.2.99 9100 &lt; /usr/share/foo2zjs/firmware/sihp1020.dl</pre>
+
+<p>
+(the above <abbr title="Internet Protocol">IP</abbr>-address has to be replaced with your router address and the path to your correct firmware file needs to be adapted as well)
+</p>
+
+<p>
+Another possibility, with the network printer already set up with cups as default printer (replace firmware file path according to your situation):
+</p>
+<pre class="code">lp -o raw /usr/share/foo2zjs/firmware/sihp1020.dl</pre>
+
+<p>
+After successfully loading the firmware with one of the above commands printing should work as well (until next power-down of your printer). You can decide to do this always manually one time before sending the first print job after powering up the printer or to configure the mentioned script for automatic firmware upload as following:
+</p>
+
+<p>
+Create a new file <code>/etc/hotplug.d/usb/20-hplj1020</code>:
+</p>
+<pre class="code file bash"><span class="co0">#!/bin/sh</span>
+&nbsp;
+<span class="kw1">set</span> <span class="re5">-e</span>
+&nbsp;
+<span class="co0"># change this to the location where you put the .dl file:</span>
+<span class="re2">FIRMWARE</span>=<span class="st0">&quot;/usr/lib/sihp1020.dl&quot;</span>
+&nbsp;
+<span class="re2">DEVICE</span>=<span class="sy0">/</span>dev<span class="sy0">/</span>lp0
+<span class="re2">LOGFILE</span>=<span class="sy0">/</span>var<span class="sy0">/</span>log<span class="sy0">/</span>hp
+&nbsp;
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es2">$PRODUCT</span>&quot;</span> = <span class="st0">&quot;3f0/2b17/100&quot;</span> <span class="re5">-a</span> <span class="st0">&quot;<span class="es2">$ACTION</span>&quot;</span> = <span class="st0">&quot;add&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+	<span class="kw1">for</span> i <span class="kw1">in</span> $<span class="br0">&#40;</span><span class="kw2">seq</span> <span class="nu0">30</span><span class="br0">&#41;</span>; <span class="kw1">do</span>
+		<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-c</span> <span class="re1">$DEVICE</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+			<span class="kw3">echo</span> <span class="st0">&quot;<span class="es4">$(date)</span> : Sending firmware to printer...&quot;</span> <span class="sy0">&gt;</span> <span class="re1">$LOGFILE</span>
+			<span class="kw2">cat</span> <span class="re1">$FIRMWARE</span> <span class="sy0">&gt;</span> <span class="re1">$DEVICE</span>
+			<span class="kw3">echo</span> <span class="st0">&quot;<span class="es4">$(date)</span> : done.&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$LOGFILE</span>
+			<span class="kw3">exit</span>
+		<span class="kw1">fi</span>
+		<span class="kw2">sleep</span> <span class="nu0">1</span>
+	<span class="kw1">done</span>
+<span class="kw1">fi</span></pre>
+
+<p>
+The parameter <code>3f0/2b17/100</code> needs to be changed to match your printer.
+</p>
+
+<p>
+The format is <code>idVendor/idProduct/bcdDevice</code> from the device descriptor.
+Numbers are hexadecimal, without leading &#039;0x&#039; or zeros.
+For BcdVersion 1.00 = 100. Get it with lsusb -v.
+More information on this can be found at <a href="http://linux-hotplug.sourceforge.net/?selected=usb" class="urlextern" title="http://linux-hotplug.sourceforge.net/?selected=usb" rel="ugc nofollow">http://linux-hotplug.sourceforge.net/?selected=usb</a> .
+</p>
+
+<p>
+Some printers, like HP LaserJet 1005, stop working properly when the firmware is loaded more than once.  It&#039;s best to check whether the firmware is already present in the printer with the usb_printerid command.  You need to cross-compile this command for yourself.  It&#039;s part of the foo2zjs projet.  Furthermore, the hotplug script is called twice for the “add” ACTION for the same value of PRODUCT: first for DEVTYPE=&#039;usb_device&#039;, then for DEVTYPE=&#039;usb_interface&#039;.  Therefore, the following is the script that works with HP LaserJet 1005:
+</p>
+<pre class="code file bash"><span class="co0">#!/bin/sh</span>
+&nbsp;
+<span class="kw1">set</span> <span class="re5">-e</span>
+&nbsp;
+<span class="co0"># change this to the location where you put the .dl file:</span>
+<span class="re2">FIRMWARE</span>=<span class="sy0">/</span>usr<span class="sy0">/</span>lib<span class="sy0">/</span>sihp1005.dl
+<span class="re2">DEVICE</span>=<span class="sy0">/</span>dev<span class="sy0">/</span>lp0
+<span class="re2">LOGFILE</span>=<span class="sy0">/</span>var<span class="sy0">/</span>log<span class="sy0">/</span>hp
+&nbsp;
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es2">$PRODUCT</span>&quot;</span> = <span class="st0">&quot;3f0/1317/120&quot;</span> <span class="re5">-a</span> <span class="st0">&quot;<span class="es2">$ACTION</span>&quot;</span> = <span class="st0">&quot;add&quot;</span> <span class="re5">-a</span> <span class="st0">&quot;<span class="es2">$DEVTYPE</span>&quot;</span> = <span class="st0">&quot;usb_interface&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+   <span class="kw3">echo</span> <span class="st0">&quot;<span class="es4">$(date)</span>: STARTING&quot;</span> <span class="sy0">&gt;</span> <span class="re1">$LOGFILE</span>
+   <span class="kw1">for</span> i <span class="kw1">in</span> $<span class="br0">&#40;</span><span class="kw2">seq</span> <span class="nu0">30</span><span class="br0">&#41;</span>; <span class="kw1">do</span>
+       <span class="kw3">echo</span> <span class="st0">&quot;<span class="es4">$(date)</span>: Attempt number <span class="es2">$i</span> on <span class="es2">$DEVICE</span>&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$LOGFILE</span>
+       <span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-c</span> <span class="re1">$DEVICE</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+          <span class="kw3">echo</span> <span class="st0">&quot;<span class="es4">$(date)</span>: Device <span class="es2">$DEVICE</span> found.&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$LOGFILE</span>
+          <span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-z</span> <span class="st0">&quot;<span class="es5">`usb_printerid $DEVICE | grep FWVER`</span>&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+              <span class="kw3">echo</span> <span class="st0">&quot;<span class="es4">$(date)</span>: No firmware found on <span class="es2">$DEVICE</span>&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$LOGFILE</span>
+              <span class="kw3">echo</span> <span class="st0">&quot;<span class="es4">$(date)</span>: Sending firmware to printer...&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$LOGFILE</span>
+              <span class="kw2">cat</span> <span class="re1">$FIRMWARE</span> <span class="sy0">&gt;</span> <span class="re1">$DEVICE</span>
+              <span class="kw3">echo</span> <span class="st0">&quot;<span class="es4">$(date)</span>: done.&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$LOGFILE</span>
+          <span class="kw1">else</span>
+              <span class="kw3">echo</span> <span class="st0">&quot;<span class="es4">$(date)</span>: Firmware already there on <span class="es2">$DEVICE</span>&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$LOGFILE</span>
+          <span class="kw1">fi</span>
+          <span class="kw3">echo</span> <span class="st0">&quot;<span class="es4">$(date)</span>: EXITING&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$LOGFILE</span>
+          <span class="kw3">exit</span>
+       <span class="kw1">fi</span>
+       <span class="kw2">sleep</span> <span class="nu0">1</span>
+    <span class="kw1">done</span>
+<span class="kw1">fi</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;\&quot;Ideas\&quot;&quot;,&quot;hid&quot;:&quot;ideas&quot;,&quot;codeblockOffset&quot;:15,&quot;secid&quot;:20,&quot;range&quot;:&quot;18427-24207&quot;} -->
+<h2 class="sectionedit21" id="use_hplip_driver">Use hplip driver</h2>
+<div class="level2">
+
+<p>
+An alternative to the method described above is to “simulate” a JetDirect device.
+I&#039;ve tested this with my HP LaserJet 1020 but should be applicable to other
+HP printers which need the hplip driver to work.
+</p>
+
+<p>
+In short, you need to announce with zeroconf and respond to one SNMP oid.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Use hplip driver&quot;,&quot;hid&quot;:&quot;use_hplip_driver&quot;,&quot;codeblockOffset&quot;:28,&quot;secid&quot;:21,&quot;range&quot;:&quot;24208-24519&quot;} -->
+<h3 class="sectionedit22" id="install_and_configure_p910nd">Install and configure p910nd</h3>
+<div class="level3">
+
+<p>
+Install the application, configure, start and enable it
+</p>
+<pre class="code">opkg update
+opkg install kmod-usb-printer p910nd
+vi /etc/config/p910nd
+/etc/init.d/p910nd start
+/etc/init.d/p910nd enable</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Install and configure p910nd&quot;,&quot;hid&quot;:&quot;install_and_configure_p910nd&quot;,&quot;codeblockOffset&quot;:28,&quot;secid&quot;:22,&quot;range&quot;:&quot;24520-24753&quot;} -->
+<h3 class="sectionedit23" id="zeroconf_with_avahi-daemon">ZeroConf with avahi-daemon</h3>
+<div class="level3">
+
+<p>
+Install and configure avahi-daemon as describe in the section <code>With Zeroconf</code>
+above. I used the following <code>printer.service</code> file:
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-user/services/print_server/p910nd.server?codeblock=29" title="Download Snippet" class="mediafile mf_service">/etc/avahi/services/printer.service</a></dt>
+<dd><pre class="code xml"><span class="sc3"><span class="re1">&lt;?xml</span> <span class="re0">version</span>=<span class="st0">&quot;1.0&quot;</span> <span class="re0">standalone</span>=<span class="st0">'no'</span><span class="re2">?&gt;</span></span><span class="sc-1">&lt;!--*-nxml-*--&gt;</span>
+<span class="sc0">&lt;!DOCTYPE service-group SYSTEM &quot;avahi-service.dtd&quot;&gt;</span>
+<span class="sc3"><span class="re1">&lt;service-group<span class="re2">&gt;</span></span></span>
+  <span class="sc3"><span class="re1">&lt;name</span> <span class="re0">replace-wildcards</span>=<span class="st0">&quot;yes&quot;</span><span class="re2">&gt;</span></span>HP LaserJet 1020 on %h<span class="sc3"><span class="re1">&lt;/name<span class="re2">&gt;</span></span></span>
+  <span class="sc3"><span class="re1">&lt;service<span class="re2">&gt;</span></span></span>
+    <span class="sc3"><span class="re1">&lt;type<span class="re2">&gt;</span></span></span>_pdl-datastream._tcp<span class="sc3"><span class="re1">&lt;/type<span class="re2">&gt;</span></span></span>
+    <span class="sc3"><span class="re1">&lt;port<span class="re2">&gt;</span></span></span>9100<span class="sc3"><span class="re1">&lt;/port<span class="re2">&gt;</span></span></span>
+    <span class="sc3"><span class="re1">&lt;txt-record<span class="re2">&gt;</span></span></span>qtotal=1<span class="sc3"><span class="re1">&lt;/txt-record<span class="re2">&gt;</span></span></span>
+    <span class="sc3"><span class="re1">&lt;txt-record<span class="re2">&gt;</span></span></span>note=I forgot where I placed my printer<span class="sc3"><span class="re1">&lt;/txt-record<span class="re2">&gt;</span></span></span>
+    <span class="sc3"><span class="re1">&lt;txt-record<span class="re2">&gt;</span></span></span>ty=HP LaserJet 1020<span class="sc3"><span class="re1">&lt;/txt-record<span class="re2">&gt;</span></span></span>
+    <span class="sc3"><span class="re1">&lt;txt-record<span class="re2">&gt;</span></span></span>product=(HP LaserJet 1020 Printer)<span class="sc3"><span class="re1">&lt;/txt-record<span class="re2">&gt;</span></span></span>
+    <span class="sc3"><span class="re1">&lt;txt-record<span class="re2">&gt;</span></span></span>usb_MFG=Hewlett-Packard<span class="sc3"><span class="re1">&lt;/txt-record<span class="re2">&gt;</span></span></span>
+    <span class="sc3"><span class="re1">&lt;txt-record<span class="re2">&gt;</span></span></span>usb_MDL=HP LaserJet 1020<span class="sc3"><span class="re1">&lt;/txt-record<span class="re2">&gt;</span></span></span>
+    <span class="sc3"><span class="re1">&lt;txt-record<span class="re2">&gt;</span></span></span>Color=F<span class="sc3"><span class="re1">&lt;/txt-record<span class="re2">&gt;</span></span></span>
+    <span class="sc3"><span class="re1">&lt;txt-record<span class="re2">&gt;</span></span></span>Duplex=F<span class="sc3"><span class="re1">&lt;/txt-record<span class="re2">&gt;</span></span></span>
+    <span class="sc3"><span class="re1">&lt;txt-record<span class="re2">&gt;</span></span></span>Bind=F<span class="sc3"><span class="re1">&lt;/txt-record<span class="re2">&gt;</span></span></span>
+    <span class="sc3"><span class="re1">&lt;txt-record<span class="re2">&gt;</span></span></span>Collate=F<span class="sc3"><span class="re1">&lt;/txt-record<span class="re2">&gt;</span></span></span>
+    <span class="sc3"><span class="re1">&lt;txt-record<span class="re2">&gt;</span></span></span>Sort=F<span class="sc3"><span class="re1">&lt;/txt-record<span class="re2">&gt;</span></span></span>
+    <span class="sc3"><span class="re1">&lt;txt-record<span class="re2">&gt;</span></span></span>Staple=F<span class="sc3"><span class="re1">&lt;/txt-record<span class="re2">&gt;</span></span></span>
+    <span class="sc3"><span class="re1">&lt;txt-record<span class="re2">&gt;</span></span></span>Punch=F<span class="sc3"><span class="re1">&lt;/txt-record<span class="re2">&gt;</span></span></span>
+    <span class="sc3"><span class="re1">&lt;txt-record<span class="re2">&gt;</span></span></span>PaperMax=legal-A4<span class="sc3"><span class="re1">&lt;/txt-record<span class="re2">&gt;</span></span></span>
+  <span class="sc3"><span class="re1">&lt;/service<span class="re2">&gt;</span></span></span>
+<span class="sc3"><span class="re1">&lt;/service-group<span class="re2">&gt;</span></span></span></pre>
+</dd></dl>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;ZeroConf with avahi-daemon&quot;,&quot;hid&quot;:&quot;zeroconf_with_avahi-daemon&quot;,&quot;codeblockOffset&quot;:29,&quot;secid&quot;:23,&quot;range&quot;:&quot;24754-25901&quot;} -->
+<h3 class="sectionedit24" id="mini_snmpd">mini_snmpd</h3>
+<div class="level3">
+
+<p>
+The hp-setup (from hplip) will do an SNMP get for the oid 1.3.6.1.4.1.11.2.3.9.1.1.7.0 (gdStatusId). I don&#039;t know exactly what
+format the string is supposed to have but I&#039;ve used this <a href="https://developers.hp.com/hp-linux-imaging-and-printing/KnowledgeBase/Troubleshooting/TroubleshootNetwork" class="urlextern" title="https://developers.hp.com/hp-linux-imaging-and-printing/KnowledgeBase/Troubleshooting/TroubleshootNetwork" rel="ugc nofollow">troubleshooting guide</a>
+as a base for the information.
+</p>
+
+<p>
+You need to compile your own mini-snmpd package. See <a href="/docs/guide-developer/toolchain/using_the_sdk" class="wikilink1" title="docs:guide-developer:toolchain:using_the_sdk" data-wiki-id="docs:guide-developer:toolchain:using_the_sdk">Using the SDK</a> for more information about how to use the SDK.
+</p>
+
+<p>
+Download the source to <a href="/docs/guide-user/services/snmp/mini_snmpd" class="wikilink1" title="docs:guide-user:services:snmp:mini_snmpd" data-wiki-id="docs:guide-user:services:snmp:mini_snmpd">mini_snmpd</a>, modify the following patch and apply it.
+</p>
+<pre class="code file diff"><span class="re3">--- a/mib.c</span>
+<span class="re4">+++ b/mib.c</span>
+<span class="re6">@@ -53,6 +53,7 @@ static const oid_t m_cpu_oid		= <span class="br0">&#123;</span> <span class="br0">&#123;</span> 1, 3</span>
+ #ifdef __DEMO__
+ static const oid_t m_demo_oid		= <span class="br0">&#123;</span> <span class="br0">&#123;</span> <span class="nu0">1</span>, <span class="nu0">3</span>, <span class="nu0">6</span>, <span class="nu0">1</span>, <span class="nu0">4</span>, <span class="nu0">1</span>, <span class="nu0">99999</span>		<span class="br0">&#125;</span>, <span class="nu0">7</span>, <span class="nu0">10</span> <span class="br0">&#125;</span>;
+ #endif
+<span class="re8">+static const oid_t m_dev_status_oid	= <span class="br0">&#123;</span> <span class="br0">&#123;</span> <span class="nu0">1</span>, <span class="nu0">3</span>, <span class="nu0">6</span>, <span class="nu0">1</span>, <span class="nu0">4</span>, <span class="nu0">1</span>, <span class="nu0">11</span>, <span class="nu0">2</span>, <span class="nu0">3</span>, <span class="nu0">9</span>, <span class="nu0">1</span>, <span class="nu0">1</span><span class="br0">&#125;</span>, <span class="nu0">12</span>, <span class="nu0">13</span> <span class="br0">&#125;</span>;</span>
+&nbsp;
+ static const int m_load_avg_times<span class="br0">&#91;</span><span class="nu0">3</span><span class="br0">&#93;</span> = <span class="br0">&#123;</span> <span class="nu0">1</span>, <span class="nu0">5</span>, <span class="nu0">15</span> <span class="br0">&#125;</span>;
+&nbsp;
+<span class="re6">@@ -610,6 +611,10 @@ int mib_build<span class="br0">&#40;</span>void<span class="br0">&#41;</span></span>
+ 	<span class="br0">&#125;</span>
+ #endif
+&nbsp;
+<span class="re8">+	if <span class="br0">&#40;</span>mib_build_entry<span class="br0">&#40;</span>&amp;m_dev_status_oid, <span class="nu0">7</span>, <span class="nu0">0</span>, BER_TYPE_OCTET_STRING, <span class="br0">&#40;</span>const void *<span class="br0">&#41;</span>&quot;MFG:Hewlett-Packard;MDL:HP LaserJet <span class="nu0">1020</span>;CLS:PRINTER;DES:HP LaserJet <span class="nu0">1020</span>;SN:XXXXXXX;&quot;<span class="br0">&#41;</span> == -1<span class="br0">&#41;</span> <span class="br0">&#123;</span></span>
+<span class="re8">+		return -<span class="nu0">1</span>;</span>
+<span class="re8">+	<span class="br0">&#125;</span></span>
+<span class="re8">+</span>
+ 	return <span class="nu0">0</span>;
+ <span class="br0">&#125;</span>
+&nbsp;</pre>
+
+<p>
+You need to modify the long line and replace XXXXXXX with your serial number.
+You can find the serial number with the following commands.
+</p>
+<pre class="code">lsusb -v | egrep &#039;iManufacturer|iProduct|iSerial&#039;</pre>
+
+<p>
+This should give the information you need for MFG:, MDL: and SN: in the patch above.
+</p>
+
+<p>
+Another way to get this string is to plug it into another computer with cups and hplip installed.
+You can use <code>/usr/lib/cups/backend/hp</code> to get a similar string. I&#039;ve assumed that they should match
+with the one provided over SNMP.
+</p>
+
+<p>
+When you recompile, change the PKG_RELEASE in the Makefile to differ it from the upstream
+version. Otherwise you won&#039;t be able to install your newly built package.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;mini_snmpd&quot;,&quot;hid&quot;:&quot;mini_snmpd&quot;,&quot;codeblockOffset&quot;:30,&quot;secid&quot;:24,&quot;range&quot;:&quot;25902-27859&quot;} -->
+<h3 class="sectionedit25" id="test_mini_snmpd">Test mini_snmpd</h3>
+<div class="level3">
+
+<p>
+When you have installed and started mini_snmpd you can test if it works with the following
+command.
+</p>
+<pre class="code">snmpwalk -Os -c public -v1 192.168.1.1 1.3.6.1.4.1.11.2.3.9.1.1.7.0
+enterprises.11.2.3.9.1.1.7.0 = STRING: &quot;MFG:Hewlett-Packard;MDL:HP LaserJet 1020;CLS:PRINTER;DES:HP LaserJet 1020;SN:XXXXXXX;&quot;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Test mini_snmpd&quot;,&quot;hid&quot;:&quot;test_mini_snmpd&quot;,&quot;codeblockOffset&quot;:32,&quot;secid&quot;:25,&quot;range&quot;:&quot;27860-28198&quot;} -->
+<h3 class="sectionedit26" id="finish_it_up">Finish it up</h3>
+<div class="level3">
+
+<p>
+If that works, you should be able to use hp-setup to add a network printer. If it doesn&#039;t show up in the
+list of network printers, you have something wrong with the zeroconf part.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Finish it up&quot;,&quot;hid&quot;:&quot;finish_it_up&quot;,&quot;codeblockOffset&quot;:33,&quot;secid&quot;:26,&quot;range&quot;:&quot;28199-&quot;} -->

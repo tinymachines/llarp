@@ -1,0 +1,83 @@
+
+<h1 class="sectionedit1" id="cross_compiling">Cross compiling</h1>
+<div class="level1">
+
+<p>
+If you want to use a <a href="https://en.wikipedia.org/wiki/Computer_program" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Computer_program">program</a>, currently not contained in the OpenWrt repository, you probably won&#039;t find a binary compiled for your CPU.
+Provided that it is released as open source, you can download the code and compile it using the <a href="/docs/guide-developer/toolchain/start" class="wikilink1" title="docs:guide-developer:toolchain:start" data-wiki-id="docs:guide-developer:toolchain:start">OpenWrt Buildroot</a>.
+</p>
+
+<p>
+Note that not every code is compilable for every CPU architecture.
+Also performance and available RAM on embedded systems is limited compared to ordinary computers.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Cross compiling&quot;,&quot;hid&quot;:&quot;cross_compiling&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-514&quot;} -->
+<h2 class="sectionedit2" id="procedure">Procedure</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Follow the build instructions outlined in <a href="/docs/guide-developer/toolchain/start" class="wikilink1" title="docs:guide-developer:toolchain:start" data-wiki-id="docs:guide-developer:toolchain:start">OpenWrt Buildroot – Usage</a></div>
+</li>
+<li class="level1"><div class="li"> Locate the toolchain binaries in the <code>staging_dir/toolchain-<em>architecture</em>_gcc-<em>compilerver</em>_uClibc-<em>libcver</em>/bin/</code> directory</div>
+</li>
+<li class="level1 node"><div class="li"> Add that directory to the <code>PATH</code> environment variable:</div>
+<ul>
+<li class="level2"><div class="li"> <code>PATH=$PATH:(your toolchain/bin directory here)</code></div>
+</li>
+<li class="level2"><div class="li"> <code>export PATH</code></div>
+</li>
+</ul>
+</li>
+<li class="level1 node"><div class="li"> Set the <code>STAGING_DIR</code> environment variable to the above toolchain dir and export it:</div>
+<ul>
+<li class="level2"><div class="li"> <code>STAGING_DIR=(your toolchain directory here)</code></div>
+</li>
+<li class="level2"><div class="li"> <code>export STAGING_DIR</code></div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Download and unpack the code to be compiled, change into the unpacked directory</div>
+</li>
+<li class="level1 node"><div class="li"> Pass the <em>host</em> and <em>build</em> to the build system of the package to trigger cross-compile</div>
+<ul>
+<li class="level2 node"><div class="li"> For GNU configure, use <code>--build=<em>architecture</em>-unknown-linux-gnu --host=<em>architecture</em>-openwrt-linux-uclibc</code> (for example: <code>./configure --build=x86_64-unknown-linux-gnu  --host=mips-openwrt-linux-uclibc</code>)</div>
+<ul>
+<li class="level3"><div class="li"> Run <code>./config.guess</code> to get the <code>--build=</code> option.</div>
+</li>
+<li class="level3"><div class="li"> Check the output and ensure that <code>&#039;checking whether we are cross compiling... yes</code>&#039; is yes.</div>
+</li>
+</ul>
+</li>
+<li class="level2 node"><div class="li"> For GNU make, override the <code>CC</code> and <code>LD</code> environment variables (usually not needed if GNU configure was used)</div>
+<ul>
+<li class="level3"><div class="li"> <code>make CC=<em>architecture</em>-openwrt-linux-uclibc-gcc</code> <code>LD=<em>architecture</em>-openwrt-linux-uclibc-ld</code></div>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> The compiled program will be somewhere inside the folder your run ./configure and make from, try doing <code>find -iname *program*</code></div>
+</li>
+<li class="level1"><div class="li"> Run <code>file program</code> to confirm cross-compiling was successful. </div>
+</li>
+<li class="level1"><div class="li"> If compilation aborts due to missing header files or shared objects, you might need to override <code>CFLAGS</code> and <code>LDFLAGS</code> to point to the <code>staging_dir/target-<em>architecture</em>_uClibc-<em>libcver</em>/usr/include</code> and <code>.../usr/lib</code> directories</div>
+</li>
+<li class="level1"><div class="li"> Debugging requires gdb in the toolchain. Default config does not include it. Include using <code>make menuconfig</code>. [Advanced configuration options→Toolchain Options→Build gdb]</div>
+</li>
+<li class="level1"><div class="li"> Remote debugging can be done using script <code>.<em>/scripts</em>/remote-gdb</code></div>
+</li>
+</ul>
+
+<p>
+When compilation is finished, copy the resulting binary and related libraries to the target device to test it.
+It might be necessary to set <code>LD_LIBRARY_PATH</code> on the target to point the binary to libraries in non-standard locations.
+</p>
+
+<p>
+If the program works well enough, you maybe want to build a real package for the opkg package manager and make it easily accessible for everyone out there.
+See <a href="/docs/guide-developer/packages" class="wikilink1" title="docs:guide-developer:packages" data-wiki-id="docs:guide-developer:packages">Creating your own packages</a> and <a href="/docs/guide-developer/dependencies" class="wikilink1" title="docs:guide-developer:dependencies" data-wiki-id="docs:guide-developer:dependencies">Using Dependencies</a> for further information on that.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Procedure&quot;,&quot;hid&quot;:&quot;procedure&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;515-&quot;} -->

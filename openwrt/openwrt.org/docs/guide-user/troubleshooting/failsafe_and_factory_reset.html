@@ -1,0 +1,361 @@
+
+<h1 class="sectionedit1" id="failsafe_mode_factory_reset_and_recovery_mode">Failsafe mode, factory reset, and recovery mode</h1>
+<div class="level1">
+
+<p>
+OpenWrt offers several ways to “start over” with your router:
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong><a href="/docs/guide-user/troubleshooting/failsafe_and_factory_reset#failsafe_mode" class="wikilink1" title="docs:guide-user:troubleshooting:failsafe_and_factory_reset" data-wiki-id="docs:guide-user:troubleshooting:failsafe_and_factory_reset">Failsafe mode</a></strong> is useful if you have lost control of your device, and it has become inaccessible, perhaps through a configuration error. It allows you to reboot the router into a basic operating state, retaining all your packages and (most) settings.</div>
+</li>
+<li class="level1"><div class="li"> <strong><a href="/docs/guide-user/troubleshooting/failsafe_and_factory_reset#factory_reset" class="wikilink1" title="docs:guide-user:troubleshooting:failsafe_and_factory_reset" data-wiki-id="docs:guide-user:troubleshooting:failsafe_and_factory_reset">Factory reset</a></strong> erases all your packages and settings, returning the router to its initial state after installing OpenWrt.</div>
+</li>
+<li class="level1"><div class="li"> <strong><a href="/docs/guide-user/troubleshooting/vendor_specific_rescue" class="wikilink1" title="docs:guide-user:troubleshooting:vendor_specific_rescue" data-wiki-id="docs:guide-user:troubleshooting:vendor_specific_rescue">Recovery mode</a></strong> allows you to install new firmware on a router that has become corrupted.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Failsafe mode, factory reset, and recovery mode&quot;,&quot;hid&quot;:&quot;failsafe_mode_factory_reset_and_recovery_mode&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-821&quot;} -->
+<h2 class="sectionedit2" id="failsafe_mode">Failsafe mode</h2>
+<div class="level2">
+
+<p>
+OpenWrt allows you to boot into a <strong>failsafe mode</strong> that overrides its current configuration.
+If your device becomes inaccessible, e.g. after a configuration error, then failsafe mode is there to help you out.
+When you reboot in failsafe mode, the device starts up in a basic operating state, with a few hard coded defaults, and you can begin to fix the problem manually.
+</p>
+
+<p>
+Failsafe mode can be triggered by pressing (almost any) button on the device shortly after powering it on during a pre-defined 2-4 second window.
+Each router is unique, but OpenWrt watches for a WPS, Reset, or other button press.
+</p>
+
+<p>
+Failsafe mode <strong>cannot</strong>, however, fix more deeply rooted problems like faulty hardware or a broken kernel.
+It is similar to a reset, however with failsafe, you can access your device and restore settings if desired, whereas a reset would just wipe everything.
+</p>
+
+<p>
+<strong>Caveat:</strong> Failsafe mode is only available if you have installed firmware from a Squashfs image, that includes the required read-only root partition, and all your later changes are in a separate /overlay partition &amp; directory.
+To verify whether your device has the SquashFS root partition, check for “squashfs” either in the OpenWrt image name or perform the following check on your device:
+</p>
+<pre class="code bash"><span class="kw2">grep</span> squash <span class="sy0">/</span>proc<span class="sy0">/</span>mounts</pre>
+
+<p>
+The terminal should return something similar to this:
+</p>
+<pre class="code">/dev/root /rom squashfs ro,relatime 0 0</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Failsafe mode&quot;,&quot;hid&quot;:&quot;failsafe_mode&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;822-2264&quot;} -->
+<h3 class="sectionedit3" id="entering_failsafe_mode">Entering failsafe mode</h3>
+<div class="level3">
+
+<p>
+Failsafe mode starts the router with the <abbr title="Internet Protocol">IP</abbr> address 192.168.1.1, and disables
+<abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> and wireless connectivity.
+You will need to set your PC to a static address on the same subnet
+(e.g., 192.168.1.10) and connect via Ethernet.
+Sometimes you need to connect to a specific network port of your router
+to get connectivity.
+<strong>Try the LAN1 port first.</strong>
+DSA devices frequently enable <a href="https://forum.openwrt.org/t/adding-openwrt-support-for-xiaomi-ax3600/55049/9760" class="urlextern" title="https://forum.openwrt.org/t/adding-openwrt-support-for-xiaomi-ax3600/55049/9760" rel="ugc nofollow">LAN1 only</a>.
+</p>
+
+<p>
+On most routers, OpenWrt will blink an LED (usually “Power”) during the boot process.
+Early in the boot cycle, OpenWrt watches for a button press (any button)
+inside a specific four second window to indicate that it should enter failsafe mode. (Note: four seconds in 24.10 and later OpenWrt versions, but only two seconds on 23.05 and earlier versions.)
+</p>
+
+<p>
+<strong>To enter failsafe mode, follow one of the procedures listed below:</strong>
+</p>
+
+<p>
+<strong>Simplest - recommended for most people: Power on the device, wait for a flashing LED and press a button.</strong>
+This can be the WPS, Reset, or other button on the device.
+</p>
+
+<p>
+The LEDs provide clues for timing the button press.
+Watch the LED blinking speeds immediately after powering up the router.
+Most routers show three different (power) LED blinking speeds during boot:
+</p>
+<ul>
+<li class="level1"><div class="li"> A power-on sequence of lights that is specific to the device&#039;s bootloader</div>
+</li>
+<li class="level1"><div class="li"> Then a semi-rapid 5-per-second blinking rhythm during four seconds, while router waits for a button press</div>
+</li>
+<li class="level1 node"><div class="li"> Then either:</div>
+<ul>
+<li class="level3"><div class="li"> A really fast 10-per-second blink if failsafe mode was triggered. The device is listening on 192.168.1.1</div>
+</li>
+<li class="level3"><div class="li"> A slower, 2.5-per-second blink continuing to the end of normal boot, if the failsafe was not triggered</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> If you missed the timing and see the slower blink rate, just power off the device, wait a couple seconds, and try again.</div>
+</li>
+</ul>
+
+<p>
+<strong>Alternate for expert users: Wait (with a packet sniffer) for a special broadcast packet and press a button.</strong> The packet will be sent to destination address 192.168.1.255 port <abbr title="User Datagram Protocol">UDP</abbr> 4919.
+The packet contains the text “<em>Please press button now to enter failsafe</em>”.
+So for example, in a terminal and using tcpdump, with the router connected to port eth0 of your computer, you would enter the command 
+</p>
+<pre class="code">tcpdump -Ani eth0 port 4919 and udp</pre>
+
+<p>
+<strong>Alternate for expert users with serial connection: Watch for a boot message on the serial console and press a key (“f”) on the serial keyboard.</strong> This requires that you have attached a serial cable to the device.
+The message shown in the console is “<em>Press the [f] key and hit [Enter] to enter failsafe mode</em>”
+</p>
+
+<p>
+Usually, it is easiest to watch the LEDs.
+However, do consult the available documentation for your device, as there is no default button assigned as a reset button and not all procedures work on every device.
+Whichever trigger you use, the device will enter failsafe mode and you can access the command line with <abbr title="Secure Shell">SSH</abbr> (always possible) or a serial keyboard.
+</p>
+
+<p>
+Note that modern OpenWrt always uses <abbr title="Secure Shell">SSH</abbr> for terminal connections.
+</p>
+
+</div>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Entering failsafe mode&quot;,&quot;hid&quot;:&quot;entering_failsafe_mode&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:3,&quot;range&quot;:&quot;2265-5336&quot;} -->
+<h3 class="sectionedit4" id="fixing_your_settings">Fixing your settings</h3>
+<div class="level3">
+
+<p>
+Once failsafe mode is triggered, the router will boot with a network address of 192.168.1.1/24, usually on the <code>eth0</code> network interface, with only essential services running.
+When in failsafe mode, the <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> server will not be running.
+You must set your computer&#039;s ethernet port to use a static <abbr title="Internet Protocol">IP</abbr> address in the 192.168.1.0/24 network (valid IPs are 192.168.1.2 - 192.168.1.254, subnet mask 255.255.255.0)
+</p>
+
+<p>
+Using <abbr title="Secure Shell">SSH</abbr> or a serial connection, you can then mount the JFFS2 partition with the following command:
+</p>
+<pre class="code bash">mount_root</pre>
+
+<p>
+After that, you can start looking around and fix what’s broken.
+The JFFS2 partition will be mounted to <code>/overlay</code>, as under normal operation.
+</p>
+
+<p>
+You can also transfer files by using scp command/protocol from Linux or macOS, or by using <a href="/docs/guide-quick-start/sshadministration#winscp" class="wikilink1" title="docs:guide-quick-start:sshadministration" data-wiki-id="docs:guide-quick-start:sshadministration">WinSCP</a> from Windows.
+</p>
+
+<p>
+Additional steps required for <a href="/docs/guide-user/additional-software/extroot_configuration" class="wikilink1" title="docs:guide-user:additional-software:extroot_configuration" data-wiki-id="docs:guide-user:additional-software:extroot_configuration">Extroot</a> setups:
+</p>
+<pre class="code bash"><span class="co0"># unplug external device</span>
+reboot
+&nbsp;
+<span class="co0"># plug external device</span>
+<span class="co0"># mount external device, e.g.</span>
+block info
+<span class="kw2">mount</span> <span class="sy0">/</span>dev<span class="sy0">/</span>mmcblk0 <span class="sy0">/</span>mnt
+&nbsp;
+<span class="co0"># fix the issue, e.g.</span>
+<span class="kw2">vi</span> <span class="sy0">/</span>mnt<span class="sy0">/</span>upper<span class="sy0">/</span>etc<span class="sy0">/</span>config<span class="sy0">/</span>network
+&nbsp;
+<span class="co0"># verify external device will be mounted automatically, e.g.</span>
+<span class="kw2">vi</span> <span class="sy0">/</span>overlay<span class="sy0">/</span>upper<span class="sy0">/</span>etc<span class="sy0">/</span>config<span class="sy0">/</span>fstab
+reboot</pre>
+
+<p>
+Tipp: If you are not able to use <code>mount_root </code> and you get the message <code>jffs2 not ready yet, using temporary tmpfs overlay</code> . Please check your filesystem with <code>df -h</code> and when it is full (used 100%) the mount_root command isn&#039;t working well and also a soft factory reset isn&#039;t working. 
+In this case use 
+</p>
+<pre class="code bash"> mtd <span class="re5">-r</span> erase rootfs_data </pre>
+
+<p>
+  After this you can follow with <a href="/docs/guide-user/troubleshooting/failsafe_and_factory_reset#soft_factory_reset" class="wikilink1" title="docs:guide-user:troubleshooting:failsafe_and_factory_reset" data-wiki-id="docs:guide-user:troubleshooting:failsafe_and_factory_reset">soft_factory_reset</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Fixing your settings&quot;,&quot;hid&quot;:&quot;fixing_your_settings&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:4,&quot;range&quot;:&quot;5337-7107&quot;} -->
+<h2 class="sectionedit5" id="factory_reset">Factory reset</h2>
+<div class="level2">
+
+<p>
+A factory reset returns your router to the configuration it had just after flashing.
+This works on any install with a squashfs / overlayfs setup (the norm for most installations), since it is based on erasing and reformatting the overlayfs.
+</p>
+
+<p>
+With a large NOR chip, it can take 3 to 5 minutes for the overlayfs to be formatted in the flash.
+During this time, changes cannot be saved.
+</p>
+
+<p>
+<strong>Caveat:</strong>
+</p>
+<ul>
+<li class="level1"><div class="li"> Factory reset depends on completing the boot process. If factory reset is not working, try with failsafe mode instead.</div>
+</li>
+<li class="level1"><div class="li"> x86 builds (made for PC/Server hardware) with an ext4 read-write rootfs cannot be reset this way.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Factory reset&quot;,&quot;hid&quot;:&quot;factory_reset&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:5,&quot;range&quot;:&quot;7108-7755&quot;} -->
+<h3 class="sectionedit6" id="reset_button">Reset button</h3>
+<div class="level3">
+
+<p>
+On devices with a physical reset button, OpenWrt can be reset to default settings without serial or <abbr title="Secure Shell">SSH</abbr> access.
+</p>
+<ol>
+<li class="level1"><div class="li"> Power on the device and wait for the status led to stop flashing (or go into failsafe mode, as described above).</div>
+</li>
+<li class="level1"><div class="li"> Press and hold the reset button for 10 seconds.</div>
+</li>
+<li class="level1"><div class="li"> Release the reset button.</div>
+</li>
+</ol>
+
+<p>
+The device will do a hard factory reset (see below) and then reboot.
+This operation can be slow on some devices, so wait a few minutes before connecting again.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Reset button&quot;,&quot;hid&quot;:&quot;reset_button&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:6,&quot;range&quot;:&quot;7756-8252&quot;} -->
+<h3 class="sectionedit7" id="soft_factory_reset">Soft factory reset</h3>
+<div class="level3">
+
+<p>
+If you want a clean slate, there’s no need to flash again; just enter the following commands.
+Your device&#039;s settings will be reset to defaults like when OpenWrt was first installed.
+</p>
+
+<p>
+Issuing <code>firstboot</code> or <code>jffs2reset</code> (or <code>factoryreset</code> in main/master after Dec 2024) command will attempt to delete all files from the jffs2 overlay partition.
+Note that this “soft reset” is performed with file system actions, so in some cases it is not enough.
+</p>
+<pre class="code bash">firstboot <span class="sy0">&amp;&amp;</span> reboot</pre>
+
+<p>
+Note: If the commands above (all on one line) don&#039;t work, try those commands on separate lines in the terminal.
+</p>
+
+<p>
+Note: for most routers, <code>firstboot</code> actually just issues a <code>jffs2reset</code> command, so there is not much difference compared to the “hard reset” advice below.
+</p>
+
+<p>
+Note: if you&#039;re issuing this command inside a bash script, remember to add the option -y to force firstboot:
+</p>
+<pre class="code bash">firstboot <span class="re5">-y</span> <span class="sy0">&amp;&amp;</span> reboot</pre>
+
+<p>
+Here is a log of soft factory reset process in action, obtained via serial connection, during router startup<strong>:</strong>
+</p>
+<ul>
+<li class="level1"><div class="li"> <pre class="code">...
+Press the [f] key and hit [enter] to enter failsafe mode
+Press the [1], [2], [3] or [4] key and hit [enter] to select the debug level
+f
+- failsafe -
+/etc/preinit: line 1: /sbin/mtk_failsafe.sh: not found
+/etc/preinit: line 1: dropbearkey: not found
+/etc/preinit: line 1: dropbear: not found
+
+BusyBox v1.25.1 () built-in shell (ash)
+
+ash: can&#039;t access tty; job control turned off
+     _________
+    /        /\      _    ___ ___  ___
+   /  LE    /  \    | |  | __|   \| __|
+  /    DE  /    \   | |__| _|| |) | _|
+ /________/  LE  \  |____|___|___/|___|                      lede-project.org
+ \        \   DE /
+  \    LE  \    /  -----------------------------------------------------------
+   \  DE    \  /    Reboot (17.01-SNAPSHOT, r0-e88ba24)
+    \________\/    -----------------------------------------------------------
+
+================= FAILSAFE MODE active ================
+special commands:
+* firstboot	     reset settings to factory defaults
+* mount_root	 mount root-partition with config files
+
+after mount_root:
+* passwd			 change root&#039;s password
+* /etc/config		    directory with config files
+
+for more help see:
+http://wiki.openwrt.org/doc/howto/generic.failsafe
+=======================================================
+
+admin@(none):/# firstboot &amp;&amp; reboot
+[  102.942293] jffs2reset: This will erase all settings and remove any installed packages. Are you sure? [N/y]
+y
+[  117.606813] jffs2reset: /dev/mtdblock6 is not mounted
+[  117.612055] jffs2reset: /dev/mtdblock6 will be erased on next mount
+reboot
+admin@(none):/# [  119.810569] ===&gt; rt_pci_shutdown()
+...</pre>
+</div>
+</li>
+</ul>
+
+<p>
+Tips<strong>:</strong> after (a OpenWrt based) router reboots or starts, it goes thru the bootmenu (selection menu for boot options) within 1 to 2 seconds (or, within 1 second, after preset delay time has passed).
+The boot menu accepts Up/Down &amp; Enter buttons, so avoid those or any other buttons for that period of time.
+After that bootmenu stage, within 3 to 8 seconds later (depending on CPU speed, etc) the failsafe mode appears &amp; passes, so you have to press the “f” button within that time only for once (one time), then press Enter to enter into failsafe mode.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Soft factory reset&quot;,&quot;hid&quot;:&quot;soft_factory_reset&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:7,&quot;range&quot;:&quot;8253-11471&quot;} -->
+<h3 class="sectionedit8" id="hard_factory_reset">Hard factory reset</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="re-flashing_the_firmware">Re-flashing the firmware</h4>
+<div class="level4">
+
+<p>
+Re-flash or upgrade the firmware discarding the settings.
+</p>
+<pre class="code bash">sysupgrade <span class="re5">-n</span> <span class="sy0">/</span>path<span class="sy0">/</span>to<span class="sy0">/</span>firmware</pre>
+
+<p>
+OpenWrt preserves settings <a href="/docs/guide-quick-start/admingui_sysupgrade_keepsettings" class="wikilink1" title="docs:guide-quick-start:admingui_sysupgrade_keepsettings" data-wiki-id="docs:guide-quick-start:admingui_sysupgrade_keepsettings">by default</a>, so you need to opt-out to achieve factory reset.
+</p>
+
+</div>
+
+<h4 id="jffs2_reset">JFFS2 reset</h4>
+<div class="level4">
+
+<p>
+Reset the JFFS2 partition.
+</p>
+<pre class="code bash"><span class="kw2">umount</span> <span class="sy0">/</span>overlay <span class="sy0">&amp;&amp;</span> jffs2reset <span class="sy0">&amp;&amp;</span> reboot</pre>
+
+<p>
+Based on the mount status of the overlay, jffs2reset <a href="https://git.openwrt.org/?p=project/fstools.git;a=blob;f=jffs2reset.c;h=dbe049881f5;hb=HEAD#l43" class="interwiki iw_commit" title="https://git.openwrt.org/?p=project/fstools.git;a=blob;f=jffs2reset.c;h=dbe049881f5;hb=HEAD#l43">selects</a> either a file-based delete operation or a partition mark-it-empty action to be re-created at boot.
+</p>
+
+<p>
+Note: the <code>jffs2reset</code> command was renamed to <code>factoryreset</code> in December 2024.
+</p>
+
+</div>
+
+<h4 id="f2fs_reset">F2FS reset</h4>
+<div class="level4">
+
+<p>
+Reset the F2FS partition.
+</p>
+<pre class="code bash"><span class="kw2">dd</span> <span class="re2">if</span>=<span class="sy0">/</span>dev<span class="sy0">/</span>zero <span class="re2">of</span>=<span class="sy0">/</span>dev<span class="sy0">/</span>loop0 <span class="re2">bs</span>=1M; reboot</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Hard factory reset&quot;,&quot;hid&quot;:&quot;hard_factory_reset&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:8,&quot;range&quot;:&quot;11472-&quot;} -->

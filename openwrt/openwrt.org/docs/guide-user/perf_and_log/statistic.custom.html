@@ -1,0 +1,177 @@
+
+<h1 class="sectionedit1" id="logging_custom_statistics">Logging custom statistics</h1>
+<div class="level1">
+
+<p>
+You&#039;re already <a href="/docs/guide-user/luci/luci_app_statistics" class="wikilink1" title="docs:guide-user:luci:luci_app_statistics" data-wiki-id="docs:guide-user:luci:luci_app_statistics">gathering statistics with luci-app-statistics</a> but you&#039;d like to graph something under LuCI for which there is no <code>collectd-mod-*</code> in OpenWrt.
+</p>
+
+<p>
+You could write custom <code>cron</code> jobs which gather data, parse it and call <code>rrdupdate</code> manually on existing *.rrd files (instructions welcome!).
+</p>
+
+<p>
+Another solution: use <code>collectd-mod-exec</code> and just a little glue.  You&#039;ll need to be able to write a script (or modify the example) that can collect your data (without being launched as root!), and to write a simple chunk of Lua telling LuCI how to render your data.  You&#039;ll probably want to do this over <abbr title="Secure Shell">SSH</abbr>.
+</p>
+
+<p>
+Steps:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>opkg install collectd-mod-exec</code></div>
+</li>
+<li class="level1"><div class="li"> Write your script (example below), set it executable, test it out and place it somewhere persistent.</div>
+</li>
+<li class="level1"><div class="li"> In LuCI, add your script under Statistics→Setup→General plugins→Exec, and save&amp;apply.</div>
+</li>
+<li class="level1"><div class="li"> After a few seconds, check that <code>collectd</code> has created an RRD under <code>/var/rrd/yourhostname/exec-foo/datatype_bar.rrd</code>.</div>
+</li>
+<li class="level1"><div class="li"> Create <code>/usr/lib/lua/luci/statistics/rrdtool/definitions/exec.lua</code> and tell LuCI about titles, data types and colours.</div>
+</li>
+<li class="level1"><div class="li"> Visit Statistics→Graphs→General→Exec and try rendering your data.</div>
+</li>
+<li class="level1"><div class="li"> Consider adding <code>/usr/lib/lua/luci/statistics/rrdtool/definitions/exec.lua</code> to <code>/etc/sysupgrade.conf</code> so it survives upgrades.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Logging custom statistics&quot;,&quot;hid&quot;:&quot;logging_custom_statistics&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1411&quot;} -->
+<h2 class="sectionedit2" id="the_script">The script</h2>
+<div class="level2">
+
+<p>
+Pick an existing type of data from <code>/usr/share/collectd/types.db</code> that fits your data.  Not all will be supported in LuCI, including new ones you add (improvements to these instructions welcome).
+</p>
+
+<p>
+Suppose the thing you want to log is the temperature of your router.  There&#039;s already a type <code>temperature</code>.  Your script needs to periodically print a line in the <a href="https://collectd.org/wiki/index.php/Plain_text_protocol#PUTVAL" class="urlextern" title="https://collectd.org/wiki/index.php/Plain_text_protocol#PUTVAL" rel="ugc nofollow">collectd plain text protocol</a> in which some parts are fixed and others are chosen by you:
+</p>
+<pre class="code">PUTVAL &quot;&lt;yourhostname&gt;/exec-&lt;instance&gt;/&lt;datatype&gt;[-name]&quot; [interval=X] &lt;time&gt;:&lt;Y&gt;</pre>
+
+<p>
+e.g.
+</p>
+<pre class="code">PUTVAL &quot;phobos/exec-environmental/temperature-cpu&quot; interval=30 N:88.4</pre>
+<ul>
+<li class="level1"><div class="li"> <code>&lt;yourhostname&gt;</code> is usually just taken from the <code>COLLECTD_HOSTNAME</code> environment variable.</div>
+</li>
+<li class="level1"><div class="li"> <code>exec-&lt;instance&gt;</code> is the <code>collectd</code> plugin type (<code>exec</code>) plus a dash and whatever name you like for the instance (probably the name of the specific thing or category of things being monitored).</div>
+</li>
+<li class="level1"><div class="li"> <code>&lt;datatype&gt;[-name]</code> is the <code>collectd</code> data type from <code>/usr/share/collectd/types.db</code>, optionally followed by an underscore plus whatever name you like for the thing being measured.  (You might have <code>temperature-external</code> and <code>humidity-internal</code> also produced by the same script.)</div>
+</li>
+<li class="level1"><div class="li"> <code>interval=X</code> is for scripts that deliver one reading (or set of readings) and exit each time they&#039;re invoked.  It tells <code>collectd</code> there won&#039;t be a new reading ready until at least <code>X</code> seconds later, and not launch it again any sooner than that (launching frequently can load the system).  It wouldn&#039;t make sense for this to be smaller than the interval you configured for all your graphs under Statistics→Setup→Collectd Settings, which is available to the script in the <code>COLLECTD_INTERVAL</code> environment variable.</div>
+</li>
+<li class="level1 node"><div class="li"> <code>&lt;time&gt;:&lt;Y&gt;</code> is the sample time and sample value.</div>
+<ul>
+<li class="level2"><div class="li"> for <code>&lt;time&gt;</code>, <code>N</code> means “now” and (unless your data is delayed) is usually what you want, although you can give a full seconds-since-the-epoch number.</div>
+</li>
+<li class="level2"><div class="li"> <code>&lt;Y&gt;</code> is the reading.  Simple cases like temperature only have one reading and no limits.  Other types use other formats and may have tighter constraints and/or multiple readings at a time.  Some allow <code>U</code> for unknown when there is no sensible data (e.g. what&#039;s the round-trip time of a ping if you never got a reply?).  See the <a href="https://collectd.org/wiki/index.php/Plain_text_protocol#PUTVAL" class="urlextern" title="https://collectd.org/wiki/index.php/Plain_text_protocol#PUTVAL" rel="ugc nofollow">collectd documentation</a> for more possibilities.</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+An example that stays running (so no <code>interval=X</code>) delivering made-up temperature readings <code>COLLECTD_INTERVAL</code> seconds apart:
+</p>
+<pre class="code">#!/bin/sh
+
+# COLLECTD_INTERVAL may have trailing decimal places, but sleep rejects floating point.
+INTERVAL=$(printf %.0f $COLLECTD_INTERVAL)
+
+while true; do
+  val=$(awk &#039;BEGIN { srand(); printf(&quot;%.1f&quot;, rand()*60); }&#039;)
+  echo &quot;PUTVAL \&quot;$COLLECTD_HOSTNAME/exec-test/temperature\&quot; N:$val&quot;
+  sleep $INTERVAL
+done</pre>
+
+<p>
+You don&#039;t have to use <code>sh</code>.  <code>bash</code>, Lua or even <code>python-light</code> might make sense for more complex data collection/on more powerful hardware.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;The script&quot;,&quot;hid&quot;:&quot;the_script&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;1412-4529&quot;} -->
+<h2 class="sectionedit3" id="permissions_issues">Permissions issues</h2>
+<div class="level2">
+
+<p>
+Remember to test it as the user it&#039;ll run as, because <a href="https://collectd.org/wiki/index.php/Plugin:Exec" class="urlextern" title="https://collectd.org/wiki/index.php/Plugin:Exec" rel="ugc nofollow">collectd&#039;s exec plugin disallows root privileges</a>.  If there&#039;s no way to avoid collecting the data with privileges, consider:
+</p>
+<ul>
+<li class="level1"><div class="li"> Having a process with the necessary privileges deliver readings via a UNIX or network socket; consider <code>collectd-mod-unixsock</code> (not just for output like its description suggests --- speaks the same plain text protocol) or <code>collectd-mod-network</code>.  Perhaps one day soon OpenWrt will support <a href="https://archive.is/qX7Rl#selection-307.0-309.181" class="urlextern" title="https://archive.is/qX7Rl#selection-307.0-309.181" rel="ugc nofollow">file-based capabilities</a>.</div>
+</li>
+<li class="level1"><div class="li"> Using <code>sudo</code> to regain that privilege in a controlled manner.  An <a href="http://git.verplant.org/?p=collectd.git;a=blob;hb=master;f=contrib/exec-smartctl" class="urlextern" title="http://git.verplant.org/?p=collectd.git;a=blob;hb=master;f=contrib/exec-smartctl" rel="ugc nofollow">example from collectd</a> includes a config snippet.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Permissions issues&quot;,&quot;hid&quot;:&quot;permissions_issues&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;4530-5377&quot;} -->
+<h2 class="sectionedit4" id="rendering">Rendering</h2>
+<div class="level2">
+
+<p>
+Put this in <code>/usr/lib/lua/luci/statistics/rrdtool/definitions/exec.lua</code>, adapted to your data types.  Take inspiration from the other definitions under <code>/usr/lib/lua/luci/statistics/rrdtool/definitions/</code>.
+</p>
+<pre class="code">module(&quot;luci.statistics.rrdtool.definitions.exec&quot;, package.seeall)
+
+function rrdargs(graph, plugin, plugin_instance)
+    -- For $HOSTNAME/exec-foo-bar/temperature_baz-quux.rrd, plugin will be
+    -- &quot;exec&quot; and plugin_instance will be &quot;foo-bar&quot;.  I guess graph will be
+    -- &quot;baz-quux&quot;?  We may also be ignoring a fourth argument, dtype.
+    if &quot;test&quot; == plugin_instance then
+        return {
+            title = &quot;%H: Made up temperature&quot;,
+            vlabel = &quot;celsius&quot;,
+            -- vlabel = &quot;farenheit&quot;,
+            data = {
+                types = { &quot;temperature&quot; },
+                options = {
+                    temperature = {
+                        -- Convert to farenheit. See /usr/lib/lua/luci/statistics/rrdtool.lua and rrdgraph_rpn manpage.
+                        -- transform_rpn = &quot;1.8,*,32,+&quot;,
+                        title  = &quot;made up&quot;,
+                        color  = &quot;ff0000&quot;
+                    }
+                }
+            }
+        }
+    end
+end</pre>
+
+<p>
+For the latest OpenWrt versions, please save the below to <code>/www/luci-static/resources/statistics/rrdtool/definitions/exec.js</code> instead. [<a href="https://github.com/openwrt/luci/issues/3719]" class="urlextern" title="https://github.com/openwrt/luci/issues/3719]" rel="ugc nofollow">https://github.com/openwrt/luci/issues/3719]</a>
+</p>
+<pre class="code">&#039;use strict&#039;;
+
+return L.Class.extend({
+  title: _(&#039;Exec&#039;),
+  
+  rrdargs: function(graph, host, plugin, plugin_instance, dtype) {
+    if (plugin_instance == &#039;test&#039;) {
+      return {
+        title: &quot;%H: Made up temperature&quot;,
+        vlabel: &quot;celsius&quot;,
+        data: {
+          types: [ &quot;temperature&quot; ],
+          options: {
+            temperature: {
+               title  = &quot;made up&quot;,
+               color  = &quot;ff0000&quot; 
+            },
+          }
+        }
+      };			
+    }
+  }
+});</pre>
+
+<p>
+If you make changes to the definition after first creating it, you must clear luci&#039;s cache with <code>rm -rf /tmp/luci-indexcache /tmp/luci-modulecache/</code> for the changes to take effect.
+</p>
+
+<p>
+<em>Credit to <a href="http://flux242.blogspot.co.uk/2011/01/collectd-mod-exec-part-1.html" class="urlextern" title="http://flux242.blogspot.co.uk/2011/01/collectd-mod-exec-part-1.html" rel="ugc nofollow">Alex</a> for documenting this.</em>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Rendering&quot;,&quot;hid&quot;:&quot;rendering&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;5378-&quot;} -->

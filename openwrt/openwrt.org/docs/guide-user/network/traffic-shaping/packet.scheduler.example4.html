@@ -1,0 +1,151 @@
+
+<h1 class="sectionedit1" id="example4hfsc_fq_codel_flow_classifier">Example4: HFSC + FQ_CODEL + FLOW classifier</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Example4: HFSC + FQ_CODEL + FLOW classifier&quot;,&quot;hid&quot;:&quot;example4hfsc_fq_codel_flow_classifier&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-58&quot;} -->
+<h2 class="sectionedit2" id="basic_ip-based_fair_sharing_behind_triple_play_box">Basic ip-based fair sharing behind triple play box</h2>
+<div class="level2">
+
+<p>
+In this example, the router is not connected directly to internet, but through another router (a triple play box with an ADSL connection in this instance).
+</p>
+
+<p>
+For fq_codel to work, the point where packets are queued has to be the Router, rather than the triple play box (the Router can only re-order packets if it contains the queue).
+</p>
+
+<p>
+As the link between the Router and the triple play box is much bigger than the ADSL connection (100mbits vs 1mbits up), rate limiting has to be applied at the Router&#039;s <abbr title="Wide Area Network">WAN</abbr> connection. 
+</p>
+
+<p>
+However, we still want to have the full speed when we access the triple play box or the TV Box directly from within the <abbr title="Local Area Network">LAN</abbr>.
+Finally, we want to implement fair sharing of bandwidth based on source ip (even with <abbr title="Network Address Translation">NAT</abbr> activated on “ROUTER”).
+</p>
+<pre class="code">                                                                                ____
+User 1==============\          [TV Box]===\                                 ___(    )__
+                     \                     \                              _(           )_
+User 2===============[Router]=============[triple play box]··············(_  internet  __)
+                     /                                                     (_       __)
+User N==============/                                                        (______)
+      LAN_SUBNET               WAN_SUBNET                     REAL_WAN
+</pre>
+<pre class="code bash"><span class="co0">#!/bin/sh /etc/rc.common</span>
+<span class="co0">#</span>
+<span class="co0"># License GPLv2</span>
+<span class="co0"># Version 0.1</span>
+&nbsp;
+<span class="re2">START</span>=<span class="nu0">99</span>
+<span class="re2">EXTRA_COMMANDS</span>=<span class="st0">&quot;status&quot;</span>
+&nbsp;
+<span class="co0">##############################################################</span>
+<span class="co0"># Variables</span>
+<span class="re2">IF_WAN</span>=<span class="st0">&quot;br-wan&quot;</span> 		<span class="co0">#-- wan interface</span>
+<span class="re2">WAN_NET</span>=<span class="st0">&quot;192.168.1.0/24&quot;</span> 	<span class="co0">#-- wan local subnet</span>
+<span class="re2">UP_RATE</span>=<span class="nu0">900</span> 			<span class="co0">#-- 90% of internet upload bandwidth in kilobits/sec</span>
+<span class="re2">PHY_RATE</span>=<span class="nu0">90</span> 			<span class="co0">#-- 90% of wan phy bandwidth in megabits/sec</span>
+<span class="re2">TC</span>=<span class="sy0">/</span>usr<span class="sy0">/</span>sbin<span class="sy0">/</span>tc 		<span class="co0">#-- location of traffic control</span>
+&nbsp;
+<span class="re2">MODULES</span>=<span class="st_h">'sch_hfsc sch_ingress sch_fq_codel cls_flow cls_u32'</span>
+&nbsp;
+<span class="co0">##############################################################</span>
+status<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+	<span class="kw3">echo</span> <span class="st0">&quot;### Statistics ###&quot;</span>
+	<span class="kw3">echo</span> <span class="st0">&quot;# qdiscs #&quot;</span>
+	tc <span class="re5">-s</span> qdisc show dev <span class="re1">$IF_WAN</span>
+	<span class="kw3">echo</span> <span class="st0">&quot;# class #&quot;</span>
+	tc <span class="re5">-s</span> class show dev <span class="re1">$IF_WAN</span>
+&nbsp;
+	<span class="kw3">echo</span> <span class="st0">&quot;# filter #&quot;</span>
+	tc <span class="re5">-s</span> filter show dev <span class="re1">$IF_WAN</span> root
+	tc <span class="re5">-s</span> filter show dev <span class="re1">$IF_WAN</span> parent <span class="nu0">1</span>:
+	tc <span class="re5">-s</span> filter show dev <span class="re1">$IF_WAN</span> parent <span class="nu0">11</span>:
+<span class="br0">&#125;</span>
+<span class="co0">##############################################################</span>
+&nbsp;
+&nbsp;
+&nbsp;
+<span class="co0">##############################################################</span>
+stop<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+	<span class="co0"># Delete existing qdiscs (hide errors)</span>
+	<span class="re1">$TC</span> qdisc del dev <span class="re1">$IF_WAN</span> root    <span class="nu0">2</span><span class="sy0">&gt;</span> <span class="sy0">/</span>dev<span class="sy0">/</span>null <span class="sy0">&gt;</span> <span class="sy0">/</span>dev<span class="sy0">/</span>null
+	<span class="re1">$TC</span> qdisc del dev <span class="re1">$IF_WAN</span> ingress <span class="nu0">2</span><span class="sy0">&gt;</span> <span class="sy0">/</span>dev<span class="sy0">/</span>null <span class="sy0">&gt;</span> <span class="sy0">/</span>dev<span class="sy0">/</span>null
+&nbsp;
+	<span class="co0"># Unload modules</span>
+	<span class="kw1">for</span> i <span class="kw1">in</span> <span class="re1">$MODULES</span> ; <span class="kw1">do</span>
+		rmmod <span class="re1">$i</span>
+	<span class="kw1">done</span>
+<span class="br0">&#125;</span>
+<span class="co0">##############################################################</span>
+&nbsp;
+&nbsp;
+&nbsp;
+<span class="co0">###############################################################################</span>
+start<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+<span class="co0"># Load modules</span>
+<span class="kw1">for</span> i <span class="kw1">in</span> <span class="re1">$MODULES</span> ; <span class="kw1">do</span>
+	insmod <span class="re1">$i</span>
+<span class="kw1">done</span>
+&nbsp;
+<span class="kw2">ifconfig</span> <span class="re1">$IF_WAN</span> txqueuelen <span class="nu0">1000</span>
+&nbsp;
+<span class="co0"># reset qdiscs</span>
+<span class="re1">$TC</span> qdisc del dev <span class="re1">$IF_WAN</span> root    <span class="nu0">2</span><span class="sy0">&gt;</span> <span class="sy0">/</span>dev<span class="sy0">/</span>null <span class="sy0">&gt;</span> <span class="sy0">/</span>dev<span class="sy0">/</span>null
+<span class="re1">$TC</span> qdisc del dev <span class="re1">$IF_WAN</span> ingress <span class="nu0">2</span><span class="sy0">&gt;</span> <span class="sy0">/</span>dev<span class="sy0">/</span>null <span class="sy0">&gt;</span> <span class="sy0">/</span>dev<span class="sy0">/</span>null
+&nbsp;
+&nbsp;
+<span class="co0">###############################################################################</span>
+<span class="re1">$TC</span> qdisc add dev <span class="re1">$IF_WAN</span> root       handle  <span class="nu0">1</span>   hfsc default <span class="nu0">1</span>
+&nbsp;
+<span class="re1">$TC</span> class add dev <span class="re1">$IF_WAN</span> parent <span class="nu0">1</span>:  classid <span class="nu0">1</span>:<span class="nu0">1</span>  hfsc sc rate <span class="co1">${UP_RATE}</span>kbit ul rate <span class="co1">${UP_RATE}</span>kbit
+<span class="re1">$TC</span> qdisc add dev <span class="re1">$IF_WAN</span> parent <span class="nu0">1</span>:<span class="nu0">1</span> handle <span class="nu0">11</span>: fq_codel
+<span class="re1">$TC</span> filter add dev <span class="re1">$IF_WAN</span> parent <span class="nu0">11</span>: handle <span class="nu0">11</span> protocol all flow <span class="kw3">hash</span> keys nfct-src divisor <span class="nu0">1024</span>
+&nbsp;
+<span class="re1">$TC</span> class add dev <span class="re1">$IF_WAN</span> parent <span class="nu0">1</span>:  classid <span class="nu0">1</span>:<span class="nu0">2</span>  hfsc sc rate <span class="co1">${PHY_RATE}</span>mbit ul rate <span class="co1">${PHY_RATE}</span>mbit
+<span class="re1">$TC</span> filter add dev <span class="re1">$IF_WAN</span> parent <span class="nu0">1</span>: protocol <span class="kw2">ip</span> prio <span class="nu0">1</span> u32 match <span class="kw2">ip</span> dst <span class="co1">${WAN_NET}</span> flowid <span class="nu0">1</span>:<span class="nu0">2</span>
+<span class="re1">$TC</span> filter add dev <span class="re1">$IF_WAN</span> parent <span class="nu0">1</span>: protocol arp prio <span class="nu0">2</span> u32 match u32 <span class="nu0">0</span> <span class="nu0">0</span> flowid <span class="nu0">1</span>:<span class="nu0">2</span>
+<span class="br0">&#125;</span></pre>
+
+<p>
+What we need to do:
+</p>
+<ol>
+<li class="level1"><div class="li"> Load kernel modules (will need HFSC / FQ_CODEL / INGRESS qdiscs, and FLOW / U32 classifiers) </div>
+</li>
+<li class="level1"><div class="li"> Set the TX queue length. By default virtual iface (bridges (br-*), vlans (eth0.*)) txqueuelen is set to 0 and so no queue will exist, and the qdisc will inherit this value. <abbr title="Quality of Service">QoS</abbr> is about changing the queue (reordering, dropping), so we need to have a queue to change.</div>
+</li>
+<li class="level1"><div class="li"> We add hfsc qdisc to the device ($IF_<abbr title="Wide Area Network">WAN</abbr>), with handle X (1), and set default to Y (1 also), so every packet that isn&#039;t match by a filter will go to the class X:Y (1:1 here). The default behavior of HFSC is to drop packets that aren&#039;t classified, so it&#039;s safer to use default.</div>
+</li>
+<li class="level1"><div class="li"> We add an hfsc class with classid X:1 (X = 1) to the qdisc with handle X (parent X: or parent 1: in our case). This class will rate limit the traffic to internet. This is the class that will get all the traffic not match be any filter (still following).</div>
+</li>
+<li class="level1"><div class="li"> We add an fq_codel qdisc to the 1:1 hfsc class. The name of the qdisc will be 11 or 11: or 11:0 (handle 11, but we could have chosen 42)</div>
+</li>
+<li class="level1"><div class="li"> We add a filter to the fq_codel to put each packet in a class (dynamic ...) based on its src ip address before NATing (nfct-src). To be more precise we hash nfct-src modulo “divisor” (1024) and with this hash we decide in which fq_codel class we put the packet.</div>
+</li>
+<li class="level1"><div class="li"> To finish we create another hfsc class for the <abbr title="Wide Area Network">WAN</abbr>_SUBNET (hi-speed) traffic, and we filter in it all the <abbr title="Internet Protocol">IP</abbr> packets with ${<abbr title="Wide Area Network">WAN</abbr>_NET} destination (192.168.1.0/24), and all the ARP packets.</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Basic ip-based fair sharing behind triple play box&quot;,&quot;hid&quot;:&quot;basic_ip-based_fair_sharing_behind_triple_play_box&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;59-5321&quot;} -->
+<h2 class="sectionedit3" id="other_end">Other end</h2>
+<div class="level2">
+<pre class="code bash"><span class="re1">$TC</span> qdisc add dev <span class="re1">$IF_WAN</span> root       handle  <span class="nu0">1</span>   hfsc default <span class="nu0">2</span>
+&nbsp;
+<span class="re1">$TC</span> class add dev <span class="re1">$IF_WAN</span> parent <span class="nu0">1</span>:  classid <span class="nu0">1</span>:<span class="nu0">1</span>  hfsc sc rate <span class="co1">${UP_RATE}</span>kbit ul rate <span class="co1">${UP_RATE}</span>kbit
+<span class="re1">$TC</span> qdisc add dev <span class="re1">$IF_WAN</span> parent <span class="nu0">1</span>:<span class="nu0">1</span> handle <span class="nu0">11</span>: fq_codel
+<span class="re1">$TC</span> filter add dev <span class="re1">$IF_WAN</span> parent <span class="nu0">11</span>: handle <span class="nu0">11</span> protocol all flow <span class="kw3">hash</span> keys nfct-src divisor <span class="nu0">1024</span>
+&nbsp;
+<span class="re1">$TC</span> class add dev <span class="re1">$IF_WAN</span> parent <span class="nu0">1</span>:  classid <span class="nu0">1</span>:<span class="nu0">2</span>  hfsc sc rate <span class="co1">${PHY_RATE}</span>mbit ul rate <span class="co1">${PHY_RATE}</span>mbit
+<span class="re1">$TC</span> filter add dev <span class="re1">$IF_WAN</span> parent <span class="nu0">1</span>: protocol <span class="kw2">ip</span> prio <span class="nu0">1</span> u32 match <span class="kw2">ip</span> dst <span class="co1">${WAN_NET}</span> flowid <span class="nu0">1</span>:<span class="nu0">2</span> <span class="co0"># match all local ip traffic</span>
+<span class="re1">$TC</span> filter add dev <span class="re1">$IF_WAN</span> parent <span class="nu0">1</span>: protocol <span class="kw2">ip</span> prio <span class="nu0">1</span> u32 match <span class="kw2">ip</span> dst 255.255.255.255<span class="sy0">/</span><span class="nu0">32</span> flowid <span class="nu0">1</span>:<span class="nu0">2</span> <span class="co0"># Limited Broadcast</span>
+<span class="co0">#$TC filter add dev $IF_WAN parent 1: protocol ip prio 1 u32 match ip dst 169.254.0.0/16 flowid 1:2 # link-local</span>
+<span class="co0">#$TC filter add dev $IF_WAN parent 1: protocol ip prio 1 u32 match ip dst 224.0.0.0/4 flowid 1:2 # multicast</span>
+&nbsp;
+<span class="re1">$TC</span> filter add dev <span class="re1">$IF_WAN</span> parent <span class="nu0">1</span>: protocol <span class="kw2">ip</span> prio <span class="nu0">2</span> u32 match u32 <span class="nu0">0</span> <span class="nu0">0</span> flowid <span class="nu0">1</span>:<span class="nu0">1</span> <span class="co0"># match all the remaining ip traffic</span>
+&nbsp;
+<span class="co0">#$TC filter add dev $IF_WAN parent 1: protocol all prio 3 u32 match u32 0 0 flowid 1:2 # useless as we use default 2</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Other end&quot;,&quot;hid&quot;:&quot;other_end&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:3,&quot;range&quot;:&quot;5322-&quot;} -->

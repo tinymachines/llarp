@@ -1,0 +1,138 @@
+
+<h1 class="sectionedit1" id="simple_wan_failover_with_3glte_wwan_-_using_a_second_router_in_the_same_lan">Simple WAN Failover with 3G/LTE WWAN - Using a second router in the same LAN</h1>
+<div class="level1">
+
+<p>
+Have you ever had the situation when you are abroad and suddenly the internet connection fails at home? Now you are left in the dark about your home devices since there is no way to get into your home network and check what could potentially have gone wrong.
+</p>
+
+<p>
+This article explains how to get around this situation with the simplest technical approach.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Simple WAN Failover with 3G\/LTE WWAN - Using a second router in the same LAN&quot;,&quot;hid&quot;:&quot;simple_wan_failover_with_3glte_wwan_-_using_a_second_router_in_the_same_lan&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-445&quot;} -->
+<h2 class="sectionedit2" id="scenario">Scenario</h2>
+<div class="level2">
+
+<p>
+The below scenario allows to automatically failover to the <abbr title="Wireless Wide Area Network">WWAN</abbr> router (Router B) internet connection as soon as the <abbr title="Wide Area Network">WAN</abbr> interface on the OpenWrt router (Router A) goes offline. At that moment the automatically created default route 0.0.0.0/0 with metric 0 is removed from the routing table on the OpenWrt <abbr title="Wide Area Network">WAN</abbr> router (Router A) and the secondary default route with metric 100 becomes active which forwards all traffic from the <abbr title="Local Area Network">LAN</abbr> to the <abbr title="Wireless Wide Area Network">WWAN</abbr> router (Router B).
+</p>
+<pre class="code">                                 +---------------------------------+
+                                 |                                 |
+           +--WAN (xDSL/Cable)---+            Internet             +----WWAN (3G/LTE)-----+
+           |                     |                                 |                      |
+           |                     +---------------------------------+                      |
+           |                                                                              |
+           |                                                                              |
+           |                                                                              |
+           |                                                                              |
+ +---------+----------+                                                        +----------+-----------+
+ | Router A (Primary) |                                                        | Router B (Secondary) |
+ +----+---------------+                                                        +-----------------+----+
+      | 192.168.001.001 /24                                                  192.168.001.250 /24 |
+      |                                                                      GW: 192.168.001.001 |
+      | Routing Table:                                                                           |
+      | 0.0.0.0/0 -&gt; WAN-If Metric 0                                                             |
+      | 0.0.0.0/0 -&gt; 192.168.001.250 Metric 100                                                  |
+      |                                                                                          |
+      |                                                                                          |
+      |                                                                                          |
++-LAN-+---------+-----------------------------------+------------------------------------+-------+-----+
+                |                                   |                                    |
+                |                                   |                                    |
+                |                                   |                                    |
+                |                                   |                                    |
+                |                                   |                                    |
+                |                                   |                                    |
+                |                                   |                                    |
+          +-----+----+                        +-----+----+                         +-----+----+
+          | Device 1 |                        | Device 2 |                         | Device 3 |
+          +----------+                        +----------+                         +----------+
+
+          192.168.001.100 /24                 192.168.001.101 /24                  192.168.001.102 /24
+          GW: 192.168.001.001                 GW: 192.168.001.001                  GW: 192.168.001.001
+</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Scenario&quot;,&quot;hid&quot;:&quot;scenario&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;446-4068&quot;} -->
+<h2 class="sectionedit3" id="requirements">Requirements</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> OpenWrt Router with <abbr title="Wide Area Network">WAN</abbr> uplink</div>
+</li>
+<li class="level1"><div class="li"> 3G/LTE Router with <abbr title="Wireless Wide Area Network">WWAN</abbr> uplink (Not necessarily OpenWrt)</div>
+</li>
+<li class="level1"><div class="li"> SIM card with data package (Recommended is a PrePaid SIM with a data package that does not expire)</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Requirements&quot;,&quot;hid&quot;:&quot;requirements&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;4069-4292&quot;} -->
+<h2 class="sectionedit4" id="configuration">Configuration</h2>
+<div class="level2">
+
+<p>
+It&#039;s assumed that the <abbr title="Wide Area Network">WAN</abbr> router (Router A) and the local <abbr title="Local Area Network">LAN</abbr> is already installed and configured.
+</p>
+<ol>
+<li class="level1"><div class="li"> Install <abbr title="Wireless Wide Area Network">WWAN</abbr> router and assing a local <abbr title="Local Area Network">LAN</abbr> ip (Example: 192.168.001.250)</div>
+</li>
+<li class="level1"><div class="li"> Open LuCI and go to Network &gt; Static Routes</div>
+</li>
+<li class="level1"><div class="li"> Click Add</div>
+</li>
+<li class="level1"><div class="li"> Interface: <abbr title="Local Area Network">LAN</abbr></div>
+</li>
+<li class="level1"><div class="li"> Target: 0.0.0.0</div>
+</li>
+<li class="level1"><div class="li"> SubnetMask: 0.0.0.0</div>
+</li>
+<li class="level1"><div class="li"> Gateway: <abbr title="Wireless Wide Area Network">WWAN</abbr>_Router_<abbr title="Internet Protocol">IP</abbr> (192.168.1.250)</div>
+</li>
+<li class="level1"><div class="li"> Change to Advanced Settings</div>
+</li>
+<li class="level1"><div class="li"> Metric: 100</div>
+</li>
+<li class="level1"><div class="li"> Click Save</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:4,&quot;range&quot;:&quot;4293-4728&quot;} -->
+<h2 class="sectionedit5" id="considerations">Considerations</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> If the <abbr title="Wide Area Network">WAN</abbr> router running OpenWrt goes completely offline (HW failure) then the network devices will not be able to automatically use the <abbr title="Wireless Wide Area Network">WWAN</abbr> router (Router B).</div>
+</li>
+<li class="level1"><div class="li"> If there are port forwardings and/or a static <abbr title="Internet Protocol">IP</abbr> on the <abbr title="Wide Area Network">WAN</abbr> router used, these would not work while the internet connection is running in failover mode through the <abbr title="Wireless Wide Area Network">WWAN</abbr> router (Router B).</div>
+</li>
+<li class="level1"><div class="li"> It&#039;s recommended to setup <abbr title="Uniform Resource Locator">URL</abbr> filters (Blacklist) on the <abbr title="Wireless Wide Area Network">WWAN</abbr> router (Router B) to not allow any devices in the network to download large data which would easily consume your prepaid data volume.</div>
+</li>
+</ul>
+
+<p>
+Potential Blacklist entries:
+</p>
+<ul>
+<li class="level1"><div class="li"> Any media streaming services</div>
+</li>
+<li class="level1"><div class="li"> Windows or other update services (Google for the <abbr title="Uniform Resource Locator">URL</abbr>&#039;s)</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Considerations&quot;,&quot;hid&quot;:&quot;considerations&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:5,&quot;range&quot;:&quot;4729-5437&quot;} -->
+<h2 class="sectionedit6" id="tested_setup">Tested Setup</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <abbr title="Wide Area Network">WAN</abbr> Router  : D-Link DIR825 B1 with OpenWrt 19.07.0 r10860-a3ffeb413b / LuCI openwrt-19.07 branch git-20.006.26738-35aa527.</div>
+</li>
+<li class="level1"><div class="li"> <abbr title="Wireless Wide Area Network">WWAN</abbr> Router : AVM Fritz!Box 6820 LTE v2 FRITZ!<abbr title="Operating System">OS</abbr>: 07.13</div>
+</li>
+<li class="level1"><div class="li"> Coop Mobile PrePaid SIM Card (Switzerland) with non expiring data package (1.5GB/14.90CHF).</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Tested Setup&quot;,&quot;hid&quot;:&quot;tested_setup&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:6,&quot;range&quot;:&quot;5438-&quot;} -->

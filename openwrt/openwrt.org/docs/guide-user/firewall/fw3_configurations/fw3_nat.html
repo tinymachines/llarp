@@ -1,0 +1,628 @@
+
+<h1 class="sectionedit1" id="nat_examples">NAT examples</h1>
+<div class="level1">
+
+<p>
+The <a href="/docs/guide-user/firewall/overview" class="wikilink1" title="docs:guide-user:firewall:overview" data-wiki-id="docs:guide-user:firewall:overview">fw4 application</a> has extensive support for <a href="https://en.wikipedia.org/wiki/Network_address_translation" class="urlextern" title="https://en.wikipedia.org/wiki/Network_address_translation" rel="ugc nofollow">NAT</a> filtering.
+<abbr title="Network Address Translation">NAT</abbr> is a powerful feature for network redirection and is credited with extending the life of the <abbr title="Internet Protocol version 4">IPv4</abbr> protocol.
+</p>
+
+<p>
+This section contains typical uses of the fw4 <abbr title="Network Address Translation">NAT</abbr> features.
+As with other firewall sections, this section will not delve into <abbr title="Network Address Translation">NAT</abbr> background
+and theory. Some useful links for going deeper are:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="https://www.netfilter.org/documentation/HOWTO/NAT-HOWTO.html" class="urlextern" title="https://www.netfilter.org/documentation/HOWTO/NAT-HOWTO.html" rel="ugc nofollow">https://www.netfilter.org/documentation/HOWTO/NAT-HOWTO.html</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://www.karlrupp.net/en/computer/nat_tutorial" class="urlextern" title="https://www.karlrupp.net/en/computer/nat_tutorial" rel="ugc nofollow">https://www.karlrupp.net/en/computer/nat_tutorial</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://www.systutorials.com/816/port-forwarding-using-iptables/" class="urlextern" title="https://www.systutorials.com/816/port-forwarding-using-iptables/" rel="ugc nofollow">https://www.systutorials.com/816/port-forwarding-using-iptables/</a></div>
+</li>
+</ul>
+
+<p>
+For <abbr title="Network Address Translation">NAT</abbr> diagnostics please see 
+<a href="/docs/guide-user/firewall/netfilter_iptables/netfilter_management" class="wikilink1" title="docs:guide-user:firewall:netfilter_iptables:netfilter_management" data-wiki-id="docs:guide-user:firewall:netfilter_iptables:netfilter_management">Netfilter Management</a>
+to analyze the netfilter rules and investigate conntrack sessions.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;NAT examples&quot;,&quot;hid&quot;:&quot;nat_examples&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-873&quot;} -->
+<h2 class="sectionedit2" id="nat_example_configurations">NAT example configurations</h2>
+<div class="level2">
+
+<p>
+OpenWrt&#039;s fw4 application supports DNAT, SNAT, and MASQUERADING. The following examples could be used in fw4&#039;s config file <a href="https://git.openwrt.org/?p=project/firewall4.git;a=blob;f=root/etc/config/firewall" class="interwiki iw_commit" title="https://git.openwrt.org/?p=project/firewall4.git;a=blob;f=root/etc/config/firewall"> /etc/config/firewall</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;NAT example configurations&quot;,&quot;hid&quot;:&quot;nat_example_configurations&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;874-1129&quot;} -->
+<h3 class="sectionedit3" id="destination_nat_dnat">Destination NAT (DNAT)</h3>
+<div class="level3">
+
+<p>
+For public servers behind a firewall the 
+<abbr title="Destination Native Address Translation">DNAT</abbr>
+target is used to translate the public <abbr title="Internet Protocol">IP</abbr> address on the <abbr title="Wide Area Network">WAN</abbr>-side
+to the server&#039;s private <abbr title="Local Area Network">LAN</abbr> address.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> A server publicly accessible from the Internet is highly
+visible. Consider putting your public servers in a 
+<a href="/docs/guide-user/firewall/fw3_configurations/fw3_dmz" class="wikilink1" title="docs:guide-user:firewall:fw3_configurations:fw3_dmz" data-wiki-id="docs:guide-user:firewall:fw3_configurations:fw3_dmz">DMZ</a>
+for security.
+</p>
+
+</div>
+
+<h4 id="dnatport_forwarding_for_ipv4">DNAT: Port forwarding for IPv4</h4>
+<div class="level4">
+
+<p>
+The goal of this rule is to redirect all <abbr title="Wide Area Network">WAN</abbr>-side <abbr title="Secure Shell">SSH</abbr> access on port 2222 to a
+the <abbr title="Secure Shell">SSH</abbr> port (22) of a single <abbr title="Local Area Network">LAN</abbr>-side station. 
+</p>
+<pre class="code bash">config redirect
+       option name            <span class="st_h">'Example of SSH DNAT'</span>
+       option target          DNAT
+       option src             wan
+       option dest            lan
+       option proto           tcp
+       option src_dport       <span class="nu0">2222</span>
+       option dest_ip         192.168.10.20
+       option dest_port       <span class="nu0">22</span>
+       option enabled         <span class="nu0">1</span></pre>
+
+<p>
+To test from a <abbr title="Wide Area Network">WAN</abbr>-side station (STA1), <abbr title="Secure Shell">SSH</abbr> to the externally visible 
+<abbr title="Internet Protocol">IP</abbr> address on port 2222:
+</p>
+<pre class="code bash"><span class="kw2">ssh</span> <span class="re5">-p</span> <span class="nu0">2222</span> 203.0.113.8 <span class="st0">&quot;hostname; cat /proc/version&quot;</span></pre>
+
+<p>
+When the rule is enabled STA2 will reply with its hostname and kernel version.
+When the rule is disabled, the connection is refused.
+</p>
+
+<p>
+While this is all that one needs to know to use OpenWRT&#039;s fw4, the passionate reader may well ask “So what netfilter rules does this generate?”
+</p>
+<pre class="code bash"><span class="co0"># fw4 print | awk '/\{/ { p=$0 }; /Example/ { print p, $0, &quot;}&quot;; }' | tr -d '\t'</span>
+chain dstnat_wan <span class="br0">&#123;</span> meta nfproto ipv4 tcp dport <span class="nu0">2222</span> counter dnat 192.168.10.20:<span class="nu0">22</span>                     comment <span class="st0">&quot;!fw4: Example of SSH DNAT&quot;</span> <span class="br0">&#125;</span>
+chain dstnat_lan <span class="br0">&#123;</span> <span class="kw2">ip</span> saddr 192.168.10.0<span class="sy0">/</span><span class="nu0">24</span> <span class="kw2">ip</span> daddr 203.0.113.8 tcp dport <span class="nu0">2222</span> dnat 192.168.10.20:<span class="nu0">22</span> comment <span class="st0">&quot;!fw4: Example of SSH DNAT (reflection)&quot;</span> <span class="br0">&#125;</span>
+chain srcnat_lan <span class="br0">&#123;</span> <span class="kw2">ip</span> saddr 192.168.10.0<span class="sy0">/</span><span class="nu0">24</span> <span class="kw2">ip</span> daddr 192.168.10.20 tcp dport <span class="nu0">22</span> snat 192.168.10.1     comment <span class="st0">&quot;!fw4: Example of SSH DNAT (reflection)&quot;</span> <span class="br0">&#125;</span></pre>
+
+<p>
+Netfilter uses these rules by matching entries in the <a href="/docs/guide-user/firewall/netfilter_iptables/netfilter_management#conntrack_diagnostics" class="wikilink1" title="docs:guide-user:firewall:netfilter_iptables:netfilter_management" data-wiki-id="docs:guide-user:firewall:netfilter_iptables:netfilter_management"> conntrack</a> table and taking the specified action.  
+</p>
+
+<p>
+The first rule matches connections coming in the <abbr title="Wide Area Network">WAN</abbr>-side sent to <abbr title="Transmission Control Protocol">TCP</abbr> port 2222 and translates the destination to the server&#039;s <abbr title="Local Area Network">LAN</abbr> <abbr title="Internet Protocol">IP</abbr> address, <code>192.168.10.20:22</code>.
+The second rule is like the first but for <abbr title="Local Area Network">LAN</abbr>-side machines, STA3, that <abbr title="Secure Shell">SSH</abbr> to the <abbr title="Wide Area Network">WAN</abbr> <abbr title="Internet Protocol">IP</abbr> address and port; this rule causes the connection to be reflected directly to the server, STA2, instead of going out onto the <abbr title="Wide Area Network">WAN</abbr>.
+Connections modified by the second rule will additionally match the third rule which rewrites the source address to be that of the OpenWRT device, 192.168.10.1; a necessity if the server is isolated from the rest of the <abbr title="Local Area Network">LAN</abbr>.
+</p>
+
+<p>
+The next thought of the passionate reader is “So what is in the conntrack table?”
+</p>
+<pre class="code bash"><span class="co0"># grep 2222 /proc/net/nf_conntrack</span>
+ipv4     <span class="nu0">2</span> tcp      <span class="nu0">6</span> <span class="nu0">7424</span> ESTABLISHED <span class="re2">src</span>=198.51.100.171 <span class="re2">dst</span>=203.0.113.8 <span class="re2">sport</span>=<span class="nu0">51390</span> <span class="re2">dport</span>=<span class="nu0">2222</span> <span class="re2">packets</span>=<span class="nu0">21</span> <span class="re2">bytes</span>=<span class="nu0">4837</span> <span class="re2">src</span>=192.168.10.20 <span class="re2">dst</span>=198.51.100.171 <span class="re2">sport</span>=<span class="nu0">22</span> <span class="re2">dport</span>=<span class="nu0">51390</span> <span class="re2">packets</span>=<span class="nu0">23</span> <span class="re2">bytes</span>=<span class="nu0">4063</span> <span class="br0">&#91;</span>ASSURED<span class="br0">&#93;</span> <span class="re2">mark</span>=<span class="nu0">0</span> <span class="re2">zone</span>=<span class="nu0">0</span> <span class="re2">use</span>=<span class="nu0">2</span></pre>
+
+<p>
+This record shows the <abbr title="Wide Area Network">WAN</abbr>-side src=STA1 and dst=STA2:2222 and the reverse direction
+<abbr title="Local Area Network">LAN</abbr>-side src=STA2:22, dst=STA1.
+</p>
+
+</div>
+
+<h4 id="dnatping_a_lan-side_server_from_a_specific_wan_ip">DNAT: Ping a LAN-side server from a specific WAN IP</h4>
+<div class="level4">
+
+<p>
+This redirect rule will cause the router to translate the <abbr title="Wide Area Network">WAN</abbr>-side source of 1.2.3.4 to the <abbr title="Local Area Network">LAN</abbr>-side STA2 and route the <abbr title="Internet Control Message Protocol">ICMP</abbr> echo to it. The rule is reflexive in that STA2 will be translated to 1.2.3.4 on the <abbr title="Wide Area Network">WAN</abbr>-side. 
+</p>
+<pre class="code bash">config redirect
+        option src      wan
+        option src_dip  1.2.3.4
+        option proto    icmp
+        option dest     lan
+        option dest_ip  192.168.10.20
+        option target   DNAT
+	option name     DNAT-ICMP-WAN-LAN
+	option enabled  <span class="nu0">1</span></pre>
+
+</div>
+
+<h4 id="dnatlan-side_public_server">DNAT: LAN-side public server</h4>
+<div class="level4">
+
+<p>
+<a href="/lib/exe/fetch.php?tok=b2e7c0&amp;media=https%3A%2F%2Fupload.wikimedia.org%2Fwikipedia%2Fcommons%2Fc%2Fc3%2FDNAT-nofonts.svg" class="media" title="https://upload.wikimedia.org/wikipedia/commons/c/c3/DNAT-nofonts.svg"><img src="/lib/exe/fetch.php?w=400&amp;tok=771caf&amp;media=https%3A%2F%2Fupload.wikimedia.org%2Fwikipedia%2Fcommons%2Fc%2Fc3%2FDNAT-nofonts.svg" class="mediaright" loading="lazy" title=" Diagram of DNAT " alt=" Diagram of DNAT " width="400" /></a>
+</p>
+
+<p>
+In this example, STA2 is inside the <abbr title="Local Area Network">LAN</abbr> running an email server (e.g. postfix) listening on port 2525 for incoming email.
+</p>
+<pre class="code">config redirect
+        option target DNAT
+        option src wan
+        option src_dport 25
+        option proto tcp
+        option family ipv4
+        option dest lan
+        option dest_ip 192.168.10.20
+        option dest_port 2525
+        option name DNAT-MAIL-SERVER
+        option enabled 1</pre>
+
+<p>
+This redirect rule states: any incoming traffic from the <abbr title="Wide Area Network">WAN</abbr> on port 25, redirect to STA2 port 2525.
+</p>
+
+<p>
+To verify what is going on dump <code>/proc/net/nf_conntrack</code> to observe the dynamic connection for incoming traffic.
+There can be quite a few conntrack records in it so we will search on just the ones using port 2525:
+</p>
+<pre class="code bash"><span class="co0"># grep port=2525 /proc/net/nf_conntrack</span>
+...
+ipv4     <span class="nu0">2</span> tcp      <span class="nu0">6</span> <span class="nu0">7436</span> ESTABLISHED <span class="re2">src</span>=198.51.100.171 <span class="re2">dst</span>=203.0.113.8 <span class="re2">sport</span>=<span class="nu0">41370</span> <span class="re2">dport</span>=<span class="nu0">25</span> <span class="re2">packets</span>=<span class="nu0">4</span> <span class="re2">bytes</span>=<span class="nu0">229</span> <span class="re2">src</span>=192.168.10.20 <span class="re2">dst</span>=198.51.100.171 <span class="re2">sport</span>=<span class="nu0">2525</span> <span class="re2">dport</span>=<span class="nu0">41370</span> <span class="re2">packets</span>=<span class="nu0">3</span> <span class="re2">bytes</span>=<span class="nu0">164</span> <span class="br0">&#91;</span>ASSURED<span class="br0">&#93;</span> <span class="re2">mark</span>=<span class="nu0">0</span> <span class="re2">use</span>=<span class="nu0">2</span>
+...</pre>
+
+<p>
+The connection is coming from STA1 port 25 to the <abbr title="Device Under Test">DUT</abbr> and is translated to STA2
+on port 2525 with a response destination to STA1.
+</p>
+
+<p>
+The relevant traffic matches the DNAT conntrack state which is allowed to traverse zones by OpenWrt firewall, so no extra permissive rules are required.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Destination NAT (DNAT)&quot;,&quot;hid&quot;:&quot;destination_nat_dnat&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;1130-6454&quot;} -->
+<h3 class="sectionedit4" id="source_nat_snat">Source NAT (SNAT)</h3>
+<div class="level3">
+
+<p>
+The goal of this rule is to translate the source <abbr title="Internet Protocol">IP</abbr> address from a real station to
+a fictitious one on port 8080.
+</p>
+<pre class="code bash">config redirect
+        option target           SNAT
+        option src              lan
+        option dest             wan
+	option proto            tcp
+        option src_ip           192.168.10.20
+        option src_dip          192.168.10.13
+        option dest_port        <span class="nu0">8080</span>
+	option enabled          <span class="nu0">1</span></pre>
+
+<p>
+To test:
+</p>
+<ol>
+<li class="level1"><div class="li"> use netcat to listen on the STA1, the <abbr title="Wide Area Network">WAN</abbr>-side station: <code>nc -l 8080</code></div>
+</li>
+<li class="level1"><div class="li"> use netcat to connect on the STA2, the <abbr title="Local Area Network">LAN</abbr>-side station: <code>nc -v 192.168.3.171 8080</code></div>
+</li>
+</ol>
+
+<p>
+Type something on the <abbr title="Local Area Network">LAN</abbr>-side station and see it echoed on the <abbr title="Wide Area Network">WAN</abbr>-side station.
+Check the connection on the <abbr title="Wide Area Network">WAN</abbr>-side station using <code>netstat -ntap</code> and see the line:
+</p>
+<pre class="code">tcp        0      0 192.168.3.171:8080      192.168.10.13:47970 ESTABLISHED 16746/nc</pre>
+
+<p>
+The <abbr title="Wide Area Network">WAN</abbr>-side station shows the SNAT address connecting to it on port 8080!
+</p>
+
+<p>
+When used alone, Source <abbr title="Network Address Translation">NAT</abbr> is used to restrict a computer&#039;s access to the internet while allowing it to access a few services by forwarding what appears to be
+a few local services, e.g. <a href="http://en.wikipedia.org/wiki/Network_time_protocol" class="urlextern" title="http://en.wikipedia.org/wiki/Network_time_protocol" rel="ugc nofollow">NTP</a>, to the internet.
+While DNAT hides the local network from the internet, SNAT hides the internet from the local network.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Source NAT (SNAT)&quot;,&quot;hid&quot;:&quot;source_nat_snat&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:4,&quot;range&quot;:&quot;6455-7817&quot;} -->
+<h3 class="sectionedit5" id="masquerade">MASQUERADE</h3>
+<div class="level3">
+
+<p>
+This is the most used and useful <abbr title="Network Address Translation">NAT</abbr> function.
+It translates a local private network on the <abbr title="Local Area Network">LAN</abbr>-side to a single public address/port num on the <abbr title="Wide Area Network">WAN</abbr>-side and then the reverse.
+It is the default firewall configuration for <strong>every</strong> <abbr title="Internet Protocol version 4">IPv4</abbr> router.
+As a result it is a very simple fw4 configuration
+</p>
+
+<p>
+The <abbr title="Local Area Network">LAN</abbr>-side uses a <a href="https://en.wikipedia.org/wiki/Private_network" class="urlextern" title="https://en.wikipedia.org/wiki/Private_network" rel="ugc nofollow">private network</a>.
+The router translates the private addresses to the router address:port and the netfilter conntrack module manages the connection.
+</p>
+
+<p>
+The masquerade is set on the <abbr title="Wide Area Network">WAN</abbr>-side
+</p>
+<pre class="code bash">config zone
+	option name <span class="st_h">'wan'</span>
+	list network <span class="st_h">'wan'</span>
+	....
+	option masq <span class="st_h">'1'</span></pre>
+
+<p>
+Simple, no?
+</p>
+
+<p>
+The router will generally get its <abbr title="Wide Area Network">WAN</abbr> ip address from the upstream <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> server and be the <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> server (and usually <abbr title="Domain Name System">DNS</abbr> server) for <abbr title="Local Area Network">LAN</abbr> stations.
+The <code>network</code> configuration file defines the private network and the <code>dhcp</code> configuration file defines how the OpenWrt router assigns <abbr title="Local Area Network">LAN</abbr>-side <abbr title="Internet Protocol version 4">IPv4</abbr> addresses.
+</p>
+
+<p>
+When MASQUERADE is enabled, <strong>all</strong> forwarded traffic between <abbr title="Wide Area Network">WAN</abbr> and <abbr title="Local Area Network">LAN</abbr> is translated.
+Essentially, there is very little that can go wrong with the MASQUERADE firewall rules.
+</p>
+
+<p>
+Dump <code>/proc/net/nf_conntrack</code> to inspect the current MASQUERADE connections.
+The following connection tracks <abbr title="Secure Shell">SSH</abbr> (22) access from STA1 to STA2.
+</p>
+<pre class="code">ipv4     2 tcp      6 4615 ESTABLISHED src=192.168.3.171 dst=192.168.10.20 sport=60446 dport=22 packets=27 bytes=1812 src=192.168.10.20 dst=192.168.3.171 sport=22 dport=60446 packets=21 bytes=2544 [ASSURED] mark=0 use=2</pre>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> MASQUERADE supports two or more private <abbr title="Local Area Network">LAN</abbr> zones
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;MASQUERADE&quot;,&quot;hid&quot;:&quot;masquerade&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:5,&quot;range&quot;:&quot;7818-9422&quot;} -->
+<h3 class="sectionedit6" id="transparent_proxy_rule_external">Transparent proxy rule (external)</h3>
+<div class="level3">
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> not tested
+</p>
+
+<p>
+The following rule redirects all <abbr title="Local Area Network">LAN</abbr>-side <abbr title="Hypertext Transfer Protocol">HTTP</abbr> traffic through an external proxy at 192.168.1.100 listening on port 3128.
+It assumes the <em>lan</em> address to be 192.168.1.1 - this is needed to masquerade redirected traffic towards the proxy.
+</p>
+<pre class="code bash">config redirect
+        option src              lan
+        option proto            tcp
+        option src_ip           <span class="sy0">!</span>192.168.1.100
+        option src_dport        <span class="nu0">80</span>
+        option dest_ip          192.168.1.100
+        option dest_port        <span class="nu0">3128</span>
+        option target           DNAT
+&nbsp;
+config redirect
+        option dest             lan
+        option proto            tcp
+        option src_dip          192.168.1.1
+        option dest_ip          192.168.1.100
+        option dest_port        <span class="nu0">3128</span>
+        option target           SNAT</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Transparent proxy rule (external)&quot;,&quot;hid&quot;:&quot;transparent_proxy_rule_external&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:6,&quot;range&quot;:&quot;9423-10287&quot;} -->
+<h2 class="sectionedit7" id="extras">Extras</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Extras&quot;,&quot;hid&quot;:&quot;extras&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:7,&quot;range&quot;:&quot;10288-10306&quot;} -->
+<h3 class="sectionedit8" id="nat">NAT</h3>
+<div class="level3">
+
+<p>
+Enable masquerading aka <abbr title="Network Address Translation">NAT</abbr> on the <abbr title="Wide Area Network">WAN</abbr> zone.
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>zone<span class="br0">&#91;</span><span class="nu0">1</span><span class="br0">&#93;</span>.masq=<span class="st0">&quot;1&quot;</span>
+uci commit firewall
+service firewall restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;NAT&quot;,&quot;hid&quot;:&quot;nat&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:8,&quot;range&quot;:&quot;10307-10467&quot;} -->
+<h3 class="sectionedit9" id="ipv6_nat">IPv6 NAT</h3>
+<div class="level3">
+
+<p>
+Enable <abbr title="Internet Protocol version 6">IPv6</abbr> masquerading aka NAT66 on the <abbr title="Wide Area Network">WAN</abbr> zone.
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>zone<span class="br0">&#91;</span><span class="nu0">1</span><span class="br0">&#93;</span>.masq6=<span class="st0">&quot;1&quot;</span>
+uci commit firewall
+service firewall restart</pre>
+
+<p>
+Announce <abbr title="Internet Protocol version 6">IPv6</abbr> default route for the ULA prefix.
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> dhcp.lan.ra_default=<span class="st0">&quot;1&quot;</span>
+uci commit dhcp
+service odhcpd restart</pre>
+
+<p>
+Disable <abbr title="Internet Protocol version 6">IPv6</abbr> source filter on the upstream interface.
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> network.wan6.sourcefilter=<span class="st0">&quot;0&quot;</span>
+uci commit network
+service network restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;IPv6 NAT&quot;,&quot;hid&quot;:&quot;ipv6_nat&quot;,&quot;codeblockOffset&quot;:13,&quot;secid&quot;:9,&quot;range&quot;:&quot;10468-10939&quot;} -->
+<h3 class="sectionedit10" id="selective_nat">Selective NAT</h3>
+<div class="level3">
+
+<p>
+Enable masquerading selectively for a specific source subnet.
+</p>
+<pre class="code bash">uci <span class="re5">-q</span> delete firewall.nat
+uci <span class="kw1">set</span> firewall.nat=<span class="st0">&quot;nat&quot;</span>
+uci <span class="kw1">set</span> firewall.nat.family=<span class="st0">&quot;ipv4&quot;</span>
+uci <span class="kw1">set</span> firewall.nat.proto=<span class="st0">&quot;all&quot;</span>
+uci <span class="kw1">set</span> firewall.nat.src=<span class="st0">&quot;wan&quot;</span>
+uci <span class="kw1">set</span> firewall.nat.src_ip=<span class="st0">&quot;192.168.2.0/24&quot;</span>
+uci <span class="kw1">set</span> firewall.nat.target=<span class="st0">&quot;MASQUERADE&quot;</span>
+uci commit firewall
+service firewall restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Selective NAT&quot;,&quot;hid&quot;:&quot;selective_nat&quot;,&quot;codeblockOffset&quot;:16,&quot;secid&quot;:10,&quot;range&quot;:&quot;10940-11331&quot;} -->
+<h3 class="sectionedit11" id="ipv6_selective_nat">IPv6 selective NAT</h3>
+<div class="level3">
+
+<p>
+Enable <abbr title="Internet Protocol version 6">IPv6</abbr> masquerading selectively for a specific source subnet.
+</p>
+<pre class="code bash">uci <span class="re5">-q</span> delete firewall.nat6
+uci <span class="kw1">set</span> firewall.nat6=<span class="st0">&quot;nat&quot;</span>
+uci <span class="kw1">set</span> firewall.nat6.family=<span class="st0">&quot;ipv6&quot;</span>
+uci <span class="kw1">set</span> firewall.nat6.proto=<span class="st0">&quot;all&quot;</span>
+uci <span class="kw1">set</span> firewall.nat6.src=<span class="st0">&quot;wan&quot;</span>
+uci <span class="kw1">set</span> firewall.nat6.src_ip=<span class="st0">&quot;fd00:2::/64&quot;</span>
+uci <span class="kw1">set</span> firewall.nat6.target=<span class="st0">&quot;MASQUERADE&quot;</span>
+uci commit firewall
+service firewall restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;IPv6 selective NAT&quot;,&quot;hid&quot;:&quot;ipv6_selective_nat&quot;,&quot;codeblockOffset&quot;:17,&quot;secid&quot;:11,&quot;range&quot;:&quot;11332-11737&quot;} -->
+<h3 class="sectionedit12" id="npt">NPT</h3>
+<div class="level3">
+
+<p>
+Enable <abbr title="Internet Protocol version 4">IPv4</abbr> to <abbr title="Internet Protocol version 4">IPv4</abbr> network prefix translation.
+</p>
+<pre class="code bash"><span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>nftables.d<span class="sy0">/</span>npt.sh
+<span class="re2">LAN_PFX</span>=<span class="st0">&quot;192.168.1.0/24&quot;</span>
+<span class="re2">WAN_PFX</span>=<span class="st0">&quot;192.168.2.0/24&quot;</span>
+. <span class="sy0">/</span>lib<span class="sy0">/</span>functions<span class="sy0">/</span>network.sh
+network_flush_cache
+network_find_wan WAN_IF
+network_get_device WAN_DEV <span class="st0">&quot;<span class="es3">${WAN_IF}</span>&quot;</span>
+nft add rule inet fw4 srcnat \
+oifname <span class="st0">&quot;<span class="es3">${WAN_DEV}</span>&quot;</span> snat <span class="kw2">ip</span> prefix to <span class="kw2">ip</span> \
+saddr map <span class="br0">&#123;</span> <span class="st0">&quot;<span class="es3">${LAN_PFX}</span>&quot;</span> : <span class="st0">&quot;<span class="es3">${WAN_PFX}</span>&quot;</span> <span class="br0">&#125;</span>
+EOF
+uci <span class="re5">-q</span> delete firewall.npt
+uci <span class="kw1">set</span> firewall.npt=<span class="st0">&quot;include&quot;</span>
+uci <span class="kw1">set</span> firewall.npt.path=<span class="st0">&quot;/etc/nftables.d/npt.sh&quot;</span>
+uci commit firewall
+service firewall restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;NPT&quot;,&quot;hid&quot;:&quot;npt&quot;,&quot;codeblockOffset&quot;:18,&quot;secid&quot;:12,&quot;range&quot;:&quot;11738-12295&quot;} -->
+<h3 class="sectionedit13" id="ipv6_npt">IPv6 NPT</h3>
+<div class="level3">
+
+<p>
+Enable <abbr title="Internet Protocol version 6">IPv6</abbr> to <abbr title="Internet Protocol version 6">IPv6</abbr> network prefix translation.
+</p>
+<pre class="code bash"><span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>nftables.d<span class="sy0">/</span>npt6.sh
+<span class="re2">LAN_PFX</span>=<span class="st0">&quot;<span class="es4">$(uci -q get network.globals.ula_prefix)</span>&quot;</span>
+. <span class="sy0">/</span>lib<span class="sy0">/</span>functions<span class="sy0">/</span>network.sh
+network_flush_cache
+network_find_wan6 WAN_IF
+network_get_device WAN_DEV <span class="st0">&quot;<span class="es3">${WAN_IF}</span>&quot;</span>
+network_get_prefix6 WAN_PFX <span class="st0">&quot;<span class="es3">${WAN_IF}</span>&quot;</span>
+nft add rule inet fw4 srcnat \
+oifname <span class="st0">&quot;<span class="es3">${WAN_DEV}</span>&quot;</span> snat ip6 prefix to ip6 \
+saddr map <span class="br0">&#123;</span> <span class="st0">&quot;<span class="es3">${LAN_PFX}</span>&quot;</span> : <span class="st0">&quot;<span class="es3">${WAN_PFX}</span>&quot;</span> <span class="br0">&#125;</span>
+EOF
+uci <span class="re5">-q</span> delete firewall.npt6
+uci <span class="kw1">set</span> firewall.npt6=<span class="st0">&quot;include&quot;</span>
+uci <span class="kw1">set</span> firewall.npt6.path=<span class="st0">&quot;/etc/nftables.d/npt6.sh&quot;</span>
+uci commit firewall
+service firewall restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;IPv6 NPT&quot;,&quot;hid&quot;:&quot;ipv6_npt&quot;,&quot;codeblockOffset&quot;:19,&quot;secid&quot;:13,&quot;range&quot;:&quot;12296-12907&quot;} -->
+<h3 class="sectionedit14" id="multi-wan_ipv6_npt">Multi-WAN IPv6 NPT</h3>
+<div class="level3">
+
+<p>
+Enable <abbr title="Internet Protocol version 6">IPv6</abbr> network prefix translation with multiple <abbr title="Wide Area Network">WAN</abbr> interfaces (e.g. for <a href="/docs/guide-user/network/wan/multiwan/mwan3" class="wikilink1" title="docs:guide-user:network:wan:multiwan:mwan3" data-wiki-id="docs:guide-user:network:wan:multiwan:mwan3"> mwan3</a>).
+</p>
+<pre class="code bash"><span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>nftables.d<span class="sy0">/</span>npt6.sh
+<span class="re2">LAN_IF</span>=<span class="st0">&quot;lan&quot;</span>
+<span class="re2">WAN_IF</span>=<span class="st0">&quot;wana6 wanb6&quot;</span>
+. <span class="sy0">/</span>lib<span class="sy0">/</span>functions<span class="sy0">/</span>network.sh
+network_flush_cache
+network_get_prefix_assignment6 LAN_PFX <span class="st0">&quot;<span class="es3">${LAN_IF}</span>&quot;</span>
+<span class="kw1">for</span> WAN_IF <span class="kw1">in</span> <span class="co1">${WAN_IF}</span>
+<span class="kw1">do</span>
+network_get_device WAN_DEV <span class="st0">&quot;<span class="es3">${WAN_IF}</span>&quot;</span>
+network_get_prefix6 WAN_PFX <span class="st0">&quot;<span class="es3">${WAN_IF}</span>&quot;</span>
+nft add rule inet fw4 srcnat \
+oif <span class="st0">&quot;<span class="es3">${WAN_DEV}</span>&quot;</span> snat ip6 prefix to ip6 \
+saddr map <span class="br0">&#123;</span> <span class="st0">&quot;<span class="es3">${LAN_PFX}</span>&quot;</span> : <span class="st0">&quot;<span class="es3">${WAN_PFX}</span>&quot;</span> <span class="br0">&#125;</span>
+<span class="kw1">done</span>
+EOF
+uci <span class="re5">-q</span> delete firewall.npt6
+uci <span class="kw1">set</span> firewall.npt6=<span class="st0">&quot;include&quot;</span>
+uci <span class="kw1">set</span> firewall.npt6.path=<span class="st0">&quot;/etc/nftables.d/npt6.sh&quot;</span>
+uci commit firewall
+service firewall restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Multi-WAN IPv6 NPT&quot;,&quot;hid&quot;:&quot;multi-wan_ipv6_npt&quot;,&quot;codeblockOffset&quot;:20,&quot;secid&quot;:14,&quot;range&quot;:&quot;12908-13653&quot;} -->
+<h3 class="sectionedit15" id="symmetric_dynamic_ipv6_npt">Symmetric dynamic IPv6 NPT</h3>
+<div class="level3">
+
+<p>
+Enable symmetric dynamic <abbr title="Internet Protocol version 6">IPv6</abbr> to <abbr title="Internet Protocol version 6">IPv6</abbr> network prefix translation.
+</p>
+<pre class="code bash"><span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>nftables.d<span class="sy0">/</span>npt6.sh
+<span class="re2">LAN_IF</span>=<span class="st0">&quot;lan&quot;</span>
+<span class="kw2">sleep</span> <span class="nu0">5</span>
+. <span class="sy0">/</span>lib<span class="sy0">/</span>functions<span class="sy0">/</span>network.sh
+network_flush_cache
+network_get_device LAN_DEV <span class="st0">&quot;<span class="es3">${LAN_IF}</span>&quot;</span>
+network_get_prefix_assignment6 LAN_PFX <span class="st0">&quot;<span class="es3">${LAN_IF}</span>&quot;</span>
+network_find_wan6 WAN_IF
+network_get_device WAN_DEV <span class="st0">&quot;<span class="es3">${WAN_IF}</span>&quot;</span>
+network_get_prefix6 WAN_PFX <span class="st0">&quot;<span class="es3">${WAN_IF}</span>&quot;</span>
+nft add rule inet fw4 srcnat \
+oifname <span class="st0">&quot;<span class="es3">${WAN_DEV}</span>&quot;</span> snat ip6 prefix to ip6 \
+saddr map <span class="br0">&#123;</span> <span class="st0">&quot;<span class="es3">${LAN_PFX}</span>&quot;</span> : <span class="st0">&quot;<span class="es3">${WAN_PFX}</span>&quot;</span> <span class="br0">&#125;</span>
+nft add rule inet fw4 srcnat \
+oifname <span class="st0">&quot;<span class="es3">${LAN_DEV}</span>&quot;</span> snat ip6 prefix to ip6 \
+saddr map <span class="br0">&#123;</span> <span class="st0">&quot;<span class="es3">${WAN_PFX}</span>&quot;</span> : <span class="st0">&quot;<span class="es3">${LAN_PFX}</span>&quot;</span> <span class="br0">&#125;</span>
+EOF
+uci <span class="re5">-q</span> delete firewall.npt6
+uci <span class="kw1">set</span> firewall.npt6=<span class="st0">&quot;include&quot;</span>
+uci <span class="kw1">set</span> firewall.npt6.path=<span class="st0">&quot;/etc/nftables.d/npt6.sh&quot;</span>
+uci commit firewall
+service firewall restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Symmetric dynamic IPv6 NPT&quot;,&quot;hid&quot;:&quot;symmetric_dynamic_ipv6_npt&quot;,&quot;codeblockOffset&quot;:21,&quot;secid&quot;:15,&quot;range&quot;:&quot;13654-14480&quot;} -->
+<h3 class="sectionedit16" id="ipv6_to_ipv4_nat_with_jool">IPv6 to IPv4 NAT with Jool</h3>
+<div class="level3">
+
+<p>
+Enable <abbr title="Internet Protocol version 6">IPv6</abbr> to <abbr title="Internet Protocol version 4">IPv4</abbr> <abbr title="Network Address Translation">NAT</abbr> aka NAT64 for <abbr title="Internet Protocol version 6">IPv6</abbr>-only networks with Jool.
+Use DNS64 to resolve domain names.
+</p>
+<pre class="code bash">opkg update
+opkg <span class="kw2">install</span> jool-tools-netfilter
+. <span class="sy0">/</span>usr<span class="sy0">/</span>share<span class="sy0">/</span>libubox<span class="sy0">/</span>jshn.sh
+json_init
+json_add_string <span class="st0">&quot;instance&quot;</span> <span class="st0">&quot;default&quot;</span>
+json_add_string <span class="st0">&quot;framework&quot;</span> <span class="st0">&quot;netfilter&quot;</span>
+json_add_object <span class="st0">&quot;global&quot;</span>
+json_add_string <span class="st0">&quot;pool6&quot;</span> <span class="st0">&quot;64:ff9b::/96&quot;</span>
+json_close_object
+json_dump <span class="sy0">&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>jool<span class="sy0">/</span>jool-nat64.conf.json
+uci <span class="kw1">set</span> jool.general.enabled=<span class="st0">&quot;1&quot;</span>
+uci <span class="kw1">set</span> jool.nat64.enabled=<span class="st0">&quot;1&quot;</span>
+uci commit jool
+service jool restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;IPv6 to IPv4 NAT with Jool&quot;,&quot;hid&quot;:&quot;ipv6_to_ipv4_nat_with_jool&quot;,&quot;codeblockOffset&quot;:22,&quot;secid&quot;:16,&quot;range&quot;:&quot;14481-15030&quot;} -->
+<h3 class="sectionedit17" id="ipv6_to_ipv4_nat_with_tayga">IPv6 to IPv4 NAT with Tayga</h3>
+<div class="level3">
+
+<p>
+Enable <abbr title="Internet Protocol version 6">IPv6</abbr> to <abbr title="Internet Protocol version 4">IPv4</abbr> <abbr title="Network Address Translation">NAT</abbr> aka NAT64 for <abbr title="Internet Protocol version 6">IPv6</abbr>-only networks with Tayga.
+Use DNS64 to resolve domain names.
+</p>
+<pre class="code bash">opkg update
+opkg <span class="kw2">install</span> tayga
+uci del_list firewall.lan.network=<span class="st0">&quot;nat64&quot;</span>
+uci add_list firewall.lan.network=<span class="st0">&quot;nat64&quot;</span>
+uci commit firewall
+service firewall restart
+uci <span class="re5">-q</span> delete network.nat64
+uci <span class="kw1">set</span> network.nat64=<span class="st0">&quot;interface&quot;</span>
+uci <span class="kw1">set</span> network.nat64.proto=<span class="st0">&quot;tayga&quot;</span>
+uci <span class="kw1">set</span> network.nat64.prefix=<span class="st0">&quot;64:ff9b::/96&quot;</span>
+uci <span class="kw1">set</span> network.nat64.ipv6<span class="re2">_addr</span>=<span class="st0">&quot;fd00:ffff::1&quot;</span>
+uci <span class="kw1">set</span> network.nat64.dynamic_pool=<span class="st0">&quot;192.168.255.0/24&quot;</span>
+uci <span class="kw1">set</span> network.nat64.ipv4<span class="re2">_addr</span>=<span class="st0">&quot;192.168.255.1&quot;</span>
+uci commit network
+service network restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;IPv6 to IPv4 NAT with Tayga&quot;,&quot;hid&quot;:&quot;ipv6_to_ipv4_nat_with_tayga&quot;,&quot;codeblockOffset&quot;:23,&quot;secid&quot;:17,&quot;range&quot;:&quot;15031-15688&quot;} -->
+<h3 class="sectionedit18" id="ttl">TTL</h3>
+<div class="level3">
+
+<p>
+Modify <abbr title="Time To Live">TTL</abbr> for egress traffic.
+</p>
+<pre class="code bash"><span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>nftables.d<span class="sy0">/</span>ttl.sh
+<span class="re2">WAN_TTL</span>=<span class="st0">&quot;65&quot;</span>
+. <span class="sy0">/</span>lib<span class="sy0">/</span>functions<span class="sy0">/</span>network.sh
+network_flush_cache
+network_find_wan WAN_IF
+network_get_device WAN_DEV <span class="st0">&quot;<span class="es3">${WAN_IF}</span>&quot;</span>
+nft add rule inet fw4 mangle_postrouting \
+oifname <span class="st0">&quot;<span class="es3">${WAN_DEV}</span>&quot;</span> <span class="kw2">ip</span> ttl <span class="kw1">set</span> <span class="st0">&quot;<span class="es3">${WAN_TTL}</span>&quot;</span>
+EOF
+uci <span class="re5">-q</span> delete firewall.ttl
+uci <span class="kw1">set</span> firewall.ttl=<span class="st0">&quot;include&quot;</span>
+uci <span class="kw1">set</span> firewall.ttl.path=<span class="st0">&quot;/etc/nftables.d/ttl.sh&quot;</span>
+uci commit firewall
+service firewall restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;TTL&quot;,&quot;hid&quot;:&quot;ttl&quot;,&quot;codeblockOffset&quot;:24,&quot;secid&quot;:18,&quot;range&quot;:&quot;15689-16163&quot;} -->
+<h3 class="sectionedit19" id="ipv6_hop_limit">IPv6 hop limit</h3>
+<div class="level3">
+
+<p>
+Modify <abbr title="Internet Protocol version 6">IPv6</abbr> hop limit for egress traffic.
+</p>
+<pre class="code bash"><span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>nftables.d<span class="sy0">/</span>hlim.sh
+<span class="re2">WAN_HLIM</span>=<span class="st0">&quot;65&quot;</span>
+. <span class="sy0">/</span>lib<span class="sy0">/</span>functions<span class="sy0">/</span>network.sh
+network_flush_cache
+network_find_wan6 WAN_IF
+network_get_device WAN_DEV <span class="st0">&quot;<span class="es3">${WAN_IF}</span>&quot;</span>
+nft add rule inet fw4 mangle_postrouting \
+oifname <span class="st0">&quot;<span class="es3">${WAN_DEV}</span>&quot;</span> ip6 hoplimit <span class="kw1">set</span> <span class="st0">&quot;<span class="es3">${WAN_HLIM}</span>&quot;</span>
+EOF
+uci <span class="re5">-q</span> delete firewall.hlim
+uci <span class="kw1">set</span> firewall.hlim=<span class="st0">&quot;include&quot;</span>
+uci <span class="kw1">set</span> firewall.hlim.path=<span class="st0">&quot;/etc/nftables.d/hlim.sh&quot;</span>
+uci commit firewall
+service firewall restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;IPv6 hop limit&quot;,&quot;hid&quot;:&quot;ipv6_hop_limit&quot;,&quot;codeblockOffset&quot;:25,&quot;secid&quot;:19,&quot;range&quot;:&quot;16164-16674&quot;} -->
+<h3 class="sectionedit20" id="ftp_passthrough">FTP passthrough</h3>
+<div class="level3">
+
+<p>
+Enable <abbr title="Network Address Translation">NAT</abbr> passthrough for <abbr title="File Transfer Protocol">FTP</abbr> using <a href="/packages/pkgdata/kmod-nf-nathelper" class="wikilink1" title="packages:pkgdata:kmod-nf-nathelper" data-wiki-id="packages:pkgdata:kmod-nf-nathelper">kmod-nf-nathelper</a>.
+</p>
+<pre class="code bash">opkg update
+opkg <span class="kw2">install</span> kmod-nf-nathelper
+service firewall restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;FTP passthrough&quot;,&quot;hid&quot;:&quot;ftp_passthrough&quot;,&quot;codeblockOffset&quot;:26,&quot;secid&quot;:20,&quot;range&quot;:&quot;16675-16867&quot;} -->
+<h3 class="sectionedit21" id="sip_passthrough">SIP passthrough</h3>
+<div class="level3">
+
+<p>
+Enable <abbr title="Network Address Translation">NAT</abbr> passthrough for SIP, PPTP, GRE, etc. using <a href="/packages/pkgdata/kmod-nf-nathelper-extra" class="wikilink1" title="packages:pkgdata:kmod-nf-nathelper-extra" data-wiki-id="packages:pkgdata:kmod-nf-nathelper-extra">kmod-nf-nathelper-extra</a>.
+</p>
+<pre class="code bash">opkg update
+opkg <span class="kw2">install</span> kmod-nf-nathelper-extra
+service firewall restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;SIP passthrough&quot;,&quot;hid&quot;:&quot;sip_passthrough&quot;,&quot;codeblockOffset&quot;:27,&quot;secid&quot;:21,&quot;range&quot;:&quot;16868-17089&quot;} -->
+<h3 class="sectionedit22" id="rtsp_passthrough">RTSP passthrough</h3>
+<div class="level3">
+
+<p>
+Enable <abbr title="Network Address Translation">NAT</abbr> passthrough for RTSP using <a href="/packages/pkgdata/kmod-ipt-nathelper-rtsp" class="wikilink1" title="packages:pkgdata:kmod-ipt-nathelper-rtsp" data-wiki-id="packages:pkgdata:kmod-ipt-nathelper-rtsp">kmod-ipt-nathelper-rtsp</a>.
+</p>
+<pre class="code bash">opkg update
+opkg <span class="kw2">install</span> kmod-ipt-nathelper-rtsp
+service firewall restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;RTSP passthrough&quot;,&quot;hid&quot;:&quot;rtsp_passthrough&quot;,&quot;codeblockOffset&quot;:28,&quot;secid&quot;:22,&quot;range&quot;:&quot;17090-&quot;} -->

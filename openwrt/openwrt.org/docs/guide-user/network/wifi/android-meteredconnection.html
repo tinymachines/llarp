@@ -1,0 +1,89 @@
+
+<h2 class="sectionedit1" id="identify_wi-fi_connection_as_metered_on_android_automatically">Identify Wi-Fi connection as metered on Android automatically</h2>
+<div class="level2">
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> <span style='color:#ed1c24; '>This is specific to Android and, specifically, iOS devices do not recognize this option</span>
+</p>
+
+<p>
+<a href="https://www.android.com/" class="urlextern" title="https://www.android.com/" rel="ugc nofollow">Android</a> has <a href="https://android.googlesource.com/platform/frameworks/base.git/+/9f6e4ba50e7e73704c7fbd3ba65fe73bdf8ad73f" class="urlextern" title="https://android.googlesource.com/platform/frameworks/base.git/+/9f6e4ba50e7e73704c7fbd3ba65fe73bdf8ad73f" rel="ugc nofollow">implemented</a> detection of metered connnection based on <code><abbr title="Dynamic Host Configuration Protocol">DHCP</abbr></code> protocol. When a certain <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> flag is set, Android will consider the connection as metered. This is completely different as <a href="/docs/guide-user/network/wifi/ms-meteredconnection" class="wikilink1" title="docs:guide-user:network:wifi:ms-meteredconnection" data-wiki-id="docs:guide-user:network:wifi:ms-meteredconnection">Microsoft Windows</a> or <a href="/docs/guide-user/network/wifi/linux-meteredconnection" class="wikilink1" title="docs:guide-user:network:wifi:linux-meteredconnection" data-wiki-id="docs:guide-user:network:wifi:linux-meteredconnection">Linux</a> do.
+</p>
+
+<p>
+To mark a connection as metered on Android, you can add the “43,ANDROID_METERED” <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> option to the <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> server serving the phone
+</p>
+<hr />
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Identify Wi-Fi connection as metered on Android automatically&quot;,&quot;hid&quot;:&quot;identify_wi-fi_connection_as_metered_on_android_automatically&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-808&quot;} -->
+<h3 class="sectionedit2" id="option_1do_it_via_ssh_using_uci">Option 1: Do it via SSH using uci</h3>
+<div class="level3">
+
+<p>
+This assumes that your interface is named lan.
+</p>
+
+<p>
+Open OpenWrt console and execute
+</p>
+<pre class="code bash">  uci show     dhcp.lan.dhcp_option</pre>
+
+<p>
+Verify that the option is not already set. If not, execute the following to commands to enable it, save, and reboot:
+</p>
+<pre class="code bash">  uci add_list dhcp.lan.dhcp_option=<span class="st0">&quot;43,ANDROID_METERED&quot;</span>
+  uci commit
+  uci reboot</pre>
+
+<p>
+You will then need to wait for the phone to get a new <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> lease, and it should treat the connection as metered.
+</p>
+<hr />
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Option 1: Do it via SSH using uci&quot;,&quot;hid&quot;:&quot;option_1do_it_via_ssh_using_uci&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;809-1333&quot;} -->
+<h3 class="sectionedit3" id="option_2do_it_via_luci_web_interface">Option 2: Do it via luci (web interface)</h3>
+<div class="level3">
+<ol>
+<li class="level1"><div class="li"> Navigate to Network, then Interfaces</div>
+</li>
+<li class="level1"><div class="li"> Open the Interface in question by clicking its Edit button</div>
+</li>
+<li class="level1"><div class="li"> Navigate to the <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> Server tab</div>
+</li>
+<li class="level1"><div class="li"> Under <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> Server open the Advanced tab</div>
+</li>
+<li class="level1"><div class="li"> In the list <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr>-Options, add 43,ANDROID_METERED</div>
+</li>
+</ol>
+<hr />
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Option 2: Do it via luci (web interface)&quot;,&quot;hid&quot;:&quot;option_2do_it_via_luci_web_interface&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:3,&quot;range&quot;:&quot;1334-1629&quot;} -->
+<h3 class="sectionedit4" id="verifying_if_it_worked">Verifying if it worked</h3>
+<div class="level3">
+
+<p>
+As of writing this article, there is no way in the Android UI to verify that this was taken into consideration by Android. You can however use adb.
+Explaining how to use adb is out of scope of this article, but the commands of interest are:
+</p>
+<pre class="code bash">  adb shell dumpsys connectivity <span class="sy0">|</span> <span class="kw2">grep</span> <span class="st0">&quot;Metered hint&quot;</span>
+  adb shell dumpsys wifi</pre>
+
+<p>
+The first command will show “Metered hint: true” if the above worked.
+</p>
+<hr />
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Verifying if it worked&quot;,&quot;hid&quot;:&quot;verifying_if_it_worked&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:4,&quot;range&quot;:&quot;1630-2083&quot;} -->
+<h3 class="sectionedit5" id="references">References</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> <a href="https://www.lorier.net/docs/android-metered.html" class="urlextern" title="https://www.lorier.net/docs/android-metered.html" rel="ugc nofollow">How android knows it&#039;s on an expensive connection</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;References&quot;,&quot;hid&quot;:&quot;references&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:5,&quot;range&quot;:&quot;2084-&quot;} -->

@@ -1,0 +1,79 @@
+
+<h1 class="sectionedit1" id="filesystem_snapshot_featuresbinsnapshot">Filesystem snapshot feature: /sbin/snapshot</h1>
+<div class="level1">
+
+<p>
+This feature was listed in <a href="https://lists.openwrt.org/pipermail/openwrt-devel/2014-July/026713.html" class="urlextern" title="https://lists.openwrt.org/pipermail/openwrt-devel/2014-July/026713.html" rel="ugc nofollow">Barrier Breaker announce, documentation requested</a>. The following information comes from <a href="http://ml.ninux.org/pipermail/battlemesh/2014-March/002894.html" class="urlextern" title="http://ml.ninux.org/pipermail/battlemesh/2014-March/002894.html" rel="ugc nofollow">this post on the Battlemesh mailing list</a> by the programmer who implemented it.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Filesystem snapshot feature: \/sbin\/snapshot&quot;,&quot;hid&quot;:&quot;filesystem_snapshot_featuresbinsnapshot&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-398&quot;} -->
+<h2 class="sectionedit2" id="use_cases">Use cases</h2>
+<div class="level2">
+
+<p>
+<em>There are many use cases where this makes sense, however it should not be seen as the new replacement for jffs2.</em> <br/>
+
+This stuff is aimed at deployments, where many units run the same firmware and should all get the same updates at the same time. We aim to store config and small fixes in the block chain. After all, it is a tmpfs we run on.
+</p>
+
+<p>
+The cool thing is, that you can simply rollback to an existing snapshot if anything fails. A trigger for a rollback could be “can&#039;t
+connect to mesh anymore” etc.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Use cases&quot;,&quot;hid&quot;:&quot;use_cases&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;399-929&quot;} -->
+<h2 class="sectionedit3" id="implementation_details">Implementation details</h2>
+<div class="level2">
+
+<p>
+Normally we have squash + jffs2 overlay. What we do instead is this...
+</p>
+
+<p>
+We don&#039;t use rootfs_data for jffs2 anymore but instead use it to store a chain of erasesize aligned blocks. Each block has a header and a tar file inside it. Header has size, hash, and type. There are snapshot and volatile blocks. The volatile entry can only exist once and as the last sentinel of the block chain.
+</p>
+
+<p>
+Upon boot, the unit mounts squash, does an overlayfs mount, but uses a tmpfs instead of the usual jffs2 (which doesn&#039;t exist anymore). We unpack the tar files in the order found inside the chain. Once all snapshot blocks are unpacked, we do another stacked overlayfs
+mount with a tmpfs and unpack our volatile block into it. We now have a stacked overlay root with <code>/snapshot</code> holding the delta of the first and <code>/overlay</code> holding the delta of the second mount.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Implementation details&quot;,&quot;hid&quot;:&quot;implementation_details&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;930-1820&quot;} -->
+<h2 class="sectionedit4" id="usage">Usage</h2>
+<div class="level2">
+
+<p>
+You can test this <del>in trunk images</del> right now.
+The tool is deployed in the default config since Barrier Breaker. Once your system has booted and jffs2 init is done, simply call 
+</p>
+<pre class="code"># snapshot convert</pre>
+
+<p>
+This will turn your current jffs2 overlay delta into a block chain with a single volatile block. The system is now essentially similar to an initramfs image, where the changes in <code>/etc/config/</code> get lost on boot.<br/>
+So there is a mechanism to write the content of <code>/overlay</code> into the volatile block.
+</p>
+<pre class="code"># snapshot config</pre>
+
+<p>
+If at any point I am happy with my current config, I can also snapshot the system. This will essentially convert an existing volatile entry to a snapshot entry.
+</p>
+<pre class="code"># snapshot push</pre>
+
+<p>
+When overwriting blocks (i.e. writing a new volatile over an existing one or while converting a volatile to a snapshot) we use the last few sectors of the flash as a back buffer. This way we have a valid copy of the “data to be deleted” while we are overwriting it. This allows us to always be able to fallback to the last known working version.
+</p>
+
+<p>
+There is also 
+</p>
+<pre class="code"># snapshot upgrade</pre>
+
+<p>
+This will try to pull opkg updates from the server, for example a security fix, and if it does find one or more it will automagically install the updates and then save this as a snapshot entry in the chain.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Usage&quot;,&quot;hid&quot;:&quot;usage&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;1821-&quot;} -->

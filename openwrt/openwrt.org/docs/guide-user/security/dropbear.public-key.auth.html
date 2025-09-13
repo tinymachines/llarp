@@ -1,0 +1,246 @@
+
+<h1 class="sectionedit1" id="dropbear_key-based_authentication">Dropbear key-based authentication</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__meta:infobox:howto_links">
+<div class="level1">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_info plugin_wrap">
+<p>
+This article relies on the following:
+</p>
+<ul>
+<li class="level1"><div class="li"> Accessing <a href="/docs/guide-quick-start/walkthrough_login" class="wikilink1" title="docs:guide-quick-start:walkthrough_login" data-wiki-id="docs:guide-quick-start:walkthrough_login">web interface</a> / <a href="/docs/guide-quick-start/sshadministration" class="wikilink1" title="docs:guide-quick-start:sshadministration" data-wiki-id="docs:guide-quick-start:sshadministration">command-line interface</a></div>
+</li>
+<li class="level1"><div class="li"> Managing <a href="/docs/guide-user/base-system/uci" class="wikilink1" title="docs:guide-user:base-system:uci" data-wiki-id="docs:guide-user:base-system:uci">configs</a> / <a href="/docs/guide-user/additional-software/managing_packages" class="wikilink1" title="docs:guide-user:additional-software:managing_packages" data-wiki-id="docs:guide-user:additional-software:managing_packages">packages</a> / <a href="/docs/guide-user/base-system/managing_services" class="wikilink1" title="docs:guide-user:base-system:managing_services" data-wiki-id="docs:guide-user:base-system:managing_services">services</a> / <a href="/docs/guide-user/base-system/log.essentials" class="wikilink1" title="docs:guide-user:base-system:log.essentials" data-wiki-id="docs:guide-user:base-system:log.essentials">logs</a></div>
+</li>
+</ul>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Dropbear key-based authentication&quot;,&quot;hid&quot;:&quot;dropbear_key-based_authentication&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-130&quot;} -->
+<h2 class="sectionedit6" id="introduction">Introduction</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> This how-to describes the method for setting up <a href="https://en.wikipedia.org/wiki/Key authentication" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Key authentication">key-based authentication</a> for <a href="/docs/guide-user/base-system/dropbear" class="wikilink1" title="docs:guide-user:base-system:dropbear" data-wiki-id="docs:guide-user:base-system:dropbear">Dropbear</a>.</div>
+</li>
+<li class="level1"><div class="li"> Follow <a href="/docs/guide-quick-start/sshadministration#putty" class="wikilink1" title="docs:guide-quick-start:sshadministration" data-wiki-id="docs:guide-quick-start:sshadministration">SSH access for newcomers</a> to set up key-based authentication for PuTTY.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Introduction&quot;,&quot;hid&quot;:&quot;introduction&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;131-447&quot;} -->
+<h2 class="sectionedit7" id="goals">Goals</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Enable key-based authentication for Dropbear for convenience</div>
+</li>
+<li class="level1"><div class="li"> Improve security by disabling password authentication</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Goals&quot;,&quot;hid&quot;:&quot;goals&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;448-589&quot;} -->
+<h2 class="sectionedit8" id="generating_public_and_private_keys_using_ssh-keygen_on_a_host_machine">Generating public and private keys using SSH-Keygen on a host machine</h2>
+<div class="level2">
+
+<p>
+Skip this if you already have a public / private key pair on your client machine that you intend to use to connect to  the OpenWrt <abbr title="Secure Shell">SSH</abbr> server.
+</p>
+
+<p>
+The <a href="http://man.cx/ssh-keygen%281%29" class="interwiki iw_man" title="http://man.cx/ssh-keygen%281%29">ssh-keygen</a> utility can be used to generate a key pair to use for authentication. After you have used this utility, you will have two files, by default <em>~/.ssh/id_&lt;keytype&gt;</em> (the private key) and <em>~/.ssh/id_&lt;keytype&gt;.pub</em> (the public key). <strong>Always keep your private key (e.g. <em>~/.ssh/id_&lt;keytype&gt;</em>) secret and secure.</strong>
+</p>
+<pre class="code bash"><span class="co0"># Generate a new key pair, 3072-bit RSA by default</span>
+<span class="kw2">ssh-keygen</span></pre>
+<pre class="code bash"><span class="co0"># Generate a new Ed25519 key pair</span>
+<span class="kw2">ssh-keygen</span> <span class="re5">-t</span> ed25519</pre>
+
+<p>
+Keep your software up-to-date to safely rely on the cryptography-related defaults.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Generating public and private keys using SSH-Keygen on a host machine&quot;,&quot;hid&quot;:&quot;generating_public_and_private_keys_using_ssh-keygen_on_a_host_machine&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:8,&quot;range&quot;:&quot;590-1413&quot;} -->
+<h2 class="sectionedit9" id="generating_public_and_private_keys_on_the_openwrt_machine">Generating public and private keys on the OpenWrt machine</h2>
+<div class="level2">
+
+<p>
+You might want to generate a key for your device so that logins from your router can be authenticated when you connect to other machines from your router.
+</p>
+
+<p>
+Dropbearkey can generate a key directly on your device, it should be placed in the <code>~/.ssh</code> directory of your user so you might need to create this directory first on a new install:
+</p>
+<pre class="code bash"><span class="kw2">mkdir</span> ~<span class="sy0">/</span>.ssh
+dropbearkey <span class="re5">-t</span> ed25519 <span class="re5">-f</span> ~<span class="sy0">/</span>.ssh<span class="sy0">/</span>id_dropbear</pre>
+
+<p>
+And you can inspect the corresponding public key for your OpenWrt device like this:
+</p>
+<pre class="code bash">dropbearkey <span class="re5">-y</span> <span class="re5">-f</span> ~<span class="sy0">/</span>.ssh<span class="sy0">/</span>id_dropbear</pre>
+
+<p>
+By default Dropbear reads <code>~/.ssh/id_dropbear</code> so putting the private key there avoids the need to create an <abbr title="Secure Shell">SSH</abbr> configuration file.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Generating public and private keys on the OpenWrt machine&quot;,&quot;hid&quot;:&quot;generating_public_and_private_keys_on_the_openwrt_machine&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:9,&quot;range&quot;:&quot;1414-2183&quot;} -->
+<h2 class="sectionedit10" id="from_the_luci_web_interface">From the LuCI Web Interface</h2>
+<div class="level2">
+
+<p>
+Once your terminal program on your laptop/desktop has a public key, you can forgo entering a password each time you <abbr title="Secure Shell">SSH</abbr> to your device. (This is secure: only your terminal program with the appropriate private key can log in without a password.) First, generate the public and private keys (see above). Then add your PUBLIC key (it&#039;s often called <em>id_rsa.pub</em> - <strong>it MUST have “.pub”</strong> in the filename) to the device. 
+</p>
+
+<p>
+To do this from LuCI:
+</p>
+<ol>
+<li class="level1"><div class="li"> Navigate to <strong>LuCI → System → Administration → <abbr title="Secure Shell">SSH</abbr>-Keys</strong></div>
+</li>
+<li class="level1"><div class="li"> Copy the contents of your public key file. It will be a long string starting with <code>ssh-rsa ...</code> and ending with something like <code>... some-name@some-host.lan</code></div>
+</li>
+<li class="level1"><div class="li"> Paste that string into <em>Paste or drag key file...</em> field on the web page</div>
+</li>
+<li class="level1"><div class="li"> Click the <strong>Add key</strong> button</div>
+</li>
+<li class="level1"><div class="li"> To test: open a new window in your terminal program and enter <code>ssh root@your-router-address</code> You should be logged in without entering your password.</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;From the LuCI Web Interface&quot;,&quot;hid&quot;:&quot;from_the_luci_web_interface&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:10,&quot;range&quot;:&quot;2184-3165&quot;} -->
+<h2 class="sectionedit11" id="from_the_command-line">From the Command-line</h2>
+<div class="level2">
+
+<p>
+Read your public key (it&#039;s usually in <strong>~/.ssh/id_rsa.pub</strong> on a linux system) and add it to <strong>/etc/dropbear/authorized_keys</strong>.
+</p>
+
+<p>
+Example:
+</p>
+<pre class="code bash"><span class="kw2">ssh</span> root<span class="sy0">@</span>192.168.1.1 <span class="st0">&quot;tee -a /etc/dropbear/authorized_keys&quot;</span> <span class="sy0">&lt;</span> ~<span class="sy0">/</span>.ssh<span class="sy0">/</span>id_rsa.pub</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;From the Command-line&quot;,&quot;hid&quot;:&quot;from_the_command-line&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:11,&quot;range&quot;:&quot;3166-3438&quot;} -->
+<h3 class="sectionedit12" id="using_ssh-copy-id">Using ssh-copy-id</h3>
+<div class="level3">
+
+<p>
+Add your public key to the router using <a href="http://man.cx/ssh-copy-id%281%29" class="interwiki iw_man" title="http://man.cx/ssh-copy-id%281%29">ssh-copy-id</a>.
+</p>
+<pre class="code bash">ssh-copy-id root<span class="sy0">@</span>openwrt.lan</pre>
+
+<p>
+<a href="/docs/guide-user/security/dropbear.public-key.auth#generating_public_and_private_keys" class="wikilink1" title="docs:guide-user:security:dropbear.public-key.auth" data-wiki-id="docs:guide-user:security:dropbear.public-key.auth">Generate</a> a new authentication key if necessary.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Using ssh-copy-id&quot;,&quot;hid&quot;:&quot;using_ssh-copy-id&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:12,&quot;range&quot;:&quot;3439-3732&quot;} -->
+<h2 class="sectionedit13" id="testing">Testing</h2>
+<div class="level2">
+
+<p>
+Use <a href="http://man.cx/ssh%281%29" class="interwiki iw_man" title="http://man.cx/ssh%281%29">ssh</a> to log in your router using command-line interface, temporarily disabling password authentication to verify that you can login and that it does not ask you for a password:
+</p>
+<pre class="code bash"><span class="kw2">ssh</span> <span class="re5">-o</span> <span class="re2">PasswordAuthentication</span>=no root<span class="sy0">@</span>openwrt.lan</pre>
+
+<p>
+Until you have sucessfully completed this test, it is unwise to disable password authentication on the OpenWrt <abbr title="Secure Shell">SSH</abbr> server as you may lock yourself out.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Testing&quot;,&quot;hid&quot;:&quot;testing&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:13,&quot;range&quot;:&quot;3733-4172&quot;} -->
+<h2 class="sectionedit14" id="troubleshooting">Troubleshooting</h2>
+<div class="level2">
+
+<p>
+Collect and analyze the following information.
+</p>
+<pre class="code bash"><span class="co0"># Restart services</span>
+service log restart; service dropbear restart
+&nbsp;
+<span class="co0"># Log and status</span>
+logread <span class="re5">-e</span> dropbear; <span class="kw2">netstat</span> <span class="re5">-l</span> <span class="re5">-n</span> <span class="re5">-p</span> <span class="sy0">|</span> <span class="kw2">grep</span> <span class="re5">-e</span> dropbear
+&nbsp;
+<span class="co0"># Runtime configuration</span>
+pgrep <span class="re5">-f</span> <span class="re5">-a</span> dropbear
+&nbsp;
+<span class="co0"># Persistent configuration</span>
+uci show dropbear; <span class="kw2">ls</span> <span class="re5">-l</span> <span class="sy0">/</span>etc<span class="sy0">/</span>dropbear; <span class="kw2">cat</span> <span class="sy0">/</span>etc<span class="sy0">/</span>dropbear<span class="sy0">/</span>authorized_keys</pre>
+
+<p>
+Additionally, run your ssh client with maximum verbosity (<code>ssh -vvv</code>) and check the output. If you see something like
+</p>
+<pre class="code">send_pubkey_test: no mutual signature algorithm</pre>
+
+<p>
+you might want to try to run the ssh client with the <code>-o PubkeyAcceptedKeyTypes=ssh-rsa</code> option. You can save this setting in your <code>.ssh/config</code> file in an entry dedicated to your router.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Troubleshooting&quot;,&quot;hid&quot;:&quot;troubleshooting&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:14,&quot;range&quot;:&quot;4173-4932&quot;} -->
+<h2 class="sectionedit15" id="extras">Extras</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Extras&quot;,&quot;hid&quot;:&quot;extras&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:15,&quot;range&quot;:&quot;4933-4951&quot;} -->
+<h3 class="sectionedit16" id="showing_the_device_s_public_key">Showing the device&#039;s public key</h3>
+<div class="level3">
+
+<p>
+This is useful if you want to connect with ssh from this device to another device, using public key auth.
+</p>
+<pre class="code bash">dropbearkey <span class="re5">-y</span> <span class="re5">-f</span> <span class="sy0">/</span>etc<span class="sy0">/</span>dropbear<span class="sy0">/</span>dropbear_rsa_host_key</pre>
+
+<p>
+And an example answer is
+</p>
+<pre class="code bash">Public key portion is:
+ssh-rsa AAAAB3NzaC1yc2EAdrgdftergdsfgdfgdfgdfgdfgdfgdfgJOYPF6nc41DUWDQdRrv8Ihe<span class="sy0">/</span>zINq5CaFOsysL3LNOg90C9uDYRIp89nq9ydUIrwvjz9r8U<span class="sy0">/</span>7HFOkLX6YQUevUZHxEyUexhWRSBLbnoQSKLHlB5WhodghdfgdfgdfgdfgdfgdfgfdgdfgfdgdfasdaaedadfasEUxiDTj74l0dqLpCCM1r9BcQd12hvQwfHvbMAcY<span class="sy0">/</span>7l3Wb5fdAvXI5mMIXXzWPkLhSLHP1Hw1trEmuUeL2rie+WzSjaOGMzVDjOpEaZD0dT7Ib9yDwem8UDMPFuXnNmsUvpxNHakWbw+465uxlyeAzL root<span class="sy0">@</span>VM-router
+Fingerprint: sha1<span class="sy0">!!</span> ec:<span class="nu0">66</span>:c1:<span class="nu0">57</span>:<span class="nu0">92</span>:c1:ec:<span class="nu0">66</span>:c1:<span class="nu0">57</span>:<span class="nu0">92</span>:c1:c7:9e:<span class="nu0">71</span>:<span class="nu0">50</span>:<span class="nu0">25</span>:<span class="nu0">65</span>:<span class="nu0">61</span>:<span class="nu0">53</span>:dd</pre>
+
+<p>
+You will copy-paste the “public key portion” to the other device&#039;s accepted keys
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Showing the device&#039;s public key&quot;,&quot;hid&quot;:&quot;showing_the_device_s_public_key&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:16,&quot;range&quot;:&quot;4952-5787&quot;} -->
+<h3 class="sectionedit17" id="non-root_users">Non-root users</h3>
+<div class="level3">
+
+<p>
+Add authentication keys for the current non-root user.
+</p>
+<pre class="code bash"><span class="kw2">ssh</span> openwrt.lan <span class="st0">&quot;mkdir -p ~/.ssh; tee -a ~/.ssh/authorized_keys&quot;</span> <span class="sy0">&lt;</span> ~<span class="sy0">/</span>.ssh<span class="sy0">/</span>id_ed25519.pub</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Non-root users&quot;,&quot;hid&quot;:&quot;non-root_users&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:17,&quot;range&quot;:&quot;5788-5978&quot;} -->
+<h3 class="sectionedit18" id="disabling_password_authentication">Disabling password authentication</h3>
+<div class="level3">
+
+<p>
+Harden security by disabling password authentication.
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> dropbear.<span class="sy0">@</span>dropbear<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.PasswordAuth=<span class="st0">&quot;0&quot;</span>
+uci <span class="kw1">set</span> dropbear.<span class="sy0">@</span>dropbear<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.RootPasswordAuth=<span class="st0">&quot;0&quot;</span>
+uci commit dropbear
+service dropbear restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Disabling password authentication&quot;,&quot;hid&quot;:&quot;disabling_password_authentication&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:18,&quot;range&quot;:&quot;5979-6241&quot;} -->
+<h3 class="sectionedit19" id="fixing_permissions">Fixing permissions</h3>
+<div class="level3">
+
+<p>
+Set up the proper permissions.
+</p>
+<pre class="code bash"><span class="kw2">chmod</span> <span class="re5">-R</span> <span class="re2">u</span>=rwX,<span class="re2">go</span>= <span class="sy0">/</span>etc<span class="sy0">/</span>dropbear</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Fixing permissions&quot;,&quot;hid&quot;:&quot;fixing_permissions&quot;,&quot;codeblockOffset&quot;:13,&quot;secid&quot;:19,&quot;range&quot;:&quot;6242-&quot;} -->

@@ -1,0 +1,212 @@
+
+<h1 class="sectionedit1" id="apc_smartups_su-700_-_linksys_ea3500_-_luci_graphs">APC SmartUps SU-700 - Linksys EA3500 - LuCI graphs</h1>
+<div class="level1">
+
+<p>
+This describes how to connect an APC SmartUps SU-700 via USB on a Linksys EA3500 router. 
+This includes collecting the data, and displaying graphs.
+</p>
+<ul>
+<li class="level1"><div class="li"> Plug in UPS</div>
+</li>
+<li class="level1"><div class="li"> Connect a 940-0024 serial cable to the UPS (I&#039;m using a 940-0024c. Other &#039;smart&#039; cables may work as well. See: <a href="http://www.apcupsd.org/manual/manual.html#cables" class="urlextern" title="http://www.apcupsd.org/manual/manual.html#cables" rel="ugc nofollow">http://www.apcupsd.org/manual/manual.html#cables</a>)</div>
+</li>
+<li class="level1 node"><div class="li"> Connect other end of the cable to a serial-to-usb converter </div>
+<ul>
+<li class="level2"><div class="li"> Some converters work, some don&#039;t. A cable from eBay called “USB to RS232 Serial 9 Pin DB9 PIN PL2303 Cable Adapter” did not end up working for me, due to Linux driver issues. I ended up using a <a href="https://www.iogear.com/product/GUC232A" class="urlextern" title="https://www.iogear.com/product/GUC232A" rel="ugc nofollow">https://www.iogear.com/product/GUC232A</a>.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Connect the serial-to-usb converter to the router USB port (or a USB hub, if you need multiple things plugged into the port).</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> In the router command line or LuCI web pages, install packages: apcupsd, collectd-mod-apcups, and kmod-usb-serial-pl2303</div>
+</li>
+<li class="level1"><div class="li"> For the command line, the commands are:<pre class="code">opkg update
+opkg install kmod-usb-serial-pl2303
+opkg install apcupsd
+opkg install collectd-mod-apcups</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> On the router command line, verify that the USB driver is installed and working with command and response:<pre class="code"># ls -la /dev/ttyUSB*
+crw-------    1 root     root      188,   0 Dec  1 00:29 /dev/ttyUSB0</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> If you don&#039;t see a serial port then something is wrong with the driver for the serial-to-usb converter.</div>
+</li>
+<li class="level1"><div class="li"> Resolve this, before proceeding.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> The next step is to customize the apcupsd config file. Details of the options can be found at <a href="http://www.apcupsd.org/manual/manual.html" class="urlextern" title="http://www.apcupsd.org/manual/manual.html" rel="ugc nofollow">http://www.apcupsd.org/manual/manual.html</a> , in the section “Configuration Directive Reference”.</div>
+</li>
+<li class="level1"><div class="li"> On the router command line, go to the /etc/apcupsd directory, and edit the config file:<pre class="code"># cd /etc/apcupsd
+# vi apcupsd.conf</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> use the dd command to delete all the lines in the file</div>
+</li>
+<li class="level1"><div class="li"> use the i command to set the VI editor into “insert” mode.</div>
+</li>
+<li class="level1"><div class="li"> Copy and paste this text into the editor:<pre class="code">## apcupsd.conf v1.1 ##
+UPSNAME APC700
+UPSCABLE smart
+UPSTYPE apcsmart
+DEVICE /dev/ttyUSB0
+LOCKFILE /var/lock
+ONBATTERYDELAY 6
+BATTERYLEVEL 5
+MINUTES 3
+TIMEOUT 0
+ANNOY 300
+ANNOYDELAY 60
+NOLOGON disable
+KILLDELAY 0
+NETSERVER on
+NISIP 0.0.0.0
+NISPORT 3551
+EVENTSFILE /var/log/apcupsd.events
+# max kilobytes
+EVENTSFILEMAX 10
+UPSCLASS standalone
+UPSMODE disable
+# ===== Configuration statements to control apcupsd system logging ========
+# Time interval in seconds between writing the STATUS file; 0 disables
+STATTIME 0
+# Location of STATUS file (written to only if STATTIME is non-zero)
+STATFILE /var/log/apcupsd.status
+LOGSTATS off
+# Time interval in seconds between writing the DATA records to
+#   the log file. 0 disables.
+DATATIME 0</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> type :wq into the editor, to write the new apcupsd.conf, and quit the edit session</div>
+</li>
+<li class="level1"><div class="li"> restart the apcupsd deamon process:<pre class="code"> 
+# /etc/init.d apcupsd restart</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Enter the apcaccess command into the command line, and you should get output like this: <pre class="code"># apcaccess
+APC      : 001,034,0829
+DATE     : 2017-12-01 18:11:01 -0700  
+HOSTNAME : myrouter
+VERSION  : 3.14.14 (31 May 2016) unknown
+UPSNAME  : APC700
+CABLE    : Custom Cable Smart
+DRIVER   : APC Smart UPS (any)
+UPSMODE  : Stand Alone
+STARTTIME: 2017-12-01 18:10:11 -0700  
+MODEL    : Smart-UPS 700 RM
+STATUS   : ONLINE 
+...</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Note the STATUS : ONLINE . If you don&#039;t have “ONLINE”, then something is wrong</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> Reboot the router.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> In the router web interface, go to Statistics, Graphs, APC UPS</div>
+</li>
+<li class="level1"><div class="li"> You should see the graphs, with data starting on the right side.</div>
+</li>
+<li class="level1"><div class="li"> If not, wait a minute, refresh your browser and you should start to see data being written.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;APC SmartUps SU-700 - Linksys EA3500 - LuCI graphs&quot;,&quot;hid&quot;:&quot;apc_smartups_su-700_-_linksys_ea3500_-_luci_graphs&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-3684&quot;} -->
+<h2 class="sectionedit2" id="saving_the_data_across_reboots">Saving the data across Reboots</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> By default the collected data will be lost after a reboot of the router. To save the data, you need to put it on an external device, like a USB flash drive. Connecting both the UPS and a flash drive to a USB hub, which is then connected to the router, works fine for me.</div>
+</li>
+<li class="level1"><div class="li"> To put the data on an external device, go to Statistics / Setup / Output plugins / RRDTool (<a href="http://192.168.1.1/cgi-bin/luci/admin/statistics/collectd/output/rrdtool" class="urlextern" title="http://192.168.1.1/cgi-bin/luci/admin/statistics/collectd/output/rrdtool" rel="ugc nofollow">http://192.168.1.1/cgi-bin/luci/admin/statistics/collectd/output/rrdtool</a>), and change the Storage directory to wherever you want to store your data.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Saving the data across Reboots&quot;,&quot;hid&quot;:&quot;saving_the_data_across_reboots&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:2,&quot;range&quot;:&quot;3685-4252&quot;} -->
+<h2 class="sectionedit3" id="troubleshooting">Troubleshooting</h2>
+<div class="level2">
+
+<p>
+If you don&#039;t have APC UPS graphs at this point, here are some things to check:
+</p>
+<ol>
+<li class="level1 node"><div class="li"> Change the data collection interval to 10 seconds. This is a workaround for the issue reported in: <a href="https://github.com/collectd/collectd/issues/617" class="urlextern" title="https://github.com/collectd/collectd/issues/617" rel="ugc nofollow">https://github.com/collectd/collectd/issues/617</a>.</div>
+<ul>
+<li class="level2"><div class="li"> Go to Statistics / Setup /</div>
+</li>
+<li class="level2"><div class="li"> Change the Data collection interval to 10 seconds</div>
+</li>
+</ul>
+</li>
+<li class="level1 node"><div class="li"> Verify that serial communication to the UPS is working - On a PC</div>
+<ul>
+<li class="level2"><div class="li"> attach usb converter to PC</div>
+</li>
+<li class="level2"><div class="li"> startup minicom (or equivalent): minicom -D /dev/ttyUSB0</div>
+</li>
+<li class="level2"><div class="li"> ctrl-a, ctrl-z, P, </div>
+</li>
+<li class="level2"><div class="li"> change port configuration to 2400,8,n,1</div>
+</li>
+<li class="level2"><div class="li"> ctrl-a, ctrl-z, O, Serial Port Setup</div>
+</li>
+<li class="level2"><div class="li"> change port configuration to hardware / software flow control: none</div>
+</li>
+<li class="level2"><div class="li"> type the uppercase letter: Y , and expect the reply SM<pre class="code">Y
+SM</pre>
+</div>
+</li>
+<li class="level2"><div class="li"> Note: serial APC UPS commands are documented at: <a href="http://networkupstools.org/protocols/apcsmart.html" class="urlextern" title="http://networkupstools.org/protocols/apcsmart.html" rel="ugc nofollow">http://networkupstools.org/protocols/apcsmart.html</a> )</div>
+</li>
+</ul>
+</li>
+<li class="level1 node"><div class="li"> Verify that serial communication to the UPS is working - On the Router</div>
+<ul>
+<li class="level2"><div class="li"> Detach the usb converter from PC , attach to router</div>
+</li>
+<li class="level2"><div class="li"> Install minicom on the router.</div>
+</li>
+<li class="level2"><div class="li"> Use the same minicom commands to verify communication with the router.</div>
+</li>
+<li class="level2"><div class="li"> type the uppercase letter: Y , and expect the reply SM<pre class="code">Y
+SM</pre>
+</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> There should be a tab for APC UPS on the General Plugins page at:<pre class="code">http://192.168.1.1/cgi-bin/luci/admin/statistics/collectd/general</pre>
+
+<p>
+If not, you may not have the patches that added luci-statistics support for the apcups plugin: <a href="https://github.com/openwrt/luci/pull/1227" class="urlextern" title="https://github.com/openwrt/luci/pull/1227" rel="ugc nofollow">https://github.com/openwrt/luci/pull/1227</a>. The best fix for this is to upgrade to a version that does.
+</p>
+</div>
+</li>
+<li class="level1"><div class="li"> /var/etc/collectd.conf should have a section for apcups:<pre class="code">LoadPlugin apcups
+ &lt;Plugin apcups&gt;
+  Host localhost
+  Port &quot;3551&quot;
+ &lt;/Plugin&gt;</pre>
+
+<p>
+If it does not, you can regenerate /var/etc/collectd.conf with this command:
+</p>
+<pre class="code">/usr/bin/stat-genconfig &gt; /var/etc/collectd.conf</pre>
+</div>
+</li>
+</ol>
+<ul>
+<li class="level1"><div class="li"> If you still don&#039;t have APC UPS graphs, you may not have the patches that added luci-statistics support for the apcups plugin: <a href="https://github.com/openwrt/luci/pull/1227" class="urlextern" title="https://github.com/openwrt/luci/pull/1227" rel="ugc nofollow">https://github.com/openwrt/luci/pull/1227</a>. The best fix for this is to upgrade to a version that does.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Troubleshooting&quot;,&quot;hid&quot;:&quot;troubleshooting&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:3,&quot;range&quot;:&quot;4253-&quot;} -->

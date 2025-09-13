@@ -1,0 +1,465 @@
+
+<h2 class="sectionedit1" id="get_a_free_https_certificate_from_letsencrypt_for_openwrt_with_acmesh">Get a free HTTPS certificate from LetsEncrypt for OpenWrt with ACME.sh</h2>
+<div class="level2">
+
+<p>
+For <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> you need a <a href="/docs/guide-user/services/tls/certs" class="wikilink1" title="docs:guide-user:services:tls:certs" data-wiki-id="docs:guide-user:services:tls:certs">TLS certificate</a>. By default the OpenWrt generates one (self-signed).
+You can open the Luci by the <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> <abbr title="Uniform Resource Locator">URL</abbr>.
+But your browser will complain that the certificate is self made and we can&#039;t know if the cert was&#039;t forged by an attacker in the middle.
+</p>
+
+<p>
+You can generate (“issue”) a <abbr title="Transport Layer Security">TLS</abbr> certificate on a device and ask a Certificate Authority (CA) to sign it so that browsers will accept it without a warning.
+The <a href="https://LetsEncrypt.org" class="urlextern" title="https://LetsEncrypt.org" rel="ugc nofollow">LetsEncrypt</a> and <a href="https://ZeroSSL.com" class="urlextern" title="https://ZeroSSL.com" rel="ugc nofollow">ZeroSSL</a> are two CAs that allows to do that for free and automatically by using ACME verification protocol.
+You&#039;ll need an ACME client i.e. the <code>acme.sh</code> installed and configured that will do the work to issue certificate and renew it after 3 months.
+The acme.sh uses the ZeroSSL by default <a href="https://github.com/acmesh-official/acme.sh/wiki/Change-default-CA-to-ZeroSSL" class="urlextern" title="https://github.com/acmesh-official/acme.sh/wiki/Change-default-CA-to-ZeroSSL" rel="ugc nofollow">starting from v3.0 Aug 2021</a> but the OpenWrt package didn&#039;t followed the change and still uses the LetsEncrypt by default.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Get a free HTTPS certificate from LetsEncrypt for OpenWrt with ACME.sh&quot;,&quot;hid&quot;:&quot;get_a_free_https_certificate_from_letsencrypt_for_openwrt_with_acmesh&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1118&quot;} -->
+<h3 class="sectionedit2" id="before_starting">Before starting</h3>
+<div class="level3">
+
+<p>
+You must understand <a href="https://letsencrypt.org/docs/challenge-types/" class="urlextern" title="https://letsencrypt.org/docs/challenge-types/" rel="ugc nofollow">ACME Challenge Validation Types</a>. In short the CA (i.e. LetsEncrypt, ZeroSSL) needs to ensure that you own the domain for which you trying to issue a certificate. So the CA generates a “challenge” random token that should ether
+</p>
+<ul>
+<li class="level1"><div class="li"> Added as a <code>TXT</code> record to a domain via the <abbr title="Domain Name System">DNS</abbr> provider <abbr title="Application Programming Interface">API</abbr>. This validation called <code><abbr title="Domain Name System">DNS</abbr>-01</code> challenge.</div>
+</li>
+<li class="level1"><div class="li"> Putted into a special folder on a web server accessible from outside by <abbr title="Uniform Resource Locator">URL</abbr> like <code><a href="http://YOUR_DOMAIN/.well-known/acme-challenge/TOKEN" class="urlextern" title="http://YOUR_DOMAIN/.well-known/acme-challenge/TOKEN" rel="ugc nofollow">http://YOUR_DOMAIN/.well-known/acme-challenge/TOKEN</a></code>. This validation called <code><abbr title="Hypertext Transfer Protocol">HTTP</abbr>-01</code> challenge.</div>
+</li>
+</ul>
+
+<p>
+Then the CA will check that the token is accessible and thus confirms that you do have a control over the server.
+</p>
+
+<p>
+If you are using a <a href="/packages/pkgdata/ddns-scripts" class="wikilink1" title="packages:pkgdata:ddns-scripts" data-wiki-id="packages:pkgdata:ddns-scripts">DDNS dynamic DNS</a> then you for sure better to use the <code><abbr title="Domain Name System">DNS</abbr>-01</code> because you already have credentials on a device to update the <abbr title="Domain Name System">DNS</abbr> records. 
+</p>
+
+<p>
+If you making your router public or you are going to use a <code><abbr title="Hypertext Transfer Protocol">HTTP</abbr>-01</code> challenge validation via <code>Webroot</code> or <code>Standalone</code> validation method, then you need to <a href="/docs/guide-user/luci/luci.secure#allow_access_from_internet" class="wikilink1" title="docs:guide-user:luci:luci.secure" data-wiki-id="docs:guide-user:luci:luci.secure">allow access from the internet</a>.
+The ACME protocol needs for the <abbr title="Hypertext Transfer Protocol">HTTP</abbr> port 80 for a challenge validation but for a <code>Webroot</code> you better to enable a Redirect to <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> so the 443 port needs to be open too.
+</p>
+
+<p>
+If you are want to have a valid cert for a domain without opening an access to a wild internet then the only option for you is a <abbr title="Domain Name System">DNS</abbr> challenge validation.
+But not all <abbr title="Domain Name System">DNS</abbr> providers have an <abbr title="Application Programming Interface">API</abbr> to do this, or you have to specify a password from a full admin panel which is not acceptable from security perspective. 
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Before starting&quot;,&quot;hid&quot;:&quot;before_starting&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;1119-2804&quot;} -->
+<h3 class="sectionedit3" id="acme_clients">ACME clients</h3>
+<div class="level3">
+
+<p>
+There are few ACME clients available on OpenWrt: <code>acme.sh</code>, <code>uacme</code>, <code>certbot</code>.
+Currently the acme.sh is best supported and the <code>acme</code> package will install it.
+</p>
+
+<p>
+Since version 4.0.0 (Aug 2022) the <code>acme</code> package was reorganized and now we have a few packages:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>acme-common</code> that provide the UCI config in the <code>/etc/config/acme</code></div>
+</li>
+<li class="level1"><div class="li"> <code>acme-acmesh</code> that contains the acme.sh script</div>
+</li>
+<li class="level1"><div class="li"> <code>acme-acmesh-dnsapi</code> that contains additional <code>acme.sh</code> scripts to use <abbr title="Domain Name System">DNS</abbr> validation.</div>
+</li>
+</ul>
+
+<p>
+There was a <a href="https://github.com/openwrt/packages/pull/10792" class="urlextern" title="https://github.com/openwrt/packages/pull/10792" rel="ugc nofollow">PR</a> to add <code>acme-uacme</code> package but it was lack of interest and staled.
+In future we may have more acme clients integrated.
+</p>
+
+<p>
+The <code>acme</code> package now is empty and it become a transitional virtual package that installs the <code>acme-common</code> and <code>acme-acmesh</code>.
+</p>
+
+<p>
+The <code>acme</code> v4 also had a breaking change.
+Auto deployment of cert to Luci was removed. Now you must configure certs manually, you may try the <code>luci-app-uhttpd</code> to set a path to a cert.
+Old options like <code>update_uhttpd</code> and <code>update_nginx</code> are gone.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;ACME clients&quot;,&quot;hid&quot;:&quot;acme_clients&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;2805-3903&quot;} -->
+<h3 class="sectionedit4" id="using_gui">Using GUI</h3>
+<div class="level3">
+
+<p>
+The Luci admin panel has apps that can be installed to extend <abbr title="Graphical User Interface">GUI</abbr> with additional configuration pages.
+The <code>luci-app-acme</code> provides a <abbr title="Graphical User Interface">GUI</abbr> to configure issuing of certificates.
+</p>
+
+<p>
+Open LUCI dashboard then in main menu go to <a href="http://192.168.1.1/cgi-bin/luci/admin/system/opkg" class="urlextern" title="http://192.168.1.1/cgi-bin/luci/admin/system/opkg" rel="ugc nofollow">System -&gt; Software</a>. Then click on “Update lists...” to load list of available packages.
+Type into the “Filter” search fields the package name <code>luci-app-acme</code> and press Enter. Click on install button. As a dependency it will install <code>acme</code> that itself will install <code>acme-common</code> and <code>acme-acmesh</code> packages. If you are going to use <abbr title="Domain Name System">DNS</abbr> validation please also install the <code>acme-acmesh-dnsapi</code>.
+</p>
+
+<p>
+To configure in LUCI in the main menu open <a href="http://192.168.1.1/cgi-bin/luci/admin/services/acme" class="urlextern" title="http://192.168.1.1/cgi-bin/luci/admin/services/acme" rel="ugc nofollow">Services -&gt; ACME certs</a>.
+</p>
+
+<p>
+Basic configuration:
+</p>
+<ul>
+<li class="level1"><div class="li"> “Account email”: put your email to receive expiry notices when your certificate is coming up for renewal.</div>
+</li>
+<li class="level1"><div class="li"> You&#039;ll see a two pre-configured but disabled EXAMPLE domains. But we&#039;ll make a new one for ourselves.</div>
+</li>
+<li class="level1"><div class="li"> At bottom find a field for a new domain config, type your domain but with underscores e.g. <code>example_com</code> and click on “Add”.</div>
+</li>
+<li class="level1"><div class="li"> A new config section will be added. Now let&#039;s edit it.</div>
+</li>
+<li class="level1"><div class="li"> Click on the “Enabled” checkbox.</div>
+</li>
+<li class="level1"><div class="li"> “Domain names”: add your domain <code>example.com</code>. If you need a wildcard cert then also add <code>*.example.com</code> (needs for <abbr title="Domain Name System">DNS</abbr> challenge).</div>
+</li>
+<li class="level1 node"><div class="li"> Switch to “Challenge Validation” tab and select “Validation method”:</div>
+<ul>
+<li class="level2"><div class="li"> If your web server is public then select “Webroot”. The default webroot path is <code>/var/run/acme/challenge/</code>. See details below.</div>
+</li>
+<li class="level2"><div class="li"> If you wish to get a wildcard cert e.g. <code>*.example.com</code> or you don&#039;t have a public webserver then the only option is the “<abbr title="Domain Name System">DNS</abbr>” validation and you must configure <abbr title="Domain Name System">DNS</abbr> <abbr title="Application Programming Interface">API</abbr>.</div>
+</li>
+<li class="level2"><div class="li"> If you don&#039;t have any webserver or the it&#039;s not accessible from internet then you can may use the “Standalone” mode.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Click on “Save and Apply”.</div>
+</li>
+</ul>
+
+<p>
+In a minute the cert should be generated. You can check logs in <a href="http://192.168.1.1/cgi-bin/luci/admin/status/syslog" class="urlextern" title="http://192.168.1.1/cgi-bin/luci/admin/status/syslog" rel="ugc nofollow">Status -&gt; System Log</a>.
+</p>
+
+<p>
+If any error occurred fix it and restart the acme service to trigger issuing.
+Go to <a href="http://192.168.1.1/cgi-bin/luci/admin/system/startup" class="urlextern" title="http://192.168.1.1/cgi-bin/luci/admin/system/startup" rel="ugc nofollow">System -&gt; Startup</a>, find the acme service and click of “Restart”.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Using GUI&quot;,&quot;hid&quot;:&quot;using_gui&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;3904-6225&quot;} -->
+<h3 class="sectionedit5" id="by_using_command_line">By using command line</h3>
+<div class="level3">
+
+<p>
+For  experienced users this may be more preferable than <abbr title="Graphical User Interface">GUI</abbr>.
+</p>
+
+<p>
+Step 1: Install packages
+Use a command line and type <code>opkg install acme</code>.
+If you want to use <abbr title="Domain Name System">DNS</abbr>-based certificate verification, also install the <abbr title="Domain Name System">DNS</abbr> provider hooks: <code>opkg install acme-acmesh-dnsapi</code>
+</p>
+
+<p>
+Step 2: Configure the acme.sh 
+Edit <code>/etc/config/acme</code> to configure your personal email, domain name and validation method.
+For the Webroot challenge validation use <code>option validation_method &#039;webroot</code>&#039;.
+</p>
+
+<p>
+If you have <code>acme-common</code> version older that 1.4 (May 2024) then you may have to create a symlink before:
+</p>
+<pre class="code bash"><span class="kw2">mkdir</span> <span class="sy0">/</span>www<span class="sy0">/</span>.well-known<span class="sy0">/</span>
+<span class="kw2">ln</span> <span class="re5">-s</span> <span class="sy0">/</span>var<span class="sy0">/</span>run<span class="sy0">/</span>acme<span class="sy0">/</span>challenge<span class="sy0">/</span> <span class="sy0">/</span>www<span class="sy0">/</span>.well-known<span class="sy0">/</span>acme-challenge</pre>
+
+<p>
+See next section with details.
+</p>
+
+<p>
+For the <abbr title="Domain Name System">DNS</abbr> challenge validation use <code>option validation_method &#039;dns</code>&#039;.
+</p>
+
+<p>
+For example if you use the DuckDNS.org DDNS provider and wish to have a wildcard certificate <code>*.example.duckdns.org</code> then install the <code>acme-acmesh-dnsapi</code> package and configure the acme like:
+</p>
+<pre class="code">config acme
+        option account_email &#039;youremail@example.com&#039;
+
+config cert &#039;example_duckdns_wildcard&#039;
+        option enabled &#039;1&#039;
+        option validation_method &#039;dns&#039;
+        option dns &#039;dns_duckdns&#039;
+        list credentials &#039;DuckDNS_Token=&quot;YOUR_TOKEN&quot;&#039;
+        list domains &#039;example.duckdns.org&#039;
+        list domains &#039;*.example.duckdns.org&#039;</pre>
+
+<p>
+See <a href="https://github.com/acmesh-official/acme.sh/wiki/dnsapi#dns_duckdns" class="urlextern" title="https://github.com/acmesh-official/acme.sh/wiki/dnsapi#dns_duckdns" rel="ugc nofollow">Acme.sh DNS API: DuckDNS.org</a> for details.
+</p>
+
+<p>
+Step 3: Issue your certificate by restarting the acme service with <code>/etc/init.d/acme restart</code>.
+This may take for some time.
+You can read logs with <code>logread -e acme</code>.
+In case of problems please try to enable the <code>debug 1</code> option that will print more details.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;By using command line&quot;,&quot;hid&quot;:&quot;by_using_command_line&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;6226-7997&quot;} -->
+<h3 class="sectionedit6" id="webroot">Webroot</h3>
+<div class="level3">
+
+<p>
+When the <code>webroot</code> validation is used the acme client stores challenge files to a folder (called “webroot”) that is accessible from internet and the Certificate Authority (e.g. LetsEncrypt, ZeroSSL) checks it the files the site by a <abbr title="Uniform Resource Locator">URL</abbr> <code><a href="http://example.com/.well-known/acme-challenge/" class="urlextern" title="http://example.com/.well-known/acme-challenge/" rel="ugc nofollow">http://example.com/.well-known/acme-challenge/</a></code>. This allows for CA to ensure that you have an access to the domain settings.
+</p>
+
+<p>
+The acme.sh has a an option <code>-w</code> to specify a path to the webroot folder and the UCI config at <code>/etc/config/acme</code> allowed to specify it too.
+The problem is that if you have to always change to a place where your website files are located e.g. <code>/www/.well-known/acme-challenge/</code>.
+Creating files on a disk may eventually ruin the NAND flash but also the folder may be actually read only.
+</p>
+
+<p>
+Since version 4.0.0 (Aug 2022) the <code>acme</code> switched to always use the same <code>/var/run/acme/challenge/</code> folder for webroot.
+The folder is in memory and it&#039;s path is always the same so the <code>webroot</code> config option is not needed anymore and was deprecated. 
+</p>
+
+<p>
+Instead you can create a symlink:
+</p>
+<pre class="code bash"><span class="kw2">mkdir</span> <span class="sy0">/</span>www<span class="sy0">/</span>.well-known<span class="sy0">/</span>
+<span class="kw2">ln</span> <span class="re5">-s</span> <span class="sy0">/</span>var<span class="sy0">/</span>run<span class="sy0">/</span>acme<span class="sy0">/</span>challenge<span class="sy0">/</span> <span class="sy0">/</span>www<span class="sy0">/</span>.well-known<span class="sy0">/</span>acme-challenge</pre>
+
+<p>
+Now test if it&#039;s accessible from internet:
+</p>
+<pre class="code bash"><span class="kw2">mkdir</span> <span class="re5">-p</span> <span class="sy0">/</span>var<span class="sy0">/</span>run<span class="sy0">/</span>acme<span class="sy0">/</span>challenge<span class="sy0">/</span>
+<span class="kw3">echo</span> Hi <span class="sy0">&gt;</span> <span class="sy0">/</span>var<span class="sy0">/</span>run<span class="sy0">/</span>acme<span class="sy0">/</span>challenge<span class="sy0">/</span>README.txt
+<span class="co0"># open in browser or execute the wget</span>
+<span class="kw2">wget</span> <span class="re5">-qO</span> - http:<span class="sy0">//</span>example.com<span class="sy0">/</span>.well-known<span class="sy0">/</span>acme-challenge<span class="sy0">/</span>README.txt</pre>
+
+<p>
+Since <code>acme-common</code> v1.4 (May 2024) the default symlink is automatically created on installation.
+But you may have other http document roots so please create the symlink yourself. 
+</p>
+
+<p>
+I hope that eventually OpenWrt web servers will serve the folder <code>/var/run/acme/challenge/</code> under <code>/.well-known/acme-challenge/</code> <abbr title="Uniform Resource Locator">URL</abbr> path by default.
+So no any additional symlinks will be needed.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Webroot&quot;,&quot;hid&quot;:&quot;webroot&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:6,&quot;range&quot;:&quot;7998-9814&quot;} -->
+<h3 class="sectionedit7" id="using_of_the_generated_certificates">Using of the generated certificates</h3>
+<div class="level3">
+
+<p>
+After that you can find the certificates in a folder at <code>/etc/ssl/acme/</code> e.g.:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>/etc/ssl/acme/*.example.com.key</code> the <abbr title="Transport Layer Security">TLS</abbr> private key. <strong>Never share it!</strong></div>
+</li>
+<li class="level1"><div class="li"> <code>/etc/ssl/acme/*.example.com.fullchain.crt </code> the <abbr title="Transport Layer Security">TLS</abbr> certificate and chain of CA that signed it.</div>
+</li>
+</ul>
+
+<p>
+Detailed certificate configs are stored in <code>/etc/acme/</code>.
+</p>
+
+<p>
+You can use them in <a href="/docs/guide-user/services/webserver/uhttpd#https_enable_and_certificate_settings_and_creation" class="wikilink1" title="docs:guide-user:services:webserver:uhttpd" data-wiki-id="docs:guide-user:services:webserver:uhttpd">uhttpd</a>, <a href="/docs/guide-user/services/webserver/lighttpd" class="wikilink1" title="docs:guide-user:services:webserver:lighttpd" data-wiki-id="docs:guide-user:services:webserver:lighttpd">lighttpd</a>, <a href="/docs/guide-user/services/webserver/nginx" class="wikilink1" title="docs:guide-user:services:webserver:nginx" data-wiki-id="docs:guide-user:services:webserver:nginx">nginx</a>, <a href="/docs/guide-user/services/email/emailrelay" class="wikilink1" title="docs:guide-user:services:email:emailrelay" data-wiki-id="docs:guide-user:services:email:emailrelay">EmailRelay</a> and any other server that you want to configure with <abbr title="Transport Layer Security">TLS</abbr>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Using of the generated certificates&quot;,&quot;hid&quot;:&quot;using_of_the_generated_certificates&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:7,&quot;range&quot;:&quot;9815-10525&quot;} -->
+<h3 class="sectionedit8" id="standalone_mode_validation">Standalone Mode Validation</h3>
+<div class="level3">
+
+<p>
+The standalone mode is intended to be used if you don&#039;t have a webserver (e.g. mail only) or it&#039;s not publicly accessible from internet.
+It will start a <code>socat</code> that will imitate a temporary web-server to return a the file with a random value of ACME challenge to the CA (e.g. LetsEncrypt) so that they can ensure that you really own the server and the domain.
+That server needs to be publicly accessible, so you may have to forward the external public <abbr title="Wide Area Network">WAN</abbr> port 80 to it. However, that server listens on port 80 by default, which might clash with <code>uhttpd</code> which by default listens 80 port on all interfaces and IPs. You can <a href="https://forum.archive.openwrt.org/viewtopic.php?id=65090&amp;p=1" class="urlextern" title="https://forum.archive.openwrt.org/viewtopic.php?id=65090&amp;p=1" rel="ugc nofollow">change the listening port</a> to something like 8080, by editing the value of <code>Le_HTTPPort</code> in <code>/usr/lib/acme/acme.sh</code>, or by passing it the <code>--httpport</code> argument. Then you must forward <abbr title="Wide Area Network">WAN</abbr> port 80 (external port remains the same) to device port 8080. 
+See <a href="/docs/guide-user/luci/luci.secure" class="wikilink1" title="docs:guide-user:luci:luci.secure" data-wiki-id="docs:guide-user:luci:luci.secure">Accessing LuCI web interface securely</a> for more details about port changing.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Standalone Mode Validation&quot;,&quot;hid&quot;:&quot;standalone_mode_validation&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:8,&quot;range&quot;:&quot;10526-11631&quot;} -->
+<h3 class="sectionedit9" id="hooks">Hooks</h3>
+<div class="level3">
+
+<p>
+When a certificate issued or renewed the OpenWrt acme calls hotplug hooks in the <code>/etc/hotplug.d/acme/</code> with an $<code>ACTION</code> correspondingly <code>issued</code> or <code>renewed</code>.
+Then it also sends a <a href="/docs/techref/ubus" class="wikilink1" title="docs:techref:ubus" data-wiki-id="docs:techref:ubus">UBUS</a> event <code>acme.issue</code> and <code>acme.renew</code>.
+</p>
+
+<p>
+The uhttpd, nginx, haproxy are listening for the UBUS event <code>acme.renew</code> and performing a service reload on a cert renewal.
+So no any additional deployment hooks are needed. Just specify a correct path to a cert.
+</p>
+
+<p>
+But the reloading is triggered only on a renewal.
+So you need to issue a cert, then configure a path to it in uhttpd/nginx/haproxy config and then restart a service.
+</p>
+
+<p>
+But other web webservers like Apache and Lighttpd don&#039;t have such a reload trigger.
+</p>
+
+<p>
+You may try to add a hotplug script yourself:
+</p>
+
+<p>
+Create a file <code>/etc/hotplug.d/acme/00-apache</code> with the content:
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-user/services/tls/acmesh?codeblock=4" title="Download Snippet" class="mediafile mf_d_acme_00-apache">/etc/hotplug.d/acme/00-apache</a></dt>
+<dd><pre class="code bash"><span class="kw1">if</span> <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es2">$ACTION</span>&quot;</span> = <span class="st0">&quot;renewed&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+	<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>apache reload
+<span class="kw1">fi</span></pre>
+</dd></dl>
+
+<p>
+<strong>NOTE</strong>: Calling the <code>/etc/init.d/apache reload</code> directly in the acme hotplug script can inadvertently start a stopped instance.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Hooks&quot;,&quot;hid&quot;:&quot;hooks&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:9,&quot;range&quot;:&quot;11632-12739&quot;} -->
+<h3 class="sectionedit10" id="uci_config_options">UCI config options</h3>
+<div class="level3">
+<div class="table sectionedit11"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign"> Name               </th><th class="col1 leftalign"> Type     </th><th class="col2 leftalign"> Required  </th><th class="col3 leftalign"> Default            </th><th class="col4 leftalign"> Description                                                                                                                                                 </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> <code>account_email</code>  </td><td class="col1 leftalign"> string   </td><td class="col2 leftalign"> yes       </td><td class="col3 leftalign">                    </td><td class="col4 leftalign"> Email address to associate with account key. If a certificate wasn&#039;t renewed in time then you&#039;ll receive a notice at 20 days before expiry.                 </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> <code>debug</code>          </td><td class="col1 leftalign"> boolean  </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <em>0</em>              </td><td class="col4 leftalign"> Set <em>1</em> to enable debug logging                                                                                                                           </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> <code>state_dir</code>      </td><td class="col1 leftalign"> string   </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <code>/etc/ssl/acme</code>  </td><td class="col4 leftalign"> Deprecated, now is unchangeable. The ACME.sh state folder where account data is stored. The generated certificates will be symlinked to <code>/etc/ssl/acme/</code>  </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:11,&quot;range&quot;:&quot;12771-13670&quot;} --><div class="table sectionedit12"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign"> Name                   </th><th class="col1 leftalign"> Type     </th><th class="col2 leftalign"> Required                                                                                                                                                                                    </th><th class="col3 leftalign"> Default                      </th><th class="col4 leftalign"> Description                                                                                                                                                                                                                                                                                                                                       </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> <code>enabled</code>            </td><td class="col1 leftalign"> boolean  </td><td class="col2 leftalign"> no                                                                                                                                                                                          </td><td class="col3 leftalign"> <em>1</em>                        </td><td class="col4 leftalign"> Enabled issuing of certs for the domains                                                                                                                                                                                                                                                                                                          </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> <code>staging</code>            </td><td class="col1 leftalign"> boolean  </td><td class="col2 leftalign"> no                                                                                                                                                                                          </td><td class="col3 leftalign"> <em>0</em>                        </td><td class="col4 leftalign"> Get certificate from the LetsEncrypt staging server (use for testing; the certificate won&#039;t be valid).                                                                                                                                                                                                                                            </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> <code>domains</code>            </td><td class="col1 leftalign"> list     </td><td class="col2 leftalign"> yes                                                                                                                                                                                         </td><td class="col3 leftalign">                              </td><td class="col4 leftalign"> Domain names to include in the certificate. The first name will be the subject name, subsequent names will be alt names.                                                                                                                                                                                                                          </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"> <code>validation_method</code>  </td><td class="col1 leftalign"> string   </td><td class="col2 leftalign"> yes                                                                                                                                                                                         </td><td class="col3 leftalign">                              </td><td class="col4 leftalign"> Challenge validation mode: <em>dns</em>, <em>webroot</em> or <em>standalone</em>. Standalone mode will use the built-in webserver of acme.sh to issue a certificate. Webroot mode will use an existing webserver to issue a certificate. <abbr title="Domain Name System">DNS</abbr> mode will allow you to use the <abbr title="Domain Name System">DNS</abbr> <abbr title="Application Programming Interface">API</abbr> of your <abbr title="Domain Name System">DNS</abbr> provider to issue a certificate.                                 </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 leftalign"> <code>dns</code>                </td><td class="col1 leftalign"> string   </td><td class="col2 leftalign"> yes for <em>dns</em> mode                                                                                                                                                                        </td><td class="col3 leftalign">                              </td><td class="col4 leftalign"> <abbr title="Domain Name System">DNS</abbr> <abbr title="Application Programming Interface">API</abbr> name. See <a href="https://github.com/acmesh-official/acme.sh/wiki/dnsapi" class="urlextern" title="https://github.com/acmesh-official/acme.sh/wiki/dnsapi" rel="ugc nofollow">acme.sh wiki: DNS API</a> for the list of available APIs. In <abbr title="Domain Name System">DNS</abbr> mode, the domain name does not have to resolve to the router <abbr title="Internet Protocol">IP</abbr>. <abbr title="Domain Name System">DNS</abbr> mode is also the only mode that supports wildcard certificates. Using this mode requires the acme-dnsapi package to be installed.  </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0 leftalign"> <code>dns_wait</code>           </td><td class="col1 leftalign"> integer  </td><td class="col2 leftalign"> no                                                                                                                                                                                          </td><td class="col3 leftalign">                              </td><td class="col4 leftalign"> Seconds to wait for a <abbr title="Domain Name System">DNS</abbr> record to be updated and then continue. See <a href="https://github.com/acmesh-official/acme.sh/wiki/dnssleep" class="urlextern" title="https://github.com/acmesh-official/acme.sh/wiki/dnssleep" rel="ugc nofollow">acme.sh wiki: dnssleep</a>                                                                                                                                                                                         </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0 leftalign"> <code>credentials</code>        </td><td class="col1 leftalign"> list     </td><td class="col2 leftalign"> yes for <em>dns</em> mode                                                                                                                                                                        </td><td class="col3 leftalign">                              </td><td class="col4 leftalign"> The credentials for the <abbr title="Domain Name System">DNS</abbr> <abbr title="Application Programming Interface">API</abbr> mode selected above. See <a href="https://github.com/acmesh-official/acme.sh/wiki/dnsapi" class="urlextern" title="https://github.com/acmesh-official/acme.sh/wiki/dnsapi" rel="ugc nofollow">acme.sh wiki: DNS API</a> for the credentials required by each <abbr title="Application Programming Interface">API</abbr>. Add multiple entries here in <code>KEY=VAL</code> shell variable format to supply multiple credential variables.                                                       </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0 leftalign"> <code>calias</code>             </td><td class="col1 leftalign"> string   </td><td class="col2 leftalign"> no                                                                                                                                                                                          </td><td class="col3 leftalign">                              </td><td class="col4 leftalign"> Challenge Alias. The challenge alias to use for ALL domains. See <a href="https://github.com/acmesh-official/acme.sh/wiki/DNS-alias-mode" class="urlextern" title="https://github.com/acmesh-official/acme.sh/wiki/DNS-alias-mode" rel="ugc nofollow">acme.sh wiki: DNS Alias Mode</a> for the details of this process. LUCI only supports one challenge alias per certificate.                                                                                         </td>
+	</tr>
+	<tr class="row9">
+		<td class="col0 leftalign"> <code>dalias</code>             </td><td class="col1 leftalign"> string   </td><td class="col2 leftalign"> no                                                                                                                                                                                          </td><td class="col3 leftalign">                              </td><td class="col4 leftalign"> Domain Alias. The domain alias to use for ALL domains. See <a href="https://github.com/acmesh-official/acme.sh/wiki/DNS-alias-mode" class="urlextern" title="https://github.com/acmesh-official/acme.sh/wiki/DNS-alias-mode" rel="ugc nofollow">acme.sh wiki: DNS Alias Mode</a> for the details of this process. LUCI only supports one challenge domain per certificate.                                                                                              </td>
+	</tr>
+	<tr class="row10">
+		<td class="col0 leftalign"> <code>webroot</code>            </td><td class="col1 leftalign"> string   </td><td class="col2 leftalign"> no                                                                                                                                                                                          </td><td class="col3 leftalign"> <code>/var/run/acme/challenge</code>  </td><td class="col4 leftalign"> <strong>Deprecated.</strong> Use the default folder and remove the option. Webserver root directory. Set this to the webserver document root to run Acme in <code>webroot</code> mode. The web server must be accessible from the internet on port 80.                                                                                                                                                                        </td>
+	</tr>
+	<tr class="row11">
+		<td class="col0 leftalign"> <code>key_type</code>           </td><td class="col1 leftalign"> string   </td><td class="col2 leftalign"> no                                                                                                                                                                                          </td><td class="col3 leftalign"> <em>ec256</em>                    </td><td class="col4 leftalign"> Key size (and type) for the generated certificate. <code>rsa2048</code>, <code>rsa3072</code>, <code>rsa4096</code>, <code>ec256</code>, <code>ec384</code>                                                                                                                                                                                                                                    </td>
+	</tr>
+	<tr class="row12">
+		<td class="col0 leftalign"> <code>keylength</code>          </td><td class="col1 leftalign"> string   </td><td class="col2 leftalign"> no                                                                                                                                                                                          </td><td class="col3 leftalign">                              </td><td class="col4 leftalign"> <strong>Deprecated</strong>. Use the <code>key_type</code> instead. The RSA key length in bits.                                                                                                                                                                                                                                                                                     </td>
+	</tr>
+	<tr class="row13">
+		<td class="col0 leftalign"> <code>acme_server</code>        </td><td class="col1 leftalign"> string   </td><td class="col2 leftalign"> no                                                                                                                                                                                          </td><td class="col3 leftalign"> <em>letsencrypt</em>                  </td><td class="col4 leftalign"> A custom CA ACME server directory <abbr title="Uniform Resource Locator">URL</abbr>. See <a href="https://github.com/acmesh-official/acme.sh/wiki/Server" class="urlextern" title="https://github.com/acmesh-official/acme.sh/wiki/Server" rel="ugc nofollow">acme.sh wiki: servers</a>.                                                                                                                                                                                                 </td>
+	</tr>
+	<tr class="row14">
+		<td class="col0 leftalign"> <code>standalone</code>         </td><td class="col1 leftalign"> boolean  </td><td class="col2 leftalign"> no                                                                                                                                                                                          </td><td class="col3 leftalign"> <em>0</em>                        </td><td class="col4 leftalign"> <strong>Deprecated.</strong> Use <code>option validation_method &#039;standalone</code>&#039; instead.                                                                                                                                                                                                                                                                                </td>
+	</tr>
+	<tr class="row15">
+		<td class="col0 leftalign"> <code>days</code>               </td><td class="col1 leftalign"> integer  </td><td class="col2 leftalign"> no                                                                                                                                                                                          </td><td class="col3 leftalign"> <em>60</em>                       </td><td class="col4 leftalign"> Days until renewal                                                                                                                                                                                                                                                                                                                                </td>
+	</tr>
+	<tr class="row16">
+		<td class="col0 leftalign"> <code>update_uhttp</code>       </td><td class="col1 leftalign"> boolean  </td><td class="col2 leftalign"> no  </td><td class="col3 leftalign"> <em>0</em>                           </td><td class="col4 leftalign"> <strong>Removed in acme v4.0.0</strong>.  After issuing a cert configure the uhttpd UCI main section (i.e. Luci) to use the new cert. I.e. set UCI <code>uhttpd.main.key</code> and <code>uhttpd.main.cert</code>. Then reload the uhttpd service. Update the uhttpd config with this certificate once issued (only select this for one certificate). It&#039;s also available the <code>luci-app-uhttpd</code> to configure uhttpd form the LuCI interface.                                                                                                                              </td>
+	</tr>
+	<tr class="row17">
+		<td class="col0 leftalign"> <code>update_nginx</code>       </td><td class="col1 leftalign"> boolean  </td><td class="col2 leftalign"> no  </td><td class="col3 leftalign"> <em>0</em>                           </td><td class="col4 leftalign"> <strong>Removed in acme v4.0.0</strong>.  After issuing a cert configure the Nginx to use the new cert. I.e. call the <code>nginx-util add_ssl</code>. Then reload the nginx service. Update the nginx config with this certificate once issued (only select this for one certificate). Nginx must support ssl, if not it won&#039;t start as it needs to be compiled with ssl support to use cert options                    </td>
+	</tr>
+	<tr class="row18">
+		<td class="col0 leftalign"> <code>update_haproxy</code>       </td><td class="col1 leftalign"> boolean  </td><td class="col2 leftalign"> no  </td><td class="col3 leftalign"> <em>0</em>                           </td><td class="col4 leftalign"> <strong>Removed in acme v4.0.0</strong>.  After issuing a cert configure the HAProxy to use the new cert. I.e. change the <code>bind</code> option in the <code>haproxy.cfg</code>. Then reload the haproxy service.                                                                                                                               </td>
+	</tr>
+	<tr class="row19">
+		<td class="col0 leftalign"> <code>user_setup</code>       </td><td class="col1 leftalign"> path  </td><td class="col2 leftalign"> no  </td><td class="col3 leftalign"> <em>none</em>                           </td><td class="col4 leftalign"> <strong>Removed in acme v4.0.0</strong>. User-provided setup script                                                        </td>
+	</tr>
+	<tr class="row20">
+		<td class="col0 leftalign"> <code>user_cleanup</code>     </td><td class="col1 leftalign"> path  </td><td class="col2 leftalign"> no  </td><td class="col3 leftalign"> <em>none</em>                           </td><td class="col4 leftalign"> <strong>Removed in acme v4.0.0</strong>. User-provided cleanup script                                     </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table1&quot;,&quot;secid&quot;:12,&quot;range&quot;:&quot;13673-25130&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;UCI config options&quot;,&quot;hid&quot;:&quot;uci_config_options&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:10,&quot;range&quot;:&quot;12740-25133&quot;} -->
+<h3 class="sectionedit13" id="acmesh_command">acme.sh command</h3>
+<div class="level3">
+
+<p>
+The <code>acme-acmesh</code> package installs the full acme.sh script to <code>/usr/lib/acme/client/acme.sh</code> so you can call it directly without UCI config e.g.:
+</p>
+<pre class="code bash"><span class="kw2">mkdir</span> <span class="sy0">/</span>www<span class="sy0">/</span>.well-known<span class="sy0">/</span>
+<span class="kw2">ln</span> <span class="re5">-s</span> <span class="sy0">/</span>var<span class="sy0">/</span>run<span class="sy0">/</span>acme<span class="sy0">/</span>challenge<span class="sy0">/</span> <span class="sy0">/</span>www<span class="sy0">/</span>.well-known<span class="sy0">/</span>acme-challenge
+<span class="sy0">/</span>usr<span class="sy0">/</span>lib<span class="sy0">/</span>acme<span class="sy0">/</span>client<span class="sy0">/</span>acme.sh <span class="re5">--issue</span> <span class="re5">-d</span> example.com <span class="re5">-w</span> <span class="sy0">/</span>var<span class="sy0">/</span>run<span class="sy0">/</span>acme<span class="sy0">/</span>challenge<span class="sy0">/</span></pre>
+
+<p>
+See more samples in the <a href="https://github.com/acmesh-official/acme.sh/wiki/How-to-issue-a-cert" class="urlextern" title="https://github.com/acmesh-official/acme.sh/wiki/How-to-issue-a-cert" rel="ugc nofollow">acme.sh wiki: How to issue a cert</a>
+</p>
+
+<p>
+Before the <code>acme</code> v4 the path was <code>/usr/lib/acme/acme.sh</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;acme.sh command&quot;,&quot;hid&quot;:&quot;acmesh_command&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:13,&quot;range&quot;:&quot;25134-25693&quot;} -->
+<h3 class="sectionedit14" id="see_also">See also</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> <a href="https://forum.openwrt.org/t/letsencrypt-acme-sh-and-luci-app-acme-support-topic/196821" class="urlextern" title="https://forum.openwrt.org/t/letsencrypt-acme-sh-and-luci-app-acme-support-topic/196821" rel="ugc nofollow">ACME.sh on OpenWrt Support forum topic</a> - feel free to ask questions here</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://community.letsencrypt.org/" class="urlextern" title="https://community.letsencrypt.org/" rel="ugc nofollow">LetsEncrypt forum</a> use for the LetsEncrypt related questions.</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/acmesh-official/acme.sh/wiki/How-to-run-on-OpenWrt" class="urlextern" title="https://github.com/acmesh-official/acme.sh/wiki/How-to-run-on-OpenWrt" rel="ugc nofollow">Acme.sh Wiki: How to run on OpenWrt</a> also describes how to configure uhttpd and firewall.</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/acmesh-official/acme.sh/wiki/dnsapi" class="urlextern" title="https://github.com/acmesh-official/acme.sh/wiki/dnsapi" rel="ugc nofollow">Acme.sh DNS API: Part 1</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/acmesh-official/acme.sh/wiki/dnsapi2" class="urlextern" title="https://github.com/acmesh-official/acme.sh/wiki/dnsapi2" rel="ugc nofollow">Acme.sh DNS API: Part 2</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://wiki.archlinux.org/title/Acme.sh" class="urlextern" title="https://wiki.archlinux.org/title/Acme.sh" rel="ugc nofollow">Arch Wiki: ACME.sh</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/acmesh-official/acme.sh/wiki/How-to-issue-a-cert" class="urlextern" title="https://github.com/acmesh-official/acme.sh/wiki/How-to-issue-a-cert" rel="ugc nofollow">Acme.sh: How to issue a cert</a> using the acme.sh command directly</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://blog.gainskills.top/2021/09/15/openwrt-ddns-cert/" class="urlextern" title="https://blog.gainskills.top/2021/09/15/openwrt-ddns-cert/" rel="ugc nofollow">openwrt DDNS, acme commands</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://forum.openwrt.org/t/dynu-openwrt-acme-lets-encrypt/110758" class="urlextern" title="https://forum.openwrt.org/t/dynu-openwrt-acme-lets-encrypt/110758" rel="ugc nofollow">Dynu.com OpenWRT ACME.sh</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/openwrt/packages/pull/17721" class="urlextern" title="https://github.com/openwrt/packages/pull/17721" rel="ugc nofollow">acme: use the hotplug system</a> a PR with v4 that changed how the <code>acme</code> works in OpenWrt.</div>
+</li>
+<li class="level1"><div class="li"> Sources: <a href="https://github.com/openwrt/packages/tree/master/net/acme-common" class="urlextern" title="https://github.com/openwrt/packages/tree/master/net/acme-common" rel="ugc nofollow">acme-common</a>, <a href="https://github.com/openwrt/packages/tree/master/net/acme-acmesh" class="urlextern" title="https://github.com/openwrt/packages/tree/master/net/acme-acmesh" rel="ugc nofollow">acme-acmesh</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;See also&quot;,&quot;hid&quot;:&quot;see_also&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:14,&quot;range&quot;:&quot;25694-&quot;} -->

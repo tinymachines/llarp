@@ -1,0 +1,474 @@
+
+<h1 class="sectionedit1" id="dsa_mini-tutorial">DSA Mini-Tutorial</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;DSA Mini-Tutorial&quot;,&quot;hid&quot;:&quot;dsa_mini-tutorial&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-33&quot;} -->
+<h2 class="sectionedit2" id="introduction">Introduction</h2>
+<div class="level2">
+
+<p>
+<a href="https://www.kernel.org/doc/html/latest/networking/dsa/dsa.html" class="urlextern" title="https://www.kernel.org/doc/html/latest/networking/dsa/dsa.html" rel="ugc nofollow">Distributed Switch Architecture</a> (DSA) is the Linux kernel subsystem for network switches. Due to this upstream feature, OpenWrt implemented <em>DSA</em> to replace <em>swconfig</em> and many new routers use DSA drivers instead of swconfig drivers.
+</p>
+
+<p>
+DSA does not affect wireless configuration in <code>/etc/config/wireless</code>. In particular the wireless config option <code>ifname</code> continues to be valid for specifying a custom name for a WiFi interface.
+</p>
+
+<p>
+Note: due to the change to DSA if you are upgrading OpenWrt from a version prior to 21.02 (or prior to your device being changed from swconfig to DSA) it is best practice to not keep configuration. You should read the <a href="/docs/guide-user/network/dsa/converting-to-dsa" class="wikilink1" title="docs:guide-user:network:dsa:converting-to-dsa" data-wiki-id="docs:guide-user:network:dsa:converting-to-dsa">Converting to DSA</a> and <a href="/docs/guide-user/network/dsa/upgrading-to-2102" class="wikilink1" title="docs:guide-user:network:dsa:upgrading-to-2102" data-wiki-id="docs:guide-user:network:dsa:upgrading-to-2102">Upgrading to OpenWrt 21.02.0</a> articles. There is also a very good <a href="https://www.youtube.com/watch?v=qeuZqRqH-ug" class="urlextern" title="https://www.youtube.com/watch?v=qeuZqRqH-ug" rel="ugc nofollow">Youtube video from onemarcfifty</a> that discusses VLANs and other differences between OpenWrt 19.07 and 21.02.
+</p>
+
+<p>
+<em>This page is a Work In Process. It contains requests for information from future editors. Specifically, it needs:</em>
+</p>
+<ul>
+<li class="level1"><div class="li"> <em>An example for a config file for wireless in Item 1 below</em></div>
+</li>
+<li class="level1"><div class="li"> <em>A discussion of configuring wireless devices and interfaces</em></div>
+</li>
+<li class="level1"><div class="li"> <em>Careful vetting of the information for Items 3 &amp; 4 below</em></div>
+</li>
+</ul>
+
+<p>
+ <em>If you can contribute your knowledge, we would be pleased for the help.</em>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Introduction&quot;,&quot;hid&quot;:&quot;introduction&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;34-1523&quot;} -->
+<h2 class="sectionedit3" id="openwrt_and_dsa">OpenWrt and DSA</h2>
+<div class="level2">
+
+<p>
+OpenWrt allows you to configure the ports of your device using either LuCI or by editing the configuration file at <code>/etc/config/network</code>.
+The remainder of this document describes several common configurations:
+</p>
+<ol>
+<li class="level1"><div class="li"> Bridging all <abbr title="Local Area Network">LAN</abbr> ports</div>
+</li>
+<li class="level1"><div class="li"> Multiple bridged networks </div>
+</li>
+<li class="level1"><div class="li"> Multiple networks using VLANs</div>
+</li>
+<li class="level1"><div class="li"> Multiple networks using <abbr title="Virtual Local Area Network">VLAN</abbr> tagging</div>
+</li>
+</ol>
+
+<p>
+To check your device for DSA you may use a simple search via <abbr title="Secure Shell">SSH</abbr> (note: might not work on all devices):
+</p>
+<pre class="code">if grep -sq DEVTYPE=dsa /sys/class/net/*/uevent; then 
+  echo &quot;You have DSA&quot;
+fi</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;OpenWrt and DSA&quot;,&quot;hid&quot;:&quot;openwrt_and_dsa&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;1524-2089&quot;} -->
+<h3 class="sectionedit4" id="bridging_all_lan_ports">1. Bridging all LAN ports</h3>
+<div class="level3">
+
+<p>
+In the initial (and very common) scenario, all <abbr title="Local Area Network">LAN</abbr> switch ports are bridged together into a single &#039;br-lan&#039; device.
+OpenWrt configures that device with an <abbr title="Internet Protocol">IP</abbr> protocol, address, etc.
+In this configuration, everything that&#039;s connected to those physical bridged ports can communicate with each other and the router itself.
+</p>
+
+<p>
+<strong>Configuring the LuCI web interface for a Bridged <abbr title="Local Area Network">LAN</abbr>:</strong>
+The first image shows all the <abbr title="Local Area Network">LAN</abbr> ports (<code>lan1</code> .. <code>lan4</code>) are part of a <em>Bridge device</em> named “br-lan”.
+The second image shows an interface (“<abbr title="Local Area Network">LAN</abbr>”) that incorporates the “br-lan” device and been assigned a static address 192.168.1.1.
+</p>
+
+<p>
+To add a wireless device (such as <code>wlan0</code>), open <strong>Network → Wireless</strong>. Edit the <em>Device Configuration</em> section to select the proper radio channel etc. Edit the <em>Interface Configuration</em> section (third image) to select the desired interface (from the Network: dropdown) and the SSID, security mode, etc.
+</p>
+
+<p>
+<a href="/_detail/media/dsa/dsa-01-device.png?id=docs%3Aguide-user%3Anetwork%3Adsa%3Adsa-mini-tutorial" class="media" title="media:dsa:dsa-01-device.png"><img src="/_media/media/dsa/dsa-01-device.png?w=800&amp;tok=589634" class="media" loading="lazy" alt="" width="800" /></a>
+</p>
+
+<p>
+<a href="/_detail/media/dsa/dsa-01-interface.png?id=docs%3Aguide-user%3Anetwork%3Adsa%3Adsa-mini-tutorial" class="media" title="media:dsa:dsa-01-interface.png"><img src="/_media/media/dsa/dsa-01-interface.png?w=800&amp;tok=c9fd6e" class="media" loading="lazy" alt="" width="800" /></a>
+</p>
+
+<p>
+<a href="/_detail/media/dsa/dsa-01-wireless.png?id=docs%3Aguide-user%3Anetwork%3Adsa%3Adsa-mini-tutorial" class="media" title="media:dsa:dsa-01-wireless.png"><img src="/_media/media/dsa/dsa-01-wireless.png?w=800&amp;tok=c4d039" class="media" loading="lazy" alt="" width="800" /></a>
+</p>
+
+<p>
+<strong>Configuration file for a Bridged <abbr title="Local Area Network">LAN</abbr>:</strong>
+The first half of the file below shows how the <code>config device</code> section groups the physical ports into a <em>bridge device</em> named &#039;br-lan&#039;.
+The <code>config interface &#039;lan&#039; </code> section then incorporates that &#039;br-lan&#039; device, and sets its <abbr title="Internet Protocol">IP</abbr> protocol type, address, etc. <em>Need to add the configuration for <code>wlan0</code> to this file.</em>
+</p>
+<pre class="code"># ... in /etc/config/network
+
+config device
+	option name &#039;br-lan&#039;
+	option type &#039;bridge&#039;
+	list ports &#039;lan1&#039;
+	list ports &#039;lan2&#039;
+	list ports &#039;lan3&#039;
+	list ports &#039;lan4&#039;
+
+config interface &#039;lan&#039;
+	option device &#039;br-lan&#039;
+	option proto &#039;static&#039;
+	option ipaddr &#039;192.168.1.1&#039;
+	option netmask &#039;255.255.255.0&#039;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;1. Bridging all LAN ports&quot;,&quot;hid&quot;:&quot;bridging_all_lan_ports&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;2090-3861&quot;} -->
+<h3 class="sectionedit5" id="multiple_bridged_networks">2. Multiple bridged networks</h3>
+<div class="level3">
+
+<p>
+OpenWrt can set up its switch to group multiple ports together into different bridge <em>interfaces</em> so their traffic remains separate, even though devices are plugged into the same router. For example, it might be useful to set aside certain ports for “home use” and others for “office use”. 
+</p>
+
+<p>
+You need only create two bridge devices: one for home and one for office, and assign different ports to each.
+You then create separate interfaces, and assign different <abbr title="Internet Protocol">IP</abbr> address ranges (“subnets”) to each of those bridge devices.
+For example, home devices might have addresses from the range 192.168.1.1 to 192.168.1.254,
+while the office devices will be 192.168.13.1 to 192.168.13.254.
+Devices plugged into the home ports will be able to communicate with each other,
+and the devices in the office ports can also talk together.
+But the “home” ports will <em>not</em> be able to communicate with “office” ports unless
+there is a routing or firewall rule to allow it.
+</p>
+
+<p>
+<strong>Configuring the LuCI web interface for multiple bridged networks:</strong>
+The LuCI interface created two separate bridge devices
+- <em>br-home</em> with the first two lan ports, and <em>office</em> with the next two ports.
+Next, two interfaces are created:
+</p>
+<ul>
+<li class="level1"><div class="li"> <em>HOME</em>, that uses the <em>br-home</em> bridge device, and assigns the address range 192.168.1.1 to 192.168.1.254 </div>
+</li>
+<li class="level1"><div class="li"> <em>OFFICE</em>, that uses the <em>office</em> bridge device, and assigns the address range 192.168.13.1 to 192.168.13.254 </div>
+</li>
+</ul>
+
+<p>
+<a href="/_detail/media/dsa/dsa-02-device-home-office.png?id=docs%3Aguide-user%3Anetwork%3Adsa%3Adsa-mini-tutorial" class="media" title="media:dsa:dsa-02-device-home-office.png"><img src="/_media/media/dsa/dsa-02-device-home-office.png?w=800&amp;tok=282d69" class="media" loading="lazy" alt="" width="800" /></a>
+</p>
+
+<p>
+<a href="/_detail/media/dsa/dsa-02-interface-home-office.png?id=docs%3Aguide-user%3Anetwork%3Adsa%3Adsa-mini-tutorial" class="media" title="media:dsa:dsa-02-interface-home-office.png"><img src="/_media/media/dsa/dsa-02-interface-home-office.png?w=800&amp;tok=b04d58" class="media" loading="lazy" alt="" width="800" /></a>
+</p>
+
+<p>
+<strong>Configuration file for multiple bridged LANs:</strong>
+Here&#039;s the same example in <code>/etc/config/network</code>.
+The first half of the file below shows how each <code>config device</code> section groups two physical ports into a bridge device
+named <em>br-home</em> and two more ports into <em>office</em>.
+The <code>config interface &#039;home&#039; </code> section defines an <em>interface</em> that incorporates the <em>br-home</em> device, and sets its <abbr title="Internet Protocol">IP</abbr> protocol type, address, etc.
+Similarly, the <code>config interface &#039;office&#039; </code> section incorporates the <em>office</em> device, and sets its configuration.
+</p>
+<pre class="code"># ... in /etc/config/network
+config device
+	option name &#039;br-home&#039;
+	option type &#039;bridge&#039;
+	list ports &#039;lan1&#039;
+	list ports &#039;lan2&#039;
+
+config device
+	option name &#039;office&#039;
+	option type &#039;bridge&#039;
+	list ports &#039;lan3&#039;
+	list ports &#039;lan4&#039;
+
+config interface &#039;home&#039;
+	option device &#039;br-home&#039;
+	option proto &#039;static&#039;
+	option ipaddr &#039;192.168.1.1&#039;
+	option netmask &#039;255.255.255.0&#039;
+
+config interface &#039;office&#039;
+	option device &#039;office&#039;
+	option proto &#039;static&#039;
+	option ipaddr &#039;192.168.13.1&#039;
+	option netmask &#039;255.255.255.0&#039;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;2. Multiple bridged networks&quot;,&quot;hid&quot;:&quot;multiple_bridged_networks&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:5,&quot;range&quot;:&quot;3862-6499&quot;} -->
+<h3 class="sectionedit6" id="multiple_networks_using_vlans">3. Multiple networks using VLANs</h3>
+<div class="level3">
+
+<p>
+Ports can also be separated (grouped) using single bridge with multiple VLANs.
+That requires assigning interfaces to correct software VLANs.
+<em>This item needs careful vetting... </em>
+</p>
+
+<p>
+Example:
+</p>
+
+<p>
+<a href="/_detail/media/dsa/dsa-03-device.png?id=docs%3Aguide-user%3Anetwork%3Adsa%3Adsa-mini-tutorial" class="media" title="media:dsa:dsa-03-device.png"><img src="/_media/media/dsa/dsa-03-device.png?w=800&amp;tok=ebc16a" class="media" loading="lazy" alt="" width="800" /></a>
+</p>
+<pre class="code">config device
+	option name &#039;br-lan&#039;
+	option type &#039;bridge&#039;
+	list ports &#039;lan1&#039;
+	list ports &#039;lan2&#039;
+	list ports &#039;lan3&#039;
+	list ports &#039;lan4&#039;
+
+config bridge-vlan
+	option device &#039;br-lan&#039;
+	option vlan &#039;1&#039;
+	list ports &#039;lan1&#039;
+	list ports &#039;lan2&#039;
+
+config bridge-vlan
+	option device &#039;br-lan&#039;
+	option vlan &#039;2&#039;
+	list ports &#039;lan3&#039;
+	list ports &#039;lan4&#039;</pre>
+
+<p>
+<a href="/_detail/media/dsa/dsa-03-interface-home-office.png?id=docs%3Aguide-user%3Anetwork%3Adsa%3Adsa-mini-tutorial" class="media" title="media:dsa:dsa-03-interface-home-office.png"><img src="/_media/media/dsa/dsa-03-interface-home-office.png?w=800&amp;tok=489b19" class="media" loading="lazy" alt="" width="800" /></a>
+</p>
+<pre class="code">config interface &#039;home&#039;
+	option device &#039;br-lan.1&#039;
+	option proto &#039;static&#039;
+	option ipaddr &#039;192.168.1.1&#039;
+	option netmask &#039;255.255.255.0&#039;
+
+config interface &#039;office&#039;
+	option device &#039;br-lan.2&#039;
+	option proto &#039;static&#039;
+	option ipaddr &#039;192.168.13.1&#039;
+	option netmask &#039;255.255.255.0&#039;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;3. Multiple networks using VLANs&quot;,&quot;hid&quot;:&quot;multiple_networks_using_vlans&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:6,&quot;range&quot;:&quot;6500-7462&quot;} -->
+<h3 class="sectionedit7" id="multiple_networks_using_vlan_tagging">4. Multiple networks using VLAN tagging</h3>
+<div class="level3">
+
+<p>
+With proper bridge <abbr title="Virtual Local Area Network">VLAN</abbr> configuration it&#039;s also possible for selected port to use <abbr title="Virtual Local Area Network">VLAN</abbr> tagged traffic.
+It also requires assigning OpenWrt interface to the correct software <abbr title="Virtual Local Area Network">VLAN</abbr>.
+<em>This item needs careful vetting... </em>
+</p>
+
+<p>
+Example:
+</p>
+
+<p>
+Port <code>lan4</code> uses tagged packets for <abbr title="Virtual Local Area Network">VLAN</abbr> 1 and has PVID 2.
+</p>
+
+<p>
+<a href="/_detail/media/dsa/dsa-04-device.png?id=docs%3Aguide-user%3Anetwork%3Adsa%3Adsa-mini-tutorial" class="media" title="media:dsa:dsa-04-device.png"><img src="/_media/media/dsa/dsa-04-device.png?w=800&amp;tok=cc2fd4" class="media" loading="lazy" alt="" width="800" /></a>
+</p>
+<pre class="code">config device
+	option name &#039;br-lan&#039;
+	option type &#039;bridge&#039;
+	list ports &#039;lan1&#039;
+	list ports &#039;lan2&#039;
+	list ports &#039;lan3&#039;
+	list ports &#039;lan4&#039;
+
+config bridge-vlan
+	option device &#039;br-lan&#039;
+	option vlan &#039;1&#039;
+	list ports &#039;lan1&#039;
+	list ports &#039;lan2&#039;
+	list ports &#039;lan3&#039;
+	list ports &#039;lan4:t&#039;
+
+config bridge-vlan
+	option device &#039;br-lan&#039;
+	option vlan &#039;2&#039;
+	list ports &#039;lan4:u*&#039;</pre>
+
+<p>
+<a href="/_detail/media/dsa/dsa-04-interface.png?id=docs%3Aguide-user%3Anetwork%3Adsa%3Adsa-mini-tutorial" class="media" title="media:dsa:dsa-04-interface.png"><img src="/_media/media/dsa/dsa-04-interface.png?w=800&amp;tok=4df6a6" class="media" loading="lazy" alt="" width="800" /></a>
+</p>
+<pre class="code">config interface &#039;lan&#039;
+	option device &#039;br-lan.1&#039;
+	option proto &#039;static&#039;
+	option ipaddr &#039;192.168.1.1&#039;
+	option netmask &#039;255.255.255.0&#039;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;4. Multiple networks using VLAN tagging&quot;,&quot;hid&quot;:&quot;multiple_networks_using_vlan_tagging&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:7,&quot;range&quot;:&quot;7463-8404&quot;} -->
+<h3 class="sectionedit8" id="firewall_zones_for_vlans">5. Firewall zones for VLANs</h3>
+<div class="level3">
+
+<p>
+Every interface should have a correctly configured firewall zone.
+However, if you want to only use layer 2 and not layer 3 routing on a <abbr title="Virtual Local Area Network">VLAN</abbr> (only switching, no traffic between VLANs), you can set the interface as unmanaged (option proto &#039;none&#039;), in which case do not set a firewall zone for the interface.
+</p>
+
+<p>
+Keep in mind, that at least one interface should have an address (static or <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr>) in order to connect to the device for administrative purposes. That interface must be associated with a firewall zone (or rules) to accept input.
+</p>
+
+<p>
+Example, where <abbr title="Virtual Local Area Network">VLAN</abbr> 1, 2 and 3 are only used for switching and <abbr title="Virtual Local Area Network">VLAN</abbr> 1 can be used to connect to the device:
+</p>
+
+<p>
+config/network
+</p>
+<pre class="code">config device &#039;switch&#039;
+	option name &#039;switch&#039;
+	option type &#039;bridge&#039;
+	option macaddr &#039;REDACTED&#039;
+	list ports &#039;lan1&#039;
+	list ports &#039;lan2&#039;
+	list ports &#039;lan3&#039;
+	list ports &#039;lan4&#039;
+
+config bridge-vlan &#039;lan_vlan&#039;
+	option device &#039;switch&#039;
+	option vlan &#039;1&#039;
+	list ports &#039;lan1:u*&#039;
+	list ports &#039;lan4:t&#039;
+
+config bridge-vlan
+	option device &#039;switch&#039;
+	option vlan &#039;2&#039;
+	list ports &#039;lan1:u*&#039;
+	list ports &#039;lan4:t&#039;
+
+config bridge-vlan
+	option device &#039;switch&#039;
+	option vlan &#039;3&#039;
+	list ports &#039;lan3:u*&#039;
+	list ports &#039;lan4:t&#039;
+
+config interface &#039;lan&#039;
+	option proto &#039;dhcp&#039;
+	option device &#039;switch.1&#039;
+	
+config interface &#039;iot&#039;
+	option proto &#039;none&#039;
+	option device &#039;switch.2&#039;
+
+config interface &#039;guest&#039;
+	option proto &#039;none&#039;
+	option device &#039;switch.3&#039;</pre>
+
+<p>
+config/firewall
+</p>
+<pre class="code">config defaults
+	option syn_flood &#039;1&#039;
+	option input &#039;ACCEPT&#039;
+	option output &#039;ACCEPT&#039;
+	option forward &#039;REJECT&#039;
+
+config zone
+	option name &#039;lan&#039;
+	option input &#039;ACCEPT&#039;
+	option output &#039;ACCEPT&#039;
+	option forward &#039;ACCEPT&#039;
+	list network &#039;lan&#039;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;5. Firewall zones for VLANs&quot;,&quot;hid&quot;:&quot;firewall_zones_for_vlans&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:8,&quot;range&quot;:&quot;8405-10095&quot;} -->
+<h3 class="sectionedit9" id="security_considerations_with_vlans">6. Security Considerations with VLANs</h3>
+<div class="level3">
+
+<p>
+See <a href="https://en.wikipedia.org/wiki/VLAN_hopping#Double_tagging" class="urlextern" title="https://en.wikipedia.org/wiki/VLAN_hopping#Double_tagging" rel="ugc nofollow">Wikipedia - VLAN Hopping</a>
+</p>
+<ul>
+<li class="level1"><div class="li"> If using separated VLANs, it is often recommended not to use <abbr title="Virtual Local Area Network">VLAN</abbr> 1 for any data networks. This is because <abbr title="Virtual Local Area Network">VLAN</abbr> 1 is often hardcoded as a default on a lot of networking equipment and is therefore more often used in attacks and prone to accidental misconfiguration.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> It is also often recommended to change the native <abbr title="Virtual Local Area Network">VLAN</abbr> on all trunk ports to an unused <abbr title="Virtual Local Area Network">VLAN</abbr> ID to explicitly only allow tagged traffic on trunk ports. Note that some hardware doesn&#039;t allow to mix tagged with untagged <abbr title="Virtual Local Area Network">VLAN</abbr> on one port, so this method cannot be used on it.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> Similarly, for added security any unused <abbr title="Local Area Network">LAN</abbr> ports can be also added (as u|*) to an unused <abbr title="Virtual Local Area Network">VLAN</abbr> ID.</div>
+</li>
+</ul>
+
+<p>
+As an example let&#039;s assume a setup where:
+</p>
+<ul>
+<li class="level1"><div class="li"> VLANs 10, 20 and 30 are used for seperated VLANs without any Layer 3 routing</div>
+</li>
+<li class="level1"><div class="li"> Ports lan1 and lan2 are trunked ports with all VLANs</div>
+</li>
+<li class="level1"><div class="li"> Port lan3 is only for untagged <abbr title="Virtual Local Area Network">VLAN</abbr> 10</div>
+</li>
+<li class="level1"><div class="li"> Port lan4 is unused</div>
+</li>
+<li class="level1"><div class="li"> <abbr title="Virtual Local Area Network">VLAN</abbr> 90 is not used anywhere else and is only there for added security</div>
+</li>
+</ul>
+
+<p>
+Note: Because local is not checked for <abbr title="Virtual Local Area Network">VLAN</abbr> 90, OpenWrt won&#039;t even create a device for it and there should be no interface for it, unlike the other VLANs.
+</p>
+<pre class="code">+---------+-------+------+------+------+------+
+| VLAN ID | Local | lan1 | lan2 | lan3 | lan4 |
++---------+-------+------+------+------+------+
+|    10   |   X   |   t  |   t  |  u|* |   -  |
++---------+-------+------+------+------+------+
+|    20   |   X   |   t  |   t  |   -  |   -  |
++---------+-------+------+------+------+------+
+|    30   |   X   |   t  |   t  |   -  |   -  |
++---------+-------+------+------+------+------+
+|    90   |       |  u|* |  u|* |   -  |  u|* |
++---------+-------+------+------+------+------+</pre>
+<pre class="code">config device &#039;switch&#039;
+	option name &#039;switch&#039;
+	option type &#039;bridge&#039;
+	option macaddr &#039;REDACTED&#039;
+	list ports &#039;lan1&#039;
+	list ports &#039;lan2&#039;
+	list ports &#039;lan3&#039;
+	list ports &#039;lan4&#039;
+
+config bridge-vlan &#039;lan_vlan&#039;
+	option device &#039;switch&#039;
+	option vlan &#039;10&#039;
+	list ports &#039;lan1:t&#039;
+	list ports &#039;lan2:t&#039;
+	list ports &#039;lan3:u*&#039;
+
+config bridge-vlan
+	option device &#039;switch&#039;
+	option vlan &#039;20&#039;
+	list ports &#039;lan1:t&#039;
+	list ports &#039;lan2:t&#039;
+
+config bridge-vlan
+	option device &#039;switch&#039;
+	option vlan &#039;30&#039;
+	list ports &#039;lan1:t&#039;
+	list ports &#039;lan2:t&#039;
+
+config bridge-vlan
+	option device &#039;switch&#039;
+	option vlan &#039;90&#039;
+	list ports &#039;lan1:u*&#039;
+	list ports &#039;lan2:u*&#039;
+	list ports &#039;lan4:u*&#039;
+	option local &#039;0&#039;
+
+config interface &#039;lan&#039;
+	option proto &#039;dhcp&#039;
+	option device &#039;switch.10&#039;
+	
+config interface &#039;iot&#039;
+	option proto &#039;none&#039;
+	option device &#039;switch.20&#039;
+
+config interface &#039;guest&#039;
+	option proto &#039;none&#039;
+	option device &#039;switch.30&#039;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;6. Security Considerations with VLANs&quot;,&quot;hid&quot;:&quot;security_considerations_with_vlans&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:9,&quot;range&quot;:&quot;10096-&quot;} -->

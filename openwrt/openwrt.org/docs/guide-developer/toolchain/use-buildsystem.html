@@ -1,0 +1,894 @@
+
+<h1 class="sectionedit1" id="build_system_usage">Build System Usage</h1>
+<div class="level1">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap"><ul>
+<li class="level1"><div class="li"> Do everything as an unprivileged user, not root, without sudo.</div>
+</li>
+<li class="level1"><div class="li"> Make sure there are no spaces in the full path to the build directory.</div>
+</li>
+</ul>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap">
+<p>
+There is an issue affecting the current OpenWrt source tree (from at least 21.02 onwards): OpenWrt images built in certain setups will succeed, but they will hang on boot if installed on a device. To work around this issue, please follow the instructions posted <a href="https://github.com/openwrt/openwrt/issues/9545" class="urlextern" title="https://github.com/openwrt/openwrt/issues/9545" rel="ugc nofollow">here</a> in the section titled “workaround” <strong>before checking out the source tree</strong>.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Build System Usage&quot;,&quot;hid&quot;:&quot;build_system_usage&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-621&quot;} -->
+<h2 class="sectionedit6" id="overview">Overview</h2>
+<div class="level2">
+
+<p>
+These are the basic steps to build your own OpenWrt images/packages:
+</p>
+<ol>
+<li class="level1"><div class="li"> <a href="/docs/guide-developer/toolchain/install-buildsystem" class="wikilink1" title="docs:guide-developer:toolchain:install-buildsystem" data-wiki-id="docs:guide-developer:toolchain:install-buildsystem">Install the build prerequisites</a></div>
+</li>
+<li class="level1"><div class="li"> Download the sources. Note that the canonical git repo url is <a href="https://git.openwrt.org/openwrt/openwrt.git" class="urlextern" title="https://git.openwrt.org/openwrt/openwrt.git" rel="ugc nofollow">https://git.openwrt.org/openwrt/openwrt.git</a> but it is suggested to clone from <a href="https://github.com/openwrt/openwrt.git" class="urlextern" title="https://github.com/openwrt/openwrt.git" rel="ugc nofollow">https://github.com/openwrt/openwrt.git</a> instead due to <a href="https://forum.openwrt.org/t/very-slow-git-clone/232552" class="urlextern" title="https://forum.openwrt.org/t/very-slow-git-clone/232552" rel="ugc nofollow">longstanding</a> <a href="https://forum.openwrt.org/t/clone-git-openwrt-org-slow/42054" class="urlextern" title="https://forum.openwrt.org/t/clone-git-openwrt-org-slow/42054" rel="ugc nofollow">problems</a> with git.openwrt.org. <pre class="code">git clone https://github.com/openwrt/openwrt.git
+cd openwrt
+git pull </pre>
+</div>
+</li>
+<li class="level1"><div class="li"> View the available releases: <pre class="code">git branch -a
+git tag</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Then <code>git checkout &lt;branch/tag&gt;</code>, e.g.: <pre class="code">git checkout openwrt-24.10</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Update the feeds: <pre class="code">./scripts/feeds update -a
+./scripts/feeds install -a</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-developer/toolchain/use-buildsystem#menuconfig" class="wikilink1" title="docs:guide-developer:toolchain:use-buildsystem" data-wiki-id="docs:guide-developer:toolchain:use-buildsystem">Configure the firmware image</a>: <pre class="code">make menuconfig</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> <em>Optional</em>: <a href="/docs/guide-developer/toolchain/use-buildsystem#kernel_configuration_optional" class="wikilink1" title="docs:guide-developer:toolchain:use-buildsystem" data-wiki-id="docs:guide-developer:toolchain:use-buildsystem">configure the kernel</a> (<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> usually not required, in case of doubt: don&#039;t)</div>
+</li>
+<li class="level1"><div class="li"> Build the firmware image and packages: <pre class="code">make defconfig download clean world</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> After a successful build, the freshly built image(s) and packages can be found below the newly created <code>&lt;buildroot&gt;/bin/targets</code> and <code>&lt;buildroot&gt;/bin/packages</code> directories, respectively. The exact location depends on the target/subtarget (for images) or architecture (for packages): <pre class="code"># Assuming a build for a Netgear WNDR3800, an &quot;ath79&quot; target with a &quot;generic&quot; subtarget
+# and a &quot;mips_24kc&quot; package architecture
+
+find bin/targets/ -iname &quot;*-sysupgrade.img*&quot;
+bin/targets/ath79/generic/openwrt-24.10.2-ath79-generic-netgear_wndr3800-squashfs-sysupgrade.bin
+
+find bin/packages/ -iname &quot;*.ipk&quot;
+bin/packages/mips_24kc/packages/mips_24kc/packages/acme_4.0.0_all.ipk
+...</pre>
+
+<p>
+ See also: <a href="/docs/guide-developer/toolchain/buildsystem_essentials#directory_structure" class="wikilink1" title="docs:guide-developer:toolchain:buildsystem_essentials" data-wiki-id="docs:guide-developer:toolchain:buildsystem_essentials">Directory structure</a>.
+</p>
+</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Overview&quot;,&quot;hid&quot;:&quot;overview&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;622-2688&quot;} -->
+<h2 class="sectionedit7" id="configuration">Configuration</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:7,&quot;range&quot;:&quot;2689-2715&quot;} -->
+<h3 class="sectionedit8" id="menuconfig">Menuconfig</h3>
+<div class="level3">
+
+<p>
+The <strong>build system configuration interface</strong> handles the selection of the target platform, packages to be compiled, packages to be included in the firmware file, some kernel options, etc.
+</p>
+
+<p>
+Start the build system configuration interface by writing the following command:
+</p>
+<pre class="code bash"><span class="kw2">make</span> menuconfig</pre>
+
+<p>
+This will update the dependencies of your existing configuration automatically, and you can now proceed to build your updated images.
+</p>
+
+<p>
+You will see a list of options.
+This list is really the top of a tree.
+You can select a list item, and descend into its tree.
+</p>
+
+<p>
+To search for the package or feature in the tree, you can type the “/” key, and search for a string.
+This will give you its locations within the tree.
+</p>
+
+<p>
+For most packages and features, you have three options:
+<code>y</code>, <code>m</code>, <code>n</code> which are represented as follows:
+</p>
+<ul>
+<li class="level1"><div class="li"> pressing <code><strong>y</strong></code> sets the <code><strong>&lt;*&gt;</strong></code> built-in label<br/>
+This package will be compiled and included in the firmware image file.</div>
+</li>
+<li class="level1"><div class="li"> pressing <code><strong>m</strong></code> sets the <code><strong>&lt;M&gt;</strong></code> package label<br/>
+This package will be compiled, but <strong>not</strong> included in the firmware image file, e.g. to be installed with opkg after flashing the firmware image file to the device.</div>
+</li>
+<li class="level1"><div class="li"> pressing <code><strong>n</strong></code> sets the <code><strong>&lt; &gt;</strong></code> excluded label<br/>
+The source code will not be processed.</div>
+</li>
+</ul>
+
+<p>
+When you save your configuration, the file <strong><code>&lt;buildroot&gt;/.config</code></strong> will be created / updated.
+</p>
+
+<p>
+When you open <code>menuconfig</code> you will need to set the build settings in this order (also shown in this order in <code>menuconfig</code>&#039;s interface):
+</p>
+<ol>
+<li class="level1"><div class="li"> Target system (general category of similar devices)</div>
+</li>
+<li class="level1"><div class="li"> Subtarget (subcategory of Target system, grouping similar devices)</div>
+</li>
+<li class="level1"><div class="li"> Target profile (each specific device)</div>
+</li>
+<li class="level1"><div class="li"> Package selection</div>
+</li>
+<li class="level1"><div class="li"> Build system settings</div>
+</li>
+<li class="level1"><div class="li"> Kernel modules</div>
+</li>
+</ol>
+
+<p>
+Select your device&#039;s <strong>Target system</strong> first, then select the right <strong>Subtarget</strong>, then you can find your device in the <strong>Target profile</strong>&#039;s list of supported platforms.
+</p>
+
+<p>
+E.g. to select and save the target for <a href="/toh/tp-link/tl-wr841n" class="wikilink1" title="toh:tp-link:tl-wr841n" data-wiki-id="toh:tp-link:tl-wr841n">TL-WR841N v11</a> Wi-Fi router:
+</p>
+<ol>
+<li class="level1"><div class="li"> Target System → Select → Atheros AR7xxx/AR9xxx → Select</div>
+</li>
+<li class="level1"><div class="li"> Subtarget → Select → Devices with small flash → Select</div>
+</li>
+<li class="level1"><div class="li"> Target Profile → Select → TP-LINK TL-WR841N/ND v11 → Select</div>
+</li>
+<li class="level1"><div class="li"> Exit → Yes</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Menuconfig&quot;,&quot;hid&quot;:&quot;menuconfig&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:8,&quot;range&quot;:&quot;2716-4976&quot;} -->
+<h3 class="sectionedit9" id="diff_file">Diff File</h3>
+<div class="level3">
+
+<p>
+Beside <code>make menuconfig</code> another way to configure is using a configuration diff file.
+This file includes only the changes compared to the default configuration.
+A benefit is that this file can be version-controlled in your downstream project.
+It&#039;s also less affected by upstream updates, because it only contains the changes.
+</p>
+
+</div>
+
+<h4 id="creating_a_diff_file">Creating a Diff File</h4>
+<div class="level4">
+
+<p>
+Save the build config changes.
+</p>
+<pre class="code bash"><span class="co0"># Write the changes to diffconfig</span>
+.<span class="sy0">/</span>scripts<span class="sy0">/</span>diffconfig.sh <span class="sy0">&gt;</span> diffconfig</pre>
+
+<p>
+The firmware make process <a href="https://git.openwrt.org/?p=openwrt/openwrt.git;a=commit;h=454021581f630d5d04afeb8ff6581c1bda295c87" class="interwiki iw_commit" title="https://git.openwrt.org/?p=openwrt/openwrt.git;a=commit;h=454021581f630d5d04afeb8ff6581c1bda295c87">automatically creates</a> the configuration diff file <code>config.buildinfo</code>, previously named as <code>config.seed</code> in 18.06 and before.
+</p>
+
+</div>
+
+<h4 id="using_a_diff_file">Using a Diff File</h4>
+<div class="level4">
+
+<p>
+These changes can form the basis of a config file <code>&lt;buildroot&gt;/.config</code>.
+By running <code>make defconfig</code> these changes will be expanded into a full config.
+</p>
+<pre class="code bash"><span class="co0"># Write changes to .config</span>
+<span class="kw2">cp</span> diffconfig .config
+&nbsp;
+<span class="co0"># Expand to full config</span>
+<span class="kw2">make</span> defconfig</pre>
+
+<p>
+These changes can also be added to the bottom of the config file (<code>&lt;buildroot&gt;/.config</code>), by running <code>make defconfig</code> these changes will override the existing configuration.
+</p>
+<pre class="code bash"><span class="co0"># Append changes to bottom of .config</span>
+<span class="kw2">cat</span> diffconfig <span class="sy0">&gt;&gt;</span> .config
+&nbsp;
+<span class="co0"># Apply changes</span>
+<span class="kw2">make</span> defconfig</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Diff File&quot;,&quot;hid&quot;:&quot;diff_file&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:9,&quot;range&quot;:&quot;4977-6309&quot;} -->
+<h3 class="sectionedit10" id="official_config">Official Config</h3>
+<div class="level3">
+
+<p>
+If you want to compile OpenWrt in a way that it gets <a href="https://forum.openwrt.org/t/compiling-openwrt-exactly-like-the-official-one/23214" class="urlextern" title="https://forum.openwrt.org/t/compiling-openwrt-exactly-like-the-official-one/23214" rel="ugc nofollow">the same packages as the default official image</a>, you can start from the configuration used to build the official images.
+</p>
+
+<p>
+Let&#039;s assume that you are building for the <a href="/toh/tp-link/archer_c7" class="wikilink1" title="toh:tp-link:archer_c7" data-wiki-id="toh:tp-link:archer_c7">archer_c7</a>, using this specific release:
+</p>
+
+<p>
+<a href="https://downloads.openwrt.org/releases/24.10.2/targets/ath79/generic/openwrt-24.10.2-ath79-generic-tplink_archer-c7-v2-squashfs-factory.bin" class="urlextern" title="https://downloads.openwrt.org/releases/24.10.2/targets/ath79/generic/openwrt-24.10.2-ath79-generic-tplink_archer-c7-v2-squashfs-factory.bin" rel="ugc nofollow">https://downloads.openwrt.org/releases/24.10.2/targets/ath79/generic/openwrt-24.10.2-ath79-generic-tplink_archer-c7-v2-squashfs-factory.bin</a>
+</p>
+
+<p>
+In the same directory as the firmware, you&#039;ll also find the configuration file used, named <code>config.buildinfo</code>:
+</p>
+<pre class="code bash"><span class="kw2">wget</span> https:<span class="sy0">//</span>downloads.openwrt.org<span class="sy0">/</span>releases<span class="sy0">/</span>24.10.2<span class="sy0">/</span>targets<span class="sy0">/</span>ath79<span class="sy0">/</span>generic<span class="sy0">/</span>config.buildinfo <span class="re5">-O</span> .config</pre>
+
+<p>
+When using this configuration the correct defaults will already be selected for the Target and Subtarget but <strong>not</strong> for the Target profile so you will have to modify the configuration to limit it to the specific device if you want to build only that image.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Official Config&quot;,&quot;hid&quot;:&quot;official_config&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:10,&quot;range&quot;:&quot;6310-7333&quot;} -->
+<h3 class="sectionedit11" id="custom_files">Custom Files</h3>
+<div class="level3">
+
+<p>
+In case you want to include some custom configuration files, the correct place to put them is:
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong><code>&lt;buildroot&gt;/files/</code></strong></div>
+</li>
+</ul>
+
+<p>
+For example, let&#039;s say that you want an image with a custom <strong><code>/etc/config/firewall</code></strong> or a custom <strong><code>etc/sysctl.conf</code></strong>, then create this files as:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code><strong>&lt;buildroot&gt;/files/</strong>etc/config/firewall</code></div>
+</li>
+<li class="level1"><div class="li"> <code><strong>&lt;buildroot&gt;/files/</strong>etc/sysctl.conf</code></div>
+</li>
+</ul>
+
+<p>
+E.g. if your <code>&lt;buildroot&gt;</code> is <code>~/source</code> and you want some files to be copied into firmware image&#039;s <code>/etc/config</code> directory, the correct place to put them is <code>~/source/files/etc/config</code>.
+</p>
+
+<p>
+It is strongly recommended to use <a href="/docs/guide-developer/uci-defaults" class="wikilink1" title="docs:guide-developer:uci-defaults" data-wiki-id="docs:guide-developer:uci-defaults">uci-defaults</a> to incrementally integrate only the required customization.
+This helps minimize conflicts with auto-generated settings which can change between versions.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Custom Files&quot;,&quot;hid&quot;:&quot;custom_files&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:11,&quot;range&quot;:&quot;7334-8169&quot;} -->
+<h3 class="sectionedit12" id="defconfig">Defconfig</h3>
+<div class="level3">
+<pre class="code bash"><span class="kw2">make</span> defconfig</pre>
+
+<p>
+will produce a default configuration of the target device and build system, including a check of dependencies and prerequisites for the build environment.
+</p>
+
+<p>
+Defconfig will also remove outdated items from <code>.config</code>, e.g. references to non-existing packages or config options.
+</p>
+
+<p>
+It also checks the dependencies and will add possibly missing necessary dependencies.
+This can be used to “expand” a short .config recipe (like diffconfig output, possible even pruned further) to a full .config that the make process accepts.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Defconfig&quot;,&quot;hid&quot;:&quot;defconfig&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:12,&quot;range&quot;:&quot;8170-8745&quot;} -->
+<h3 class="sectionedit13" id="kernel">Kernel</h3>
+<div class="level3">
+
+<p>
+Note that <code>make kernel_menuconfig</code> modifies the Kernel configuration templates of the build tree and clearing the build_dir will not revert them.
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Also you won&#039;t be able to install kernel packages from the official repositories when you make changes here.
+</p>
+
+<p>
+While you won&#039;t typically need to do this, first define the target, subtarget, and device in a <code>.config</code>, for example:
+</p>
+<pre class="code bash"><span class="re2">CONFIG_TARGET_x86</span>=y
+<span class="re2">CONFIG_TARGET_x86_64</span>=y
+<span class="re2">CONFIG_TARGET_x86_64_DEVICE_generic</span>=y</pre>
+
+<p>
+Now run the following where subtarget is not a variable, it is a literal and it references the <code>.config</code> we just created (in this case x86/64):
+</p>
+<pre class="code bash"><span class="kw2">make</span> kernel_menuconfig <span class="re2">CONFIG_TARGET</span>=subtarget</pre>
+
+<p>
+CONFIG_TARGET allows you to select which config you want to edit, possible options: target, subtarget, env.
+</p>
+
+<p>
+The changes can be reviewed and reverted with:
+</p>
+<pre class="code bash"><span class="kw2">git diff</span> target<span class="sy0">/</span>linux<span class="sy0">/</span>
+<span class="kw2">git checkout</span> target<span class="sy0">/</span>linux<span class="sy0">/</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Kernel&quot;,&quot;hid&quot;:&quot;kernel&quot;,&quot;codeblockOffset&quot;:13,&quot;secid&quot;:13,&quot;range&quot;:&quot;8746-9689&quot;} -->
+<h3 class="sectionedit14" id="source_mirrors">Source mirrors</h3>
+<div class="level3">
+
+<p>
+The &#039;Build system settings&#039; include some efficient options for changing package locations which makes it easy to handle a local package set:
+</p>
+<ol>
+<li class="level1"><div class="li"> Local mirror for source packages</div>
+</li>
+<li class="level1"><div class="li"> Download folder</div>
+</li>
+</ol>
+
+<p>
+In the case of the first option, you simply enter a full <abbr title="Uniform Resource Locator">URL</abbr> to the <abbr title="Hypertext Transfer Protocol">HTTP</abbr> or <abbr title="File Transfer Protocol">FTP</abbr> server on which the package sources are hosted.
+Download folder would in the same way be the path to a local folder on the build system (or network).
+If you have a web/ftp-server hosting the tarballs, the build system will try this one before trying to download from the location(s) mentioned in the Makefiles.
+Similar if a local &#039;download folder&#039;, residing on the build system, has been specified.
+</p>
+
+<p>
+The &#039;Kernel modules&#039; option is required if you need specific (non-standard) drivers and so forth – this would typically be things like modules for USB or particular network interface drivers etc.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Source mirrors&quot;,&quot;hid&quot;:&quot;source_mirrors&quot;,&quot;codeblockOffset&quot;:16,&quot;secid&quot;:14,&quot;range&quot;:&quot;9690-10592&quot;} -->
+<h3 class="sectionedit15" id="download_sources_and_multi_core_compile">Download sources and multi core compile</h3>
+<div class="level3">
+
+<p>
+Before running final make it is best to issue make download command first, this step will pre-fetch all source code for all dependencies, this enables you compile with more CPU cores, e.g. <code>make -j10</code>, for 4 core, 8 thread CPU works great.
+</p>
+
+<p>
+If you try compiling OpenWrt on multiple cores and don&#039;t download all source files for all dependency packages it is very likely that your build will fail.
+</p>
+<pre class="code bash"><span class="kw2">make</span> download</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Download sources and multi core compile&quot;,&quot;hid&quot;:&quot;download_sources_and_multi_core_compile&quot;,&quot;codeblockOffset&quot;:16,&quot;secid&quot;:15,&quot;range&quot;:&quot;10593-11078&quot;} -->
+<h2 class="sectionedit16" id="building">Building</h2>
+<div class="level2">
+
+<p>
+Everything is now ready for building the image(s), which is done with one single command:
+</p>
+<pre class="code bash"><span class="kw2">make</span></pre>
+
+<p>
+This should compile toolchain, cross-compile sources, package packages, and generate an image ready to be flashed.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Building&quot;,&quot;hid&quot;:&quot;building&quot;,&quot;codeblockOffset&quot;:17,&quot;secid&quot;:16,&quot;range&quot;:&quot;11079-11332&quot;} -->
+<h3 class="sectionedit17" id="make_tips">Make tips</h3>
+<div class="level3">
+
+<p>
+See also: <a href="https://forum.openwrt.org/viewtopic.php?id=35323" class="urlextern" title="https://forum.openwrt.org/viewtopic.php?id=35323" rel="ugc nofollow">Compiler optimization tweaks</a>
+</p>
+
+<p>
+<code>make download</code> will pre-download all source code for all dependencies, this will enable multi core compilation to succeed, without it is is very likely to fail.
+<code>make -j</code><strong>N</strong> will speed up compilation by using up to <strong>N</strong> cores or hardware threads to speed up compilation, <code>make -j9</code> fully uses 8 cores or hardware threads.
+</p>
+
+<p>
+Example of pre-downloading and building the images on a 4 core CPU:
+</p>
+<pre class="code bash"><span class="kw2">make</span> <span class="re5">-j5</span> download world</pre>
+
+<p>
+You can use <a href="https://unix.stackexchange.com/questions/208568/how-to-determine-the-maximum-number-to-pass-to-make-j-option" class="urlextern" title="https://unix.stackexchange.com/questions/208568/how-to-determine-the-maximum-number-to-pass-to-make-j-option" rel="ugc nofollow">&#039;&#039;nproc&#039;&#039; command to get available CPU count</a>:
+</p>
+<pre class="code bash"><span class="kw2">make</span> <span class="re5">-j</span> $<span class="br0">&#40;</span>nproc<span class="br0">&#41;</span> download world</pre>
+
+<p>
+or a better macro with <code>nproc+1</code>:
+</p>
+<pre class="code bash"><span class="kw2">make</span> <span class="re5">-j</span> $<span class="br0">&#40;</span><span class="br0">&#40;</span>$<span class="br0">&#40;</span>nproc<span class="br0">&#41;</span>+<span class="nu0">1</span><span class="br0">&#41;</span><span class="br0">&#41;</span></pre>
+
+</div>
+
+<h4 id="building_in_the_background">Building in the background</h4>
+<div class="level4">
+
+<p>
+If you intend to use your system while building, you can have the build process use only idle I/O and CPU capacity like this (4 core, 8 thread CPU):
+</p>
+<pre class="code bash"><span class="kw2">make</span> download
+ionice <span class="re5">-c</span> <span class="nu0">3</span> chrt <span class="re5">--idle</span> <span class="nu0">0</span> <span class="kw2">nice</span> <span class="re5">-n19</span> <span class="kw2">make</span> <span class="re5">-j9</span></pre>
+
+</div>
+
+<h4 id="building_single_packages">Building single packages</h4>
+<div class="level4">
+
+<p>
+When developing or packaging software, it is convenient to be able to build only the package in question, e.g. with package <code>jsonpath</code>:
+</p>
+<pre class="code bash"><span class="kw2">make</span> package<span class="sy0">/</span>utils<span class="sy0">/</span>jsonpath<span class="sy0">/</span>compile <span class="re2">V</span>=s</pre>
+
+<p>
+For a rebuild:
+</p>
+<pre class="code bash"><span class="kw2">make</span> package<span class="sy0">/</span>utils<span class="sy0">/</span>jsonpath<span class="sy0">/</span><span class="br0">&#123;</span>clean,compile<span class="br0">&#125;</span> <span class="re2">V</span>=s</pre>
+
+<p>
+It doesn&#039;t matter what feed the package is located in, this same syntax works for any installed package.
+</p>
+
+<p>
+Note: you must have done a full tree build (make, or make world) beforehand for this to work reliably.
+</p>
+
+</div>
+
+<h4 id="spotting_build_errors">Spotting build errors</h4>
+<div class="level4">
+
+<p>
+If for some reason the build fails, the easiest way to spot the error is to do:
+</p>
+<pre class="code bash"><span class="kw2">make</span> <span class="re2">V</span>=s <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span> <span class="sy0">|</span> <span class="kw2">tee</span> build.log <span class="sy0">|</span> <span class="kw2">grep</span> <span class="re5">-i</span> <span class="re5">-E</span> <span class="st0">&quot;^make.*(error|[12345]...Entering dir)&quot;</span>
+&nbsp;
+<span class="kw2">make</span> <span class="re2">V</span>=s <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span> <span class="sy0">|</span> <span class="kw2">tee</span> build.log <span class="sy0">|</span> <span class="kw2">grep</span> <span class="re5">-i</span> <span class="st_h">'[^_-&quot;a-z]error[^_-.a-z]'</span> 
+<span class="br0">&#40;</span>may not work<span class="br0">&#41;</span></pre>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> If <strong>grep</strong> throws an error, use <strong>fgrep</strong> instead.
+</p>
+
+<p>
+The above saves a full verbose copy of the build output (with stdout piped to stderr) in <code>~/source/build.log</code> and shows errors on the screen (along with a few spurious instances of &#039;error&#039;).
+</p>
+
+<p>
+Another example:
+</p>
+<pre class="code bash">ionice <span class="re5">-c</span> <span class="nu0">3</span> <span class="kw2">nice</span> <span class="re5">-n</span> <span class="nu0">20</span> <span class="kw2">make</span> <span class="re5">-j</span> <span class="nu0">2</span> <span class="re2">V</span>=s <span class="re2">CONFIG_DEBUG_SECTION_MISMATCH</span>=y <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span> <span class="sy0">|</span> <span class="kw2">tee</span> build.log</pre>
+
+<p>
+The above saves a full verbose copy of the build output (with stdout piped to stderr) in build.log while building using only background resources on a dual core CPU.
+</p>
+
+<p>
+Yet another way to focus on the problem without having to wade through tons of output from Make as described above is to check the corresponding log in <code>logs</code> folder.
+i.e. if the build fails at <code>make[3] -C package/kernel/mac80211 compile</code>, then you can go to <code>&lt;buildroot&gt;/logs/package/kernel/mac80211</code> and view the <code>compile.txt</code> found there.
+</p>
+
+</div>
+
+<h4 id="getting_beep_notification">Getting beep notification</h4>
+<div class="level4">
+
+<p>
+Depending on your CPU, the process will take a while, or while longer.
+If you want an acoustic notification, you could use this way:
+</p>
+<pre class="code bash"><span class="kw2">make</span> ...; <span class="kw3">echo</span> <span class="re5">-e</span> <span class="st_h">'\a'</span></pre>
+
+</div>
+
+<h4 id="ignore_build_errors">Ignore build errors</h4>
+<div class="level4">
+
+<p>
+If you are building everything (not just the packages to make a flashable image), you will probably want to keep building all packages even if some have compile errors and won&#039;t be built.
+</p>
+<pre class="code bash"><span class="co0"># Ignore compilation errors</span>
+<span class="re2">IGNORE_ERRORS</span>=<span class="nu0">1</span> <span class="kw2">make</span> ...
+&nbsp;
+<span class="co0"># Ignore all errors including firmware assembly stage</span>
+<span class="kw2">make</span> <span class="re5">-i</span> ...</pre>
+
+</div>
+
+<h4 id="make_a_summary_information_of_generated_image">Make a summary information of generated image</h4>
+<div class="level4">
+<pre class="code bash"><span class="kw2">make</span> json_overview_image_info</pre>
+
+<p>
+Generate a summary of the image (including default packages, type of target, etc... ) in JSON format. The output is available in <code>&lt;BUILD_DIR&gt;/profiles.json</code>.
+</p>
+
+</div>
+
+<h4 id="calculate_checksum_for_generated_files">Calculate checksum for generated files</h4>
+<div class="level4">
+<pre class="code bash"><span class="kw2">make</span> checksum</pre>
+
+<p>
+The following action will take place: a checksum will be computed and saved for the output files. This checksum will then be stored in the &#039;&lt;BIN_DIR&gt;/sha256sums&#039; .
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Make tips&quot;,&quot;hid&quot;:&quot;make_tips&quot;,&quot;codeblockOffset&quot;:18,&quot;secid&quot;:17,&quot;range&quot;:&quot;11333-15270&quot;} -->
+<h2 class="sectionedit18" id="cleaning_up">Cleaning Up</h2>
+<div class="level2">
+
+<p>
+You might need to clean your <em>build environment</em> every now and then.
+</p>
+
+<p>
+The build artefacts, toolchain, build tools and downloaded feeds &amp; sources files can be cleaned selectively.<br/>
+
+The following <code>make</code>-targets are useful for that job.<br/>
+ <code>make clean</code> is the most frequently needed clean operation.
+</p>
+<div class="table sectionedit19"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> &gt; Cleaned components &gt; <br/>
+v make argument v</th><th class="col1"> Compiled binaries:<br/>
+firmware, kernel, packages </th><th class="col2 leftalign"> Toolchain<br/>
+(target-specific)  </th><th class="col3"> Build tools,<br/>
+tmp/<br/>
+</th><th class="col4"> Compiled<br/>
+config tools </th><th class="col5">.config<br/>
+<br/>
+</th><th class="col6"> feeds, .ccache,<br/>
+downloaded source files </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> clean        </td><td class="col1 centeralign">  x  </td><td class="col2"> </td><td class="col3"> </td><td class="col4"> </td><td class="col5"> </td><td class="col6"> </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> targetclean  </td><td class="col1 centeralign">  x  </td><td class="col2 centeralign">  x  </td><td class="col3"> </td><td class="col4"> </td><td class="col5"> </td><td class="col6"> </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> dirclean     </td><td class="col1 centeralign">  x  </td><td class="col2 centeralign">  x  </td><td class="col3 centeralign">  x  </td><td class="col4 centeralign">  x  </td><td class="col5"> </td><td class="col6"> </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> config-clean </td><td class="col1"> </td><td class="col2"> </td><td class="col3 leftalign">  </td><td class="col4 centeralign">  x  </td><td class="col5"> </td><td class="col6"> </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 leftalign"> distclean    </td><td class="col1 centeralign">  x  </td><td class="col2 centeralign">  x  </td><td class="col3 centeralign">  x  </td><td class="col4 centeralign">  x  </td><td class="col5 centeralign">  x  </td><td class="col6 centeralign">  x  </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:19,&quot;range&quot;:&quot;15600-16039&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Cleaning Up&quot;,&quot;hid&quot;:&quot;cleaning_up&quot;,&quot;codeblockOffset&quot;:30,&quot;secid&quot;:18,&quot;range&quot;:&quot;15271-16039&quot;} -->
+<h3 class="sectionedit20" id="clean">Clean</h3>
+<div class="level3">
+<pre class="code bash"><span class="kw2">make</span> clean</pre>
+
+<p>
+Deletes contents of the directories <code>/bin</code> and <code>/build_dir</code>.
+This doesn&#039;t remove the toolchain, and it also avoids cleaning architectures/targets other than the one you have selected in your <code>.config</code>.
+It is a good practice to do <code>make clean</code> before a build to ensure that no outdated artefacts have been left from the previous builds.
+That may not be necessary always, but as a general rule it helps to ensure quality builds.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Clean&quot;,&quot;hid&quot;:&quot;clean&quot;,&quot;codeblockOffset&quot;:30,&quot;secid&quot;:20,&quot;range&quot;:&quot;16040-16523&quot;} -->
+<h3 class="sectionedit21" id="targetclean">Targetclean</h3>
+<div class="level3">
+<pre class="code bash"><span class="kw2">make</span> targetclean</pre>
+
+<p>
+This cleans also the target-specific toolchain in addition of doing <code>make clean</code>. This may be needed when the toolchain components like musl or gcc change.<br/>
+
+Does a <code>make clean</code> and deletes also the directories <code>/build_dir/toolchain*</code> and <code>/staging_dir/toolchain*</code> (= the cross-compile tools).<br/>
+<br/>
+
+Note: <code>make targetclean</code> has been introduced in 22.03 and is not found in earlier OpenWrt versions.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Targetclean&quot;,&quot;hid&quot;:&quot;targetclean&quot;,&quot;codeblockOffset&quot;:31,&quot;secid&quot;:21,&quot;range&quot;:&quot;16524-16993&quot;} -->
+<h3 class="sectionedit22" id="dirclean">Dirclean</h3>
+<div class="level3">
+<pre class="code bash"><span class="kw2">make</span> dirclean</pre>
+
+<p>
+This is your basic “full clean” operation. Cleans all compiled binaries, tools, toolchain, tmp/ etc.<br/>
+
+Deletes contents of the directories <code>/bin</code> and <code>/build_dir</code> and <code>/staging_dir</code> (= tools and the cross-compile toolchain), <code>/tmp</code> (e.g data about packages) and <code>/logs</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Dirclean&quot;,&quot;hid&quot;:&quot;dirclean&quot;,&quot;codeblockOffset&quot;:32,&quot;secid&quot;:22,&quot;range&quot;:&quot;16994-17330&quot;} -->
+<h3 class="sectionedit23" id="distclean">Distclean</h3>
+<div class="level3">
+<pre class="code bash"><span class="kw2">make</span> distclean</pre>
+
+<p>
+Nukes everything you have compiled or configured and also deletes all downloaded feeds contents and package sources.
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> In addition to all else, this will <strong>erase your build configuration <code>&lt;buildroot&gt;/.config</code></strong>.
+Use only if you need a “factory reset” of the build system!
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Distclean&quot;,&quot;hid&quot;:&quot;distclean&quot;,&quot;codeblockOffset&quot;:33,&quot;secid&quot;:23,&quot;range&quot;:&quot;17331-17664&quot;} -->
+<h3 class="sectionedit24" id="selective_cleanup">Selective cleanup</h3>
+<div class="level3">
+
+<p>
+In more time, you may not want to clean so many objects, then you can use some of the commands below to do it.
+</p>
+<pre class="code bash"><span class="co0"># Clean linux objects</span>
+<span class="kw2">make</span> target<span class="sy0">/</span>linux<span class="sy0">/</span>clean
+&nbsp;
+<span class="co0"># Clean package base-files objects</span>
+<span class="kw2">make</span> package<span class="sy0">/</span>base-files<span class="sy0">/</span>clean
+&nbsp;
+<span class="co0"># Clean luci objects</span>
+<span class="kw2">make</span> package<span class="sy0">/</span>luci<span class="sy0">/</span>clean</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Selective cleanup&quot;,&quot;hid&quot;:&quot;selective_cleanup&quot;,&quot;codeblockOffset&quot;:34,&quot;secid&quot;:24,&quot;range&quot;:&quot;17665-17984&quot;} -->
+<h2 class="sectionedit25" id="developing">Developing</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Developing&quot;,&quot;hid&quot;:&quot;developing&quot;,&quot;codeblockOffset&quot;:35,&quot;secid&quot;:25,&quot;range&quot;:&quot;17985-18008&quot;} -->
+<h3 class="sectionedit26" id="updating">Updating</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="sources">Sources</h4>
+<div class="level4">
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> The development branch changes frequently. It is recommended that you work with the latest sources by periodically running: 
+</p>
+<pre class="code">git pull</pre>
+
+</div>
+
+<h4 id="feeds">Feeds</h4>
+<div class="level4">
+
+<p>
+To pull the latest updates for the feeds, run:
+</p>
+<pre class="code">./scripts/feeds update -a</pre>
+
+<p>
+And then to make any new packages available in <code>make menuconfig</code> (this can help to avoid problems like <code>WARNING: Makefile &#039;package/utils/busybox/Makefile&#039; has a dependency on &#039;libpam&#039;, which does not exist</code>): 
+</p>
+<pre class="code">./scripts/feeds install -a</pre>
+
+<p>
+Or, alternatively, for a single package: 
+</p>
+<pre class="code">./scripts/feeds install &lt;package_name&gt;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Updating&quot;,&quot;hid&quot;:&quot;updating&quot;,&quot;codeblockOffset&quot;:35,&quot;secid&quot;:26,&quot;range&quot;:&quot;18009-18649&quot;} -->
+<h3 class="sectionedit27" id="custom_feeds">Custom Feeds</h3>
+<div class="level3">
+<ol>
+<li class="level1"><div class="li"> Prepare your <code>&lt;buildroot&gt;</code> with git cloning openwrt sources from github (e.g. from your fork).<br/>
+</div>
+</li>
+<li class="level1"><div class="li"> Create a dir: <code>mkdir -p &lt;buildroot&gt;/my_packages/&lt;section&gt;/&lt;category&gt;/&lt;package_name&gt;</code>.<br/>
+Replace the <code>&lt;package_name&gt;</code> with the name of your package.<br/>
+e.g. <code>mkdir -p my_packages/net/network/rpcbind</code>.<br/>
+The section and category can be found in the <code>Makefile</code>.</div>
+</li>
+<li class="level1"><div class="li"> Write a Makefile or download one <code>Makefile</code> from another package, look at samples on github.<br/>
+Edit your Makefile and add necessary files, sources...<br/>
+More: <a href="/docs/guide-developer/packages" class="wikilink1" title="docs:guide-developer:packages" data-wiki-id="docs:guide-developer:packages">Creating packages</a> &amp; <a href="/docs/guide-developer/helloworld/chapter3" class="wikilink1" title="docs:guide-developer:helloworld:chapter3" data-wiki-id="docs:guide-developer:helloworld:chapter3">Creating a package from your application</a><br/>
+</div>
+</li>
+<li class="level1"><div class="li"> Append a line with your custom feed to <code>feeds.conf.default</code>:<br/>
+<code>src-link my_packages &lt;buildroot&gt;/my_packages</code><br/>
+Replace the <code>&lt;buildroot&gt;</code> with cloned openwrt sources directory e.g. <code>/home<em>/user</em>/openwrt</code> (the path must be absolute).<br/>
+Move the line with your custom feed above standard feeds to override them.<br/>
+</div>
+</li>
+<li class="level1"><div class="li"> Now run: <code>./scripts/feeds update -a; ./scripts/feeds install &lt;package_name&gt;</code><br/>
+If you are doing this to resolve a dependency you can run <code>./scripts/feeds install &lt;package_name&gt;</code> one more time and you should notice the dependency has been resolved.<br/>
+</div>
+</li>
+<li class="level1"><div class="li"> Build your package.<br/>
+Select it in the menu of <code>Make menuconfig</code><br/>
+Build it with <code>make package<em>/my_package_name</em>/{clean,compile}</code><br/>
+More: <a href="/docs/guide-developer/toolchain/single.package" class="wikilink1" title="docs:guide-developer:toolchain:single.package" data-wiki-id="docs:guide-developer:toolchain:single.package">Building a single package</a><br/>
+</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Custom Feeds&quot;,&quot;hid&quot;:&quot;custom_feeds&quot;,&quot;codeblockOffset&quot;:39,&quot;secid&quot;:27,&quot;range&quot;:&quot;18650-20164&quot;} -->
+<h3 class="sectionedit28" id="switching_releases">Switching Releases</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="note">Note</h4>
+<div class="level4">
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> When switching between branches/tags/commits, it is recommended to perform a thorough scrub of your source tree by using the <code>make distclean</code> command. This ensures that your source tree does not contain any build artifacts or configuration files from previous build runs.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Note that switching is also likely to update the <code>feeds.conf.default</code> file, meaning that you&#039;ll switch to different package feeds, unless you have a custom <code>feeds.conf</code> (which you should review carefully).
+</p>
+
+</div>
+
+<h4 id="branches">Branches</h4>
+<div class="level4">
+
+<p>
+Each branch contains the most recent code for a given major release, e.g. <code>openwrt-24.10</code>, <code>openwrt-23.05</code> (and <code>main</code>/<code>master</code> contains the bleeding edge development branch). Except for <code>master</code>, each branch is intended to contain <strong>stable</strong> code with carefully selected fixes and backports.
+</p>
+
+<p>
+To use a branch, clone the Git repository using the <code>git clone</code> command explained above and then move to the branch by using the <code>git checkout</code> command.
+</p>
+<ol>
+<li class="level1"><div class="li"> Update branches: <pre class="code">git fetch -a</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> List branches: <pre class="code">git branch -a</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Switch to the development branch: <pre class="code">git checkout master</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Switch to the OpenWrt 24.10 branch: <pre class="code">git checkout openwrt-24.10</pre>
+</div>
+</li>
+</ol>
+
+</div>
+
+<h4 id="tags">Tags</h4>
+<div class="level4">
+
+<p>
+Each minor release has a corresponding tag in git, which allows you to work on a more specific version:
+</p>
+<ol>
+<li class="level1"><div class="li"> Update tags: <pre class="code">git fetch -a -t</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> List tags: <pre class="code">git tag | grep v24.10
+v24.10.0
+v24.10.0-rc1
+...
+v24.10.1
+v24.10.2</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Switch to the 24.10.2 release: <pre class="code">git checkout v24.10.2</pre>
+</div>
+</li>
+</ol>
+
+</div>
+
+<h4 id="commits">Commits</h4>
+<div class="level4">
+
+<p>
+On an even more lower level, you can also switch to a specific commit:
+</p>
+<ol>
+<li class="level1"><div class="li"> Select a specific commit hash: <pre class="code">REV_HASH=&quot;4c73c34ec4215deb690bf03faea2a0fe725476f0&quot;
+git checkout ${REV_HASH}
+REV_BRANCH=&quot;$(git rev-parse --abbrev-ref HEAD)&quot;</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Replace all references to <code>src-git</code> with <code>src-git-full</code> in your <a href="https://openwrt.org/docs/guide-developer/feeds#feed_configuration" class="urlextern" title="https://openwrt.org/docs/guide-developer/feeds#feed_configuration" rel="ugc nofollow">feeds</a>: <pre class="code">sed -e &quot;/^src-git\S*/s//src-git-full/&quot; feeds.conf.default &gt; feeds.conf
+./scripts/feeds update -a</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Edit every line of feeds.conf in a loop to point to a specific commit:<pre class="code">sed -n -e &quot;/^src-git\S*\s/{s///;s/\s.*$//p}&quot; feeds.conf \
+| while read -r FEED_ID
+do
+REV_DATE=&quot;$(git log -1 --format=%cd --date=iso8601-strict)&quot;
+REV_HASH=&quot;$(git -C feeds/${FEED_ID} rev-list -n 1 --before=${REV_DATE} ${REV_BRANCH})&quot;
+sed -i -e &quot;/\s${FEED_ID}\s.*\.git$/s/$/^${REV_HASH}/&quot; feeds.conf
+done</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Refresh your feeds: <pre class="code">./scripts/feeds update -a
+./scripts/feeds install -a</pre>
+</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Switching Releases&quot;,&quot;hid&quot;:&quot;switching_releases&quot;,&quot;codeblockOffset&quot;:39,&quot;secid&quot;:28,&quot;range&quot;:&quot;20165-22766&quot;} -->
+<h2 class="sectionedit29" id="examples">Examples</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <a href="https://github.com/mwarning/openwrt-examples" class="urlextern" title="https://github.com/mwarning/openwrt-examples" rel="ugc nofollow">https://github.com/mwarning/openwrt-examples</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://forum.openwrt.org/viewtopic.php?pid=129319#p129319" class="urlextern" title="https://forum.openwrt.org/viewtopic.php?pid=129319#p129319" rel="ugc nofollow">https://forum.openwrt.org/viewtopic.php?pid=129319#p129319</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://forum.openwrt.org/viewtopic.php?id=28267" class="urlextern" title="https://forum.openwrt.org/viewtopic.php?id=28267" rel="ugc nofollow">https://forum.openwrt.org/viewtopic.php?id=28267</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Examples&quot;,&quot;hid&quot;:&quot;examples&quot;,&quot;codeblockOffset&quot;:50,&quot;secid&quot;:29,&quot;range&quot;:&quot;22767-22953&quot;} -->
+<h2 class="sectionedit30" id="troubleshooting">Troubleshooting</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Beware of <a href="/docs/guide-developer/toolchain/install-buildsystem#build_system_setup" class="wikilink1" title="docs:guide-developer:toolchain:install-buildsystem" data-wiki-id="docs:guide-developer:toolchain:install-buildsystem">unusual environment variables</a>.</div>
+</li>
+<li class="level1"><div class="li"> First get more information on the problem using the make option <code>make V=sc</code> or enable logging.</div>
+</li>
+<li class="level1"><div class="li"> Read more about make options: <a href="/docs/techref/buildroot" class="wikilink1" title="docs:techref:buildroot" data-wiki-id="docs:techref:buildroot">Buildroot Techref</a>.</div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="missing_source_code_file_due_to_download_problems">Missing source code file, due to download problems</h4>
+<div class="level4">
+
+<p>
+First check if the <abbr title="Uniform Resource Locator">URL</abbr> path in the make file contains a trailing slash, then if it does, try with it removed (helped several times).
+Otherwise try to download the source code manually and put it into <code>dl</code> directory.
+</p>
+
+</div>
+
+<h4 id="compilation_errors">Compilation errors</h4>
+<div class="level4">
+
+<p>
+Try to update the main source and all the feeds, however beware of other potential problems.
+Check for related issues in the <a href="/bugs" class="wikilink1" title="bugs" data-wiki-id="bugs">bugtracker</a>, otherwise report the problem there mentioning the package, target (CPU, image, etc.) and code revisions (main &amp; package).
+</p>
+
+<p>
+Some packages may not be updated properly and built after they got stuck with old dependencies, resulting in warnings at the beginning of the compilation looking similar to:
+</p>
+<pre class="code">WARNING: Makefile &#039;package/feeds/packages/openssh/Makefile&#039; has a dependency on &#039;libfido2&#039;, which does not exist</pre>
+
+<p>
+The build environment can be recovered by uninstalling and reinstalling the failing package
+</p>
+<pre class="code">$ ./scripts/feeds uninstall openssh
+Uninstalling package &#039;openssh&#039;
+$ ./scripts/feeds install openssh
+Installing package &#039;openssh&#039; from packages
+Installing package &#039;libfido2&#039; from packages
+Installing package &#039;libcbor&#039; from packages</pre>
+
+</div>
+
+<h4 id="warningskipping_package_--_package_not_selected">WARNING: skipping &lt;package&gt; -- package not selected</h4>
+<div class="level4">
+
+<p>
+Run <code>make menuconfig</code> and enable compilation for your package.
+It should be labeled with <code>&lt;*&gt;</code> or <code>&lt;M&gt;</code> to work correctly.
+</p>
+
+</div>
+
+<h4 id="flashable_images_for_my_device_are_not_generated">Flashable images for my device are not generated</h4>
+<div class="level4">
+
+<p>
+When you execute <code>make</code> to build a flashable image for your device, both a sysupgrade and a factory image should be generated for every board that is linked to the device profile that you have selected via <code>make config</code> or <code>make menuconfig</code>.
+</p>
+
+<p>
+If running <code>make</code> does <em>not</em> yield images for one (or even all) of the boards linked to the device profile that you have selected, than you probably have selected/enabled too many options or packages, and the image was too big to be flashed onto your device.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Troubleshooting&quot;,&quot;hid&quot;:&quot;troubleshooting&quot;,&quot;codeblockOffset&quot;:50,&quot;secid&quot;:30,&quot;range&quot;:&quot;22954-&quot;} -->

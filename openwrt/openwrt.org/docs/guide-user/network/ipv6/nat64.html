@@ -1,0 +1,475 @@
+
+<h1 class="sectionedit1" id="nat64_for_a_ipv6-only_network_jool">NAT64 for a IPv6-only network (Jool)</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__meta:infobox:howto_links">
+<div class="level1">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_info plugin_wrap">
+<p>
+This article relies on the following:
+</p>
+<ul>
+<li class="level1"><div class="li"> Accessing <a href="/docs/guide-quick-start/walkthrough_login" class="wikilink1" title="docs:guide-quick-start:walkthrough_login" data-wiki-id="docs:guide-quick-start:walkthrough_login">web interface</a> / <a href="/docs/guide-quick-start/sshadministration" class="wikilink1" title="docs:guide-quick-start:sshadministration" data-wiki-id="docs:guide-quick-start:sshadministration">command-line interface</a></div>
+</li>
+<li class="level1"><div class="li"> Managing <a href="/docs/guide-user/base-system/uci" class="wikilink1" title="docs:guide-user:base-system:uci" data-wiki-id="docs:guide-user:base-system:uci">configs</a> / <a href="/docs/guide-user/additional-software/managing_packages" class="wikilink1" title="docs:guide-user:additional-software:managing_packages" data-wiki-id="docs:guide-user:additional-software:managing_packages">packages</a> / <a href="/docs/guide-user/base-system/managing_services" class="wikilink1" title="docs:guide-user:base-system:managing_services" data-wiki-id="docs:guide-user:base-system:managing_services">services</a> / <a href="/docs/guide-user/base-system/log.essentials" class="wikilink1" title="docs:guide-user:base-system:log.essentials" data-wiki-id="docs:guide-user:base-system:log.essentials">logs</a></div>
+</li>
+</ul>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level1">
+
+<p>
+See also:
+<a href="/docs/guide-user/network/ipv6/ipv6.nat6" class="wikilink1" title="docs:guide-user:network:ipv6:ipv6.nat6" data-wiki-id="docs:guide-user:network:ipv6:ipv6.nat6">NAT66 and IPv6 masquerading</a>,
+<a href="/docs/guide-user/firewall/fw3_configurations/fw3_nat#ipv6_nat" class="wikilink1" title="docs:guide-user:firewall:fw3_configurations:fw3_nat" data-wiki-id="docs:guide-user:firewall:fw3_configurations:fw3_nat">IPv6 NAT and NPT</a>
+</p>
+
+<p>
+NAT64 (Network address translation from <abbr title="Internet Protocol version 6">IPv6</abbr> to <abbr title="Internet Protocol version 4">IPv4</abbr>) is a technology for allowing an <abbr title="Internet Protocol version 6">IPv6</abbr>-only network to connect and interoperate with the <abbr title="Internet Protocol version 4">IPv4</abbr> Internet.
+</p>
+
+<p>
+It&#039;s very similar to the NAT44 used by most home networks that forwards packets between <abbr title="Internet Protocol version 4">IPv4</abbr> private address space and <abbr title="Internet Protocol version 4">IPv4</abbr> public address space, except it forwards between <abbr title="Internet Protocol version 6">IPv6</abbr> (public) addresses and <abbr title="Internet Protocol version 4">IPv4</abbr> public addresses.
+</p>
+
+<p>
+It works in conjunction with several technologies:
+</p>
+<ul>
+<li class="level1"><div class="li"> DNS64, where the <abbr title="Domain Name System">DNS</abbr> returns a specially formatted <abbr title="Internet Protocol version 6">IPv6</abbr> address that encodes the target <abbr title="Internet Protocol version 4">IPv4</abbr> address, which is then handled by NAT64 to forward packets.</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://git.openwrt.org/?p=project/odhcpd.git;a=commitdiff;h=c6bff6f1c0fbb37a21a7f54e393615bad22a72d9" class="urlextern" title="https://git.openwrt.org/?p=project/odhcpd.git;a=commitdiff;h=c6bff6f1c0fbb37a21a7f54e393615bad22a72d9" rel="ugc nofollow">PREF64</a>, where the router advertises in an ICMPv6 Router Advertisement the NAT64 prefix which devices can use to create a CLAT interface (Android, iOS and macOS uses this).</div>
+</li>
+</ul>
+
+<p>
+In OpenWrt, NAT64 can be easily activated using <a href="https://github.com/NICMx/Jool#jool" class="urlextern" title="https://github.com/NICMx/Jool#jool" rel="ugc nofollow">Jool</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;NAT64 for a IPv6-only network (Jool)&quot;,&quot;hid&quot;:&quot;nat64_for_a_ipv6-only_network_jool&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1267&quot;} -->
+<h2 class="sectionedit6" id="two_options_are_possible">Two options are possible</h2>
+<div class="level2">
+
+</div>
+
+<h4 id="option_1_-_running_in_the_main_network_namespace">Option 1 - Running in the main network namespace</h4>
+<div class="level4">
+
+<p>
+Pros
+</p>
+<ul>
+<li class="level1"><div class="li"> easy to activate</div>
+</li>
+<li class="level1"><div class="li"> basic integration with the uci configuration system</div>
+</li>
+</ul>
+
+<p>
+Cons
+</p>
+<ul>
+<li class="level1"><div class="li"> hard to enforce firewall rules</div>
+</li>
+<li class="level1"><div class="li"> translation not available for locally (on the router) generated traffic</div>
+</li>
+<li class="level1"><div class="li"> fights over dynamic port numbers</div>
+</li>
+<li class="level1"><div class="li"> needs to be reconfigured every time the public <abbr title="Internet Protocol version 4">IPv4</abbr> changes</div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="option_2_-_running_jool_in_a_separate_network_namespace">Option 2 - Running jool in a separate network namespace</h4>
+<div class="level4">
+
+<p>
+Pros
+</p>
+<ul>
+<li class="level1"><div class="li"> easy to enforce firewall rules</div>
+</li>
+<li class="level1"><div class="li"> translation available for all traffic</div>
+</li>
+</ul>
+
+<p>
+Cons
+</p>
+<ul>
+<li class="level1"><div class="li"> no integration with the configuration system </div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Two options are possible&quot;,&quot;hid&quot;:&quot;two_options_are_possible&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;1268-1875&quot;} -->
+<h3 class="sectionedit7" id="option_1_-_running_in_the_main_network_namespace1">Option 1 - Running in the main network namespace</h3>
+<div class="level3">
+
+<p>
+The following packages need to be installed first:
+</p>
+<pre class="code"># opkg update
+# opkg install kmod-jool-netfilter jool-tools-netfilter</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Option 1 - Running in the main network namespace&quot;,&quot;hid&quot;:&quot;option_1_-_running_in_the_main_network_namespace1&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;1876-2073&quot;} -->
+<h3 class="sectionedit8" id="jool_configuration_syntax">Jool Configuration Syntax</h3>
+<div class="level3">
+
+<p>
+Jool&#039;s configuration is split into three configuration files:
+</p>
+<ul>
+<li class="level1"><div class="li"> /etc/config/jool</div>
+</li>
+<li class="level1"><div class="li"> /etc/jool/jool-nat64.conf.json</div>
+</li>
+<li class="level1"><div class="li"> /etc/jool/jool-siit.conf.json</div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="etcconfigjool">/etc/config/jool</h4>
+<div class="level4">
+
+<p>
+This file controls which of the services is enabled (NAT64, SIIT, or both).
+</p>
+<pre class="code">config jool &#039;general&#039;
+	option enabled &#039;0&#039;
+
+config jool &#039;nat64&#039;
+        option enabled &#039;0&#039;
+
+config jool &#039;siit&#039;
+        option enabled &#039;0&#039;</pre>
+
+</div>
+
+<h4 id="etcjool">/etc/jool</h4>
+<div class="level4">
+
+<p>
+In this folder are the files that actually configures Jool&#039;s NAT64 and SIIT modules.
+</p>
+
+<p>
+The reference for configuring these is in the jools official documentation:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="https://nicmx.github.io/Jool/en/config-atomic.html" class="urlextern" title="https://nicmx.github.io/Jool/en/config-atomic.html" rel="ugc nofollow">Jool&#039;s configuration examples</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://nicmx.github.io/Jool/en/documentation.html" class="urlextern" title="https://nicmx.github.io/Jool/en/documentation.html" rel="ugc nofollow">Jool&#039;s documentation</a></div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="using_jool">Using Jool</h4>
+<div class="level4">
+
+</div>
+
+<h5 id="basic_setup">Basic setup</h5>
+<div class="level5">
+
+<p>
+After having Jool installed you need to configure it. This is a basic sample configuration that can be used as a template:
+</p>
+
+<p>
+/etc/jool/jool-nat64.conf.json:
+</p>
+<pre class="code">{
+	&quot;comment&quot;: &quot;NAT64 instance configuration.&quot;,
+	&quot;instance&quot;: &quot;nat64&quot;,
+	&quot;framework&quot;: &quot;netfilter&quot;,
+	&quot;global&quot;: {
+		&quot;pool6&quot;: &quot;64:ff9b::/96&quot;,
+		&quot;maximum-simultaneous-opens&quot;: 16,
+		&quot;source-icmpv6-errors-better&quot;: true
+	}
+}</pre>
+
+<p>
+After saving the configuration you need to enable it:
+</p>
+<pre class="code">uci set jool.general.enabled=&quot;1&quot;
+uci set jool.nat64.enabled=&quot;1&quot;
+uci commit jool
+service jool restart</pre>
+
+<p>
+After this configuration, jool should be running. You can test this by pinging an <abbr title="Internet Protocol version 4">IPv4</abbr> address.
+</p>
+<pre class="code"># Confirm working NAT64 from a device inside your LAN
+ping 64:ff9b::1.1.1.1</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Jool Configuration Syntax&quot;,&quot;hid&quot;:&quot;jool_configuration_syntax&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:8,&quot;range&quot;:&quot;2074-3658&quot;} -->
+<h3 class="sectionedit9" id="option_2_-_running_jool_in_a_separate_network_namespace1">Option 2 - Running jool in a separate network namespace</h3>
+<div class="level3">
+
+<p>
+Inspired and supported by the tutorial <abbr title="Internet Protocol version 6">IPv6</abbr>-only/mostly on OpenWrt by Ondřej Caletka <sup><a href="#fn__1" id="fnt__1" class="fn_top">1)</a></sup>.
+</p>
+
+<p>
+The following packages need to be installed first:
+</p>
+<pre class="code"># opkg update
+# opkg install kmod-veth ip-full kmod-jool-netfilter jool-tools-netfilter</pre>
+
+</div>
+
+<h4 id="setup_jool_network_namespace">Setup jool network namespace</h4>
+<div class="level4">
+
+<p>
+Create or copy the following shell script to <code>/etc/jool/setupjool.sh</code>
+</p>
+<pre class="code">#!/bin/sh
+ip link add jool type veth peer openwrt
+ip netns add jool
+ip link set dev openwrt netns jool
+ip netns exec jool sh &lt;&lt;EOF
+    sysctl -w net.ipv4.conf.all.forwarding=1
+    sysctl -w net.ipv6.conf.all.forwarding=1
+    sysctl -w net.ipv6.conf.openwrt.accept_ra=2
+    sysctl -w net.ipv4.ip_local_port_range=&quot;32768 32999&quot;
+    ip link set dev lo up
+    ip link set dev openwrt up
+    ip addr add dev openwrt 192.168.164.2/24
+    ip addr add dev openwrt fe80::64
+    ip route add default via 192.168.164.1
+    modprobe jool
+    jool instance add --netfilter --pool6 64:ff9b::/96
+    jool global update lowest-ipv6-mtu 1500
+    jool pool4 add 192.168.164.2 33000-65535 --tcp
+    jool pool4 add 192.168.164.2 33000-65535 --udp
+    jool pool4 add 192.168.164.2 33000-65535 --icmp
+EOF</pre>
+
+<p>
+Make it executable and execute it once.
+</p>
+<pre class="code">chmod +x setupjool.sh</pre>
+
+<p>
+Add the following line to <code>/etc/rc.local</code> through the CLI or Luci UI (<code>System - Startup - Local Startup</code>), before the <code>exit 0</code>.
+</p>
+<pre class="code">/etc/jool/setupjool.sh</pre>
+
+<p>
+Persist it across <code>sysupgrades</code>, add file to <code>/etc/sysupgrade.conf</code> through the CLI or Luci UI (<code>System - Backup / Flash Firmware- Configuration</code>)
+</p>
+<pre class="code">cat &lt;&lt; EOF &gt;&gt; /etc/sysupgrade.conf
+/etc/jool/setupjool.sh
+EOF</pre>
+
+</div>
+
+<h4 id="setup_jool_interface">Setup jool interface</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> use <abbr title="Internet Protocol version 4">IPv4</abbr> subnet 192.168.164.1/24</div>
+</li>
+<li class="level1"><div class="li"> allocate one <abbr title="Internet Protocol version 6">IPv6</abbr> /64 with SLAAC</div>
+</li>
+<li class="level1"><div class="li"> route NAT64 prefix to fe80::64</div>
+</li>
+<li class="level1"><div class="li"> configure <code>jool</code> firewall zone and forward from <code>lan</code> zone</div>
+</li>
+</ul>
+
+<p>
+Setup new interface
+</p>
+
+<p>
+file <code>/etc/config/network</code>
+</p>
+<pre class="code">config interface &#039;jool&#039;
+	option proto &#039;static&#039;
+	option device &#039;jool&#039;
+	option ipaddr &#039;192.168.164.1&#039;
+	option netmask &#039;255.255.255.0&#039;
+	option ip6assign &#039;64&#039;
+	option ip6hint &#039;64&#039;</pre>
+
+<p>
+Configure DHCPv4 and SLAAC/DHCPv6
+</p>
+
+<p>
+file <code>/etc/config/dhcp</code>
+</p>
+<pre class="code">config dhcp &#039;jool&#039;
+	option interface &#039;jool&#039;
+	option start &#039;100&#039;
+	option limit &#039;150&#039;
+	option leasetime &#039;12h&#039;
+	option ignore &#039;1&#039;
+	option ra &#039;server&#039;
+	option ra_default &#039;2&#039;</pre>
+
+<p>
+Add a static <abbr title="Internet Protocol version 6">IPv6</abbr> route
+</p>
+
+<p>
+file <code>/etc/config/network</code>
+</p>
+<pre class="code">config route6
+	option interface &#039;jool&#039;
+	option target &#039;64:ff9b::/96&#039;
+	option gateway &#039;fe80::64&#039;</pre>
+
+<p>
+Add <code>jool</code> firewall zone
+</p>
+
+<p>
+file <code>/etc/config/firewall</code>
+</p>
+<pre class="code">config zone
+	option name &#039;jool&#039;
+	option input &#039;ACCEPT&#039;
+	option output &#039;ACCEPT&#039;
+	option forward &#039;REJECT&#039;
+	list network &#039;jool&#039;
+
+config forwarding
+        option src &#039;jool&#039;
+        option dest &#039;wan&#039;</pre>
+
+<p>
+Forward <code>lan</code> zone to <code>jool</code>
+</p>
+
+<p>
+file <code>/etc/config/firewall</code>
+</p>
+<pre class="code">config forwarding
+	option src &#039;lan&#039;
+	option dest &#039;jool&#039;</pre>
+
+</div>
+
+<h4 id="testing">Testing</h4>
+<div class="level4">
+
+<p>
+After this configuration, jool should be running and the firewall is correctly configured. You can test this by pinging a synthesized <abbr title="Internet Protocol version 4">IPv4</abbr> address.
+</p>
+<pre class="code"># Confirm working NAT64 from your router
+ping 64:ff9b::1.1.1.1</pre>
+
+<p>
+Make sure it works also from the connected devices
+</p>
+<ul>
+<li class="level1"><div class="li"> otherwise it might be a routing/firewall issue</div>
+</li>
+<li class="level1"><div class="li"> try a complete reboot before you start tweaking and debugging</div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="add_forwardings_from_existing_firewall_zone_to_jool">Add forwardings from existing firewall zone to &#039;&#039;jool&#039;&#039;</h4>
+<div class="level4">
+
+<p>
+e.g., <code>lan</code>
+</p>
+
+<p>
+file <code>/etc/config/firewall</code>
+</p>
+<pre class="code">config forwarding
+	option src &#039;lan&#039;
+	option dest &#039;jool&#039;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Option 2 - Running jool in a separate network namespace&quot;,&quot;hid&quot;:&quot;option_2_-_running_jool_in_a_separate_network_namespace1&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:9,&quot;range&quot;:&quot;3659-7365&quot;} -->
+<h3 class="sectionedit10" id="add_pref64_option_to_the_existing_networks">Add PREF64 option to the existing networks</h3>
+<div class="level3">
+
+<p>
+Option in the Router Advertisement messages carring the NAT64 prefix the network is using.
+New feature introduced with <code>v23.05.0</code>
+</p>
+
+<p>
+file <code>/etc/config/dhcp</code>
+</p>
+<pre class="code">config dhcp &#039;lan&#039;
+	option interface &#039;lan&#039;
+        ...
+	option ra_pref64 &#039;64:ff9b::/96&#039;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Add PREF64 option to the existing networks&quot;,&quot;hid&quot;:&quot;add_pref64_option_to_the_existing_networks&quot;,&quot;codeblockOffset&quot;:17,&quot;secid&quot;:10,&quot;range&quot;:&quot;7366-7682&quot;} -->
+<h2 class="sectionedit11" id="configure_dns64">Configure DNS64</h2>
+<div class="level2">
+
+<p>
+In a standard dual-stack network, with regular <abbr title="Domain Name System">DNS</abbr>, an <abbr title="Internet Protocol version 6">IPv6</abbr>-only device cannot connect to <abbr title="Internet Protocol version 4">IPv4</abbr>-only servers, as it has no access to NAT44.
+</p>
+
+<p>
+DNS64 comes to fix this, by synthesizing AAAA records from A records. These <abbr title="Internet Protocol version 6">IPv6</abbr> addresses are ranslated by NAT64 (<code>jool</code>) to <abbr title="Internet Protocol version 4">IPv4</abbr> addresses.
+</p>
+
+<p>
+To use DNS64 you can <a href="/docs/guide-user/base-system/dhcp_configuration#upstream_dns_provider" class="wikilink1" title="docs:guide-user:base-system:dhcp_configuration" data-wiki-id="docs:guide-user:base-system:dhcp_configuration">change your DNS</a> to <a href="https://developers.cloudflare.com/1.1.1.1/infrastructure/ipv6-networks/" class="urlextern" title="https://developers.cloudflare.com/1.1.1.1/infrastructure/ipv6-networks/" rel="ugc nofollow">Cloudflare&#039;s DNS64</a> <a href="https://developers.google.com/speed/public-dns/docs/dns64" class="urlextern" title="https://developers.google.com/speed/public-dns/docs/dns64" rel="ugc nofollow">Google DNS64</a> or set up  <a href="https://github.com/openwrt/packages/blob/master/net/unbound/files/README.md#complete-uci" class="urlextern" title="https://github.com/openwrt/packages/blob/master/net/unbound/files/README.md#complete-uci" rel="ugc nofollow">unbound for DNS64</a> to correctly resolve domain names into translated addresses.
+Cloudflare and Google DNS64 can only be use if you use the well-known NAT64 prefix <code>64:ff9b::/96</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configure DNS64&quot;,&quot;hid&quot;:&quot;configure_dns64&quot;,&quot;codeblockOffset&quot;:18,&quot;secid&quot;:11,&quot;range&quot;:&quot;7683-8564&quot;} -->
+<h2 class="sectionedit12" id="become_ipv6-mostly">Become IPv6-mostly</h2>
+<div class="level2">
+
+<p>
+Android and iOS as well as macOS are working fine in <abbr title="Internet Protocol version 6">IPv6</abbr>-only networks.
+To signal to clients which are able and willing to run <abbr title="Internet Protocol version 6">IPv6</abbr>-only, the <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> option 108 was introduced with RFC8925.
+</p>
+
+<p>
+Add this option to the DHCPv4 configuration of the desired zone e.g., <code>lan</code>
+</p>
+
+<p>
+file <code>/etc/config/dhcp</code>
+</p>
+<pre class="code"># 30 minutes = 1800 seconds = 0x708 seconds
+dhcp_option &#039;108,0:0:7:8&#039;</pre>
+
+<p>
+After this all your mobile and macOS devices will drop the <abbr title="Internet Protocol version 4">IPv4</abbr> lease and run in <abbr title="Internet Protocol version 6">IPv6</abbr>-only mode.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Become IPv6-mostly&quot;,&quot;hid&quot;:&quot;become_ipv6-mostly&quot;,&quot;codeblockOffset&quot;:18,&quot;secid&quot;:12,&quot;range&quot;:&quot;8565-9075&quot;} -->
+<h3 class="sectionedit13" id="see_also">See also:</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> <a href="https://github.com/openwrt/packages/blob/master/net/jool/files/readme.md" class="urlextern" title="https://github.com/openwrt/packages/blob/master/net/jool/files/readme.md" rel="ugc nofollow">Jool source code and documentation</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://tools.ietf.org/html/rfc6052" class="urlextern" title="http://tools.ietf.org/html/rfc6052" rel="ugc nofollow">RFC6052</a>, <a href="http://tools.ietf.org/html/rfc6146" class="urlextern" title="http://tools.ietf.org/html/rfc6146" rel="ugc nofollow">RFC6146</a>, <a href="http://tools.ietf.org/html/rfc7050" class="urlextern" title="http://tools.ietf.org/html/rfc7050" rel="ugc nofollow">RFC7050</a> and <a href="http://tools.ietf.org/html/rfc8925" class="urlextern" title="http://tools.ietf.org/html/rfc8925" rel="ugc nofollow">RFC8925</a> for reference.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;See also:&quot;,&quot;hid&quot;:&quot;see_also&quot;,&quot;codeblockOffset&quot;:19,&quot;secid&quot;:13,&quot;range&quot;:&quot;9076-&quot;} --><div class="footnotes">
+<div class="fn"><sup><a href="#fnt__1" id="fn__1" class="fn_bot">1)</a></sup> 
+<div class="content"><a href="https://ripe87.ripe.net/wp-content/uploads/presentations/8-IPv6-mostly_on_OpenWRT.pdf" class="urlextern" title="https://ripe87.ripe.net/wp-content/uploads/presentations/8-IPv6-mostly_on_OpenWRT.pdf" rel="ugc nofollow">RIPE87 Tutorial IPv6-mostly on OpenWrt</a></div></div>
+</div>

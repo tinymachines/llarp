@@ -1,0 +1,162 @@
+# RRDtool
+
+See [RRDtool](https://en.wikipedia.org/wiki/RRDtool "https://en.wikipedia.org/wiki/RRDtool") or [http://oss.oetiker.ch/rrdtool/](http://oss.oetiker.ch/rrdtool/ "http://oss.oetiker.ch/rrdtool/").
+
+There are two versions available in the repos:
+
+Package Version Depends Size Description rrdtool 1.2.30-1 librrd 29.744 Round Robin Database (RRD) management tools (v1.2.x)
+
+and
+
+Package Version Depends Size Description rrdtool1 1.0.50-1 librrd1 12.165 This is version 1.0.x with `cgilib-0.4`, `gd1.3` and `libpng-1.0.9` linked into `librrd.so`. The library is much smaller compared to the 1.2.x version with separate dynamic linked libraries.
+
+## Usage Example
+
+A [template\_howto](/meta/template_howto "meta:template_howto") does not make much sense here, so we will present an example:
+
+### Monitor Traffic
+
+- have a look if your iptables are able to monitor traffic
+- ```
+    iptables -N traffic
+    iptables -I FORWARD -j traffic 
+  ```
+
+#### Using the traff\_graph - script
+
+Place the following script in `/sbin` (or where ever you like):
+
+```
+#!/bin/sh
+ 
+# traff_graph version 0.0.2 by twist
+# script for monitoring mac-based traffic on an OpenWrt-box
+# comments, suggestion, patches .... --> twist _at_ evilhome _dot_ de
+ 
+SITENAME="tuxland"      # change for your site
+ 
+mkdir -p /tmp/rrd
+ 
+iptables -L traffic -vnxZ -t filter > /tmp/traffic.tmp
+ 
+ALL_UP=0
+ALL_DOWN=0
+INDEX="traffic @ $SITENAME"
+ 
+# $1 = ImageFile, $2 = Time in secs to go back, $3 = RRDfile, $4 = GraphText
+CreateGraph ()
+{
+        # only run, if no other rrdtool is running
+        if [ -n "$(ps | grep rrdtool | grep -v grep)" ] ; then
+                return
+        fi
+ 
+        rrdtool graph "${1}" -a PNG -s -"${2}" -w 550 -h 240 -v "bytes/s" \
+                'DEF:in='${3}':down:AVERAGE' \
+                'DEF:out='${3}':up:AVERAGE' \
+                'CDEF:out_neg=out,-1,*' \
+                'AREA:in#32CD32:Incoming' \
+                'LINE1:in#336600' \
+                GPRINT:in:"MAX:  Max\\: %5.1lf %s" \
+                GPRINT:in:"AVERAGE: Avg\\: %5.1lf %S" \
+                GPRINT:in:"LAST: Current\\: %5.1lf %Sbytes/sec\\n" \
+                'AREA:out_neg#4169E1:Outgoing' \
+                'LINE1:out_neg#0033CC' \
+                GPRINT:out:"MAX:  Max\\: %5.1lf %S" \
+                GPRINT:out:"AVERAGE: Avg\\: %5.1lf %S" \
+                GPRINT:out:"LAST: Current\\: %5.1lf %Sbytes/sec" \
+                'HRULE:0#000000' -t "${4}"
+}
+ 
+for MAC in $(cat /proc/net/arp | grep -v address | awk '{print $4}') ; do
+        MAC_=$(echo $MAC | sed 's/:/-/g')
+        IP=$(cat /proc/net/arp | grep $MAC | awk '{print $1}')
+        # This assumes that a local dns server (like dnsmasq) is running
+        NAME=$(nslookup $IP 127.0.0.1 | grep "Name:" | awk '{print $2}')
+        # echo "mac: $MAC ip: $IP_ name: $NAME"
+ 
+        UP=$(cat /tmp/traffic.tmp | awk '{print $2 " " $7}' | grep '\b'$IP'\b' | awk '{print $1}' | tr -d '\n' )
+        UP=$(($UP+0))
+        ALL_UP=$(($ALL_UP+$UP))
+        DOWN=$(cat /tmp/traffic.tmp | awk '{print $2 " " $8}' | grep '\b'$IP'\b' | awk '{print $1}' | tr -d '\n' )
+        DOWN=$(($DOWN+0))
+        ALL_DOWN=$(($ALL_DOWN+$DOWN))
+ 
+	 COUNTIP=$(iptables -vnL traffic | grep '\b'$IP'\b' | wc -l | awk '{print $1}')
+	 if [ "$COUNTIP" -eq 0 ] ; then
+		iptables -A traffic -s $IP
+		iptables -A traffic -d $IP
+	 fi
+ 
+        # create db if not exists
+        if [ ! -e /tmp/rrd/${MAC_}.rrd ] ; then
+                # echo creating /tmp/rrd/${MAC_}.rrd
+                rrdtool create /tmp/rrd/${MAC_}.rrd -s 300 \
+                        DS:up:ABSOLUTE:600:0:600000000 \
+                        DS:down:ABSOLUTE:600:0:600000000 \
+                        RRA:AVERAGE:0.5:1:2016 \
+                        RRA:AVERAGE:0.5:3:2688 \
+                        RRA:AVERAGE:0.5:12:6360
+        fi
+ 
+        # echo "up: $UP down: $DOWN"
+        rrdtool update /tmp/rrd/${MAC_}.rrd N:$UP:$DOWN
+ 
+        CreateGraph "/tmp/rrd/${MAC_}.day.png" 86400 /tmp/rrd/${MAC_}.rrd "IP: $IP MAC: $MAC_ Host: $NAME"
+        INDEX=$INDEX""
+ 
+        # traffic/week
+        # i don´t use this
+        # CreateGraph "/tmp/rrd/${MAC_}.week.png" 604800 /tmp/rrd/${MAC_}.rrd "IP: $IP MAC: $MAC_ Host: $NAME"
+        # INDEX=$INDEX""
+done
+ 
+# build sum-graph
+if [ ! -e /tmp/rrd/all.rrd ] ; then
+        rrdtool create /tmp/rrd/all.rrd -s 300 \
+                DS:up:ABSOLUTE:600:0:600000000 \
+                DS:down:ABSOLUTE:600:0:600000000 \
+                RRA:AVERAGE:0.5:1:2016 \
+                RRA:AVERAGE:0.5:3:2688 \
+                RRA:AVERAGE:0.5:12:6360
+fi
+ 
+rrdtool update /tmp/rrd/all.rrd N:$ALL_UP:$ALL_DOWN
+CreateGraph /tmp/rrd/all.png 86400 /tmp/rrd/all.rrd "all traffic from $SITENAME"
+ 
+INDEX=$INDEX""
+ 
+echo $INDEX > /tmp/rrd/index.html
+```
+
+This script will create and update the rrd-database-file for each mac found in `/proc/net/arp`. If a host is not online no update will be performed. This will save some cpu-cycles. traff\_graph stores the rrd-db, the created pictures/graphs and the index.html for viewing the graphs in `/tmp/rrd`. This means, after a reboot all informations are lost and you will start at 0.
+
+Now you can test `traff_graph`. Make sure you have only a single traffic-chain/host in your iptable rules. You can list this with
+
+```
+iptables -L traffic -vx
+```
+
+Now run traff\_graph. This will need a while... get a coffee ![;-)](/lib/images/smileys/wink.svg) Add traff\_graph to your crontab and run it every 5 minutes. Be careful not to monitor too many hosts since rrdtool graph needs a lot of time. For viewing the graphs add a symlink in `/www` which points to `/tmp/rrd`:
+
+```
+cd /www
+ln -s /tmp/rrd/ traffic 
+```
+
+and the stuff should be be available via
+
+```
+http://192.168.0.1/traffic/
+```
+
+To use `crond` to have the script run every 5 minutes, add this to your `/etc/crontabs/root` file:
+
+```
+# create traffic graphs every 5 minutes (i.e. run if minutes mod 5 == 0)
+0-55/5 * * * * /sbin/traff_graph > /dev/null 2>&1
+```
+
+## Other links
+
+- [How do you check your bandwidth usage?](http://forum.openwrt.org/viewtopic.php?id=3741 "http://forum.openwrt.org/viewtopic.php?id=3741")

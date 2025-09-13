@@ -1,0 +1,165 @@
+
+<h1 class="sectionedit1" id="bridge_firewall">Bridge firewall</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__meta:infobox:howto_links">
+<div class="level1">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_info plugin_wrap">
+<p>
+This article relies on the following:
+</p>
+<ul>
+<li class="level1"><div class="li"> Accessing <a href="/docs/guide-quick-start/walkthrough_login" class="wikilink1" title="docs:guide-quick-start:walkthrough_login" data-wiki-id="docs:guide-quick-start:walkthrough_login">web interface</a> / <a href="/docs/guide-quick-start/sshadministration" class="wikilink1" title="docs:guide-quick-start:sshadministration" data-wiki-id="docs:guide-quick-start:sshadministration">command-line interface</a></div>
+</li>
+<li class="level1"><div class="li"> Managing <a href="/docs/guide-user/base-system/uci" class="wikilink1" title="docs:guide-user:base-system:uci" data-wiki-id="docs:guide-user:base-system:uci">configs</a> / <a href="/docs/guide-user/additional-software/managing_packages" class="wikilink1" title="docs:guide-user:additional-software:managing_packages" data-wiki-id="docs:guide-user:additional-software:managing_packages">packages</a> / <a href="/docs/guide-user/base-system/managing_services" class="wikilink1" title="docs:guide-user:base-system:managing_services" data-wiki-id="docs:guide-user:base-system:managing_services">services</a> / <a href="/docs/guide-user/base-system/log.essentials" class="wikilink1" title="docs:guide-user:base-system:log.essentials" data-wiki-id="docs:guide-user:base-system:log.essentials">logs</a></div>
+</li>
+</ul>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Bridge firewall&quot;,&quot;hid&quot;:&quot;bridge_firewall&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-112&quot;} -->
+<h2 class="sectionedit6" id="introduction">Introduction</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> This how-to describes the method for setting up <a href="https://en.wikipedia.org/wiki/Bridging_(networking)" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Bridging_(networking)">bridge</a> firewall on OpenWrt.</div>
+</li>
+<li class="level1"><div class="li"> Follow <a href="/docs/guide-user/network/vlan/creating_virtual_switches" class="wikilink1" title="docs:guide-user:network:vlan:creating_virtual_switches" data-wiki-id="docs:guide-user:network:vlan:creating_virtual_switches">Splitting VLANs</a> to be able to filter traffic between <abbr title="Virtual Local Area Network">VLAN</abbr> ports.</div>
+</li>
+<li class="level1"><div class="li"> Follow <a href="/docs/guide-user/network/wifi/basic" class="wikilink1" title="docs:guide-user:network:wifi:basic" data-wiki-id="docs:guide-user:network:wifi:basic">Wireless configuration</a> to isolate wireless clients from each other.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Introduction&quot;,&quot;hid&quot;:&quot;introduction&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;113-500&quot;} -->
+<h2 class="sectionedit7" id="goals">Goals</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Filter and intercept transit traffic on bridged interfaces.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Goals&quot;,&quot;hid&quot;:&quot;goals&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;501-583&quot;} -->
+<h2 class="sectionedit8" id="command-line_instructions">Command-line instructions</h2>
+<div class="level2">
+
+<p>
+Assuming a setup with bridged <abbr title="Local Area Network">LAN</abbr> and <abbr title="Wide Area Network">WAN</abbr> interfaces.
+Install the required packages.
+Enable bridge firewall intercepting <abbr title="Domain Name System">DNS</abbr> queries and filtering transit traffic from <code>eth0</code> to <code>eth1</code>.
+</p>
+<pre class="code bash"><span class="co0"># Install packages</span>
+opkg update
+opkg <span class="kw2">install</span> kmod-nft-bridge
+&nbsp;
+<span class="co0"># Configure firewall</span>
+<span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>nftables.d<span class="sy0">/</span>bridge.sh
+. <span class="sy0">/</span>lib<span class="sy0">/</span>functions<span class="sy0">/</span>network.sh
+network_flush_cache
+network_find_wan NET_IF
+network_get_device NET_DEV <span class="st0">&quot;<span class="es3">${NET_IF}</span>&quot;</span>
+<span class="re2">NET_MAC</span>=<span class="st0">&quot;$(ubus -S call network.device status <span class="es1">\
+</span>&quot;</span><span class="br0">&#123;</span><span class="st_h">'name'</span>:<span class="st_h">'${NET_DEV}'</span><span class="br0">&#125;</span><span class="st0">&quot; | jsonfilter -e &quot;</span>$<span class="br0">&#91;</span><span class="st_h">'macaddr'</span><span class="br0">&#93;</span><span class="st0">&quot;)&quot;</span>
+nft add table bridge filter
+nft flush table bridge filter
+nft add chain bridge filter prerouting \
+<span class="br0">&#123;</span> <span class="kw3">type</span> filter hook prerouting priority dstnat\; <span class="br0">&#125;</span>
+nft add rule bridge filter prerouting meta \
+l4proto <span class="br0">&#123;</span> tcp, udp <span class="br0">&#125;</span> th dport <span class="nu0">53</span> pkttype <span class="kw1">set</span> host \
+ether daddr <span class="kw1">set</span> <span class="st0">&quot;<span class="es3">${NET_MAC}</span>&quot;</span> comment <span class="st0">&quot;Intercept-DNS&quot;</span>
+nft add chain bridge filter forward \
+<span class="br0">&#123;</span> <span class="kw3">type</span> filter hook forward priority filter\; <span class="br0">&#125;</span>
+nft add rule bridge filter forward iifname <span class="st0">&quot;eth0&quot;</span> \
+oifname <span class="st0">&quot;eth1&quot;</span> drop comment <span class="st0">&quot;Deny-eth0-eth1&quot;</span>
+EOF
+uci <span class="re5">-q</span> delete firewall.bridge
+uci <span class="kw1">set</span> firewall.bridge=<span class="st0">&quot;include&quot;</span>
+uci <span class="kw1">set</span> firewall.bridge.path=<span class="st0">&quot;/etc/nftables.d/bridge.sh&quot;</span>
+uci commit firewall
+service firewall restart</pre>
+
+<p>
+Set up <a href="/docs/guide-user/firewall/fw3_configurations/intercept_dns" class="wikilink1" title="docs:guide-user:firewall:fw3_configurations:intercept_dns" data-wiki-id="docs:guide-user:firewall:fw3_configurations:intercept_dns">DNS hijacking</a> and <a href="/docs/guide-user/base-system/dhcp_configuration#dns_filtering" class="wikilink1" title="docs:guide-user:base-system:dhcp_configuration" data-wiki-id="docs:guide-user:base-system:dhcp_configuration">DNS filtering</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Command-line instructions&quot;,&quot;hid&quot;:&quot;command-line_instructions&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:8,&quot;range&quot;:&quot;584-1991&quot;} -->
+<h2 class="sectionedit9" id="exampledscp_classification_on_dumb_ap">Example: DSCP Classification on Dumb AP</h2>
+<div class="level2">
+
+<p>
+If you have your firewall disabled and have kmod-nft-bridge installed, then you can do this easily. This will classify <abbr title="Hypertext Transfer Protocol">HTTP</abbr>(S) traffic as AF23. Not practical, but a start.
+</p>
+
+<p>
+Save the following to /etc/nftables.conf
+</p>
+<pre class="code bash">flush ruleset
+&nbsp;
+table bridge dscp <span class="br0">&#123;</span>
+    chain dscp_set_af23 <span class="br0">&#123;</span>
+        <span class="kw2">ip</span> dscp <span class="kw1">set</span> af23
+        ip6 dscp <span class="kw1">set</span> af23
+    <span class="br0">&#125;</span>
+&nbsp;
+    chain prerouting <span class="br0">&#123;</span>
+        <span class="kw3">type</span> filter hook prerouting priority <span class="nu0">0</span>; policy accept;
+&nbsp;
+        meta l4proto tcp th dport <span class="br0">&#123;</span><span class="nu0">80</span>, <span class="nu0">443</span><span class="br0">&#125;</span> jump dscp_set_af23
+    <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+
+<p>
+Run the following code. Add it to /etc/rc.local to make it persist.
+</p>
+<pre class="code bash">nft <span class="re5">-f</span> <span class="sy0">/</span>etc<span class="sy0">/</span>nftables.conf</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Example: DSCP Classification on Dumb AP&quot;,&quot;hid&quot;:&quot;exampledscp_classification_on_dumb_ap&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:9,&quot;range&quot;:&quot;1992-2671&quot;} -->
+<h2 class="sectionedit10" id="testing">Testing</h2>
+<div class="level2">
+
+<p>
+Use <a href="http://man.cx/nslookup%281%29" class="interwiki iw_man" title="http://man.cx/nslookup%281%29">nslookup</a>, <a href="http://man.cx/ping%281%29" class="interwiki iw_man" title="http://man.cx/ping%281%29">ping</a>, <a href="http://man.cx/ping6%281%29" class="interwiki iw_man" title="http://man.cx/ping6%281%29">ping6</a> on <abbr title="Local Area Network">LAN</abbr> clients to verify the firewall configuration.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Testing&quot;,&quot;hid&quot;:&quot;testing&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:10,&quot;range&quot;:&quot;2672-2824&quot;} -->
+<h2 class="sectionedit11" id="troubleshooting">Troubleshooting</h2>
+<div class="level2">
+
+<p>
+Collect and analyze the following information.
+</p>
+<pre class="code bash"><span class="co0"># Log and status</span>
+service firewall restart
+&nbsp;
+<span class="co0"># Runtime configuration</span>
+<span class="kw2">lsmod</span> <span class="sy0">|</span> <span class="kw2">grep</span> <span class="re5">-e</span> bridge
+nft list ruleset
+&nbsp;
+<span class="co0"># Persistent configuration</span>
+uci show firewall</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Troubleshooting&quot;,&quot;hid&quot;:&quot;troubleshooting&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:11,&quot;range&quot;:&quot;2825-3074&quot;} -->
+<h2 class="sectionedit12" id="extras">Extras</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Extras&quot;,&quot;hid&quot;:&quot;extras&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:12,&quot;range&quot;:&quot;3075-3093&quot;} -->
+<h3 class="sectionedit13" id="references">References</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> <a href="https://wiki.nftables.org/wiki-nftables/index.php/Bridge_filtering" class="urlextern" title="https://wiki.nftables.org/wiki-nftables/index.php/Bridge_filtering" rel="ugc nofollow">nftables wiki: Bridge filtering</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://netdevconf.info/1.1/proceedings/papers/Bridge-filter-with-nftables.pdf" class="urlextern" title="https://netdevconf.info/1.1/proceedings/papers/Bridge-filter-with-nftables.pdf" rel="ugc nofollow">NetDev: Bridge filtering with nftables</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;References&quot;,&quot;hid&quot;:&quot;references&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:13,&quot;range&quot;:&quot;3094-&quot;} -->

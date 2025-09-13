@@ -1,0 +1,280 @@
+
+<h1 class="sectionedit1" id="tinydns">Tinydns</h1>
+<div class="level1">
+
+<p>
+<code>Tinydns is a <abbr title="Domain Name System">DNS</abbr> server. It accepts iterative <abbr title="Domain Name System">DNS</abbr> queries from hosts around the Internet, and responds with locally configured information.
+D. J. Bernstein : <a href="http://cr.yp.to/djbdns/tinydns.html" class="urlextern" title="http://cr.yp.to/djbdns/tinydns.html" rel="ugc nofollow">http://cr.yp.to/djbdns/tinydns.html</a></code>
+</p>
+<hr />
+
+<p>
+That a very good choice for makeing a dns server, the openwrt package is amazing, and have really integrate tinydns on openwrt.
+Tinydns is very nice for make small domain, and have capability to grow without major change. Compare to Bind design deployment that the day and the night.
+You should consider djbdns tools and the amazing work done by the packager of Djbdns
+</p>
+
+<p>
+<a href="https://dev.openwrt.org/browser/packages/net/djbdns/README" class="urlextern" title="https://dev.openwrt.org/browser/packages/net/djbdns/README" rel="ugc nofollow">https://dev.openwrt.org/browser/packages/net/djbdns/README</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Tinydns&quot;,&quot;hid&quot;:&quot;tinydns&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-660&quot;} -->
+<h2 class="sectionedit2" id="install_tinydns">Install tinydns</h2>
+<div class="level2">
+
+<p>
+Tinydns is all ready aviable on OpenWrt, you can use opkg tool for install it:
+</p>
+<pre class="code">opkg update
+opkg install djbdns-base djbdns-tinydns</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Install tinydns&quot;,&quot;hid&quot;:&quot;install_tinydns&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;661-835&quot;} -->
+<h2 class="sectionedit3" id="configuration_file">Configuration file</h2>
+<div class="level2">
+
+<p>
+<strong>/etc/tinydns/data</strong>
+</p>
+
+<p>
+It file contain informations about you Domain Name store in <strong>tinydns-data</strong> format, it format is describ by the author here <a href="http://cr.yp.to/djbdns/tinydns-data.html" class="urlextern" title="http://cr.yp.to/djbdns/tinydns-data.html" rel="ugc nofollow">http://cr.yp.to/djbdns/tinydns-data.html</a>
+</p>
+
+<p>
+The logic is simple the each line define a thing, and the frist letter of each line is a Flag it define the Type.
+</p>
+<ul>
+<li class="level1"><div class="li"> The djbdns-tinydns package provide it file as exemple for make you first tests. You have to edit it file for put you own setting as describ on it document.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> On tipical djbdns deploiement it file is convert to binary cdb format and store in memory, all that work is done via /etc/init.d/tinydns script on OpenWrt.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> Take care about you SOA serial number, each time you change something you have to increase it number. It is not done by the /etc/init.d/tinydns script.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration file&quot;,&quot;hid&quot;:&quot;configuration_file&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;836-1653&quot;} -->
+<h3 class="sectionedit4" id="soa_serial_notes">SOA Serial notes:</h3>
+<div class="level3">
+
+<p>
+<code>Few admins system like put Epoch (reference date) as SOA serial number, and that a good practice. 
+An other practice can be add +1 each to the SOA Serial number, that work too.
+That a arbitral value the <abbr title="Domain Name System">DNS</abbr> standard require to add +1 as minimum, that because lot of dns servers will ignore and nor relay you new data file.
+You can choose to never update it serial if you have only one <abbr title="Domain Name System">DNS</abbr> server at home, but that a bad pratice name “poor design”
+That the frist cause of mistake increase you SOA manually at all</code>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;SOA Serial notes:&quot;,&quot;hid&quot;:&quot;soa_serial_notes&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:4,&quot;range&quot;:&quot;1654-2199&quot;} -->
+<h2 class="sectionedit5" id="uci_integration">UCI integration</h2>
+<div class="level2">
+
+<p>
+The entire djbdns tools have true UCI integration, here what uci store for tinydns
+</p>
+<pre class="code">root@openwrt:/# uci show djbdns | grep &#039;tinydns\|global&#039;
+djbdns.@global[0]=global
+djbdns.@global[0].runasuser=djbdns
+djbdns.@global[0].runasgroup=djbdns
+djbdns.@tinydns[0]=tinydns
+djbdns.@tinydns[0].logging=0
+djbdns.@tinydns[0].interface=lan</pre>
+
+<p>
+<strong>djbdns.@global[0].runasuser</strong> define with which user the /etc/init.d/tinydns script will execute all djbdns tools.
+</p>
+
+<p>
+<strong>djbdns.@global[0].runasgroup</strong> define with which group the /etc/init.d/tinydns script will execute all djbdns tools.
+</p>
+
+<p>
+<strong>djbdns.@tinydns[0].logging</strong> it&#039;s the same as export the environement Variable DEBUG before start /etc/init.d/tinydns script. It enable a a mode where init tinydns write it activity.
+</p>
+
+<p>
+<strong> djbdns.@tinydns[0].interface</strong> init script will determine the ip of the interface set here.
+</p>
+
+<p>
+For the entire list of what djbdns uci store:
+</p>
+<pre class="code">root@openwrt:/# uci show djbdns</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;UCI integration&quot;,&quot;hid&quot;:&quot;uci_integration&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:5,&quot;range&quot;:&quot;2200-3182&quot;} -->
+<h2 class="sectionedit6" id="script_provide_by_djbdns">Script provide by djbdns</h2>
+<div class="level2">
+
+<p>
+tinydns come with several script it can help you to configure your /etc/tinydns/data file.
+</p>
+
+<p>
+Usage of they script will be describe later on it document, for the complet howto follow it link: <a href="http://cr.yp.to/djbdns/run-server.html" class="urlextern" title="http://cr.yp.to/djbdns/run-server.html" rel="ugc nofollow">http://cr.yp.to/djbdns/run-server.html</a>
+</p>
+
+<p>
+/etc/tinydns/add-alias 
+</p>
+
+<p>
+/etc/tinydns/add-childns
+</p>
+
+<p>
+/etc/tinydns/add-host
+</p>
+
+<p>
+/etc/tinydns/add-mx
+</p>
+
+<p>
+/etc/tinydns/add-ns
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Script provide by djbdns&quot;,&quot;hid&quot;:&quot;script_provide_by_djbdns&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:6,&quot;range&quot;:&quot;3183-3565&quot;} -->
+<h2 class="sectionedit7" id="what_a_tipical_conf_can_be">What a tipical conf can be</h2>
+<div class="level2">
+
+<p>
+All <abbr title="Internet Protocol">IP</abbr> use for they exemples should be change for you own <abbr title="Internet Protocol">IP</abbr>
+</p>
+
+<p>
+They docs declare each time the last MX to a antispam black list, that a good practice, same for spf txt entry.
+</p>
+
+<p>
+The Reverse address xxx.xxx.xxx.xxx.in-addr.arpa is declare like that for a Local Area Network, in case you use <abbr title="Internet Protocol">IP</abbr> public to a Wide Area Network the reverse entry should be done via an <abbr title="Internet Service Provider">ISP</abbr> (Internet Provider) tool, general a web interface, or a Incident Ticket.
+</p>
+
+<p>
+<em class="u">Minimal setting for a personal usage</em>:
+</p>
+<pre class="code">#SOA
+Zexemple.net:ns1.exemple.net:hostmaster.exemple.net:1330551249:16384:2048:1048576:2560:::
+#NS
+.exemple.net:192.168.31.215:ns1.exemple.net:259200:
+.215.31.168.192.in-addr.arpa::ns1.exemple.net:259200:
+#Domain
++exemple.net:192.168.31.215:86400
+#MX
+@exemple.net:192.168.31.215:mx1.exemple.net:10:86400
+@exemple.net:tarbaby.junkemailfilter.com:tarbaby.junkemailfilter.com:30:86400
+:exemple.net:16:\016v=spf1\040mx\040-all:86400
+#Exemple Web servers
+=www.exemple.net:192.168.31.215:86400
+#Mail Server
+=mail.exemple.net:192.168.31.215:86400</pre>
+
+<p>
+<em class="u">Multi NS , Multi MX exemple</em>:
+</p>
+<pre class="code">#SOA
+Zexemple.net:ns1.exemple.net:hostmaster.exemple.net:1330551249:16384:2048:1048576:2560:::
+#NS1
+.exemple.net:192.168.31.215:ns1.exemple.net:259200:
+.215.31.168.192.in-addr.arpa::ns1.exemple.net:259200:
+#NS2
+.exemple.net:192.168.185.63:ns2.exemple.net:259200:
+.63.185.168.192.in-addr.arpa::ns2.exemple.net:259200:
+#NS3
+.exemple.net:192.168.114.57:ns3.exemple.net:259200:
+.57.114.168.192.in-addr.arpa::ns3.exemple.net:259200
+#Domain
++exemple.net:192.168.31.215:86400
+#MX
+@exemple.net:192.168.31.215:mx1.exemple.net:10:86400
+@exemple.net:192.168.114.57:mx2.exemple.net:20:86400
+@exemple.net:tarbaby.junkemailfilter.com:tarbaby.junkemailfilter.com:30:86400
+:exemple.net:16:\016v=spf1\040mx\040-all:86400
+#Web servers
+=www.exemple.net:192.168.31.215:86400
+=www1.exemple.net:192.168.31.215:86400
+=www2.exemple.net:192.168.114.57:86400
+#Ntp servers
+=ntp1.exemple.net:192.168.31.215:86400
+=ntp2.exemple.net:192.168.114.57:86400
+#Mail Server
+=mail.exemple.net:192.168.31.215:86400
+#Other
++friends.exemple.net:192.168.72.94:86400</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;What a tipical conf can be&quot;,&quot;hid&quot;:&quot;what_a_tipical_conf_can_be&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:7,&quot;range&quot;:&quot;3566-5713&quot;} -->
+<h2 class="sectionedit8" id="test_you_installation">Test you installation</h2>
+<div class="level2">
+
+<p>
+Open a terminal session on you machine, export a env variable name DEBUG, then start/restart the tinydns init script.
+</p>
+<pre class="code">export DEBUG=&quot;1&quot;; /etc/init.d/tinydns restart</pre>
+<pre class="code">Restarting Authoritative nameserver: tinydns... 
+Stopping Authoritative nameserver: tinydns .
+Starting Authoritative nameserver: tinydns
+starting tinydns</pre>
+
+<p>
+The tinydns server restart, but keep the hand, now you can test from an other machine or a other terminal session.
+</p>
+
+<p>
+The exemple for make the test is done with djbdns “dnsq” tool but it work with “dig”,“nslookup”, or all other resolver you like.
+</p>
+<pre class="code">dnsq a mail.exemple.net $YOU_TINYDNS_IP_ADDRESS</pre>
+<pre class="code">1 mail.exemple.net:
+155 bytes, 1+1+3+3 records, response, authoritative, noerror
+query: 1 mail.exemple.net
+answer: mail.exemple.net 86400 A $IP_ADRESS_MAIL
+authority: exemple.net 259200 NS ns1.exemple.net
+authority: exemple.net 259200 NS ns2.exemple.net
+authority: exemple.net 259200 NS ns3.exemple.net
+additional: ns1.exemple.net 259200 A $IP_ADRESS_NS1
+additional: ns2.exemple.net 259200 A $IP_ADRESS_NS2
+additional: ns3.exemple.net 259200 A $IP_ADRESS_NS3</pre>
+
+<p>
+From you frist terminal, you should see tinydns recive and reply to the request
+</p>
+<pre class="code">c0a8010f:bc4b:3a0c + 0001 mail.exemple.net
+stats 1 1 0 0 0 0 0</pre>
+
+<p>
+That mean it work, but remenber to back to the normal, because when you&#039;ll leave you terminal session tinydns will die with it. 
+</p>
+
+<p>
+On you first terminal session use the combinaison key “Control + C” for close tinydns then:
+</p>
+<pre class="code">^C
+root@openwrt:/root# unset DEBUG; /etc/init.d/tinydns restart
+Restarting Authoritative nameserver: tinydns... 
+Stopping Authoritative nameserver: tinydns .
+Starting Authoritative nameserver: tinydns
+root@openwrt:/root#</pre>
+
+<p>
+The tinydns restart and give back the hand, if you have enable the service at startup you&#039;ll be a enjoy guy :)
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Test you installation&quot;,&quot;hid&quot;:&quot;test_you_installation&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:8,&quot;range&quot;:&quot;5714-7606&quot;} -->
+<h3 class="sectionedit9" id="have_you_own_domain_name">Have you own domain name :</h3>
+<div class="level3">
+
+<p>
+It&#039;s possible to have you own domain for free by exemple with : <a href="http://www.eu.org" class="urlextern" title="http://www.eu.org" rel="ugc nofollow">http://www.eu.org</a> , but generally you have to pay to a registar a lease for you domain.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Have you own domain name :&quot;,&quot;hid&quot;:&quot;have_you_own_domain_name&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:9,&quot;range&quot;:&quot;7607-&quot;} -->

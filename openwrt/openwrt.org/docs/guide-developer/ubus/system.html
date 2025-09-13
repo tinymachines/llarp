@@ -1,0 +1,104 @@
+
+<h1 class="sectionedit1" id="ubus_system">ubus system</h1>
+<div class="level1">
+
+<p>
+<strong>Package: procd</strong>
+</p>
+<div class="table sectionedit2"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Procedure </th><th class="col1"> Signature </th><th class="col2"> Description </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> board </td><td class="col1"> {} </td><td class="col2"> returns board specific information like model and distribution code name, revision </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> info </td><td class="col1"> {} </td><td class="col2"> returns real-time information about the system. <code>
+        “uptime”: 20756,
+        “localtime”: 1444142264,
+        “load”: [
+                7264,
+                3040,
+                3520
+        ],
+        “memory”: {
+                “total”: 29601792,
+                “free”: 7344128,
+                “shared”: 458752,
+                “buffered”: 2166784
+        },
+        “swap”: {
+                “total”: 0,
+                “free”: 0
+        }</code> </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> upgrade </td><td class="col1"> {} </td><td class="col2"> *TODO* </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> watchdog </td><td class="col1"> {“frequency”:“Integer”,“timeout”:“Integer”,“stop”:“Boolean”,“magicclose”:“Boolean”} </td><td class="col2"> controls the watchdog. *ubus call system watchdog &#039;{ “stop”: true“}&#039;* only stops the thread triggering the watchdog. The watchdog is still counting down unless a second process is triggering the watchdog unless you enable &#039;magicclose&#039;, then you can manually tickle &#039;/dev/watchdog&#039;. </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0"> signal </td><td class="col1"> {“pid”:“Integer”,”signum“:“Integer”} </td><td class="col2"> send a signal to a process. See man kill </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0"> nandupgrade </td><td class="col1"> {“path”:“String”} </td><td class="col2"> *TODO* </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;48-1206&quot;} -->
+<p>
+The values in load are the load averages over 1, 5, and 15 minutes. to get to the familiar values reported by uptime divide these numbers by 65536.0 and round to 2 decimals.
+</p>
+
+<p>
+There is a detailed <a href="http://kernelreloaded.com/manually-controlling-openwrt-hardware-watchdog/" class="urlextern" title="http://kernelreloaded.com/manually-controlling-openwrt-hardware-watchdog/" rel="ugc nofollow">blog post</a> showing how to use, configure and manually take control over hardware watchdog with ubus commands.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;ubus system&quot;,&quot;hid&quot;:&quot;ubus_system&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1591&quot;} -->
+<h2 class="sectionedit3" id="examples">Examples</h2>
+<div class="level2">
+
+<p>
+See all methods of <code>system</code> (to see all methods of all services registered to ubusd: <code>ubus -v list</code>):
+</p>
+<pre class="code">root@OpenWrt:/# ubus -v list system
+&#039;system&#039; @651f206c
+        &quot;board&quot;:{}
+        &quot;info&quot;:{}
+        &quot;reboot&quot;:{}
+        &quot;watchdog&quot;:{&quot;frequency&quot;:&quot;Integer&quot;,&quot;timeout&quot;:&quot;Integer&quot;,&quot;magicclose&quot;:&quot;Boolean&quot;,&quot;stop&quot;:&quot;Boolean&quot;}
+        &quot;signal&quot;:{&quot;pid&quot;:&quot;Integer&quot;,&quot;signum&quot;:&quot;Integer&quot;}
+        &quot;validate_firmware_image&quot;:{&quot;path&quot;:&quot;String&quot;}
+        &quot;sysupgrade&quot;:{&quot;path&quot;:&quot;String&quot;,&quot;force&quot;:&quot;Boolean&quot;,&quot;backup&quot;:&quot;String&quot;,&quot;prefix&quot;:&quot;String&quot;,&quot;command&quot;:&quot;String&quot;,&quot;options&quot;:&quot;Table&quot;}</pre>
+
+<p>
+You can now call a remote method and receive a reply. A reply may be a simple integer return code or a more complete reply. Internally the bus uses a blob format, the CLI conveniently converts this to JSON.
+</p>
+<pre class="code">root@OpenWrt:/# ubus call system board
+{
+        &quot;kernel&quot;: &quot;4.9.198&quot;,
+        &quot;hostname&quot;: &quot;OpenWrt&quot;,
+        &quot;system&quot;: &quot;Qualcomm Atheros QCA956X ver 1 rev 0&quot;,
+        &quot;model&quot;: &quot;TP-Link TL-WR1043N\/ND v4&quot;,
+        &quot;board_name&quot;: &quot;tl-wr1043nd-v4&quot;,
+        &quot;release&quot;: {
+                &quot;distribution&quot;: &quot;OpenWrt&quot;,
+                &quot;version&quot;: &quot;18.06.5&quot;,
+                &quot;revision&quot;: &quot;r7897-9d401013fc&quot;,
+                &quot;target&quot;: &quot;ar71xx\/generic&quot;,
+                &quot;description&quot;: &quot;OpenWrt 18.06.5 r7897-9d401013fc&quot;
+        }
+}</pre>
+
+<p>
+You can call a method and pass it some parameters by simply appending a JSON structure to the CLI command.
+</p>
+<pre class="code">root@OpenWrt:/# ubus call system signal &#039;{ &quot;pid&quot;: 123, &quot;signum&quot;: 9 }&#039;
+root@OpenWrt:/# echo $?
+0</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Examples&quot;,&quot;hid&quot;:&quot;examples&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;1592-&quot;} -->

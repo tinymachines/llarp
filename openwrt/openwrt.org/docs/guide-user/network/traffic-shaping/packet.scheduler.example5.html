@@ -1,0 +1,47 @@
+
+<h1 class="sectionedit1" id="example5traffic_prioritizing_with_htb_and_mac_filtering">Example5: Traffic Prioritizing with HTB and MAC filtering</h1>
+<div class="level1">
+<pre class="code bash"><span class="co0">#!/bin/sh</span>
+<span class="co0"># We have 200000kbit bandwidth and want to reduce a couple of MACs to 3000kbit to keep our cable bill</span>
+<span class="co0"># from going over.  This script uses MAC addresses (instead of IP addresses), so it works with IPv6</span>
+<span class="co0"># streams as well.  The filtered device is the bridged &quot;local&quot; network (not the WAN).  If you have more</span>
+<span class="co0"># or fewer devices, you will need to add filters and target classes for them.  You can share target</span>
+<span class="co0"># classes if you want devices to share bandwidth.  Bandwidth below 1 mbit/sec is likely to make a</span>
+<span class="co0"># streaming device fail.  High definition and high movement media streams may look quite bad at</span>
+<span class="co0"># 3 Mbit/sec where low movement channels like news will look just fine.</span>
+&nbsp;
+<span class="re2">BW0</span>=200000kbit                  ;<span class="co0"># Bandwidth of actual connection.  Default tagged users will share this</span>
+<span class="re2">BW</span>=3000kbit                     ;<span class="co0"># Bandwidth to give ROKU users.</span>
+&nbsp;
+<span class="re2">MAC_ROKU1</span>=C8:3A:6B:<span class="nu0">27</span>:F9:B0
+<span class="re2">MAC_ROKU2</span>=<span class="nu0">94</span>:E9:<span class="nu0">79</span>:4A:F1:<span class="nu0">88</span>
+&nbsp;
+<span class="re2">DEV</span>=br-lan
+<span class="re2">TC</span>=$<span class="br0">&#40;</span><span class="kw2">which</span> tc<span class="br0">&#41;</span>
+<span class="re2">TCF</span>=<span class="st0">&quot;<span class="es3">${TC}</span> filter add dev <span class="es2">$DEV</span> parent 1: protocol ip prio 5 u32 match u16 0x0800 0xFFFF at -2&quot;</span>
+&nbsp;
+filter_mac<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+&nbsp;
+  <span class="re2">M0</span>=$<span class="br0">&#40;</span><span class="kw3">echo</span> <span class="re4">$1</span> <span class="sy0">|</span> <span class="kw2">cut</span> <span class="re5">-d</span> : <span class="re5">-f</span> <span class="nu0">1</span><span class="br0">&#41;</span>$<span class="br0">&#40;</span><span class="kw3">echo</span> <span class="re4">$1</span> <span class="sy0">|</span> <span class="kw2">cut</span> <span class="re5">-d</span> : <span class="re5">-f</span> <span class="nu0">2</span><span class="br0">&#41;</span>
+  <span class="re2">M1</span>=$<span class="br0">&#40;</span><span class="kw3">echo</span> <span class="re4">$1</span> <span class="sy0">|</span> <span class="kw2">cut</span> <span class="re5">-d</span> : <span class="re5">-f</span> <span class="nu0">3</span><span class="br0">&#41;</span>$<span class="br0">&#40;</span><span class="kw3">echo</span> <span class="re4">$1</span> <span class="sy0">|</span> <span class="kw2">cut</span> <span class="re5">-d</span> : <span class="re5">-f</span> <span class="nu0">4</span><span class="br0">&#41;</span>
+  <span class="re2">M2</span>=$<span class="br0">&#40;</span><span class="kw3">echo</span> <span class="re4">$1</span> <span class="sy0">|</span> <span class="kw2">cut</span> <span class="re5">-d</span> : <span class="re5">-f</span> <span class="nu0">5</span><span class="br0">&#41;</span>$<span class="br0">&#40;</span><span class="kw3">echo</span> <span class="re4">$1</span> <span class="sy0">|</span> <span class="kw2">cut</span> <span class="re5">-d</span> : <span class="re5">-f</span> <span class="nu0">6</span><span class="br0">&#41;</span>
+&nbsp;
+  <span class="re1">$TCF</span> match u16 0x<span class="co1">${M2}</span> 0xFFFF at <span class="re5">-4</span> match u32 0x<span class="co1">${M0}</span><span class="co1">${M1}</span> 0xFFFFFFFF at <span class="re5">-8</span> flowid <span class="re4">$2</span>
+  <span class="re1">$TCF</span> match u32 0x<span class="co1">${M1}</span><span class="co1">${M2}</span> 0xFFFFFFFF at <span class="re5">-12</span> match u16 0x<span class="co1">${M0}</span> 0xFFFF at <span class="re5">-14</span> flowid <span class="re4">$2</span>
+<span class="br0">&#125;</span>
+&nbsp;
+insmod sch_htb <span class="nu0">2</span><span class="sy0">&gt;</span> <span class="sy0">/</span>dev<span class="sy0">/</span>null
+&nbsp;
+<span class="re1">$TC</span> qdisc add dev <span class="re1">$DEV</span> root       handle <span class="nu0">1</span>:    htb default 0xA
+<span class="re1">$TC</span> class add dev <span class="re1">$DEV</span> parent <span class="nu0">1</span>:  classid <span class="nu0">1</span>:<span class="nu0">1</span>  htb rate <span class="co1">${BW0}</span>
+<span class="re1">$TC</span> class add dev <span class="re1">$DEV</span> parent <span class="nu0">1</span>:<span class="nu0">1</span> classid <span class="nu0">1</span>:<span class="nu0">10</span> htb rate <span class="co1">${BW0}</span>
+&nbsp;
+<span class="re1">$TC</span> class add dev <span class="re1">$DEV</span> parent <span class="nu0">1</span>:<span class="nu0">1</span> classid <span class="nu0">1</span>:<span class="nu0">20</span> htb rate <span class="co1">${BW}</span>
+<span class="re1">$TC</span> class add dev <span class="re1">$DEV</span> parent <span class="nu0">1</span>:<span class="nu0">1</span> classid <span class="nu0">1</span>:<span class="nu0">21</span> htb rate <span class="co1">${BW}</span>
+&nbsp;
+filter_mac <span class="re1">$MAC_ROKU1</span> <span class="nu0">1</span>:<span class="nu0">20</span>      ;<span class="co0"># Filter ROKU1 to 1:20</span>
+filter_mac <span class="re1">$MAC_ROKU2</span> <span class="nu0">1</span>:<span class="nu0">21</span>      ;<span class="co0"># Filter ROKU2 to 1:21</span>
+&nbsp;
+<span class="re1">$TCF</span> flowid <span class="nu0">1</span>:<span class="nu0">10</span>                ;<span class="co0"># Filter everyone else to 1:10</span></pre>
+
+</div>

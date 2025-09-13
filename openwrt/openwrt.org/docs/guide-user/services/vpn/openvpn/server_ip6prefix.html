@@ -1,0 +1,60 @@
+
+<h1 class="sectionedit1" id="openvpn_server_with_dynamic_ipv6_gua_prefix">OpenVPN server with dynamic IPv6 GUA prefix</h1>
+<div class="level1">
+
+<p>
+Follow the <a href="/docs/guide-user/services/vpn/openvpn/server" class="wikilink1" title="docs:guide-user:services:vpn:openvpn:server" data-wiki-id="docs:guide-user:services:vpn:openvpn:server">OpenVPN server</a> article to set up a basic server.
+To assign a global-unicast (GUA) <abbr title="Internet Protocol version 6">IPv6</abbr> address from the <abbr title="Internet Protocol version 6">IPv6</abbr> prefix of the <abbr title="Wide Area Network">WAN</abbr> interface to OpenVPN clients, we must assign a free subnet of the delegated <abbr title="Wide Area Network">WAN</abbr> <abbr title="Internet Protocol version 6">IPv6</abbr> prefix to the OpenVPN server via the openvpn config option <code>server_ipv6</code>. However, as for most users the delegated <abbr title="Internet Protocol version 6">IPv6</abbr> prefix is non-static, a dynamic/automatic assignment is required.
+</p>
+
+<p>
+To dynamically assign a free subnet, in this example /64, of the delegated <abbr title="Wide Area Network">WAN</abbr> prefix to the OpenVPN server, we must define a dedicated <abbr title="Virtual Private Network">VPN</abbr> interface of type <code>static</code>. In this example, the interface is named <code>LANvpn</code> and the device is <code>tun1</code>. Refer to <a href="https://forum.openwrt.org/t/openvpn-dynamically-assign-client-ipv6-gua-with-dynamic-wan-ipv6-prefix/104590/5" class="urlextern" title="https://forum.openwrt.org/t/openvpn-dynamically-assign-client-ipv6-gua-with-dynamic-wan-ipv6-prefix/104590/5" rel="ugc nofollow">this</a> for a detailed discussion.
+</p>
+<pre class="code bash">config interface <span class="st_h">'LANvpn'</span>
+	option proto <span class="st_h">'static'</span>
+	option device <span class="st_h">'tun1'</span>
+	option ip6assign <span class="st_h">'64'</span>
+	option ip6class <span class="st_h">'wan6'</span></pre>
+
+<p>
+Next, we add the following hotplug script <code>/etc/hotplug.d/iface/30-ipv6pdchange</code> to assign the <abbr title="Internet Protocol version 6">IPv6</abbr> subnet of the <code>LANvpn</code> interface to our OpenVPN server. This way, we can rely on the subnetting routines of OpenWRT to find a free subnet for the OpenVPN server considering the <abbr title="Internet Protocol version 6">IPv6</abbr> configurations of other interfaces. The hotplug script is triggered only on <abbr title="Internet Protocol version 6">IPv6</abbr> prefix changes and assumes the OpenVPN server is named <code><abbr title="Local Area Network">LAN</abbr></code> and is defined in <code>/etc/config/openvpn</code>.
+</p>
+<pre class="code bash"><span class="co0">#!/bin/sh</span>
+&nbsp;
+<span class="co0"># if ipv6 address has changed on WAN6 go for it</span>
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es2">$INTERFACE</span>&quot;</span> = <span class="st0">&quot;wan6&quot;</span> <span class="re5">-a</span> <span class="st0">&quot;<span class="es2">$IFUPDATE_ADDRESSES</span>&quot;</span> = <span class="st0">&quot;1&quot;</span> <span class="br0">&#93;</span>
+<span class="kw1">then</span>
+    <span class="co0">##################</span>
+    <span class="co0"># PD fix</span>
+    <span class="co0">##################</span>
+    <span class="co0"># reload interface to update PD to downstream interfaces, refer to bug described here https://forum.openwrt.org/t/delegated-ipv6-prefix-not-updated/56135</span>
+    <span class="sy0">/</span>sbin<span class="sy0">/</span><span class="kw2">ifup</span> wan6
+&nbsp;
+    <span class="co0"># wait some time to get IPv6 up</span>
+    <span class="kw2">sleep</span> <span class="nu0">30</span>
+&nbsp;
+    <span class="co0">##################</span>
+    <span class="co0"># IPv6 OpenVPN assignment</span>
+    <span class="co0">##################</span>
+&nbsp;
+    <span class="co0"># source network functions</span>
+    <span class="kw3">source</span> <span class="sy0">/</span>lib<span class="sy0">/</span>functions<span class="sy0">/</span>network.sh
+&nbsp;
+    <span class="co0"># get IPv6 of openvpn interface</span>
+    network_get_ipaddr6 IPV6_OVPN <span class="st0">&quot;LANvpn&quot;</span>
+&nbsp;
+    <span class="kw1">if</span> <span class="br0">&#91;</span><span class="br0">&#91;</span> <span class="sy0">!</span> <span class="re5">-z</span> <span class="re1">$IPV6_OVPN</span> <span class="br0">&#93;</span><span class="br0">&#93;</span>
+    <span class="kw1">then</span>	    
+	    <span class="co0"># get subnet size of OpenVPN interface</span>
+	    <span class="re2">NET_ASSIGN</span>=<span class="st0">&quot;<span class="es4">$(uci get network.LANvpn.ip6assign)</span>&quot;</span>
+&nbsp;
+	    <span class="co0"># set openvpn server-ipv6 option</span>
+	    uci <span class="kw1">set</span> openvpn.LAN.server_ipv6=<span class="st0">&quot;<span class="es2">$IPV6_OVPN</span>/<span class="es2">$NET_ASSIGN</span>&quot;</span>
+	    uci commit openvpn
+&nbsp;
+	    <span class="co0"># reload openvpn</span>
+	    service openvpn reload	    
+    <span class="kw1">fi</span>
+<span class="kw1">fi</span></pre>
+
+</div>

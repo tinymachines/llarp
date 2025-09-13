@@ -1,0 +1,226 @@
+
+<h1 class="sectionedit1" id="wi-fi_repeater_using_ap_sta_mode">Wi-Fi Repeater using AP+STA mode</h1>
+<div class="level1">
+
+<p>
+A Wi-Fi Repeater is a configuration of an OpenWrt router that “extends”
+the network.
+</p>
+
+<p>
+An OpenWrt router operating in <abbr title="Access Point">AP</abbr>+STA mode
+(sometimes referred to as “wi-fi tethering”) does this
+by making a wireless uplink to a hotspot (an access point or “<abbr title="Access Point">AP</abbr>”)
+and then repeating to other devices connected
+wirelessly or to its Ethernet interface.
+</p>
+
+<p>
+<abbr title="Access Point">AP</abbr>+STA mode is by far the simplest means of extending Wi-Fi coverage because it does not require any changes to the upstream access point. 
+</p>
+
+<p>
+<strong>Terminology:</strong> this page refers to
+the upstream access point (<abbr title="Access Point">AP</abbr>) as the <strong>hotspot</strong>;
+the OpenWrt Wi-Fi repeater/extender as the <strong>router</strong>;
+STA refers to the fact that the router connects to the hotspot as a “station” (a regular Wi-Fi device).
+</p>
+
+<p>
+<em>Note: For an even easier installation, check out the <a href="/docs/guide-user/network/wifi/wifiextenders/travelmate" class="wikilink1" title="docs:guide-user:network:wifi:wifiextenders:travelmate" data-wiki-id="docs:guide-user:network:wifi:wifiextenders:travelmate">Travelmate package</a> that also extends a Wi-Fi network.</em>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Wi-Fi Repeater using AP+STA mode&quot;,&quot;hid&quot;:&quot;wi-fi_repeater_using_ap_sta_mode&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-947&quot;} -->
+<h2 class="sectionedit2" id="make_backups">Make Backups</h2>
+<div class="level2">
+
+<p>
+The procedure below updates the updates the following files
+to configure your router to act as a Wi-Fi repeater/extender.
+It assumes that your router has the default settings and that its wireless and Ethernet are bridged.
+(<a href="/docs/guide-user/base-system/basic-networking" class="wikilink1" title="docs:guide-user:base-system:basic-networking" data-wiki-id="docs:guide-user:base-system:basic-networking">/etc/config/network</a>,
+<a href="/docs/guide-user/network/wifi/basic" class="wikilink1" title="docs:guide-user:network:wifi:basic" data-wiki-id="docs:guide-user:network:wifi:basic">/etc/config/wireless</a>,
+<a href="/docs/guide-user/firewall/firewall_configuration" class="wikilink1" title="docs:guide-user:firewall:firewall_configuration" data-wiki-id="docs:guide-user:firewall:firewall_configuration">/etc/config/firewall</a>, and
+<a href="/docs/guide-user/base-system/dhcp" class="wikilink1" title="docs:guide-user:base-system:dhcp" data-wiki-id="docs:guide-user:base-system:dhcp">/etc/config/dhcp</a>)
+</p>
+
+<p>
+Before you begin, it&#039;s always wise to make backups of all your configuration files.
+</p>
+<pre class="code"># Back up the configuration files
+echo &#039;Backing up configuration files&#039;
+cp /etc/config/network  /etc/config/network.bak
+cp /etc/config/wireless /etc/config/wireless.bak
+cp /etc/config/firewall /etc/config/firewall.bak
+cp /etc/config/dhcp     /etc/config/dhcp.bak</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Make Backups&quot;,&quot;hid&quot;:&quot;make_backups&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;948-1825&quot;} -->
+<h2 class="sectionedit3" id="configuring_the_wi-fi_repeater">Configuring the Wi-Fi Repeater</h2>
+<div class="level2">
+
+<p>
+Use the script below to change the configuration. It performs these tasks:
+</p>
+<ul>
+<li class="level1"><div class="li"> Configure the router&#039;s <abbr title="Local Area Network">LAN</abbr> interface to 192.168.2.1 (default) Assume <abbr title="Local Area Network">LAN</abbr> subnet mask is 255.255.255.0</div>
+</li>
+<li class="level1"><div class="li"> Create a <abbr title="Wireless Wide Area Network">WWAN</abbr> interface to get a <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> from the hotspot</div>
+</li>
+<li class="level1"><div class="li"> Add the <abbr title="Wireless Wide Area Network">WWAN</abbr> interface to the “wan” firewall zone</div>
+</li>
+<li class="level1"><div class="li"> Configure <abbr title="Wireless Wide Area Network">WWAN</abbr> interface to use &#039;radio0&#039; in STA mode</div>
+</li>
+<li class="level1"><div class="li"> Set the Wi-Fi credentials so the router can connect to the hotspot</div>
+</li>
+</ul>
+
+<p>
+To use the script, edit the <abbr title="Internet Protocol">IP</abbr> address and the Wi-Fi credentials at the top of the file, then <a href="/docs/guide-user/network/wifi/wifiextenders/ap_sta#how_to_run_these_scripts" class="wikilink1" title="docs:guide-user:network:wifi:wifiextenders:ap_sta" data-wiki-id="docs:guide-user:network:wifi:wifiextenders:ap_sta">run the script.</a>
+</p>
+<pre class="code bash"><span class="co0"># Fill in these values, then run the script</span>
+<span class="re2">ROUTER_LAN_IP</span>=<span class="st_h">'192.168.2.1'</span>
+<span class="re2">HOTSPOT_ENCRYPTION_MODE</span>=<span class="st_h">'none'</span> 
+<span class="re2">HOTSPOT_SSID</span>=<span class="st_h">'upstream-hotspot-wifi-ssid'</span>
+<span class="re2">HOTSPOT_PASSWORD</span>=<span class="st_h">'super-secret-password'</span>
+&nbsp;
+<span class="co0"># Set the router's LAN IP address to a different subnet from the hotspot (AP) IP address.</span>
+<span class="kw3">echo</span> <span class="st_h">'Setting the LAN IP address to $ROUTER_LAN_IP'</span>
+uci <span class="kw1">set</span> network.lan.ipaddr=<span class="re1">$ROUTER_LAN_IP</span>
+&nbsp;
+<span class="co0"># Add the WWAN network is in the WAN firewall zone</span>
+<span class="kw3">echo</span> <span class="st_h">'Setting firewall zone for &quot;wwan&quot;'</span>
+uci add_list firewall.<span class="sy0">@</span>zone<span class="br0">&#91;</span><span class="nu0">1</span><span class="br0">&#93;</span>.network=<span class="st0">&quot;wwan&quot;</span>
+uci commit firewall
+<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>firewall restart
+&nbsp;
+<span class="co0"># The WWAN interface is the &quot;uplink&quot;. It obtains a DHCP address from the upstream hotspot.</span>
+<span class="kw3">echo</span> <span class="st_h">'Configuring WWAN'</span>
+uci <span class="kw1">set</span> network.wwan=<span class="st0">&quot;interface&quot;</span>
+uci <span class="kw1">set</span> network.wwan.proto=<span class="st0">&quot;dhcp&quot;</span>
+uci commit network
+<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>network restart
+&nbsp;
+<span class="co0"># Add the Wi-Fi interface for the uplink.</span>
+<span class="co0"># STA mode, with the proper Wi-Fi credentials (SSID, encryption mode, key)</span>
+<span class="kw3">echo</span> <span class="st_h">'Configuring the Wi-Fi uplink'</span>
+uci <span class="kw1">set</span> wireless.wwan=<span class="st0">&quot;wifi-iface&quot;</span>
+uci <span class="kw1">set</span> wireless.wwan.device=<span class="st0">&quot;radio0&quot;</span>
+uci <span class="kw1">set</span> wireless.wwan.network=<span class="st0">&quot;wwan&quot;</span>
+uci <span class="kw1">set</span> wireless.wwan.mode=<span class="st0">&quot;sta&quot;</span>
+<span class="co0"># Change the encryption and ssid values to match those of the hotspot (AP)</span>
+uci <span class="kw1">set</span> wireless.wwan.encryption=<span class="re1">$HOTSPOT_ENCRYPTION_MODE</span>
+uci <span class="kw1">set</span> wireless.wwan.ssid=<span class="re1">$HOTSPOT_SSID</span>
+uci <span class="kw1">set</span> wireless.wwan.key=<span class="re1">$HOTSPOT_PASSWORD</span>
+uci commit wireless
+wifi reload</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuring the Wi-Fi Repeater&quot;,&quot;hid&quot;:&quot;configuring_the_wi-fi_repeater&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;1826-3840&quot;} -->
+<h3 class="sectionedit4" id="revert_to_ap-only_mode_optional">Revert to AP-Only mode (Optional)</h3>
+<div class="level3">
+
+<p>
+<em>This is an optional, but recommended step.</em><br/>
+
+When the upstream hotspot is not available or if the wireless configuration file (created above) is incorrect, the router disables its own <abbr title="Access Point">AP</abbr>.
+If that happens, you would lose wireless access to your router, and could only connect through its Ethernet port.
+The following step installs a script that tests for hotspot availability after boot.
+If the router cannot connect to the hotspot after 30 seconds, it automatically reconfigures itself to <abbr title="Access Point">AP</abbr> Only mode so you an again access the router wirelessly.
+</p>
+<pre class="code bash"><span class="co0"># Create AP Only and AP+STA wireless configuration files</span>
+<span class="kw2">cp</span> <span class="sy0">/</span>etc<span class="sy0">/</span>config<span class="sy0">/</span>wireless.bak <span class="sy0">/</span>etc<span class="sy0">/</span>config<span class="sy0">/</span>wireless.ap-only
+<span class="kw2">cp</span> <span class="sy0">/</span>etc<span class="sy0">/</span>config<span class="sy0">/</span>wireless <span class="sy0">/</span>etc<span class="sy0">/</span>config<span class="sy0">/</span>wireless.ap+sta
+&nbsp;
+<span class="co0"># Install the necessary packages</span>
+opkg update
+opkg <span class="kw2">install</span> iwinfo
+&nbsp;
+<span class="co0"># Save the script</span>
+<span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>usr<span class="sy0">/</span>local<span class="sy0">/</span>bin<span class="sy0">/</span>fix_sta_ap.sh
+<span class="co0">#!/bin/sh</span>
+<span class="co0">#</span>
+<span class="co0"># Fix loss of AP when STA (Client) mode fails by reverting to default</span>
+<span class="co0"># AP only configuration. Default AP configuration is assumed to be in</span>
+<span class="co0"># /etc/config/wireless.ap-only</span>
+<span class="co0">#</span>
+&nbsp;
+<span class="re2">TIMEOUT</span>=<span class="nu0">30</span>
+<span class="re2">SLEEP</span>=<span class="nu0">3</span>
+<span class="re2">sta_err</span>=<span class="nu0">0</span>
+&nbsp;
+<span class="kw1">while</span> <span class="br0">&#91;</span> $<span class="br0">&#40;</span>iwinfo <span class="sy0">|</span> <span class="kw2">grep</span> <span class="re5">-c</span> <span class="st0">&quot;ESSID: unknown&quot;</span><span class="br0">&#41;</span> <span class="re5">-ge</span> <span class="nu0">1</span> <span class="br0">&#93;</span>; <span class="kw1">do</span>
+   <span class="kw3">let</span> <span class="re2">sta_err</span>=<span class="re1">$sta_err</span>+<span class="nu0">1</span>
+   <span class="kw1">if</span> <span class="br0">&#91;</span> $<span class="br0">&#40;</span><span class="br0">&#40;</span>sta_err <span class="sy0">*</span> SLEEP<span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="re5">-ge</span> <span class="re1">$TIMEOUT</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+     <span class="kw2">cp</span> <span class="sy0">/</span>etc<span class="sy0">/</span>config<span class="sy0">/</span>wireless.ap-only <span class="sy0">/</span>etc<span class="sy0">/</span>config<span class="sy0">/</span>wireless
+     wifi up
+<span class="co0">#    uncomment the following lines to try AP+STA after reboot</span>
+<span class="co0">#    sleep 3</span>
+<span class="co0">#    cp /etc/config/wireless.ap+sta /etc/config/wireless</span>
+     <span class="kw3">break</span>
+   <span class="kw1">fi</span>
+   <span class="kw2">sleep</span> <span class="re1">$SLEEP</span>
+<span class="kw1">done</span>
+EOF
+&nbsp;
+<span class="co0"># Make the script executable</span>
+<span class="kw2">chmod</span> +x <span class="sy0">/</span>usr<span class="sy0">/</span>local<span class="sy0">/</span>bin<span class="sy0">/</span>fix_sta_ap.sh
+&nbsp;
+<span class="co0"># Configure autostart</span>
+<span class="kw2">sed</span> <span class="re5">-i</span> <span class="re5">-e</span> <span class="st0">&quot;
+<span class="es1">\$</span>i /usr/local/bin/fix_sta_ap.sh &gt; /dev/null &amp;
+&quot;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>rc.local</pre>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> An alternative <strong>event-driven</strong> recovery solution is to be found <a href="https://forum.openwrt.org/viewtopic.php?pid=309131#p309131" class="urlextern" title="https://forum.openwrt.org/viewtopic.php?pid=309131#p309131" rel="ugc nofollow">here</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Revert to AP-Only mode (Optional)&quot;,&quot;hid&quot;:&quot;revert_to_ap-only_mode_optional&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:4,&quot;range&quot;:&quot;3841-5652&quot;} -->
+<h3 class="sectionedit5" id="wwanhotspotmaintain_always_up_a_dual_wifi_config_access_point_and_hotspot_client_optional">wwanHotspot: maintain always up a dual wifi config, Access Point and HotSpot client (Optional)</h3>
+<div class="level3">
+
+<p>
+In one location there may be several Hotspots that may be available or not according to the comings and goings of their owners; we will enter the parameters of each one of them in the configuration file therefore wwanHotspot will connect and disconnect the OpenWrt HotSpot client to one of them as they become available.
+</p>
+
+<p>
+This daemon may be used instead of the method described in step 3.
+Download the latest version of <a href="https://github.com/jordi-pujol/wwanHotspot/" class="urlextern" title="https://github.com/jordi-pujol/wwanHotspot/" rel="ugc nofollow">wwanHotspot</a> and follow the instructions.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;wwanHotspot: maintain always up a dual wifi config, Access Point and HotSpot client (Optional)&quot;,&quot;hid&quot;:&quot;wwanhotspotmaintain_always_up_a_dual_wifi_config_access_point_and_hotspot_client_optional&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:5,&quot;range&quot;:&quot;5653-6267&quot;} -->
+<h3 class="sectionedit6" id="disable_dns_rebind_protection_optional">Disable DNS rebind protection (Optional)</h3>
+<div class="level3">
+
+<p>
+Disable <abbr title="Domain Name System">DNS</abbr> rebind protection if you need to trust upstream resolvers.
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.rebind_protection=<span class="st0">&quot;0&quot;</span>
+uci commit dhcp
+<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>dnsmasq restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Disable DNS rebind protection (Optional)&quot;,&quot;hid&quot;:&quot;disable_dns_rebind_protection_optional&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:6,&quot;range&quot;:&quot;6268-6502&quot;} -->
+<h3 class="sectionedit7" id="how_to_run_these_scripts">How to run these scripts</h3>
+<div class="level3">
+
+<p>
+To run one of the scripts above,
+<a href="/docs/guide-quick-start/sshadministration" class="wikilink1" title="docs:guide-quick-start:sshadministration" data-wiki-id="docs:guide-quick-start:sshadministration">ssh into the router</a>, then perform each of these steps:
+</p>
+<pre class="code bash"><span class="co0"># Copy the script into your favorite editor and make any changes</span>
+<span class="co0"># Run each of the steps below sequentially</span>
+<span class="co0"># When you get to the &quot;paste&quot; step, copy the script and paste it into the SSH session.</span>
+<span class="co0"># </span>
+<span class="kw2">ssh</span> root<span class="sy0">@</span>192.168.2.1 <span class="co0"># use the actual address for your router</span>
+<span class="kw3">cd</span> <span class="sy0">/</span>tmp
+<span class="kw2">cat</span> <span class="sy0">&gt;</span> config.sh 
+<span class="co0"># paste in the contents of the script, then hit ^D (Control-D)</span>
+<span class="kw2">sh</span> config.sh
+<span class="co0"># Presto! </span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;How to run these scripts&quot;,&quot;hid&quot;:&quot;how_to_run_these_scripts&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:7,&quot;range&quot;:&quot;6503-&quot;} -->

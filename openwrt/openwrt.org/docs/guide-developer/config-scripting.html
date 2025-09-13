@@ -1,0 +1,505 @@
+
+<h1 class="sectionedit1" id="configuration_in_scripts">Configuration in scripts</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__meta:infobox:howto_links">
+<div class="level1">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap">
+<p>
+This article may contain network configuration that depends on migration to DSA in OpenWrt 21.02
+</p>
+<ul>
+<li class="level1"><div class="li"> Check if your device uses DSA or swconfig as not all devices have been migrated</div>
+</li>
+<li class="level1"><div class="li"> ifname@interface has been moved to device sections</div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/network/dsa/start" class="wikilink1" title="docs:guide-user:network:dsa:start" data-wiki-id="docs:guide-user:network:dsa:start">DSA Networking</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://forum.openwrt.org/t/mini-tutorial-for-dsa-network-config/96998" class="urlextern" title="https://forum.openwrt.org/t/mini-tutorial-for-dsa-network-config/96998" rel="ugc nofollow">Mini tutorial for DSA network config</a> on the forum</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://openwrt.org/releases/21.02/notes-21.02.0#new_network_configuration_syntax_and_boardjson_change" class="urlextern" title="https://openwrt.org/releases/21.02/notes-21.02.0#new_network_configuration_syntax_and_boardjson_change" rel="ugc nofollow">DSA in the 21.02 release notes</a></div>
+</li>
+</ul>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level1">
+
+<p>
+OpenWrt offers a set of standard shell procedures to interface with <a href="/docs/guide-user/base-system/uci" class="wikilink1" title="docs:guide-user:base-system:uci" data-wiki-id="docs:guide-user:base-system:uci">UCI</a> in order to efficiently read
+and process configuration files from within shell scripts.  This is most likely useful for writing startup scripts in <code>/etc/init.d/</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration in scripts&quot;,&quot;hid&quot;:&quot;configuration_in_scripts&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-405&quot;} -->
+<h2 class="sectionedit6" id="loading">Loading</h2>
+<div class="level2">
+
+<p>
+To be able to load UCI configuration files, you need to include the common functions with:
+</p>
+<pre class="code bash">. <span class="sy0">/</span>lib<span class="sy0">/</span>functions.sh</pre>
+
+<p>
+(If your startup script starts with:
+</p>
+<pre class="code bash"><span class="co0">#!/bin/sh /etc/rc.common</span></pre>
+
+<p>
+then you do not need to include <code>/lib/functions.sh</code> directly, because <code>/etc/rc.common</code> includes <code>/lib/functions.sh</code> by default.)
+</p>
+
+<p>
+Then you can use <code>config_load <em>name</em></code> to load config files.
+</p>
+
+<p>
+The function first checks for <code><em>name</em></code> as absolute filename and falls back to loading it from
+<code>/etc/config/</code> (which is the most common way of using it).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Loading&quot;,&quot;hid&quot;:&quot;loading&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;406-1004&quot;} -->
+<h2 class="sectionedit7" id="callbacks">Callbacks</h2>
+<div class="level2">
+
+<p>
+The first method for parsing an UCI config file is through <strong>callbacks</strong>, which will be called for each <code>section</code>, <code>option</code> and <code>list</code> encountered during parsing.
+</p>
+
+<p>
+You can define three callbacks: <code>config_cb()</code>, <code>option_cb()</code>, and <code>list_cb()</code>.  You need to define these functions before calling <code>config_load</code>, but after including <code>/lib/functions.sh</code>.
+</p>
+
+<p>
+Additionally, you may call <code>reset_cb()</code> to reset all three callbacks to no-op functions.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Callbacks&quot;,&quot;hid&quot;:&quot;callbacks&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:7,&quot;range&quot;:&quot;1005-1486&quot;} -->
+<h3 class="sectionedit8" id="config_cb_callback">&#039;&#039;config_cb&#039;&#039; callback</h3>
+<div class="level3">
+
+<p>
+The <code>config_cb</code> procedure is called every time a UCI section heading is encountered during parsing. Also an extra call to <code>config_cb</code> (without any argument) is generated after <code>config_load</code> is done.  This may be useful if you accumulate something while parsing options (see below) and want to do something with the accumulated values (write them to a file, ...) when a section has been entirely parsed.
+</p>
+
+<p>
+When called, the procedure receives two arguments:
+</p>
+<ol>
+<li class="level1"><div class="li"> Type, the section type, e.g. <code>interface</code> for <code>config interface wan</code></div>
+</li>
+<li class="level1"><div class="li"> Name, the section name, e.g. <code>wan</code> for <code>config interface wan</code> or an autogenerated ID like <code>cfg13abef</code> for anonymous sections like <code>config route</code></div>
+</li>
+</ol>
+<pre class="code bash">config_cb<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw3">local</span> <span class="re2">type</span>=<span class="st0">&quot;$1&quot;</span>
+    <span class="kw3">local</span> <span class="re2">name</span>=<span class="st0">&quot;$2&quot;</span>
+    <span class="co0"># commands to be run for every section</span>
+<span class="br0">&#125;</span></pre>
+
+<p>
+Also an extra call to <code>config_cb</code> (without a new section) is generated after config_load is done -
+this allows you to process sections both before and after all options were processed.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;&#039;&#039;config_cb&#039;&#039; callback&quot;,&quot;hid&quot;:&quot;config_cb_callback&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:8,&quot;range&quot;:&quot;1487-2523&quot;} -->
+<h3 class="sectionedit9" id="option_cb_callback">&#039;&#039;option_cb&#039;&#039; callback</h3>
+<div class="level3">
+
+<p>
+Similar to <code>config_cb</code>, the <code>option_cb</code> procedure is called each time a UCI option is encountered.
+</p>
+
+<p>
+When called, the procedure receives two arguments:
+</p>
+<ol>
+<li class="level1"><div class="li"> Name, the option name, e.g. <code>ifname</code> for <code>option ifname eth0</code></div>
+</li>
+<li class="level1"><div class="li"> Value, the option value, e.g. <code>eth0</code> for <code>option ifname eth0</code></div>
+</li>
+</ol>
+<pre class="code bash">option_cb<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw3">local</span> <span class="re2">name</span>=<span class="st0">&quot;$1&quot;</span>
+    <span class="kw3">local</span> <span class="re2">value</span>=<span class="st0">&quot;$2&quot;</span>
+    <span class="co0"># commands to be run for every option</span>
+<span class="br0">&#125;</span></pre>
+
+<p>
+Within the callback, the ID of the current section is accessible via the <code>$CONFIG_SECTION</code> variable.
+</p>
+
+<p>
+You can define <code>option_cb</code> inside <code>config_cb</code>: this allows to define different <code>option_cb</code> callbacks based on the section type.
+This allows you to process every single config section based on its type individually.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;&#039;&#039;option_cb&#039;&#039; callback&quot;,&quot;hid&quot;:&quot;option_cb_callback&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:9,&quot;range&quot;:&quot;2524-3299&quot;} -->
+<h3 class="sectionedit10" id="list_cb_callback">&#039;&#039;list_cb&#039;&#039; callback</h3>
+<div class="level3">
+
+<p>
+<code>list_cb</code> works exactly like <code>option_cb</code> above, but gets called each time a <code>list</code> item is encountered.
+</p>
+
+<p>
+When called, the procedure receives two arguments:
+</p>
+<ol>
+<li class="level1"><div class="li"> Name, the list name, e.g. <code>server</code> for <code>list server 192.168.42.1</code></div>
+</li>
+<li class="level1"><div class="li"> Value, the list value, e.g. <code>192.168.42.1</code> for <code>list server 192.168.42.1</code></div>
+</li>
+</ol>
+<pre class="code bash">list_cb<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw3">local</span> <span class="re2">name</span>=<span class="st0">&quot;$1&quot;</span>
+    <span class="kw3">local</span> <span class="re2">value</span>=<span class="st0">&quot;$2&quot;</span>
+    <span class="co0"># commands to be run for every list item</span>
+<span class="br0">&#125;</span></pre>
+
+<p>
+Each item of a given list generates a new call to <code>list_cb</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;&#039;&#039;list_cb&#039;&#039; callback&quot;,&quot;hid&quot;:&quot;list_cb_callback&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:10,&quot;range&quot;:&quot;3300-3835&quot;} -->
+<h2 class="sectionedit11" id="iterating_config_foreach">Iterating (config_foreach)</h2>
+<div class="level2">
+
+<p>
+An alternative approach to callback based parsing is iterating the configuration sections
+with the <code>config_foreach</code> procedure.
+</p>
+
+<p>
+The <code>config_foreach</code> procedure takes at least one argument:
+</p>
+<ol>
+<li class="level1"><div class="li"> Function, name of a previously defined procedure called for each encountered section</div>
+</li>
+<li class="level1"><div class="li"> Type (optional), only iterate sections of the given type, skip others</div>
+</li>
+<li class="level1"><div class="li"> Additional arguments (optional), all following arguments are passed to the callback procedure as-is</div>
+</li>
+</ol>
+
+<p>
+In the example below, the <code>handle_interface</code> procedure is called for each <code>config interface</code> section
+in <code>/etc/config/network</code>. The string <code>test</code> is passed as second argument on each invocation.
+</p>
+<pre class="code bash">handle_interface<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw3">local</span> <span class="re2">config</span>=<span class="st0">&quot;$1&quot;</span>
+    <span class="kw3">local</span> <span class="re2">custom</span>=<span class="st0">&quot;$2&quot;</span>
+    <span class="co0"># run commands for every interface section</span>
+<span class="br0">&#125;</span>
+&nbsp;
+config_load network
+config_foreach handle_interface interface <span class="kw3">test</span></pre>
+
+<p>
+Note that <code>config_foreach</code> will iterate through all sections without regard to the callback function&#039;s return value.
+</p>
+
+<p>
+Within the per-section callback, the <code>config_get</code> or <code>config_set</code> procedures may be used to read or set
+values belonging to the currently processed section.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Iterating (config_foreach)&quot;,&quot;hid&quot;:&quot;iterating_config_foreach&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:11,&quot;range&quot;:&quot;3836-5023&quot;} -->
+<h2 class="sectionedit12" id="reading_options_config_get">Reading options (config_get)</h2>
+<div class="level2">
+
+<p>
+The <code>config_get</code> procedure takes at least three arguments:
+</p>
+<ol>
+<li class="level1"><div class="li"> Name of a variable to store the retrieved value in</div>
+</li>
+<li class="level1"><div class="li"> ID of the section to read the value from</div>
+</li>
+<li class="level1"><div class="li"> Name of the option to read the value from</div>
+</li>
+<li class="level1"><div class="li"> Default (optional), value to return instead if option is unset</div>
+</li>
+</ol>
+<pre class="code bash"><span class="co0">#...</span>
+<span class="co0"># read the value of &quot;option ifname&quot; into the &quot;iface&quot; variable</span>
+<span class="co0"># $config contains the ID of the current section</span>
+<span class="kw3">local</span> iface
+config_get iface <span class="st0">&quot;<span class="es2">$config</span>&quot;</span> ifname
+<span class="kw3">echo</span> <span class="st0">&quot;Interface name is <span class="es2">$iface</span>&quot;</span>
+<span class="co0">#...</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Reading options (config_get)&quot;,&quot;hid&quot;:&quot;reading_options_config_get&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:12,&quot;range&quot;:&quot;5024-5561&quot;} -->
+<h2 class="sectionedit13" id="setting_options_config_set">Setting options (config_set)</h2>
+<div class="level2">
+
+<p>
+The <code>config_set</code> procedure takes three arguments:
+</p>
+<ol>
+<li class="level1"><div class="li"> ID of the section to set the option in</div>
+</li>
+<li class="level1"><div class="li"> Name of the option to assign the value to</div>
+</li>
+<li class="level1"><div class="li"> Value to assign</div>
+</li>
+</ol>
+<pre class="code bash">...
+<span class="co0"># set the value of &quot;option auto&quot; to &quot;0&quot;</span>
+<span class="co0"># $config contains the ID of the current section</span>
+config_set <span class="st0">&quot;<span class="es2">$config</span>&quot;</span> auto <span class="nu0">0</span>
+...</pre>
+
+<p>
+Note:
+</p>
+<ul>
+<li class="level1"><div class="li"> values changed with <code>config_set</code> are only kept in memory. Subsequent calls to <code>config_get</code> will return the updated values but the underlying configuration files are <em>not</em> altered. If you want to alter values, use the uci_* functions from /lib/config/uci.sh which are automatically included by /etc/functions.sh.</div>
+</li>
+<li class="level1"><div class="li"> config_set is arcane and buggy (config_get is fine), use “uci set” instead.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Setting options (config_set)&quot;,&quot;hid&quot;:&quot;setting_options_config_set&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:13,&quot;range&quot;:&quot;5562-6319&quot;} -->
+<h2 class="sectionedit14" id="direct_access">Direct access</h2>
+<div class="level2">
+
+<p>
+If the name of a configuration section is known in advance (it is named), options can be read directly without 
+using a section iterator callback.
+</p>
+
+<p>
+The example below reads “option proto” from the “config interface wan” section.
+</p>
+<pre class="code bash">...
+<span class="kw3">local</span> proto
+config_get proto wan proto
+<span class="kw3">echo</span> <span class="st0">&quot;Current WAN protocol is <span class="es2">$proto</span>&quot;</span>
+...</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Direct access&quot;,&quot;hid&quot;:&quot;direct_access&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:14,&quot;range&quot;:&quot;6320-6682&quot;} -->
+<h2 class="sectionedit15" id="reading_lists">Reading lists</h2>
+<div class="level2">
+
+<p>
+Some UCI configurations may contain <code>list</code> options in the form:
+</p>
+<pre class="code">...
+list network lan
+list network wifi
+...</pre>
+
+<p>
+Calling <code>config_get</code> on the <code>network</code> list will return the list values separated by space, <code>lan wifi</code> in this example.
+</p>
+
+<p>
+However, this behaviour might break values if the list items itself contain spaces like illustrated below:
+</p>
+<pre class="code">...
+list animal &#039;White Elephant&#039;
+list animal &#039;Mighty Unicorn&#039;
+...</pre>
+
+<p>
+The <code>config_get</code> approach would return the values in the form <code>White Elephant Mighty Unicorn</code> and the original list items
+are not clearly separated anymore.
+</p>
+
+<p>
+To circumvent this problem, the <code>config_list_foreach</code> iterator can be used. It works similar to <code>config_foreach</code> but
+operates on list values instead of config sections.
+</p>
+
+<p>
+The <code>config_list_foreach</code> procedure takes at least three arguments:
+</p>
+<ol>
+<li class="level1"><div class="li"> ID of the section to read the list from</div>
+</li>
+<li class="level1"><div class="li"> Name of the list option to read items from</div>
+</li>
+<li class="level1"><div class="li"> Procedure to call for each list item</div>
+</li>
+<li class="level1"><div class="li"> Additional arguments (optional), all following arguments are passed to the callback procedure as-is</div>
+</li>
+</ol>
+<pre class="code bash"><span class="co0"># handle list items in a callback</span>
+<span class="co0"># $config contains the ID of the section</span>
+handle_animal<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw3">local</span> <span class="re2">value</span>=<span class="st0">&quot;$1&quot;</span>
+    <span class="co0"># do something with $value</span>
+<span class="br0">&#125;</span>
+&nbsp;
+config_list_foreach <span class="st0">&quot;<span class="es2">$config</span>&quot;</span> animal handle_animal</pre>
+
+<p>
+Note: for editing value, use the <a href="/docs/guide-user/base-system/uci" class="wikilink1" title="docs:guide-user:base-system:uci" data-wiki-id="docs:guide-user:base-system:uci">uci</a> command line tool.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Reading lists&quot;,&quot;hid&quot;:&quot;reading_lists&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:15,&quot;range&quot;:&quot;6683-8107&quot;} -->
+<h2 class="sectionedit16" id="reading_booleans">Reading booleans</h2>
+<div class="level2">
+
+<p>
+Boolean options may contain various values to signify a <em>true</em> value like <code>on</code>, <code>true</code>, <code>enabled</code> or <code>1</code>.
+</p>
+
+<p>
+The <code>config_get_bool</code> procedure simplifies the process of reading a boolean option and casting it to a plain
+integer value (<code>1</code> for <em>true</em> and <code>0</code> for <em>false</em>).
+</p>
+
+<p>
+At least three arguments are expected by the procedure:
+</p>
+<ol>
+<li class="level1"><div class="li"> Name of a variable to store the retrieved value in</div>
+</li>
+<li class="level1"><div class="li"> ID of the section to read the value from</div>
+</li>
+<li class="level1"><div class="li"> Name of the option to read the value from</div>
+</li>
+<li class="level1"><div class="li"> Default (optional), boolean value to return if option is unset</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Reading booleans&quot;,&quot;hid&quot;:&quot;reading_booleans&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:16,&quot;range&quot;:&quot;8108-8697&quot;} -->
+<h2 class="sectionedit17" id="should_i_use_callbacks_or_explicit_access_to_options">Should I use callbacks or explicit access to options?</h2>
+<div class="level2">
+
+<p>
+It depends on what you want to parse.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Should I use callbacks or explicit access to options?&quot;,&quot;hid&quot;:&quot;should_i_use_callbacks_or_explicit_access_to_options&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:17,&quot;range&quot;:&quot;8698-8803&quot;} -->
+<h3 class="sectionedit18" id="use_case_and_example_for_callbacks">Use case and example for callbacks</h3>
+<div class="level3">
+
+<p>
+If, for a given section, all options should be treated in the same way (say, write them to a config file), whatever their order or name, then callbacks are a good option.  It allows you to parse all options without having to know their name in advance.
+</p>
+
+<p>
+For instance, consider this script:
+</p>
+<pre class="code bash">config_cb<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw3">local</span> <span class="re2">type</span>=<span class="st0">&quot;$1&quot;</span>
+    <span class="kw3">local</span> <span class="re2">name</span>=<span class="st0">&quot;$2&quot;</span>
+    <span class="kw1">if</span> <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es2">$type</span>&quot;</span> = <span class="st0">&quot;mysection&quot;</span> <span class="br0">&#93;</span>
+    <span class="kw1">then</span>
+        option_cb<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>                                            
+            <span class="kw3">local</span> <span class="re2">option</span>=<span class="st0">&quot;$1&quot;</span>                                
+            <span class="kw3">local</span> <span class="re2">value</span>=<span class="st0">&quot;$2&quot;</span>                                 
+            <span class="kw3">echo</span> <span class="st0">&quot;<span class="es3">${option//_/-}</span> <span class="es2">$value</span>&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="sy0">/</span>var<span class="sy0">/</span>etc<span class="sy0">/</span>myfile.conf
+        <span class="br0">&#125;</span>
+    <span class="kw1">else</span> <span class="br0">&#123;</span>
+        option_cb<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw3">return</span>; <span class="br0">&#125;</span>
+    <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+
+<p>
+This would parse a configuration like this one:
+</p>
+<pre class="code">config mysection foo
+    option link_quality auto
+    option rxcost 256
+    option hello_inverval 4</pre>
+
+<p>
+And generate a file containing:
+</p>
+<pre class="code">link-quality auto
+rxcost 256
+hello-interval 4</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Use case and example for callbacks&quot;,&quot;hid&quot;:&quot;use_case_and_example_for_callbacks&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:18,&quot;range&quot;:&quot;8804-9833&quot;} -->
+<h3 class="sectionedit19" id="use_case_and_example_for_direct_access">Use case and example for direct access</h3>
+<div class="level3">
+
+<p>
+On the other hand, if different options play a very different role, then it may be more convenient to pick each option explicitly.
+</p>
+
+<p>
+For instance, <a href="http://www.pps.univ-paris-diderot.fr/~jch/software/babel/" class="urlextern" title="http://www.pps.univ-paris-diderot.fr/~jch/software/babel/" rel="ugc nofollow">babeld</a> has the following syntax for filters:
+</p>
+<pre class="code">{in|out|redistribute} selector* [allow|deny|metric n]</pre>
+
+<p>
+where a selector can be one of:
+</p>
+<pre class="code">local
+ip prefix
+proto p
+if interface
+...</pre>
+
+<p>
+At most one instance of each selector type is allowed in a filter.  The UCI configuration looks like this:
+</p>
+<pre class="code">config filter
+    option ip &#039;172.22.0.0/15&#039;
+    option local &#039;true&#039;
+    option type &#039;redistribute&#039;
+    option action &#039;metric 128&#039;</pre>
+
+<p>
+The result of this section should be:
+</p>
+<pre class="code">redistribute ip 172.22.0.0/15 local metric 128</pre>
+
+<p>
+That is, the type should come first, then selectors (with a special case for <code>local</code>, which doesn&#039;t take an argument), and finally the action.  The basic parsing method is the following:
+</p>
+<pre class="code bash">parse_filter<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw3">local</span> <span class="re2">section</span>=<span class="st0">&quot;$1&quot;</span>
+    <span class="kw3">local</span> _buffer
+    <span class="kw3">local</span> _value
+&nbsp;
+    config_get _value <span class="st0">&quot;<span class="es2">$section</span>&quot;</span> <span class="st0">&quot;type&quot;</span>
+    append _buffer <span class="st0">&quot;<span class="es2">$_value</span>&quot;</span>
+&nbsp;
+    config_get _value <span class="st0">&quot;<span class="es2">$section</span>&quot;</span> <span class="st0">&quot;ip&quot;</span>
+    append _buffer <span class="st0">&quot;ip <span class="es2">$_value</span>&quot;</span>
+    config_get _value <span class="st0">&quot;<span class="es2">$section</span>&quot;</span> <span class="st0">&quot;proto&quot;</span>
+    append _buffer <span class="st0">&quot;proto <span class="es2">$_value</span>&quot;</span>
+    ...
+&nbsp;
+    config_get_bool _value <span class="st0">&quot;<span class="es2">$section</span>&quot;</span> <span class="st0">&quot;local&quot;</span> <span class="nu0">0</span>
+    <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es2">$_value</span>&quot;</span> <span class="re5">-eq</span> <span class="nu0">1</span> <span class="br0">&#93;</span> <span class="sy0">&amp;&amp;</span> append _buffer <span class="st0">&quot;local&quot;</span>
+&nbsp;
+    config_get _value <span class="st0">&quot;<span class="es2">$section</span>&quot;</span> <span class="st0">&quot;action&quot;</span>
+    append _buffer <span class="st0">&quot;<span class="es2">$_value</span>&quot;</span>
+&nbsp;
+    <span class="kw3">echo</span> <span class="st0">&quot;<span class="es2">$_buffer</span>&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="sy0">/</span>var<span class="sy0">/</span>etc<span class="sy0">/</span>babeld.conf
+<span class="br0">&#125;</span>
+config_load babeld
+config_foreach parse_filter filter</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Use case and example for direct access&quot;,&quot;hid&quot;:&quot;use_case_and_example_for_direct_access&quot;,&quot;codeblockOffset&quot;:15,&quot;secid&quot;:19,&quot;range&quot;:&quot;9834-11436&quot;} -->
+<h3 class="sectionedit20" id="mixing_the_two_styles">Mixing the two styles</h3>
+<div class="level3">
+
+<p>
+Of course, it is possible to mix the two styles of parsing, for instance parsing one section with callbacks and another section explicitly.  Don&#039;t forget to reset or unset the callbacks (<code>reset_cb</code> or <code>option_cb() { return; }</code>) for sections you don&#039;t want to parse with callbacks.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Mixing the two styles&quot;,&quot;hid&quot;:&quot;mixing_the_two_styles&quot;,&quot;codeblockOffset&quot;:20,&quot;secid&quot;:20,&quot;range&quot;:&quot;11437-&quot;} -->

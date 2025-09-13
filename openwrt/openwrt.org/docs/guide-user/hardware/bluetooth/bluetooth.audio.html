@@ -1,0 +1,336 @@
+
+<h1 class="sectionedit1" id="bluetooth_audio">Bluetooth Audio</h1>
+<div class="level1">
+
+<p>
+This wiki entry should enable you to play audio from a bluetooth source to an OpenWrt router that has sound output capabilities.
+It is working with: Android mobile (Sony Xperia M) as bluetooth source (use “Throw” in Walkman App) to
+an TI omap BeagleBoard (onboard soundcard, noname Bluetooth 2.1+ USB 1.1 micro dongle) as bluetooth/audio sink.
+</p>
+
+<p>
+Required OpenWrt packages:
+</p>
+<ol>
+<li class="level1"><div class="li"> kmod-input-uinput (new)</div>
+</li>
+<li class="level1"><div class="li"> pulseaudio 6</div>
+</li>
+<li class="level1"><div class="li"> sbc library (new)</div>
+</li>
+<li class="level1"><div class="li"> bluez5</div>
+</li>
+<li class="level1"><div class="li"> dbus (because bluez5)</div>
+</li>
+</ol>
+
+<p>
+Hardware:
+</p>
+<ol>
+<li class="level1"><div class="li"> Bluetooth dongle</div>
+</li>
+<li class="level1"><div class="li"> Bluetooth sender (Android mobile)</div>
+</li>
+</ol>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Some USB Hardware on Routers does not support USB 1.1 (such Bluetooth dongles) directly attached to USB ports (2.0 devices only). You have to use an USB hub in this case.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Bluetooth Audio&quot;,&quot;hid&quot;:&quot;bluetooth_audio&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-755&quot;} -->
+<h2 class="sectionedit2" id="foreword">Foreword</h2>
+<div class="level2">
+
+<p>
+Getting bluetooth to run is difficult. Bluetooth development is fast, not documented and
+there are issues with the bluez userspace development in general. [1]
+So there are a ton of outdated documentation using bluez3 or bluez4.
+Using Audio with bluez5 requires DBUS and pulseaudio.
+Pulseaudio 6 supports bluez4 and blue5.
+</p>
+
+<p>
+Recommended/Not in this guide: Python because the test tools make use of python.
+Test tools can supply legacy methods via commandline for pairing.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Foreword&quot;,&quot;hid&quot;:&quot;foreword&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;756-1249&quot;} -->
+<h2 class="sectionedit3" id="device_pairing">Device Pairing</h2>
+<div class="level2">
+
+<p>
+Bluetooth radio is disabled by default (“DOWN”).
+Enable bluetooth from commandline to make OpenWrt device discoverable.
+</p>
+<pre class="code">hciconfig -a hci0
+hciconfig -a hci0 up
+hciconfig -a hci0 piscan
+hciconfig -a hci0 sspmode enable</pre>
+
+<p>
+hciconfig -a output after commands
+</p>
+<pre class="code">hci0:   Type: BR/EDR  Bus: USB
+        BD Address: XX:XX:XX:XX:XX:XX  ACL MTU: 310:10  SCO MTU: 64:8
+        UP RUNNING PSCAN ISCAN 
+        RX bytes:6513036 acl:21980 sco:0 events:597 errors:0
+        TX bytes:10451 acl:316 sco:0 commands:128 errors:0
+        Features: 0xff 0xff 0x8f 0xfe 0x9b 0xff 0x59 0x83
+        Packet type: DM1 DM3 DM5 DH1 DH3 DH5 HV1 HV2 HV3 
+        Link policy: RSWITCH HOLD SNIFF PARK 
+        Link mode: SLAVE ACCEPT 
+        Name: &#039;BlueZOmap&#039;
+        Class: 0x0c0000
+        Service Classes: Rendering, Capturing
+        Device Class: Miscellaneous, 
+        HCI Version: 2.1 (0x4)  Revision: 0x12e7
+        LMP Version: 2.1 (0x4)  Subversion: 0x12e7
+        Manufacturer: Cambridge Silicon Radio (10)</pre>
+
+<p>
+*Name can be set via /etc/bluetooth/main.conf*
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Device Pairing&quot;,&quot;hid&quot;:&quot;device_pairing&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;1250-2341&quot;} -->
+<h3 class="sectionedit4" id="adding_bluetooth_source_to_trusted_devices">Adding bluetooth source to trusted devices</h3>
+<div class="level3">
+
+<p>
+You will see an entry like this
+</p>
+<pre class="code">bluetoothd[2285]: Authentication attempt without agent
+bluetoothd[2285]: Access denied: org.bluez.Error.Rejected</pre>
+
+<p>
+run 
+</p>
+<pre class="code">bluetoothctl</pre>
+
+<p>
+with
+</p>
+<pre class="code">trust AA:BB:CC:DD:EE:FF
+[CHG] Device AA:BB:CC:DD:EE:FF Trusted: yes
+Changing AA:BB:CC:DD:EE:FF trust succeeded</pre>
+
+<p>
+AA:BB:CC:DD:EE:FF ... Bluetooth device mac that is audio source (mobile)
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Adding bluetooth source to trusted devices&quot;,&quot;hid&quot;:&quot;adding_bluetooth_source_to_trusted_devices&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:4,&quot;range&quot;:&quot;2342-2792&quot;} -->
+<h2 class="sectionedit5" id="dbus_access_control">dbus access control</h2>
+<div class="level2">
+
+<p>
+add entry to a policy section in /etc/dbus-1/system.d/<strong>bluetooth</strong>.conf:
+</p>
+<pre class="code">...
+&lt;policy user=&quot;root&quot;&gt;
+...
+    &lt;allow send_type=&quot;method_call&quot;/&gt;
+    &lt;allow send_type=&quot;method_return&quot;/&gt;
+&lt;/policy&gt;
+...</pre>
+
+<p>
+add entry to a policy section in /etc/dbus-1/system.d/<strong>pulseaudio</strong>.conf:
+</p>
+<pre class="code">	&lt;allow send_type=&quot;method_call&quot;/&gt;
+	&lt;allow send_type=&quot;method_return&quot;/&gt;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;dbus access control&quot;,&quot;hid&quot;:&quot;dbus_access_control&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:5,&quot;range&quot;:&quot;2793-3197&quot;} -->
+<h2 class="sectionedit6" id="problems">Problems</h2>
+<div class="level2">
+<ol>
+<li class="level1"><div class="li"> Reloading daemons might be necessary</div>
+</li>
+<li class="level1"><div class="li"> Check logread or run daemons in foreground with multiple <abbr title="Secure Shell">SSH</abbr> connections</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Problems&quot;,&quot;hid&quot;:&quot;problems&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:6,&quot;range&quot;:&quot;3198-3338&quot;} -->
+<h3 class="sectionedit7" id="bluetooth_debugging">bluetooth debugging</h3>
+<div class="level3">
+
+<p>
+Bluetoothd can run in foreground with very verbose debugging.
+</p>
+<pre class="code">bluetoothd -n -d</pre>
+<pre class="code">Note multiple arguments to -d can be specified, colon, comma or space
+separated. The arguments are relative source code filenames for which
+debugging output should be enabled; output shell-style globs are
+accepted (e.g.: &#039;plugins/*:src/main.c&#039;).</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;bluetooth debugging&quot;,&quot;hid&quot;:&quot;bluetooth_debugging&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:7,&quot;range&quot;:&quot;3339-3720&quot;} -->
+<h3 class="sectionedit8" id="sound_debugging">sound debugging</h3>
+<div class="level3">
+
+<p>
+Pulseaudio can run in foreground. See /etc/init.d/pulseaudio for commandline arguments
+</p>
+
+<p>
+Pulseaudio runs in system mode. This is unsupported and you should check access rights (group &amp; module parameters)
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> The main problem is that bluetooth devices appear &amp; disappear from playback.
+This might require to allow runtime module loading permanently.
+</p>
+
+<p>
+Check if you have pulseaudio output with
+</p>
+<pre class="code">paplay &lt;filename&gt;</pre>
+
+<p>
+Check access rights via /etc/group
+</p>
+<pre class="code">pulse-rt:x:53:
+pulse-access:x:54:root</pre>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> and see pulse-access group added as module parameter below
+</p>
+
+<p>
+Check if you have error when loading modules.
+For this guide allow module loading by removing
+</p>
+<pre class="code"> --disallow-module-loading</pre>
+
+<p>
+from /etc/init.d/pulseaudio
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Security risk
+</p>
+
+<p>
+Check if you load the right modules in /etc/pulse/system.pa
+</p>
+<pre class="code">#!/usr/bin/pulseaudio -nF
+#
+# This file is part of PulseAudio.
+
+### Automatically load driver modules depending on the hardware available
+.ifexists module-detect.so
+
+### Use the static hardware detection module (for systems that lack udev/hal support)
+load-module module-detect
+.endif
+
+### Automatically restore the volume of streams and devices
+load-module module-stream-restore
+load-module module-device-restore
+load-module module-card-restore
+
+
+### Automatically restore the default sink/source when changed by the user
+### during runtime
+### NOTE: This should be loaded as early as possible so that subsequent modules
+### that look up the default sink/source get the right value
+# load-module module-default-device-restore
+
+### Bluetooth
+load-module module-bluetooth-discover
+load-module module-bluetooth-policy
+
+load-module module-zeroconf-publish
+
+### Should be after module-*-restore but before module-*-detect
+load-module module-switch-on-port-available
+
+### Automatically move streams to the default sink if the sink they are
+### connected to dies, similar for sources
+load-module module-rescue-streams
+
+### Make sure we always have a sink around, even if it is a null sink.
+load-module module-always-sink
+
+### Honour intended role device property
+load-module module-intended-roles
+
+### Automatically suspend sinks/sources that become idle for too long
+load-module module-suspend-on-idle
+
+### Enable positioned event sounds
+load-module module-position-event-sounds
+
+### Load several protocols
+.ifexists module-esound-protocol-unix.so
+load-module module-esound-protocol-unix
+.endif
+load-module module-native-protocol-unix auth-group=pulse-access
+
+### Load the RTP receiver module (also configured via paprefs, see above)
+load-module module-rtp-recv
+
+### Load the RTP sender module (also configured via paprefs, see above)
+load-module module-null-sink sink_name=rtp format=s16be channels=2 rate=44100 sink_properties=&quot;device.description=&#039;RTP Multicast Sink&#039;&quot;
+load-module module-rtp-send source=rtp.monitor
+
+### Modules to allow autoloading of filters (such as echo cancellation)
+### on demand. module-filter-heuristics tries to determine what filters
+### make sense, and module-filter-apply does the heavy-lifting of
+### loading modules and rerouting streams.
+load-module module-filter-heuristics
+load-module module-filter-apply
+
+#load-module module-loopback source=bluez_source.AA_BB_CC_DD_EE_FF sink=_name=alsa_output.0.analog-stereo rate=44100 adjust_time=0</pre>
+
+<p>
+You can load modules with <strong>pactl</strong>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;sound debugging&quot;,&quot;hid&quot;:&quot;sound_debugging&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:8,&quot;range&quot;:&quot;3721-7089&quot;} -->
+<h3 class="sectionedit9" id="uinput_missing">uinput missing</h3>
+<div class="level3">
+
+<p>
+If you dont have kmod-input-uinput installed you will see errors like
+</p>
+<pre class="code">Wed Apr  1 14:53:21 2015 daemon.err bluetoothd[2285]: AVRCP: failed to init uinput for AA:BB:CC:DD:EE:FF</pre>
+
+<p>
+Successful kmod-input-uinput message
+</p>
+<pre class="code">kern.info kernel: [  681.020385] input: AA:BB:CC:DD:EE:FF as /devices/virtual/input/input2
+bluetoothd[2530]: profiles/audio/avctp.c:init_uinput() AVRCP: uinput initialized for AA:BB:CC:DD:EE:FF</pre>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> You should see start/stop messages in the log whe you start/stop playback.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> If you have no sound at this point check pulseaudio settings (modules!), reload pulseaudio, enable the audio sink
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;uinput missing&quot;,&quot;hid&quot;:&quot;uinput_missing&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:9,&quot;range&quot;:&quot;7090-7751&quot;} -->
+<h2 class="sectionedit10" id="todo">TODO</h2>
+<div class="level2">
+<ol>
+<li class="level1"><div class="li"> commandline / uci foo</div>
+</li>
+<li class="level1"><div class="li"> role of /var/lib/bluetooth/nn:nn:nn:nn:nn:nn/ with devices</div>
+</li>
+<li class="level1"><div class="li"> Headset buttons/ uinput: /etc/modules-load.d/uinput.conf</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;TODO&quot;,&quot;hid&quot;:&quot;todo&quot;,&quot;codeblockOffset&quot;:14,&quot;secid&quot;:10,&quot;range&quot;:&quot;7752-7920&quot;} -->
+<h2 class="sectionedit11" id="links_and_documentation">Links and Documentation</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <a href="http://www.freedesktop.org/wiki/Software/PulseAudio/Documentation/User/Modules" class="urlextern" title="http://www.freedesktop.org/wiki/Software/PulseAudio/Documentation/User/Modules" rel="ugc nofollow">pulseaudio modules</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Links and Documentation&quot;,&quot;hid&quot;:&quot;links_and_documentation&quot;,&quot;codeblockOffset&quot;:14,&quot;secid&quot;:11,&quot;range&quot;:&quot;7921-&quot;} -->

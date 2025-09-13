@@ -1,0 +1,388 @@
+
+<h1 class="sectionedit1" id="podman_containers">Podman Containers</h1>
+<div class="level1">
+
+<p>
+I recently went through the process of getting <strong>Podman</strong> running properly on <strong>OpenWrt 24.10.2</strong> and configuring it to behave well with OpenWrt’s native networking, firewall setup and daemon startup and configuration logic.  
+Since some of the information at <a href="https://openwrt.org/docs/guide-user/virtualization/docker_host" class="urlextern" title="https://openwrt.org/docs/guide-user/virtualization/docker_host" rel="ugc nofollow">https://openwrt.org/docs/guide-user/virtualization/docker_host</a> was outdated, I’ve updated parts of it there,  and I&#039;m sharing this more complete guide here as well, for those who want a more practical walkthrough.
+</p>
+<hr />
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Podman Containers&quot;,&quot;hid&quot;:&quot;podman_containers&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-518&quot;} -->
+<h2 class="sectionedit2" id="installing_podman">Installing Podman</h2>
+<div class="level2">
+
+<p>
+First, install Podman using
+</p>
+<pre class="code">opkg install podman</pre>
+
+<p>
+It will pull in a number of dependencies, including networking tools and container runtimes.
+</p>
+<hr />
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installing Podman&quot;,&quot;hid&quot;:&quot;installing_podman&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;519-712&quot;} -->
+<h2 class="sectionedit3" id="basic_configuration">Basic Configuration</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Basic Configuration&quot;,&quot;hid&quot;:&quot;basic_configuration&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;713-745&quot;} -->
+<h3 class="sectionedit4" id="storage_setup">Storage Setup</h3>
+<div class="level3">
+
+<p>
+Update Podman’s storage path to point to a disk with enough space, this folder, depending how careful you&#039;ll select containers, will tend to take quite some space:
+</p>
+<div class="table sectionedit5"><table class="inline">
+	<tr class="row0">
+		<th class="col0"> /etc/containers/storage.conf </th>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;938-970&quot;} --><pre class="code">graphroot = &quot;/home/podman/storage&quot;</pre>
+
+<p>
+Then create the directory:
+</p>
+<pre class="code">mkdir -p /home/podman/storage</pre>
+<hr />
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Storage Setup&quot;,&quot;hid&quot;:&quot;storage_setup&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:4,&quot;range&quot;:&quot;746-1100&quot;} -->
+<h3 class="sectionedit6" id="regular_cleanup">Regular Cleanup</h3>
+<div class="level3">
+
+<p>
+Add cleanup tasks to cron:
+</p>
+<pre class="code">crontab -e</pre>
+
+<p>
+Add:
+</p>
+<pre class="code"># Podman cleanup
+10 0 * * 0 /usr/bin/podman system prune --volumes -f &gt; /dev/null 2&gt;&amp;1
+20 0 * * 0 /usr/bin/podman image prune -a -f &gt; /dev/null 2&gt;&amp;1</pre>
+<hr />
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Regular Cleanup&quot;,&quot;hid&quot;:&quot;regular_cleanup&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:6,&quot;range&quot;:&quot;1101-1356&quot;} -->
+<h3 class="sectionedit7" id="networking_setup">Networking Setup</h3>
+<div class="level3">
+
+<p>
+We want Podman to use a static bridge and be fully manageable by OpenWrt’s network config and firewall.  
+Here’s how to set it up:
+</p>
+<div class="table sectionedit8"><table class="inline">
+	<tr class="row0">
+		<th class="col0"> /etc/containers/networks/podman.json </th>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table1&quot;,&quot;secid&quot;:8,&quot;range&quot;:&quot;1521-1561&quot;} --><pre class="code json">{
+     &quot;name&quot;: &quot;podman&quot;,
+     &quot;driver&quot;: &quot;bridge&quot;,
+     &quot;network_interface&quot;: &quot;podman0&quot;,
+     &quot;subnets&quot;: [
+          {
+               &quot;subnet&quot;: &quot;192.168.11.0/24&quot;,
+               &quot;gateway&quot;: &quot;192.168.11.1&quot;
+          }
+     ],
+     &quot;ipv6_enabled&quot;: false,
+     &quot;internal&quot;: false,
+     &quot;dns_enabled&quot;: true,
+     &quot;ipam_options&quot;: {
+          &quot;driver&quot;: &quot;host-local&quot;
+     }
+}</pre>
+<div class="table sectionedit9"><table class="inline">
+	<tr class="row0">
+		<th class="col0"> /etc/containers/containers.conf </th>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table2&quot;,&quot;secid&quot;:9,&quot;range&quot;:&quot;1948-1983&quot;} --><pre class="code">[network]
+network_backend = &quot;netavark&quot;
+firewall_driver = &quot;none&quot;
+network_config_dir = &quot;/etc/containers/networks/&quot;
+default_network = &quot;podman&quot;
+default_subnet = &quot;192.168.11.0/24&quot;
+default_rootless_network_cmd = &quot;slirp4netns&quot;</pre>
+<div class="table sectionedit10"><table class="inline">
+	<tr class="row0">
+		<th class="col0"> /etc/config/network </th>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table3&quot;,&quot;secid&quot;:10,&quot;range&quot;:&quot;2220-2243&quot;} --><pre class="code">config device
+        option type &#039;bridge&#039;
+        option name &#039;podman0&#039;
+        option bridge_empty &#039;1&#039;
+        option ipv6 &#039;0&#039;
+config interface &#039;podman0&#039;
+        option proto &#039;static&#039;
+        option device &#039;podman0&#039;
+        option ipaddr &#039;192.168.11.1&#039;
+        option netmask &#039;255.255.255.0&#039;</pre>
+<div class="table sectionedit11"><table class="inline">
+	<tr class="row0">
+		<th class="col0"> /etc/config/firewall </th>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table4&quot;,&quot;secid&quot;:11,&quot;range&quot;:&quot;2554-2578&quot;} -->
+<p>
+Be careful that zone names for other zones must match your configuration
+</p>
+<pre class="code">config zone
+        option name &#039;Podman&#039;
+        option input &#039;DROP&#039;
+        option output &#039;ACCEPT&#039;
+        option forward &#039;REJECT&#039;
+        list network &#039;podman0&#039;
+config forwarding
+        option src &#039;Podman&#039;
+        option dest &#039;Internet&#039;
+config forwarding
+        option src &#039;lan&#039;
+        option dest &#039;Podman&#039;
+config rule
+        option name &#039;DNS to Podman&#039;
+        option src &#039;Podman&#039;
+        option dest_port &#039;53&#039;
+        option target &#039;ACCEPT&#039;</pre>
+<hr />
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Networking Setup&quot;,&quot;hid&quot;:&quot;networking_setup&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:7,&quot;range&quot;:&quot;1357-3124&quot;} -->
+<h3 class="sectionedit12" id="giving_access_to_container_ports">Giving Access to Container Ports</h3>
+<div class="level3">
+
+<p>
+Since we&#039;re using &#039;firewall_driver = “none”&#039; Podman won&#039;t open ports automatically.  
+If a container needs to be reachable, you&#039;ll need to manually create rules.  
+For this reason I am explicitly adding an <abbr title="Internet Protocol">IP</abbr> to each container, more of this later.
+</p>
+
+<p>
+Example:
+</p>
+<pre class="code">config rule
+        option src &#039;VPN&#039;
+        option name &#039;NRPE to Nagios&#039;
+        option dest_port &#039;5666&#039;
+        option target &#039;ACCEPT&#039;
+        list proto &#039;tcp&#039;
+        list src_ip &#039;192.168.0.5&#039;
+        option dest &#039;Podman&#039;
+config redirect
+        option dest &#039;Podman&#039;
+        option target &#039;DNAT&#039;
+        option name &#039;Serve NRPE from container&#039;
+        option family &#039;ipv4&#039;
+        list proto &#039;tcp&#039;
+        option src &#039;VPN&#039;
+        option src_dport &#039;5666&#039;
+        option dest_ip &#039;192.168.11.2&#039;
+        option dest_port &#039;5666&#039;
+        option src_ip &#039;192.168.0.5&#039;</pre>
+<hr />
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Giving Access to Container Ports&quot;,&quot;hid&quot;:&quot;giving_access_to_container_ports&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:12,&quot;range&quot;:&quot;3125-4012&quot;} -->
+<h2 class="sectionedit13" id="podman_init_script">Podman Init Script</h2>
+<div class="level2">
+
+<p>
+Here’s how I run containers at boot using an init script.  
+The set of parameters it understands is basic, and it&#039;s not smart when it comes to enforce containers to have name and images, but it&#039;s good enough for me and easy to mod in case needed.  
+It is configurable via ^ /etc/config/containers ^ and is pretty flexible.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Podman Init Script&quot;,&quot;hid&quot;:&quot;podman_init_script&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:13,&quot;range&quot;:&quot;4013-4370&quot;} -->
+<h3 class="sectionedit14" id="etcinitdcontainers">/etc/init.d/containers</h3>
+<div class="level3">
+<pre class="code sh">#!/bin/sh /etc/rc.common
+&nbsp;
+START=90
+STOP=20
+USE_PROCD=1
+&nbsp;
+NAME=containers
+PROG=/usr/bin/podman
+&nbsp;
+. /lib/functions.sh
+&nbsp;
+start_service() {
+    # At boot time, wait longer for dependencies
+    local max_wait=60
+    local count=0
+&nbsp;
+    logger -t &quot;$NAME&quot; &quot;Waiting for system readiness&quot;
+&nbsp;
+    # Wait for basic system services
+    while [ $count -lt $max_wait ]; do
+        # Check if essential services are ready
+        if [ -S /var/run/ubus/ubus.sock ] &amp;&amp; pgrep -f &quot;ubusd&quot; &gt;/dev/null &amp;&amp; \
+           [ -d /sys/class/net ] &amp;&amp; $PROG system info &gt;/dev/null 2&gt;&amp;1; then
+            break
+        fi
+        sleep 1
+        count=$((count + 1))
+    done
+&nbsp;
+    if [ $count -ge $max_wait ]; then
+        logger -t &quot;$NAME&quot; &quot;Timeout waiting for system services and podman to be ready&quot;
+        return 1
+    fi
+&nbsp;
+    logger -t &quot;$NAME&quot; &quot;Starting containers service&quot;
+&nbsp;
+    config_load containers
+    config_foreach start_container container
+}
+&nbsp;
+start_container() {
+    local cfg=&quot;$1&quot; enabled name
+&nbsp;
+    config_get enabled &quot;$cfg&quot; enabled 0
+    config_get privileged &quot;$cfg&quot; privileged 0
+    config_get name &quot;$cfg&quot; name &quot;$cfg&quot;
+    config_get image &quot;$cfg&quot; image &quot;$cfg&quot;
+&nbsp;
+    config_get dns &quot;$cfg&quot; dns &quot;&quot;
+    config_get hostname &quot;$cfg&quot; hostname &quot;&quot;
+    config_get image &quot;$cfg&quot; image &quot;&quot;
+    config_get ip &quot;$cfg&quot; ip &quot;&quot;
+    config_get memory &quot;$cfg&quot; memory &quot;&quot;
+    config_get pid &quot;$cfg&quot; pid &quot;&quot;
+    config_get pull &quot;$cfg&quot; pull &quot;missing&quot;
+    config_get restart &quot;$cfg&quot; restart &quot;&quot;
+&nbsp;
+    caps=&quot;&quot;
+    append_cap() {
+        caps=&quot;$caps --cap-add=$1&quot;
+    }
+    config_list_foreach &quot;$cfg&quot; cap append_cap
+&nbsp;
+    envs=&quot;&quot;
+    append_env() {
+        envs=&quot;$envs -e $1&quot;
+    }
+    config_list_foreach &quot;$cfg&quot; env append_env
+&nbsp;
+    vols=&quot;&quot;
+    append_vol() {
+        vols=&quot;$vols -v $1&quot;
+    }
+    config_list_foreach &quot;$cfg&quot; volume append_vol
+&nbsp;
+    [ &quot;$enabled&quot; -eq 0 ] &amp;&amp; return 0
+&nbsp;
+    logger -t &quot;$NAME&quot; &quot;Starting container $name&quot;
+    logger -t &quot;$NAME&quot; &quot;Pulling latest version for $name - $image&quot;
+&nbsp;
+    $PROG pull $image  &gt;/dev/null 2&gt;&amp;1 || logger -t &quot;$NAME&quot; &quot;Pulling failed for $image&quot;
+&nbsp;
+    # Build the Podman command
+    podman_cmd=&quot;$PROG run -d&quot;
+    [ -n &quot;$dns&quot; ] &amp;&amp; podman_cmd=&quot;$podman_cmd --dns $dns&quot;
+    [ -n &quot;$hostname&quot; ] &amp;&amp; podman_cmd=&quot;$podman_cmd --hostname $hostname&quot;
+    [ -n &quot;$ip&quot; ] &amp;&amp; podman_cmd=&quot;$podman_cmd --ip $ip&quot;
+    [ -n &quot;$memory&quot; ] &amp;&amp; podman_cmd=&quot;$podman_cmd --memory $memory&quot;
+    [ -n &quot;$pid&quot; ] &amp;&amp; podman_cmd=&quot;$podman_cmd --pid $pid&quot;
+    [ -n &quot;$restart&quot; ] &amp;&amp; podman_cmd=&quot;$podman_cmd --restart $restart&quot;
+    [ &quot;$privileged&quot; -eq 1 ] &amp;&amp; podman_cmd=&quot;$podman_cmd --privileged&quot;
+    podman_cmd=&quot;$podman_cmd $envs $vols $caps --name $name $image&quot;
+&nbsp;
+    logger -t &quot;$NAME&quot; &quot;Running '$podman_cmd'&quot;
+&nbsp;
+    procd_open_instance &quot;$name&quot;
+    procd_set_param command sh -c &quot;
+        $podman_cmd || exit 1
+        exec $PROG wait '$name'
+    &quot;
+    procd_set_param respawn
+    procd_close_instance
+}
+&nbsp;
+stop_service() {
+    config_load containers
+    config_foreach stop_container container
+}
+&nbsp;
+stop_container() {
+    local cfg=&quot;$1&quot; name
+    config_get name &quot;$cfg&quot; name &quot;$cfg&quot;
+    $PROG stop &quot;$name&quot; 2&gt;/dev/null
+    $PROG rm &quot;$name&quot; 2&gt;/dev/null
+}
+&nbsp;
+# Standard init handlers
+start() { start_service; }
+stop() { stop_service; }
+restart() { stop; start; }
+reload() { stop; start; }</pre>
+
+<p>
+Make it executable:
+</p>
+<pre class="code">chmod +x /etc/init.d/containers</pre>
+
+<p>
+And enable it for next boot
+</p>
+<pre class="code">/etc/init.d/containers enable</pre>
+<hr />
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;\/etc\/init.d\/containers&quot;,&quot;hid&quot;:&quot;etcinitdcontainers&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:14,&quot;range&quot;:&quot;4371-7781&quot;} -->
+<h2 class="sectionedit15" id="example_container_config">Example Container Config</h2>
+<div class="level2">
+<div class="table sectionedit16"><table class="inline">
+	<tr class="row0">
+		<th class="col0"> /etc/config/containers </th>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table5&quot;,&quot;secid&quot;:16,&quot;range&quot;:&quot;7820-7846&quot;} --><pre class="code">config container &#039;test&#039;
+    option enabled &#039;1&#039;
+    option privileged &#039;0&#039;
+    option name &#039;test&#039;
+    option dns &#039;9.9.9.9&#039;
+    option image &#039;quay.io/podman/hello&#039;
+    option memory &#039;64m&#039;
+    option hostname &#039;hello&#039;
+    option ip &#039;192.168.11.2&#039;
+    option pid &#039;host&#039;
+    option restart &#039;unless-stopped&#039;
+    list env &#039;TZ=Europe/Amsterdam&#039;
+    list volume &#039;/etc/openwrt_release:/etc/openwrt_release:ro&#039;
+    list volume &#039;/home/test_container/etc/:/etc/test&#039;
+    list cmd &#039;ping&#039;
+    list cmd &#039;-c&#039;
+    list cmd &#039;4&#039;
+    list cmd &#039;192.168.11.1&#039;</pre>
+<hr />
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Example Container Config&quot;,&quot;hid&quot;:&quot;example_container_config&quot;,&quot;codeblockOffset&quot;:13,&quot;secid&quot;:15,&quot;range&quot;:&quot;7782-8403&quot;} -->
+<h2 class="sectionedit17" id="preserving_configs_during_sysupgrade">Preserving Configs During Sysupgrade</h2>
+<div class="level2">
+
+<p>
+Add this to
+</p>
+<div class="table sectionedit18"><table class="inline">
+	<tr class="row0">
+		<th class="col0"> /etc/sysupgrade.conf </th>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table6&quot;,&quot;secid&quot;:18,&quot;range&quot;:&quot;8466-8491&quot;} --><pre class="code">/etc/containers
+/etc/config/containers
+/etc/init.d/containers
+/home/</pre>
+<hr />
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Preserving Configs During Sysupgrade&quot;,&quot;hid&quot;:&quot;preserving_configs_during_sysupgrade&quot;,&quot;codeblockOffset&quot;:14,&quot;secid&quot;:17,&quot;range&quot;:&quot;8404-&quot;} -->

@@ -1,0 +1,457 @@
+
+<h1 class="sectionedit1" id="ipv4_firewall_examples">IPv4 firewall examples</h1>
+<div class="level1">
+
+<p>
+This section contains a collection of useful <a href="/docs/guide-user/firewall/overview" class="wikilink1" title="docs:guide-user:firewall:overview" data-wiki-id="docs:guide-user:firewall:overview">firewall</a> configuration examples based on the UCI configuration files.
+All of these can be added on the LuCI <em>Network → Firewall → Traffic Rules</em> page.
+</p>
+
+<p>
+In keeping with the underlying netfilter service, the first matching rule will run its target and (with a couple of exceptions) filtering stops; no subsequent rules are checked.
+LuCI has the capability to move rules up and down to sort them correctly.
+</p>
+
+<p>
+See <a href="/docs/guide-user/firewall/fw3_configurations/fw3_ref_topo" class="wikilink1" title="docs:guide-user:firewall:fw3_configurations:fw3_ref_topo" data-wiki-id="docs:guide-user:firewall:fw3_configurations:fw3_ref_topo">Reference Network Topology</a> for a visual representation of the network used to test the examples here.
+These examples cover only <abbr title="Internet Protocol version 4">IPv4</abbr> networks.
+</p>
+
+<p>
+The term <strong>station</strong> is used to refer to any electronic device that can source or sink packets through, or to/from, the router.
+This can be a web server, mobile phone, tablet, laptop, IoT device on the <abbr title="Local Area Network">LAN</abbr>-side or the <abbr title="Wide Area Network">WAN</abbr>-side.
+The netfilter rules match stations and traffic types to allow packets to continue through the network stack or not.
+</p>
+
+<p>
+Unless otherwise noted, all rules have been tested mostly with <a href="https://en.wikipedia.org/wiki/Netcat" class="urlextern" title="https://en.wikipedia.org/wiki/Netcat" rel="ugc nofollow">netcat</a> and <a href="https://curl.haxx.se/" class="urlextern" title="https://curl.haxx.se/" rel="ugc nofollow">curl</a>.
+The <code>enabled</code> option in each rule is toggled between tests to verify the specific rule causes the expected behavior - on will cause packets to be accepted or not, off will cause the opposite behavior.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Before modifying rules, be sure to back-up your current <code>/etc/config/firewall</code>!
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;IPv4 firewall examples&quot;,&quot;hid&quot;:&quot;ipv4_firewall_examples&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1521&quot;} -->
+<h2 class="sectionedit2" id="opening_ports_on_the_openwrt_router">Opening ports on the OpenWrt router</h2>
+<div class="level2">
+
+<p>
+The default configuration accepts all <abbr title="Local Area Network">LAN</abbr> traffic, but blocks all incoming <abbr title="Wide Area Network">WAN</abbr> traffic on ports not currently used for connections or <abbr title="Network Address Translation">NAT</abbr>.
+The reference topology blocks all <abbr title="Local Area Network">LAN</abbr> and <abbr title="Wide Area Network">WAN</abbr> traffic, requiring a rule to open port(s) for a service.
+</p>
+<pre class="code bash">config	rule
+	option	target		<span class="st_h">'ACCEPT'</span>
+	option	src		<span class="st_h">'wan'</span>
+	option	proto		<span class="st_h">'tcp'</span>
+	option	dest_port	<span class="st_h">'22'</span>
+	option	name		<span class="st_h">'ACCEPT-SSH-WAN-DEVICE'</span>
+	option	enabled		<span class="st_h">'1'</span></pre>
+
+<p>
+This example enables stations on the <abbr title="Wide Area Network">WAN</abbr>-side to use <abbr title="Secure Shell">SSH</abbr> to access the router (the default destination).
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> If the <abbr title="Wide Area Network">WAN</abbr>-side of the router is connected to the internet this rule allows any public site <abbr title="Secure Shell">SSH</abbr> access to your router.
+Once a portscanner discovers the open <abbr title="Secure Shell">SSH</abbr> port it will repeatedly try to break in - even with a strong pub key these attacks can be a nuisance.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Opening ports on the OpenWrt router&quot;,&quot;hid&quot;:&quot;opening_ports_on_the_openwrt_router&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;1522-2366&quot;} -->
+<h2 class="sectionedit3" id="opening_ports_for_selected_subnethost">Opening ports for selected subnet/host</h2>
+<div class="level2">
+
+<p>
+Use <strong>src_ip</strong> and <strong>dest_ip</strong> options to match on specific subnets.
+</p>
+<pre class="code bash">config	rule
+	option	target		<span class="st_h">'ACCEPT'</span>
+	option	src		<span class="st_h">'wan'</span>
+	option	family		<span class="st_h">'ipv4'</span>
+	option	proto		<span class="st_h">'tcp'</span>
+	option	src_ip		<span class="st_h">'192.168.3.0/24'</span>
+	option	dest_port	<span class="st_h">'22'</span>
+	option	name		<span class="st_h">'ACCEPT-SSH-INTERNAL-DEVICE'</span>
+	option	enabled		<span class="st_h">'1'</span></pre>
+
+<p>
+This example enables <abbr title="Secure Shell">SSH</abbr> access to the router from any station in the private <code>192.168.3.0/24</code> address block.
+It will not match any other src <abbr title="Internet Protocol">IP</abbr> address.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> When using an <abbr title="Internet Protocol version 4">IPv4</abbr> address set the family to <strong>ipv4</strong>, otherwise firewall warns <code>! Skipping due to different family of ip address</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Opening ports for selected subnet\/host&quot;,&quot;hid&quot;:&quot;opening_ports_for_selected_subnethost&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;2367-3024&quot;} -->
+<h2 class="sectionedit4" id="block_wan-side_networks_and_ports">Block WAN-side networks and ports</h2>
+<div class="level2">
+
+<p>
+When public-facing servers run behind the firewall (e.g. mail server), each is susceptible to attacks: <abbr title="Secure Shell">SSH</abbr> probing, SPAM, screen-scraping, etc.
+</p>
+
+<p>
+Customers of the large overseas ISPs (particular China and Vietnam) have made spam attacks into an artform, generating blocks of prose to confuse spam filters, sprinkling emails across many source stations and many subnets.
+The best way to counter this is to block the main originating network sending the spam.
+</p>
+<pre class="code bash">config	rule
+	option	src		<span class="st_h">'wan'</span>
+	option	dest		<span class="st_h">'lan'</span>
+	option	proto		<span class="st_h">'tcp'</span>
+	option	src_ip		<span class="st_h">'42.56.0.0/16'</span>
+	option	dest_port	<span class="st_h">'25'</span>
+	option	target		<span class="st_h">'DROP'</span>
+	option	name		<span class="st_h">'DROP-WAN-0001'</span>
+	option	enabled		<span class="st_h">'1'</span></pre>
+
+<p>
+In this example, stations in a Beijing network are sending email spam in bursts of three with different content incrementing ipv4 addresses across subnets!
+This rule DROPS all incoming traffic on port 25 (<abbr title="Simple Mail Transfer Protocol">SMTP</abbr>) from any station in their network.
+DROP silently discards the packet rather than REJECT which returns a response to the source.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Once the number of blocked networks grows to more than a couple dozen (there are thousands of spamming sites), then adding each to the firewal config becomes prohibitive to manage.
+Two alternatives are:
+</p>
+<ul>
+<li class="level1"><div class="li"> add individual netfilter rules to <code>/etc/firewall.user</code></div>
+</li>
+<li class="level1"><div class="li"> use the <code>ipset</code> mechanism described in <a href="/docs/guide-user/firewall/fw3_configurations/fw3_config_ipset" class="wikilink1" title="docs:guide-user:firewall:fw3_configurations:fw3_config_ipset" data-wiki-id="docs:guide-user:firewall:fw3_configurations:fw3_config_ipset">ipset examples</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Block WAN-side networks and ports&quot;,&quot;hid&quot;:&quot;block_wan-side_networks_and_ports&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:4,&quot;range&quot;:&quot;3025-4483&quot;} -->
+<h2 class="sectionedit5" id="using_ipset_to_block_lan-side_networks">Using ipset to block LAN-side networks</h2>
+<div class="level2">
+
+<p>
+The example below creates a rule in the netfilter FORWARD chain, rejecting traffic from the <abbr title="Local Area Network">LAN</abbr>-side to the <abbr title="Wide Area Network">WAN</abbr>-side on the ports 1000-1100.
+</p>
+<pre class="code bash">config	rule
+	option	src		<span class="st_h">'lan'</span>
+	option	dest		<span class="st_h">'wan'</span>
+	option	dest_port	<span class="st_h">'1000-1100'</span>
+	option	proto		<span class="st_h">'tcp udp'</span>
+	option	target		<span class="st_h">'REJECT'</span>
+	option	name		<span class="st_h">'REJECT-LAN-WAN-PORTS'</span>
+	option	enabled		<span class="st_h">'1'</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Using ipset to block LAN-side networks&quot;,&quot;hid&quot;:&quot;using_ipset_to_block_lan-side_networks&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:5,&quot;range&quot;:&quot;4484-4886&quot;} -->
+<h2 class="sectionedit6" id="block_lan-side_access_to_a_specific_site">Block LAN-side access to a specific site</h2>
+<div class="level2">
+
+<p>
+The following rule blocks <abbr title="Hypertext Transfer Protocol">HTTP</abbr>/S connections from all <abbr title="Local Area Network">LAN</abbr>-side stations to a single public site.
+Use a <abbr title="Domain Name System">DNS</abbr> utility (<code>dig</code> or <code>nslookup</code>) to map the public domain name to its <abbr title="Internet Protocol">IP</abbr> address.
+</p>
+<pre class="code bash">config	rule
+	option	src		<span class="st_h">'lan'</span>
+	option	dest		<span class="st_h">'wan'</span>
+	option	proto		<span class="st_h">'tcp'</span>
+	option	family		<span class="st_h">'ipv4'</span>
+	option	dest_ip		<span class="st_h">'63.251.153.68'</span>
+	option	dest_port	<span class="st_h">'80 443'</span>
+	option	target		<span class="st_h">'REJECT'</span>
+	option	name		<span class="st_h">'REJECT-LAN-SITE-HTTP'</span>
+	option	enabled		<span class="st_h">'1'</span></pre>
+
+<p>
+Notice the <strong>dest_port</strong> option has two ports: <abbr title="Hypertext Transfer Protocol">HTTP</abbr> and <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr>.
+When there is white space in the list it must be surrounded by single quotes.
+</p>
+
+<p>
+If the source or destination is the router itself then the option is not explicitly defined in a rule.
+For reference, these rules are added to the netfilter INPUT (to the router) and OUTPUT (from the router) chains.
+</p>
+<pre class="code bash">config	rule
+	option	dest		<span class="st_h">'wan'</span>
+	option	dest_ip		<span class="st_h">'8.8.8.8'</span>
+	option	family		<span class="st_h">'ipv4'</span>
+	option	proto		<span class="st_h">'icmp'</span>
+	option	target		<span class="st_h">'REJECT'</span>
+	option	name		<span class="st_h">'REJECT-DEVICE-DNS'</span>
+	option	enabled		<span class="st_h">'1'</span></pre>
+
+<p>
+This rule causes netfilter to reject any icmp echo from the router (OUTPUT chain) to the public google <abbr title="Domain Name System">DNS</abbr> server.
+This rule is not particularly useful but serves as an illustrative example.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Block LAN-side access to a specific site&quot;,&quot;hid&quot;:&quot;block_lan-side_access_to_a_specific_site&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:6,&quot;range&quot;:&quot;4887-6145&quot;} -->
+<h2 class="sectionedit7" id="block_access_to_certain_domains_based_on_their_names">Block access to certain domains based on their names</h2>
+<div class="level2">
+
+<p>
+An example is give at <a href="/docs/guide-user/firewall/fw3_configurations/fw3_parent_controls#blocking_ips_based_on_their_domainnames_fqdn_hostnames" class="wikilink1" title="docs:guide-user:firewall:fw3_configurations:fw3_parent_controls" data-wiki-id="docs:guide-user:firewall:fw3_configurations:fw3_parent_controls">Blocking IPs based on their hostname</a> This is really useful if large CDNs need to be filtered based on their names.
+It is also capable to filter DDNS hosts.
+It has also the advantage to allow for other subdomains (like www.) by just filtering the root-domain-name (like example.com).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Block access to certain domains based on their names&quot;,&quot;hid&quot;:&quot;block_access_to_certain_domains_based_on_their_names&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:7,&quot;range&quot;:&quot;6146-6639&quot;} -->
+<h2 class="sectionedit8" id="block_access_to_the_internet_for_a_specific_lan_station_between_certain_times">Block access to the Internet for a specific LAN station between certain times</h2>
+<div class="level2">
+
+<p>
+The following rule can be used for parental access control.
+</p>
+<pre class="code bash">config	rule
+	option	src		<span class="st_h">'lan'</span>
+	option	dest		<span class="st_h">'wan'</span>
+	option	src_mac		<span class="st_h">'4C:EB:42:32:0C:9E'</span>
+	option	proto		<span class="st_h">'tcp udp'</span>
+	option	start_time	<span class="st_h">'21:00:00'</span>
+	option	stop_time	<span class="st_h">'09:00:00'</span>
+	option	utc_time	<span class="st_h">'0'</span>
+	option	weekdays	<span class="st_h">'Mon Tue Wed Thu Fri'</span>
+	option	target		<span class="st_h">'REJECT'</span>
+	option	name		<span class="st_h">'REJECT-LAN-WAN-TIME'</span>
+	option	enabled		<span class="st_h">'1'</span></pre>
+
+<p>
+When this rule is enabled, it will block all <abbr title="Transmission Control Protocol">TCP</abbr> and <abbr title="User Datagram Protocol">UDP</abbr> access from STA2 to the internet on weekdays between 21:00 and 09:00.
+By default, the time will be UTC unless the <code>utc_time</code> option is cleared (<code>0</code>).
+</p>
+
+<p>
+These time/date matches use the netfilter <code>xt_time</code> kernel module, which is included in the release.
+Check <code>/proc/modules</code> to confirm it is loaded.
+</p>
+
+<p>
+From LuCI this rule can be added by following “Firewall→Traffic Rules” and creating a new rule
+with the desired MAC address and an action of “block” or “reject.”
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Remove the time and day options to always block <abbr title="Wide Area Network">WAN</abbr>-side access for the station.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> This rule can be created for a single MAC address, not a range.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> this type of rule is very useful for mobile devices like smartphones and tablets.
+A lot can change in a smartphone but the wifi MAC is <strong>almost</strong> always programmed at the factory.
+The MAC <strong>can</strong> be modified by a sophisticated user by doing something similar to the Linux commands:
+</p>
+<pre class="code bash">root<span class="sy0">&gt;</span> <span class="kw2">ip link</span> <span class="kw1">set</span> wlan0 down
+root<span class="sy0">&gt;</span> <span class="kw2">ip link</span> <span class="kw1">set</span> address <span class="st0">&quot;de:ad:be:ef:00:01&quot;</span> wlan0
+root<span class="sy0">&gt;</span> <span class="kw2">ip link</span> <span class="kw1">set</span> wlan0 up</pre>
+
+<p>
+An alternative mechanism to block multiple <abbr title="Local Area Network">LAN</abbr> MACs can be found in the LuCI “Wireless→Interface Edit→MAC Filter” section.
+Set the filter for “Allow all except listed” and add multiple <abbr title="Local Area Network">LAN</abbr> MACs.
+In the <code>/etc/config/wireless</code> file, this creates a “list maclist” entry for the interface.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Block access to the Internet for a specific LAN station between certain times&quot;,&quot;hid&quot;:&quot;block_access_to_the_internet_for_a_specific_lan_station_between_certain_times&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:8,&quot;range&quot;:&quot;6640-8516&quot;} -->
+<h2 class="sectionedit9" id="ipsec_passthrough">IPSec passthrough</h2>
+<div class="level2">
+
+<p>
+This example enables proper forwarding of IPSec traffic through the wan.
+The protocol references are:
+* <code>ah</code> <a href="https://www.ietf.org/rfc/rfc2402.txt" class="urlextern" title="https://www.ietf.org/rfc/rfc2402.txt" rel="ugc nofollow">IP Authentication Header</a>
+* <code>esp</code> <a href="https://www.ietf.org/rfc/rfc2406.txt" class="urlextern" title="https://www.ietf.org/rfc/rfc2406.txt" rel="ugc nofollow">Encap Security Payload</a>
+</p>
+<pre class="code bash">config	rule
+	option	src		<span class="st_h">'wan'</span>
+	option	dest		<span class="st_h">'lan'</span>
+	option	proto		<span class="st_h">'ah'</span>
+	option	target		<span class="st_h">'ACCEPT'</span>
+&nbsp;
+config	rule
+	option	src		<span class="st_h">'wan'</span>
+	option	dest		<span class="st_h">'lan'</span>
+	option	proto		<span class="st_h">'esp'</span>
+	option	target		<span class="st_h">'ACCEPT'</span></pre>
+
+<p>
+For some configurations you also have to open port 500/<abbr title="User Datagram Protocol">UDP</abbr> for the ISAKMP protocol.
+</p>
+<pre class="code bash">config	rule
+	option	src		<span class="st_h">'wan'</span>
+	option	dest		<span class="st_h">'lan'</span>
+	option	proto		<span class="st_h">'udp'</span>
+	option	src_port	<span class="st_h">'500'</span>
+	option	dest_port	<span class="st_h">'500'</span>
+	option	target		<span class="st_h">'ACCEPT'</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;IPSec passthrough&quot;,&quot;hid&quot;:&quot;ipsec_passthrough&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:9,&quot;range&quot;:&quot;8517-9263&quot;} -->
+<h2 class="sectionedit10" id="zone_declaration_for_semi_non-uci_interfaces_manually_listed_in_the_network_config_and_forwardings">Zone declaration for semi non-UCI interfaces, manually listed in the network config, and forwardings</h2>
+<div class="level2">
+
+<p>
+Scenario: having one or more <abbr title="Virtual Private Network">VPN</abbr> tunnels using OpenVPN, with the need of defining a zone to forward the traffic between the <abbr title="Virtual Private Network">VPN</abbr> interfaces and the <abbr title="Local Area Network">LAN</abbr>.
+</p>
+
+<p>
+First list the interfaces in <strong>/etc/config/network</strong>, for example, as written below.
+Be careful on the limits of interface naming in terms of name length, <a href="/docs/guide-user/network/network_configuration#section_interface" class="wikilink1" title="docs:guide-user:network:network_configuration" data-wiki-id="docs:guide-user:network:network_configuration">read more</a>)
+</p>
+<pre class="code bash">config	interface	<span class="st_h">'tun0'</span>
+	option	ifname		<span class="st_h">'tun0'</span>
+	option	proto		<span class="st_h">'none'</span>
+&nbsp;
+config	interface	<span class="st_h">'tun1'</span>
+	option	ifname		<span class="st_h">'tun1'</span>
+	option	proto		<span class="st_h">'none'</span></pre>
+
+<p>
+Then create the zone in <strong>/etc/config/firewall</strong>, for example one zone for all the vpn interfaces.
+</p>
+<pre class="code bash">config	zone
+	option	name		<span class="st_h">'vpn_tunnel'</span>
+	list	network		<span class="st_h">'tun0'</span>
+	list	network		<span class="st_h">'tun1'</span>
+	option	input		<span class="st_h">'ACCEPT'</span>
+	<span class="co0"># the traffic towards the router from the interface will be accepted</span>
+	<span class="co0"># (as for the lan communications)</span>
+	option	output		<span class="st_h">'ACCEPT'</span>
+	<span class="co0"># the traffic from the router to the interface will be accepted</span>
+	option	forward		<span class="st_h">'REJECT'</span>
+	<span class="co0"># traffic from this zone to other zones is normally rejected</span></pre>
+
+<p>
+Then we want to communicate with the “lan” zone, therefore we need forwardings in both ways (from lan to wan and viceversa).
+</p>
+<pre class="code bash">config	forwarding
+	option	src		<span class="st_h">'lan'</span>
+	option	dest		<span class="st_h">'vpn_tunnel'</span>
+	<span class="co0"># if a packet from lan wants to go to the vpn_tunnel zone</span>
+	<span class="co0"># let it pass</span>
+&nbsp;
+config	forwarding
+	option	src		<span class="st_h">'vpn_tunnel'</span>
+	option	dest		<span class="st_h">'lan'</span>
+	<span class="co0"># if a packet from vpn_tunnel wants to go to the lan zone</span>
+	<span class="co0"># let it pass</span></pre>
+
+<p>
+In general remember that forwardings are relying how routing rules are defined, and afterwards which zones are defined on which interfaces.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Zone declaration for semi non-UCI interfaces, manually listed in the network config, and forwardings&quot;,&quot;hid&quot;:&quot;zone_declaration_for_semi_non-uci_interfaces_manually_listed_in_the_network_config_and_forwardings&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:10,&quot;range&quot;:&quot;9264-11000&quot;} -->
+<h2 class="sectionedit11" id="zone_declaration_for_non-uci_interfaces">Zone declaration for non-UCI interfaces</h2>
+<div class="level2">
+
+<p>
+This example declares a zone which matches any Linux network device whose name begins with “ppp”.
+</p>
+<pre class="code bash">config	zone
+	option	name		<span class="st_h">'example'</span>
+	option	input		<span class="st_h">'ACCEPT'</span>
+	option	output		<span class="st_h">'ACCEPT'</span>
+	option	forward		<span class="st_h">'REJECT'</span>
+	option	device		<span class="st_h">'ppp+'</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Zone declaration for non-UCI interfaces&quot;,&quot;hid&quot;:&quot;zone_declaration_for_non-uci_interfaces&quot;,&quot;codeblockOffset&quot;:13,&quot;secid&quot;:11,&quot;range&quot;:&quot;11001-11306&quot;} -->
+<h2 class="sectionedit12" id="zone_declaration_for_a_specific_subnet_and_protocol">Zone declaration for a specific subnet and protocol</h2>
+<div class="level2">
+
+<p>
+This example declares a zone which maches any <abbr title="Transmission Control Protocol">TCP</abbr> stream in the <code>10.21.0.0/16</code> subnet.
+</p>
+<pre class="code bash">config	zone
+	option	name		<span class="st_h">'example'</span>
+	option	input		<span class="st_h">'ACCEPT'</span>
+	option	output		<span class="st_h">'ACCEPT'</span>
+	option	forward		<span class="st_h">'REJECT'</span>
+	option	subnet		<span class="st_h">'10.21.0.0/16'</span>
+	option	extra		<span class="st_h">'-p tcp'</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Zone declaration for a specific subnet and protocol&quot;,&quot;hid&quot;:&quot;zone_declaration_for_a_specific_subnet_and_protocol&quot;,&quot;codeblockOffset&quot;:14,&quot;secid&quot;:12,&quot;range&quot;:&quot;11307-11648&quot;} -->
+<h2 class="sectionedit13" id="zone_declaration_for_a_specific_protocol_and_port">Zone declaration for a specific protocol and port</h2>
+<div class="level2">
+
+<p>
+This example declares a zone which maches any <abbr title="Transmission Control Protocol">TCP</abbr> stream from and to port <code>22</code>.
+</p>
+<pre class="code bash">config	zone
+	option	name		<span class="st_h">'example'</span>
+	option	input		<span class="st_h">'ACCEPT'</span>
+	option	output		<span class="st_h">'ACCEPT'</span>
+	option	forward		<span class="st_h">'REJECT'</span>
+	option	extra_src	<span class="st_h">'-p tcp --sport 22'</span>
+	option	extra_dest	<span class="st_h">'-p tcp --dport 22'</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Zone declaration for a specific protocol and port&quot;,&quot;hid&quot;:&quot;zone_declaration_for_a_specific_protocol_and_port&quot;,&quot;codeblockOffset&quot;:15,&quot;secid&quot;:13,&quot;range&quot;:&quot;11649-12002&quot;} -->
+<h2 class="sectionedit14" id="stateful_firewall_without_nat">Stateful firewall without NAT</h2>
+<div class="level2">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:15,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_center wrap_round wrap_alert plugin_wrap" style="width: 60%;">
+<p>
+I have not tested this, but it <strong>seems</strong> reasonable.
+</p>
+
+<p>
+In reality, the monthly cost of a block of public <abbr title="Internet Protocol version 4">IPv4</abbr> addresses makes sense for ISPs that distribute the addresses to customers for a fee and larger corporations that need public addresses for their internet presence (e.g. web, mail, name servers, remote offices)
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:16,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+If your <abbr title="Local Area Network">LAN</abbr> is running with public <abbr title="Internet Protocol">IP</abbr> addresses, then you definitely don&#039;t want <abbr title="Network Address Translation">NAT</abbr> (masquerading).
+But you may still want to run a stateful firewall on the router, so that stations on the <abbr title="Local Area Network">LAN</abbr>-side are not reachable from the <abbr title="Wide Area Network">WAN</abbr>-side.
+</p>
+
+<p>
+To do this, add the <code>conntrack</code> option to the <abbr title="Wide Area Network">WAN</abbr> zone:
+</p>
+<pre class="code bash">config	zone
+	option	name		<span class="st_h">'wan'</span>
+	list	network		<span class="st_h">'wan'</span>
+	list	network		<span class="st_h">'wan6'</span>
+	option	input		<span class="st_h">'REJECT'</span>
+	option	output		<span class="st_h">'ACCEPT'</span>
+	option	forward		<span class="st_h">'REJECT'</span>
+	option	masq		<span class="st_h">'0'</span>
+	option	mtu_fix		<span class="st_h">'1'</span>
+	option	conntrack	<span class="st_h">'1'</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Stateful firewall without NAT&quot;,&quot;hid&quot;:&quot;stateful_firewall_without_nat&quot;,&quot;codeblockOffset&quot;:16,&quot;secid&quot;:14,&quot;range&quot;:&quot;12003-12929&quot;} -->
+<h2 class="sectionedit17" id="allow_httphttps_access_from_cloudflare">Allow HTTP/HTTPS access from Cloudflare</h2>
+<div class="level2">
+
+<p>
+Here is an example that allows <abbr title="Hypertext Transfer Protocol">HTTP</abbr>/<abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> access from Cloudflare.
+Use if your webserver is behind the Cloudflare proxy.
+</p>
+<pre class="code bash"><span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> EOF <span class="sy0">&gt;&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>firewall.user
+uci <span class="re5">-q</span> delete firewall.cf_proxy.dest_ip
+<span class="kw1">for</span> IPV <span class="kw1">in</span> <span class="nu0">4</span> <span class="nu0">6</span>
+<span class="kw1">do</span> <span class="kw1">for</span> IP <span class="kw1">in</span> $<span class="br0">&#40;</span><span class="kw2">wget</span> <span class="re5">-O</span> - \
+<span class="st0">&quot;https://www.cloudflare.com/ips-v<span class="es3">${IPV}</span>&quot;</span><span class="br0">&#41;</span>
+<span class="kw1">do</span> uci add_list firewall.cf_proxy.dest_ip=<span class="st0">&quot;<span class="es3">${IP}</span>&quot;</span>
+<span class="kw1">done</span>
+<span class="kw1">done</span>
+service firewall reload
+EOF
+uci <span class="re5">-q</span> delete firewall.cf_proxy
+uci <span class="kw1">set</span> firewall.cf_proxy=<span class="st0">&quot;rule&quot;</span>
+uci <span class="kw1">set</span> firewall.cf_proxy.name=<span class="st0">&quot;Allow-Cloudflare-Proxy&quot;</span>
+uci <span class="kw1">set</span> firewall.cf_proxy.src=<span class="st0">&quot;wan&quot;</span>
+uci add_list firewall.cf_proxy.dest_port=<span class="st0">&quot;80&quot;</span>
+uci add_list firewall.cf_proxy.dest_port=<span class="st0">&quot;443&quot;</span>
+uci <span class="kw1">set</span> firewall.cf_proxy.proto=<span class="st0">&quot;tcp&quot;</span>
+uci <span class="kw1">set</span> firewall.cf_proxy.target=<span class="st0">&quot;ACCEPT&quot;</span>
+uci commit firewall
+service firewall restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Allow HTTP\/HTTPS access from Cloudflare&quot;,&quot;hid&quot;:&quot;allow_httphttps_access_from_cloudflare&quot;,&quot;codeblockOffset&quot;:17,&quot;secid&quot;:17,&quot;range&quot;:&quot;12930-&quot;} -->

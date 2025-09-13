@@ -1,0 +1,169 @@
+
+<h1 class="sectionedit1" id="ivg-hp203y-ay">IVG-HP203Y-AY</h1>
+<div class="level1">
+
+<p>
+This board consist of Hi3516cv300 CPU and Sony IMX291 chip.
+Can be bought on <a href="https://aliexpress.com/item/32980521726.html" class="urlextern" title="https://aliexpress.com/item/32980521726.html" rel="ugc nofollow">AliExpress</a> or other marketplaces.
+</p>
+
+<p>
+This instruction is based on the information from <a href="https://openipc.org/firmware/" class="urlextern" title="https://openipc.org/firmware/" rel="ugc nofollow">OpenIPC project</a> and with the help of it&#039;s community.
+</p>
+
+<p>
+<strong>Currently not supported:</strong>
+</p>
+
+<p>
+* Night mode  (based on IR sensor and IR curtain shutter)
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;IVG-HP203Y-AY&quot;,&quot;hid&quot;:&quot;ivg-hp203y-ay&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-418&quot;} -->
+<h2 class="sectionedit2" id="prepare_tftp_server">Prepare TFTP server</h2>
+<div class="level2">
+
+<p>
+Download and put all the binaries in the <abbr title="Trivial File Transfer Protocol">TFTP</abbr> folder:
+</p>
+
+<p>
+<a href="https://github.com/OpenIPC/chaos_calmer/releases/download/latest/openwrt-hi35xx-16cv300-u-boot.bin" class="urlextern" title="https://github.com/OpenIPC/chaos_calmer/releases/download/latest/openwrt-hi35xx-16cv300-u-boot.bin" rel="ugc nofollow">openwrt-hi35xx-16cv300-u-boot.bin</a>
+</p>
+
+<p>
+<a href="https://github.com/OpenIPC/chaos_calmer/releases/download/latest/openwrt-hi35xx-16cv300-default-uImage" class="urlextern" title="https://github.com/OpenIPC/chaos_calmer/releases/download/latest/openwrt-hi35xx-16cv300-default-uImage" rel="ugc nofollow">openwrt-hi35xx-16cv300-default-uImage</a>
+</p>
+
+<p>
+<a href="https://github.com/OpenIPC/chaos_calmer/releases/download/latest/openwrt-hi35xx-16cv300-default-root.squashfs" class="urlextern" title="https://github.com/OpenIPC/chaos_calmer/releases/download/latest/openwrt-hi35xx-16cv300-default-root.squashfs" rel="ugc nofollow">openwrt-hi35xx-16cv300-default-root.squashfs</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Prepare TFTP server&quot;,&quot;hid&quot;:&quot;prepare_tftp_server&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;419-950&quot;} -->
+<h3 class="sectionedit3" id="connect_using_uart">Connect using UART</h3>
+<div class="level3">
+
+<p>
+Currently it is not possible to flash the board without UART access. Connect the UART terminal to the board.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Connect using UART&quot;,&quot;hid&quot;:&quot;connect_using_uart&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;951-1090&quot;} -->
+<h2 class="sectionedit4" id="get_access_to_u-boot">Get access to U-boot</h2>
+<div class="level2">
+
+<p>
+Poweroff and turn on the board.
+</p>
+
+<p>
+Press Ctrl+C in U-boot start
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Get access to U-boot&quot;,&quot;hid&quot;:&quot;get_access_to_u-boot&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;1091-1187&quot;} -->
+<h3 class="sectionedit5" id="backup">Backup</h3>
+<div class="level3">
+
+<p>
+* From here on we will assume that the device will have 192.168.1.10 and <abbr title="Trivial File Transfer Protocol">TFTP</abbr> server 192.168.1.254
+</p>
+
+<p>
+Execute the following code in Uboot:
+</p>
+<pre class="code">setenv ipaddr 192.168.1.10
+setenv serverip 192.168.1.254
+sf probe 0
+mw.b 0x82000000 ff 2000000
+sf read 0x82000000 0x0 0x2000000
+tftp 0x82000000 fullflash.img 0x2000000</pre>
+
+<p>
+Check that <abbr title="Trivial File Transfer Protocol">TFTP</abbr> server received the backup image.
+</p>
+
+<p>
+NB! As the next step is important it is advised to run below mentioned commands in order they are grouped.
+</p>
+
+<p>
+Also check that all binary images are downloaded successfully via <abbr title="Trivial File Transfer Protocol">TFTP</abbr>.
+</p>
+
+<p>
+Upon successful download there will be information of actually downloaded bytes. Example:
+</p>
+<pre class="code">Downloading: #################################################
+done
+Bytes transferred = 3967018 (3c882a hex)</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Backup&quot;,&quot;hid&quot;:&quot;backup&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;1188-1975&quot;} -->
+<h2 class="sectionedit6" id="commands_to_be_run_in_uboot_environment">Commands to be run in Uboot environment</h2>
+<div class="level2">
+<pre class="code">setenv ipaddr 192.168.1.10
+setenv serverip 192.168.1.254
+sf probe 0; sf lock 0
+
+mw.b 0x82000000 ff 1000000
+tftp 0x82000000 openwrt-hi35xx-16cv300-u-boot.bin
+sf erase 0x0 0x50000
+sf write 0x82000000 0x0 ${filesize}
+
+mw.b 0x82000000 ff 1000000
+tftp 0x82000000 openwrt-hi35xx-16cv300-default-uImage
+sf erase 0x50000 0x200000
+sf write 0x82000000 0x50000 ${filesize}
+
+mw.b 0x82000000 ff 1000000
+tftp 0x82000000 openwrt-hi35xx-16cv300-default-root.squashfs
+sf erase 0x250000 0x500000
+sf write 0x82000000 0x250000 ${filesize}</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Commands to be run in Uboot environment&quot;,&quot;hid&quot;:&quot;commands_to_be_run_in_uboot_environment&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:6,&quot;range&quot;:&quot;1976-2564&quot;} -->
+<h2 class="sectionedit7" id="commands_after_installation">Commands after installation</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Commands after installation&quot;,&quot;hid&quot;:&quot;commands_after_installation&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:7,&quot;range&quot;:&quot;2565-2605&quot;} -->
+<h3 class="sectionedit8" id="clean_u-boot_env">Clean u-boot env</h3>
+<div class="level3">
+<pre class="code">flash_eraseall /dev/mtd1
+reboot</pre>
+
+</div>
+
+<h4 id="clean_overlayfs">Clean overlayfs</h4>
+<div class="level4">
+<pre class="code">firstboot
+reboot</pre>
+
+</div>
+
+<h4 id="format_overlayfs_partition">Format overlayfs partition</h4>
+<div class="level4">
+<pre class="code">flash_eraseall -j /dev/mtd4
+reboot</pre>
+
+</div>
+
+<h4 id="change_mac_and_other_stuff">Change MAC and other stuff</h4>
+<div class="level4">
+
+<p>
+Change XX:XX:XX:XX:XX:XX for your original MAC address you wrote in the beginning.
+</p>
+<pre class="code">fw_setenv ethaddr XX:XX:XX:XX:XX:XX
+uci set network.lan.macaddr=XX:XX:XX:XX:XX:XX
+fw_setenv sensor imx291_i2c_lvds
+uci set ipcam.gpio.ircut1=&#039;53&#039;
+uci set ipcam.gpio.ircut2=&#039;54&#039;
+uci commit
+reboot</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Clean u-boot env&quot;,&quot;hid&quot;:&quot;clean_u-boot_env&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:8,&quot;range&quot;:&quot;2606-&quot;} -->

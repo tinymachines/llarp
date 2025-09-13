@@ -1,0 +1,207 @@
+
+<h2 class="sectionedit1" id="identify_wi-fi_connection_as_metered_on_windows_automatically">Identify Wi-Fi connection as metered on Windows automatically</h2>
+<div class="level2">
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> <em> Due to End of Life of Windows 8.0 and Windows 2008 R2, this content only applies to current Windows versions: Windows 8.1\10, Windows Server 2012\2012 R2\2016\2019. All current Windows versions just named <strong>Windows</strong> in this document. </em>
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> <span style='color:#ed1c24; '>Provided method works mainly for Windows devices.</span>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Identify Wi-Fi connection as metered on Windows automatically&quot;,&quot;hid&quot;:&quot;identify_wi-fi_connection_as_metered_on_windows_automatically&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-400&quot;} -->
+<h3 class="sectionedit2" id="theory_and_lyrics">Theory and Lyrics</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="metered_connection_idea">Metered Connection Idea</h4>
+<div class="level4">
+
+<p>
+Modern devices implement concept of metered connections.<br/>
+
+In simple, metered connection is an internet connection where you pay for amount data transmitted.<br/>
+
+In modern world, most common metered connections are mobile broadband connections - 3G, 4G LTE, 5G.<br/>
+
+</p>
+
+<p>
+While connected over metered connection, device <strong>may</strong> reduce amount of data it transmits over this connection.<br/>
+
+For example, Windows 10 device will download only critical and security updates and postpone feature updates when device knows it is connected over metered connection.
+</p>
+
+</div>
+
+<h4 id="metered_connection_usefulness">Metered Connection Usefulness</h4>
+<div class="level4">
+
+<p>
+Setting connection as metered can be userful for uplinks that can not satisfy daily client device operation to lower data consumption. <br/>
+
+For example, if you have Wireless router with LTE modem as uplink and your LTE connection is far from ideal, It&#039;s good for Wi-Fi clients to know that there is a bottleneck on the way to Internet somewhere to postpone non-critical high-bandwidth operations.
+</p>
+
+</div>
+
+<h4 id="second_hop_problem">Second Hop problem</h4>
+<div class="level4">
+
+<p>
+Windows detects connection as metered from 802.11 (Wi-Fi) beacons and probe responses.<br/>
+
+This means Windows will only see fast Wi-Fi connection and will not see that there is a slow 3G modem behind it. <br/>
+
+Solution is to tell Windows device that Wi-Fi connection should be treated as metered connection.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Theory and Lyrics&quot;,&quot;hid&quot;:&quot;theory_and_lyrics&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;401-1777&quot;} -->
+<h3 class="sectionedit3" id="configuration">Configuration</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="check_status_with_windows">check status with windows</h4>
+<div class="level4">
+
+<p>
+Check current connection status on your Windows PC: run <code>powershell.exe</code> and execute commands <br/>
+
+</p>
+<pre class="code powershell">  <span class="br0">&#91;</span>void<span class="br0">&#93;</span><span class="br0">&#91;</span>Windows.Networking.Connectivity.NetworkInformation<span class="sy0">,</span> Windows<span class="sy0">,</span> ContentType <span class="sy0">=</span> WindowsRuntime<span class="br0">&#93;</span>
+  <span class="br0">&#91;</span>Windows.Networking.Connectivity.NetworkInformation<span class="br0">&#93;</span>::GetInternetConnectionProfile<span class="br0">&#40;</span><span class="br0">&#41;</span>.GetConnectionCost<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="sy0">|</span> <span class="kw2">FL</span></pre>
+
+<p>
+As a result, you shall see output like this
+</p>
+<pre class="code powershell">  ApproachingDataLimit          : False
+  NetworkCostType               : Unrestricted
+  OverDataLimit                 : False
+  Roaming                       : False
+  BackgroundDataUsageRestricted : False</pre>
+
+<p>
+When <code>NetworkCostType</code> is <code>Unrestricted</code> or <code>Unknown</code> and everything else is <code>False</code>, connection treated as non-measured.
+If you see another values, probably you set connection as measured manually. In this case, you should better forget the network and connect again.
+</p>
+
+<p>
+You can also check it is determined as <code>metered connection</code> by clicking <code>Wi-Fi icon</code> in system tray → <code>Properties</code> under connected network and see switch <code>metered connection</code> is off
+</p>
+
+</div>
+
+<h4 id="check_status_with_network_manager_linux">check status with Network Manager (Linux)</h4>
+<div class="level4">
+<pre class="code bash"><span class="co0"># find your wireless device name</span>
+nmcli <span class="re5">--get-values</span> GENERAL.DEVICE,GENERAL.TYPE device show
+<span class="co0"># replace wlp2s0 with your wireless device name</span>
+nmcli <span class="re5">-t</span> <span class="re5">-f</span> GENERAL.METERED dev show wlp2s0</pre>
+
+<p>
+Open OpenWrt console and execute
+</p>
+<pre class="code bash"><span class="co0"># For radio0 interface</span>
+  <span class="co0"># Print current value if it exists.</span>
+  uci show     wireless.radio0.hostapd_options
+  <span class="co0"># Delete current value if it exists.</span>
+  uci delete   wireless.radio0.hostapd_options
+  <span class="co0"># Write new value.</span>
+  uci add_list wireless.radio0.hostapd_options=<span class="st_h">'vendor_elements=DD080050F21102000200'</span>
+&nbsp;
+<span class="co0"># Same for radio1 interface if exists</span>
+  <span class="co0"># Print current value if it exists.</span>
+  uci show     wireless.radio1.hostapd_options
+  <span class="co0"># Delete current value if it exists.</span>
+  uci delete   wireless.radio1.hostapd_options
+  <span class="co0"># Write new value.</span>
+  uci add_list wireless.radio1.hostapd_options=<span class="st_h">'vendor_elements=DD080050F21102000200'</span>
+&nbsp;
+<span class="co0"># Commit and reboot</span>
+  uci commit
+  reboot</pre>
+
+<p>
+After reouter reboots, disconnect from Wi-Fi on Windows device and connect again. Check connection again using <code>powershell.exe</code>. Now it will show connection as <code>NetworkCostType: Fixed</code>.
+If not, try to <em>forget</em> wireless network and connect again.
+</p>
+<pre class="code bash"><span class="co0"># you can also activate vendor_elements for a single SSID only:</span>
+<span class="co0"># see if the value already exists</span>
+uci show wireless.default_radio0.vendor_elements
+<span class="co0"># set vendor_elemts</span>
+uci <span class="kw1">set</span> wireless.default_radio0.vendor_elements=<span class="st_h">'DD080050F21102000200'</span>
+<span class="co0"># commit config</span>
+uci commit</pre>
+<hr />
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;1778-4444&quot;} -->
+<h3 class="sectionedit4" id="under_the_hood">Under the hood</h3>
+<div class="level3">
+
+<p>
+Windows devices relies on Wi-Fi Beacon and Probe Response frames. <br/>
+
+IEEE802.11-2012 added ability to define custom information in Wi-Fi frames. They are called <code>Vendor-Specific Information Elements</code> or <code><abbr title="Internet Explorer">IE</abbr></code>. <br/>
+
+Microsoft introduced special <code>Network Cost Information</code> element that gives ability for Windows to determine some connection information. <br/>
+
+It is documented in <a href="https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-nct" class="urlextern" title="https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-nct" rel="ugc nofollow">MS-NCT</a> document. <br/>
+
+It is implemented since Windows 8 and Server 2012. <br/>
+
+To enable Windows clients to detect Wi-Fi connection as metered, you need to implement this <code>Information Element</code> on your Wi-Fi Access Point.<br/>
+
+It can be done through <code>vendor_elements</code> configuration option for <code>hostapd</code>.<br/>
+
+And <code>hostapd</code> configuration files are generated on-the-fly from <code>uci</code> data. <br/>
+
+We use <code>uci</code> option to add field <code>vendor_elements</code> with value to <code>hostapd</code> configuration.
+</p>
+
+<p>
+We use value <code>DD 08 00 50 F2 11 02 00 02 00</code>:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>DD</code> This is <abbr title="Internet Explorer">IE</abbr> type means <code>Vendor-Specific</code></div>
+</li>
+<li class="level2"><div class="li"> <code>08</code> Length of <abbr title="Internet Explorer">IE</abbr> data (8 bytes)</div>
+</li>
+<li class="level2"><div class="li"> <code>00 50 F2</code> OUI ID (Vendor ID). This match <code>Microsoft</code></div>
+</li>
+<li class="level2"><div class="li"> <code>11</code> OUI Type. Type of data in this <abbr title="Internet Explorer">IE</abbr>. <code>0x11</code> means <code>Network Cost Information</code></div>
+</li>
+<li class="level2"><div class="li"> <code>02</code> Cost Level <code>Fixed</code>. This connection is fixed-cost connection. <em><span style='color:#ff7f27; '>Linux NetworkManager note</span>: NM &gt; 1.31.5 treats connection as metered if this value is greater than <code>0x01</code>. NM 1.31.5 and before mistakenly ignores this value due to <a href="https://gitlab.freedesktop.org/NetworkManager/NetworkManager/-/issues/734" class="urlextern" title="https://gitlab.freedesktop.org/NetworkManager/NetworkManager/-/issues/734" rel="ugc nofollow">bug</a></em></div>
+</li>
+<li class="level2"><div class="li"> <code>00</code> Reserved byte, should be <code>00</code></div>
+</li>
+<li class="level2"><div class="li"> <code>02</code> Cost Flag <code>Congested</code>. The network operator is experiencing or expecting heavy load. <em><span style='color:#ff7f27; '>Linux NetworkManager note</span>: This byte is ignored by NM.</em></div>
+</li>
+<li class="level2"><div class="li"> <code>00</code> Reserved byte, should be <code>00</code>. <em><span style='color:#ff7f27; '>Linux NetworkManager note</span>: NM 1.31.5 and before due to a <a href="https://gitlab.freedesktop.org/NetworkManager/NetworkManager/-/issues/734" class="urlextern" title="https://gitlab.freedesktop.org/NetworkManager/NetworkManager/-/issues/734" rel="ugc nofollow">bug</a> mistakenly interprets this value as <code>Cost level</code>. It treats connection as metered when this value is greater than <code>0x01</code></em></div>
+</li>
+</ul>
+<hr />
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Under the hood&quot;,&quot;hid&quot;:&quot;under_the_hood&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:4,&quot;range&quot;:&quot;4445-6627&quot;} -->
+<h3 class="sectionedit5" id="references">References</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> <a href="https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-nct/" class="urlextern" title="https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-nct/" rel="ugc nofollow">[MS-NCT]: Network Cost Transfer Protocol</a><br/>
+</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/openwrt/openwrt/blob/19bf1642912b120403d52bf685818b10e3736079/package/network/services/hostapd/files/hostapd.sh#L218" class="urlextern" title="https://github.com/openwrt/openwrt/blob/19bf1642912b120403d52bf685818b10e3736079/package/network/services/hostapd/files/hostapd.sh#L218" rel="ugc nofollow">&#039;&#039;hostapd_options&#039;&#039; &#039;&#039;uci&#039;&#039; option precessing</a> (<a href="https://github.com/openwrt/openwrt/commit/9f5f5d250e7537f15fd668fa737ead719f910245" class="urlextern" title="https://github.com/openwrt/openwrt/commit/9f5f5d250e7537f15fd668fa737ead719f910245" rel="ugc nofollow">Implemented since v18.06.0-rc1</a>)<br/>
+</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://docs.microsoft.com/en-us/windows-hardware/drivers/mobilebroadband/network-cost-information-element" class="urlextern" title="https://docs.microsoft.com/en-us/windows-hardware/drivers/mobilebroadband/network-cost-information-element" rel="ugc nofollow">Network cost information element description.</a> - <img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> <span style='color:#ed1c24; '>Recommended for reading only after [MS-NCT]. Not recommended as primary reference.</span><br/>
+</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;References&quot;,&quot;hid&quot;:&quot;references&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:5,&quot;range&quot;:&quot;6628-&quot;} -->

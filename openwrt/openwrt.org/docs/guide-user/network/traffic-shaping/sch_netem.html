@@ -1,0 +1,109 @@
+
+<h1 class="sectionedit1" id="netem_network_emulator">Netem (Network Emulator)</h1>
+<div class="level1">
+
+<p>
+<code>sch_netem</code> is an optional QDisc for the Linux packet scheduler. It is meant for emulating wide area network delays.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Netem (Network Emulator)&quot;,&quot;hid&quot;:&quot;netem_network_emulator&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-160&quot;} -->
+<h2 class="sectionedit2" id="examples">Examples</h2>
+<div class="level2">
+
+<p>
+This is the simplest example, it just adds a fixed amount of delay to all packets going out of the local Ethernet.
+</p>
+<pre class="code">tc qdisc add dev eth0 root netem delay 100ms</pre>
+
+<p>
+Now a simple ping test to host on the local network should show an increase of 100 milliseconds. The delay is limited by the clock resolution of the kernel (HZ). On most 2.4 systems, the system clock runs at 100hz which allows delays in increments of 10ms. On 2.6, the value is a configuration parameter from 1000 to 100 hz.
+</p>
+
+<p>
+Later examples just change parameters without reloading the qdisc
+</p>
+
+<p>
+Real wide area networks show variability so it is possible to add random variation.
+</p>
+<pre class="code">tc qdisc change dev eth0 root netem delay 100ms 10ms</pre>
+
+<p>
+This causes the added delay to be 100ms ± 10ms. Network delay variation isn&#039;t purely random, so to emulate that there is a correlation value as well.
+</p>
+<pre class="code">tc qdisc change dev eth0 root netem delay 100ms 10ms 25%</pre>
+
+<p>
+This causes the added delay to be 100ms ± 10ms with the next random element depending 25% on the last one. This isn&#039;t true statistical correlation, but an approximation.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Examples&quot;,&quot;hid&quot;:&quot;examples&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;161-1302&quot;} -->
+<h2 class="sectionedit3" id="delay_distribution">Delay distribution</h2>
+<div class="level2">
+
+<p>
+Typically, the delay in a network is not uniform. It is more common to use a something like a normal distribution to describe the variation in delay. The netem discipline can take a table to specify a non-uniform distribution.
+</p>
+<pre class="code">tc qdisc change dev eth0 root netem delay 100ms 20ms distribution normal</pre>
+
+<p>
+The actual tables (normal, pareto, paretonormal) are generated as part of the iproute2 compilation and placed in /usr/lib/tc; so it is possible with some effort to make your own distribution based on experimental data.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Delay distribution&quot;,&quot;hid&quot;:&quot;delay_distribution&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:3,&quot;range&quot;:&quot;1303-1871&quot;} -->
+<h2 class="sectionedit4" id="packet_loss">Packet loss</h2>
+<div class="level2">
+
+<p>
+Random packet loss is specified in the &#039;tc&#039; command in percent. The smallest possible non-zero value is:
+</p>
+
+<p>
+232 = 0.0000000232%
+</p>
+<pre class="code">tc qdisc change dev eth0 root netem loss 0.1%</pre>
+
+<p>
+This causes 1/10th of a percent (i.e 1 out of 1000) packets to be randomly dropped.
+</p>
+
+<p>
+An optional correlation may also be added. This causes the random number generator to be less random and can be used to emulate packet burst losses.
+</p>
+<pre class="code">tc qdisc change dev eth0 root netem loss 0.3% 25%</pre>
+
+<p>
+This will cause 0.3% of packets to be lost, and each successive probability depends by a quarter on the last one.
+</p>
+
+<p>
+Probn = .25 * Probn-1 + .75 * Random
+</p>
+
+<p>
+For dropped packets I would simply use iptables and the statistic module.
+</p>
+<pre class="code">iptables -A INPUT -m statistic --mode random --probability 0.01 -j DROP</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Packet loss&quot;,&quot;hid&quot;:&quot;packet_loss&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:4,&quot;range&quot;:&quot;1872-2701&quot;} -->
+<h2 class="sectionedit5" id="link_dump">Link dump</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <a href="http://www.linuxfoundation.org/collaborate/workgroups/networking/netem" class="urlextern" title="http://www.linuxfoundation.org/collaborate/workgroups/networking/netem" rel="ugc nofollow">http://www.linuxfoundation.org/collaborate/workgroups/networking/netem</a></div>
+</li>
+<li class="level1 node"><div class="li"> <a href="http://comments.gmane.org/gmane.linux.network/161001" class="urlextern" title="http://comments.gmane.org/gmane.linux.network/161001" rel="ugc nofollow">http://comments.gmane.org/gmane.linux.network/161001</a></div>
+<ul>
+<li class="level2"><div class="li"> <a href="http://forums.fedoraforum.org/showthread.php?t=243272" class="urlextern" title="http://forums.fedoraforum.org/showthread.php?t=243272" rel="ugc nofollow">[SOLVED] Rate limiting with TBF and Netem not supported?</a></div>
+</li>
+<li class="level2"><div class="li"> <a href="http://ubuntuforums.org/showpost.php?p=8781028&amp;postcount=3" class="urlextern" title="http://ubuntuforums.org/showpost.php?p=8781028&amp;postcount=3" rel="ugc nofollow">http://ubuntuforums.org/showpost.php?p=8781028&amp;postcount=3</a></div>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Link dump&quot;,&quot;hid&quot;:&quot;link_dump&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:5,&quot;range&quot;:&quot;2702-&quot;} -->

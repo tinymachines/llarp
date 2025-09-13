@@ -1,0 +1,235 @@
+
+<h1 class="sectionedit1" id="sd_card">SD card</h1>
+<div class="level1">
+
+<p>
+OpenWrt can be installed and run from devices that use an SD card. Common devices with this include Raspberry Pi and NanoPi.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;SD card&quot;,&quot;hid&quot;:&quot;sd_card&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-149&quot;} -->
+<h3 class="sectionedit2" id="graphical_utilities">Graphical Utilities</h3>
+<div class="level3">
+
+<p>
+Install <a href="https://etcher.balena.io/" class="urlextern" title="https://etcher.balena.io/" rel="ugc nofollow">Balena Etcher</a>, a free open source program to flash SD cards on Windows, Linux, or macOS.
+</p>
+<ol>
+<li class="level1"><div class="li"> Download the image for your device which will be named similar to <code>openwrt-*-sysupgrade.img.gz</code></div>
+</li>
+<li class="level1"><div class="li"> Select the image</div>
+</li>
+<li class="level1"><div class="li"> Select your SD card</div>
+</li>
+<li class="level1"><div class="li"> Flash the image</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Graphical Utilities&quot;,&quot;hid&quot;:&quot;graphical_utilities&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;150-475&quot;} -->
+<h3 class="sectionedit3" id="command_line">Command Line</h3>
+<div class="level3">
+<ol>
+<li class="level1"><div class="li"> Download the image for your device which will be named similar to <code>openwrt-*-sysupgrade.img.gz</code></div>
+</li>
+<li class="level1"><div class="li"> Decompress it: <pre class="code">gzip -d openwrt-*-sysupgrade.img.gz</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Connect an SD card to your computer and look at <code>lsblk</code> or <code>dmesg</code> to identify it. In most cases, it would be something like <code>/dev/sdX</code>. <sup><a href="#fn__1" id="fnt__1" class="fn_top">1)</a></sup></div>
+</li>
+<li class="level1"><div class="li"> Double check you identified your SD card correctly. If the <code>/dev/sdX</code> you have chosen corresponds to your hard drive, the next step would destroy your system.</div>
+</li>
+<li class="level1"><div class="li"> Copy the image to the SD card with: <pre class="code">dd if=openwrt-*-sysupgrade.img of=/dev/sdX</pre>
+</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Command Line&quot;,&quot;hid&quot;:&quot;command_line&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;476-1195&quot;} -->
+<h3 class="sectionedit4" id="which_image_to_chose">Which image to chose?</h3>
+<div class="level3">
+
+<p>
+Most SD card devices have multiple images available which differ in the <a href="/docs/guide-user/storage/filesystems-and-partitions" class="wikilink1" title="docs:guide-user:storage:filesystems-and-partitions" data-wiki-id="docs:guide-user:storage:filesystems-and-partitions">filesystem</a> used.
+</p>
+
+</div>
+
+<h4 id="ext4-sdcardimggz">ext4-sdcard.img.gz</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> Not optimized for flash memory (journaling increases flash wear)</div>
+</li>
+<li class="level1"><div class="li"> SD card can be easily mounted externally for modification</div>
+</li>
+<li class="level1"><div class="li"> Updates and changes can be made directly to the partition</div>
+</li>
+<li class="level1"><div class="li"> Linux desktop standard</div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="squashfs-sdcardimggz">squashfs-sdcard.img.gz</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> Compressed</div>
+</li>
+<li class="level1"><div class="li"> Newer images include a hidden F2FS filesystem, which is optimized for flash memory</div>
+</li>
+<li class="level1"><div class="li"> Needs special mount procedure to externally modify</div>
+</li>
+<li class="level1"><div class="li"> All changes are done in an overlay partition</div>
+</li>
+<li class="level1"><div class="li"> Due to overlay partition it is simple to reset system to defaults</div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="other_images">Other images</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> ubifs-sdcard.img.gz</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Which image to chose?&quot;,&quot;hid&quot;:&quot;which_image_to_chose&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:4,&quot;range&quot;:&quot;1196-1975&quot;} -->
+<h3 class="sectionedit5" id="mounting_a_squashfs_image_locally">Mounting a squashfs image locally</h3>
+<div class="level3">
+
+<p>
+If you insert your newly flashed SD card into a Linux computer it will be easy to mount the read only squashfs partition but it won&#039;t know about the overlay, which is not even in the partition table but instead located immediately after the squashfs filesystem in the same partition. In fact, before you&#039;ve booted the SD card on your device, the overlay won&#039;t even exist.
+</p>
+
+<p>
+So, first you need to make sure you&#039;ve booted your image. You then need to mount the overlay as a loopback device. You can discover the offset by running <code>losetup</code> on the device, or calculate the offset yourself by inspecting the filesystem.
+</p>
+<pre class="code"># Setup the loop back device.
+# See libfstools/rootdisk.c for source of partition offset logic.
+DEVICE= ### Set this appropriately - e.g. /dev/sda
+PARTITION=&quot;$DEVICE&quot;2
+FS_SIZE=&quot;$(sudo unsquashfs -s &quot;$PARTITION&quot; | grep -o &#039;Filesystem size [0-9]* bytes&#039; | grep -o &#039;[0-9][0-9]*&#039;)&quot;
+FS_OFFSET=&quot;$(expr &#039;(&#039; &quot;$FS_SIZE&quot; + 65535 &#039;)&#039; / 65536 &#039;*&#039; 65536)&quot; 
+LOOP_DEVICE=&quot;$(sudo losetup -f --show -o &quot;$FS_OFFSET&quot; &quot;$PARTITION&quot;)&quot;
+
+# Now mount both partitions (remember, you may need to unmount any automatic mounts)
+mkdir -p /mnt/base /mnt/overlay /mnt/combined
+sudo mount &quot;$PARTITION&quot; /mnt/base            
+sudo mount &quot;$LOOP_DEVICE&quot; /mnt/overlay
+sudo mount -o noatime,lowerdir=/mnt/base,upperdir=/mnt/overlay/upper,workdir=/mnt/overlay/work -t overlay overlayfs /mnt/combined</pre>
+
+<p>
+This should leave you with a writable filesystem in /mnt/combined which will work as it does on OpenWrt.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Mounting a squashfs image locally&quot;,&quot;hid&quot;:&quot;mounting_a_squashfs_image_locally&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:5,&quot;range&quot;:&quot;1976-3520&quot;} -->
+<h3 class="sectionedit6" id="expanding_the_filesystem">Expanding the filesystem</h3>
+<div class="level3">
+
+<p>
+To use the whole available space of your SD card, you may have to resize your partition.
+</p>
+
+</div>
+
+<h4 id="squashfs_image">squashfs image</h4>
+<div class="level4">
+
+<p>
+First, make sure the partition is not mounted, then do something like:
+</p>
+<pre class="code">DEVICE= ### Set this appropriately - e.g. /dev/sda
+PARTITION=&quot;$DEVICE&quot;2
+sudo cfdisk &quot;$DEVICE&quot;  # select resize, then write</pre>
+
+<p>
+If you&#039;ve never booted the image that&#039;s all there is to it. OpenWrt will create an overlay which uses the rest of this partition on the first boot.
+</p>
+
+<p>
+However, if you already booted the image OpenWrt will have created an overlay that is smaller, so you&#039;ll need to resize the filesystem. Expand the partition as above, then:
+</p>
+<pre class="code"># Create a loop device pointing to the FS
+# See libfstools/rootdisk.c for source of partition offset logic.
+FS_SIZE=&quot;$(sudo unsquashfs -s &quot;$PARTITION&quot; | grep -o &#039;Filesystem size [0-9]* bytes&#039; | grep -o &#039;[0-9][0-9]*&#039;)&quot;
+FS_OFFSET=&quot;$(expr &#039;(&#039; &quot;$FS_SIZE&quot; + 65535 &#039;)&#039; / 65536 &#039;*&#039; 65536)&quot; 
+LOOP_DEVICE=&quot;$(sudo losetup -f --show -o &quot;$FS_OFFSET&quot; &quot;$PARTITION&quot;)&quot;
+
+# Now to resize... you may need to use fsck first though.
+sudo fsck &quot;$LOOP_DEVICE&quot;
+sudo resize2fs &quot;$LOOP_DEVICE&quot;
+sudo fsck &quot;$LOOP_DEVICE&quot;</pre>
+
+<p>
+If you get an error from resize2fs about a bad superblock, you probably have an F2FS filesystem. Use <code>resize.f2fs</code> instead of <code>resize2fs</code>.
+</p>
+
+</div>
+
+<h4 id="ext4_image">ext4 image</h4>
+<div class="level4">
+
+<p>
+You can use <code>gparted</code> to resize and extend the partitions.
+To do it online, follow the procedure described on <a href="http://bugs.openwrt.org/index.php?do=details&amp;task_id=2951" class="urlextern" title="http://bugs.openwrt.org/index.php?do=details&amp;task_id=2951" rel="ugc nofollow">github</a> or <a href="/docs/guide-user/installation/openwrt_x86#expanding_root_partition_and_filesystem" class="wikilink1" title="docs:guide-user:installation:openwrt_x86" data-wiki-id="docs:guide-user:installation:openwrt_x86">expanding_root_partition_and_filesystem</a>.
+</p>
+
+<p>
+Example, to resize <code>/dev/mmcblk0p2</code> mounted on <code>/</code>, install <code>parted</code>, <code>tune2fs</code> and <code>resize2fs</code> then:
+</p>
+<pre class="code">parted
+p
+resizepart 2 32GB
+q</pre>
+
+<p>
+Next, you may need to repair your device (perhaps say yes to all interactive queries):
+</p>
+<pre class="code">mount -o remount,ro /                  #Remount root as Read Only
+tune2fs -O^resize_inode /dev/mmcblk0p2    #Remove reserved GDT blocks
+fsck.ext4 /dev/mmcblk0p2                  #Fix part, answer yes to remove GDT blocks remnants</pre>
+
+<p>
+Now, <code>reboot</code> and then resize the partition:
+</p>
+<pre class="code">resize2fs /dev/mmcblk0p2</pre>
+
+<p>
+Note that these operations may alter partition UUID.  Either preserve the partition UUID or edit your boot parameters.  For example on raspberry pi you must update
+</p>
+<pre class="code">/boot/cmdline.txt
+/boot/partuuid.txt</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Expanding the filesystem&quot;,&quot;hid&quot;:&quot;expanding_the_filesystem&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:6,&quot;range&quot;:&quot;3521-5941&quot;} -->
+<h2 class="sectionedit7" id="manual_disk_image_assembly">Manual disk image assembly</h2>
+<div class="level2">
+
+<p>
+Examples:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="/docs/techref/hardware/soc/soc.allwinner.sunxi#chaos_calmer_-_assembling_the_sd_card_image_yourself" class="wikilink1" title="docs:techref:hardware:soc:soc.allwinner.sunxi" data-wiki-id="docs:techref:hardware:soc:soc.allwinner.sunxi">Sunxi</a></div>
+</li>
+</ul>
+
+<p>
+Howto:
+</p>
+<ol>
+<li class="level1"><div class="li"> Partition and format the SD card. Details devicespecific? → Devicepage</div>
+</li>
+<li class="level1"><div class="li"> Copy bootloader, kernel, rootfs (and if necessary other data) to SD card. Details devicespecific? → Devicepage</div>
+</li>
+<li class="level1"><div class="li"> Possibly resize filesystem in order to use the complete available space on the SD card</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Manual disk image assembly&quot;,&quot;hid&quot;:&quot;manual_disk_image_assembly&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:7,&quot;range&quot;:&quot;5942-&quot;} --><div class="footnotes">
+<div class="fn"><sup><a href="#fnt__1" id="fn__1" class="fn_bot">1)</a></sup> 
+<div class="content">You want to specify the device and not the partition, meaning, you have to use <code>/dev/sdX</code> and not <code>/dev/sdX1</code></div></div>
+</div>

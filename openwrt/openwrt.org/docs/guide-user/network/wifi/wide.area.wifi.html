@@ -1,0 +1,389 @@
+
+<h1 class="sectionedit1" id="wide_area_wi-fi_coverage">Wide area Wi-Fi coverage</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__meta:infobox:howto_links">
+<div class="level1">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap">
+<p>
+This article may contain network configuration that depends on migration to DSA in OpenWrt 21.02
+</p>
+<ul>
+<li class="level1"><div class="li"> Check if your device uses DSA or swconfig as not all devices have been migrated</div>
+</li>
+<li class="level1"><div class="li"> ifname@interface has been moved to device sections</div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/network/dsa/start" class="wikilink1" title="docs:guide-user:network:dsa:start" data-wiki-id="docs:guide-user:network:dsa:start">DSA Networking</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://forum.openwrt.org/t/mini-tutorial-for-dsa-network-config/96998" class="urlextern" title="https://forum.openwrt.org/t/mini-tutorial-for-dsa-network-config/96998" rel="ugc nofollow">Mini tutorial for DSA network config</a> on the forum</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://openwrt.org/releases/21.02/notes-21.02.0#new_network_configuration_syntax_and_boardjson_change" class="urlextern" title="https://openwrt.org/releases/21.02/notes-21.02.0#new_network_configuration_syntax_and_boardjson_change" rel="ugc nofollow">DSA in the 21.02 release notes</a></div>
+</li>
+</ul>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Wide area Wi-Fi coverage&quot;,&quot;hid&quot;:&quot;wide_area_wi-fi_coverage&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-131&quot;} -->
+<h2 class="sectionedit6" id="introduction">Introduction</h2>
+<div class="level2">
+
+<p>
+This HOWTO requires proficienciy in an <a href="https://en.wikipedia.org/wiki/OpenVPN" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/OpenVPN">OpenVPN</a>-based <a href="https://en.wikipedia.org/wiki/Virtual private network" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Virtual private network">Virtual private network</a> (cf. <a href="/docs/guide-user/services/vpn/openvpn/server.tap" class="wikilink2" title="docs:guide-user:services:vpn:openvpn:server.tap" rel="nofollow" data-wiki-id="docs:guide-user:services:vpn:openvpn:server.tap">server.tap</a>/<a href="/docs/guide-user/services/vpn/openvpn/client.tun" class="wikilink2" title="docs:guide-user:services:vpn:openvpn:client.tun" rel="nofollow" data-wiki-id="docs:guide-user:services:vpn:openvpn:client.tun">client.tun</a> and <a href="/docs/guide-user/services/vpn/openvpn/server.tap" class="wikilink2" title="docs:guide-user:services:vpn:openvpn:server.tap" rel="nofollow" data-wiki-id="docs:guide-user:services:vpn:openvpn:server.tap">server.tap</a>/<a href="/docs/guide-user/services/vpn/openvpn/client.tap" class="wikilink2" title="docs:guide-user:services:vpn:openvpn:client.tap" rel="nofollow" data-wiki-id="docs:guide-user:services:vpn:openvpn:client.tap">client.tap</a>), Networking configuration on <a href="https://en.wikipedia.org/wiki/Red Hat Enterprise Linux" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Red Hat Enterprise Linux">RHEL</a>/<a href="https://en.wikipedia.org/wiki/CentOS" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/CentOS">CentOS</a>, <a href="https://en.wikipedia.org/wiki/Shorewall" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Shorewall">Shorewall</a> (cf. <a href="/docs/guide-user/firewall/shorewall/shorewall-on-openwrt" class="wikilink2" title="docs:guide-user:firewall:shorewall:shorewall-on-openwrt" rel="nofollow" data-wiki-id="docs:guide-user:firewall:shorewall:shorewall-on-openwrt">shorewall-on-openwrt</a>).
+</p>
+
+<p>
+In the proposed scenario a big area must be covered with Wi-Fi access and no Access Point alone can provide that kind of reachability. Three different Wi-Fi networks are configured for different access levels. Traffic from these networks will be isolated and controlled by a central Linux box running Shorewall. A wired Ethernet backbone will carry traffic from the Access Points (three in our example). The encapsulation protocol for different network traffic will be OpenVPN with no cypher(encryption can be enabled  with one liner &#039;cypher&#039; statement if required). The author has successfully done a similar setup using 802.1q (<abbr title="Virtual Local Area Network">VLAN</abbr>) encapsulation. L2tp is a another reasonable alternative for traffic encapsulation (cf. <a href="/docs/guide-developer/networking/network.interfaces" class="wikilink1" title="docs:guide-developer:networking:network.interfaces" data-wiki-id="docs:guide-developer:networking:network.interfaces">network.interfaces</a>).
+</p>
+
+<p>
+The following is a simplified scheme of the network structure of the solution described here:
+</p>
+
+<p>
+<a href="/_detail/media/doc/howtos/wide_area_wifi_howto.png?id=docs%3Aguide-user%3Anetwork%3Awifi%3Awide.area.wifi" class="media" title="media:doc:howtos:wide_area_wifi_howto.png"><img src="/_media/media/doc/howtos/wide_area_wifi_howto.png" class="media" loading="lazy" alt="" /></a>
+</p>
+
+<p>
+Configuration files are provided, but nothing prohibits the much more easy configuration with the LuCi web interface.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Introduction&quot;,&quot;hid&quot;:&quot;introduction&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;132-1675&quot;} -->
+<h3 class="sectionedit7" id="acess_point_configuration">Acess Point Configuration</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> Flash OpenWrt Attitude Adjustment on your router (i&#039;ve used the venerable tp-link 1043nd)</div>
+</li>
+<li class="level1"><div class="li"> Connect it to internet and do “opkg install openvpn” from console</div>
+</li>
+<li class="level1"><div class="li"> Setup hostname, date, timezone and password as you wish</div>
+</li>
+<li class="level1"><div class="li"> Configure Networks (/etc/config/network) (Plan your addressing based on the previous diagram) <pre class="code">
+config interface &#039;loopback&#039;                                                     
+        option ifname &#039;lo&#039;                                                      
+        option proto &#039;static&#039;                                                   
+        option ipaddr &#039;127.0.0.1&#039;                                               
+        option netmask &#039;255.0.0.0&#039;                                              
+                                                                                
+config interface &#039;lan&#039;                                                          
+        option ifname &#039;eth0.1&#039;                                                  
+        option type &#039;bridge&#039;                                                    
+        option proto &#039;static&#039;                                                   
+        option netmask &#039;255.255.255.0&#039;                                          
+        option ipaddr &#039;192.168.1.3&#039;                                             
+        option dns &#039;192.168.1.2&#039;                                                
+        option gateway &#039;192.168.1.2&#039;                                            
+                                                                                
+config switch                                                                   
+        option name &#039;rtl8366rb&#039;                                                 
+        option reset &#039;1&#039;                                                        
+        option enable_vlan &#039;1&#039;                                                  
+        option enable_vlan4k &#039;1&#039;                                                
+                                                                                
+config switch_vlan                                                              
+        option device &#039;rtl8366rb&#039;                                               
+        option vlan &#039;1&#039;                                                         
+        option ports &#039;0 1 2 3 4 5t&#039;                                             
+                                                                                
+config interface &#039;workers&#039;                                                      
+        option type &#039;bridge&#039;                                                    
+        option ifname &#039;tapWorkers&#039;                                              
+        option _orig_ifname &#039;tapWorkers wlan0-1&#039;                                
+        option _orig_bridge &#039;true&#039;                                              
+        option proto &#039;static&#039;                                                   
+        option ipaddr &#039;192.168.2.2&#039;                                             
+        option netmask &#039;255.255.255.0&#039; 
+
+config interface &#039;guests&#039;             
+        option type &#039;bridge&#039;
+        option proto &#039;static&#039;
+        option ifname &#039;tapGuests&#039;
+        option ipaddr &#039;192.168.3.2&#039;
+        option netmask &#039;255.255.255.0&#039;                                         
+                   </pre>
+</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> Configure wireless (/etc/config/wireless). &#039;Access&#039; network is not tunneled and goes to raw ethernet, &#039;guests&#039; goes to the unsecure network and &#039;workers&#039; to the secure network. <strong>Put your own SSID, MAC Address and PSK </strong><pre class="code">.
+config wifi-device &#039;radio0&#039;
+        option type &#039;mac80211&#039;
+        option macaddr &#039;54:e6:fc:fb:a7:10&#039;
+        option hwmode &#039;11g&#039;
+        option htmode &#039;HT20&#039;
+        list ht_capab &#039;SHORT-GI-40&#039;
+        list ht_capab &#039;DSSS_CCK-40&#039;
+        option channel &#039;6&#039;
+        option txpower &#039;27&#039;
+        option country &#039;US&#039;
+        option distance &#039;15&#039;
+
+config wifi-iface
+        option device &#039;radio0&#039;
+        option network &#039;lan&#039;
+        option mode &#039;ap&#039;
+        option encryption &#039;psk2&#039;
+        option key &#039;secretisssimo&#039;
+        option ssid &#039;SuperCompany (Access)&#039;
+
+config wifi-iface
+        option device &#039;radio0&#039;
+        option mode &#039;ap&#039;
+        option encryption &#039;psk2&#039;
+        option network &#039;workers&#039;
+        option key &#039;123supersecret&#039;
+        option ssid &#039;SuperCompany (Workers)&#039;
+
+config wifi-iface
+        option device &#039;radio0&#039;
+        option mode &#039;ap&#039;
+        option encryption &#039;psk2&#039;
+        option ssid &#039;SuperCompany (Guests)&#039;
+        option network &#039;guests&#039;
+        option key &#039;welcomeguests&#039;
+
+</pre>
+</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> Disable <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> (/etc/config/dhcp). The linux box is the global <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> server here.<pre class="code">config dnsmasq
+        option domainneeded &#039;1&#039;
+        option boguspriv &#039;1&#039;
+        option filterwin2k &#039;0&#039;
+        option localise_queries &#039;1&#039;
+        option rebind_protection &#039;1&#039;
+        option rebind_localhost &#039;1&#039;
+        option local &#039;/lan/&#039;
+        option domain &#039;lan&#039;
+        option expandhosts &#039;1&#039;
+        option nonegcache &#039;0&#039;
+        option authoritative &#039;1&#039;
+        option readethers &#039;1&#039;
+        option leasefile &#039;/tmp/dhcp.leases&#039;
+        option resolvfile &#039;/tmp/resolv.conf.auto&#039;
+
+config dhcp &#039;lan&#039;
+        option interface &#039;lan&#039;
+        option ignore &#039;1&#039;</pre>
+</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> Disable Firewall (config/firewall). There isn&#039;t any reason to filter traffic in the Access Point <pre class="code">config defaults
+        option input &#039;ACCEPT&#039;
+        option output &#039;ACCEPT&#039;
+        option forward &#039;ACCEPT&#039;
+
+config include
+        option path &#039;/etc/firewall.user&#039;</pre>
+</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> Configure OpenVPN (config/openvpn). Upload your keys (you need to generate them in the Linux box using easy-rsa scripts) <pre class="code">package openvpn
+
+config openvpn confWorkers
+
+        option enabled 1
+        option client 1
+
+        option dev tapWorkers
+        list remote &quot;192.168.1.2 1194&quot;
+        option lport 1194
+        option proto udp
+        option resolv_retry infinite
+
+        option ca /etc/openvpn/ca.crt
+        option cert /etc/openvpn/ap01.supercompany.tld.crt
+        option key /etc/openvpn/ap01.supercompany.tld.key
+        option cipher none
+
+        option verb 3
+        option mute 20
+
+config openvpn confGuests
+
+        option enabled 1
+        option client 1
+
+        option dev tapGuests
+        list remote &quot;192.168.1.2 1195&quot;
+        option lport 1195
+        option proto udp
+        option resolv_retry infinite
+
+        option ca /etc/openvpn/ca.crt
+        option cert /etc/openvpn/ap01.supercompany.tld.crt
+        option key /etc/openvpn/ap01.supercompany.tld.key
+        option cipher none
+
+        option verb 3
+        option mute 20</pre>
+</div>
+</li>
+</ul>
+
+<p>
+Repeat all these steps for ap02 and ap03. <strong> Rembember to change <abbr title="Internet Protocol">IP</abbr> and MAC address and openvpnc keys for each Access Point!. Set each <abbr title="Access Point">AP</abbr> in different channels to prevent interference!!!!</strong>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Acess Point Configuration&quot;,&quot;hid&quot;:&quot;acess_point_configuration&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;1676-8503&quot;} -->
+<h3 class="sectionedit8" id="linux_box_configuration">Linux Box Configuration</h3>
+<div class="level3">
+
+<p>
+The linux box is used as the OpenVPN concentrator for the traffic coming from the Access points. Shorewall is used to the traffic policing. OpenVPN keys are administered with “easy-rsa” scripts. CentOS 6.4 is used in this example.
+</p>
+
+</div>
+
+<h4 id="networking">Networking</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> Configure the tunnel interfaces /etc/sysconfig/network-scripts/ifcfg-(tapGuests|tapWorkers).  <pre class="code">DEVICE=tapWorkers
+TYPE=Ethernet
+ONBOOT=yes
+BOOTPROTO=none
+NM_CONTROLLED=no
+IPADDR=192.168.2.1
+NETMASK=255.255.255.0
+TYPE=Tap</pre>
+</div>
+</li>
+</ul>
+<pre class="code">DEVICE=tapGuests
+TYPE=Ethernet
+ONBOOT=yes
+BOOTPROTO=none
+NM_CONTROLLED=no
+IPADDR=192.168.3.1
+NETMASK=255.255.255.0
+TYPE=Tap</pre>
+<ul>
+<li class="level1"><div class="li"> Configure your wan and lan interface as you wish. Here eth0 is <abbr title="Local Area Network">LAN</abbr> and eth1 is <abbr title="Wide Area Network">WAN</abbr> <pre class="code">. 
+DEVICE=eth0
+HWADDR=E8:40:F2:3D:7F:48
+TYPE=Ethernet
+UUID=07a338a7-6753-4b4c-90fa-3a2866a10493
+ONBOOT=yes
+NM_CONTROLLED=no
+BOOTPROTO=static
+IPADDR0=192.168.1.1
+NETMASK0=255.255.255.0
+IPADDR1=192.168.1.2
+NETMASK1=255.255.255.0</pre>
+</div>
+</li>
+</ul>
+<pre class="code">DEVICE=eth1
+HWADDR=C8:3A:35:DA:B6:80
+TYPE=Ethernet
+UUID=3cbafbed-181a-4025-b31e-9ab7c08eebca
+ONBOOT=yes
+NM_CONTROLLED=no
+BOOTPROTO=static
+IPADDR0=201.n.n.n
+NETMASK0=255.255.255.248
+IPADDR1=201.n.n.n
+NETMASK1=255.255.255.248
+GATEWAY=201.n.n.n</pre>
+
+</div>
+
+<h4 id="openvpn_server_configuration">OpenVPN Server Configuration</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> Configure OpenVPN (/etc/openvpn/(guests|workers).conf) <pre class="code">mode server
+tls-server
+dev tapGuests
+port 1195
+proto udp
+keepalive 10 60
+client-to-client
+
+syslog openvpn(Guests)
+verb 3
+
+ca easy-rsa/keys/ca.crt
+cert easy-rsa/keys/net01.supercompany.tld.crt
+key easy-rsa/keys/net01.supercompany.tld.key
+dh easy-rsa/keys/dh1024.pem
+cipher none</pre>
+</div>
+</li>
+</ul>
+<pre class="code">mode server
+tls-server
+dev tapWorkers
+port 1194
+proto udp
+keepalive 10 60
+client-to-client
+
+syslog openvpn(Workers)
+verb 3
+
+ca easy-rsa/keys/ca.crt
+cert easy-rsa/keys/net01.supercompany.tld.crt
+key easy-rsa/keys/net01.supercompany.tld.key
+dh easy-rsa/keys/dh1024.pem
+cipher none</pre>
+
+</div>
+
+<h4 id="shorewall_configuration">Shorewall Configuration</h4>
+<div class="level4">
+
+<p>
+Shorewall was installed from rpms (provided at their homepage).
+</p>
+<ul>
+<li class="level1"><div class="li"> Define zones (/etc/shorewall/zones) <pre class="code">#
+# Shorewall version 4 - Zones File
+#
+# For information about this file, type &quot;man shorewall-zones&quot;
+#
+# The manpage is also online at
+# http://www.shorewall.net/manpages/shorewall-zones.html
+#
+###############################################################################
+#ZONE   TYPE            OPTIONS         IN                      OUT
+#                                       OPTIONS                 OPTIONS
+fw      firewall
+wan     ipv4
+lan     ipv4
+guest   ipv4</pre>
+</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> Define interfaces shorewall/interfaces <pre class="code">#
+# Shorewall version 4 - Interfaces File
+#
+# For information about entries in this file, type &quot;man shorewall-interfaces&quot;
+#
+# The manpage is also online at
+# http://www.shorewall.net/manpages/shorewall-interfaces.html
+#
+###############################################################################
+?FORMAT 2
+###############################################################################
+#ZONE           INTERFACE               OPTIONS
+wan             eth1
+lan             eth0                    
+lan             tapWorkers
+guest           tapGuests</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> The policy and rules are up to you</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Linux Box Configuration&quot;,&quot;hid&quot;:&quot;linux_box_configuration&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:8,&quot;range&quot;:&quot;8504-&quot;} -->

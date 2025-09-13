@@ -1,0 +1,207 @@
+
+<h1 class="sectionedit1" id="dns_hijacking">DNS hijacking</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__meta:infobox:howto_links">
+<div class="level1">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_info plugin_wrap">
+<p>
+This article relies on the following:
+</p>
+<ul>
+<li class="level1"><div class="li"> Accessing <a href="/docs/guide-quick-start/walkthrough_login" class="wikilink1" title="docs:guide-quick-start:walkthrough_login" data-wiki-id="docs:guide-quick-start:walkthrough_login">web interface</a> / <a href="/docs/guide-quick-start/sshadministration" class="wikilink1" title="docs:guide-quick-start:sshadministration" data-wiki-id="docs:guide-quick-start:sshadministration">command-line interface</a></div>
+</li>
+<li class="level1"><div class="li"> Managing <a href="/docs/guide-user/base-system/uci" class="wikilink1" title="docs:guide-user:base-system:uci" data-wiki-id="docs:guide-user:base-system:uci">configs</a> / <a href="/docs/guide-user/additional-software/managing_packages" class="wikilink1" title="docs:guide-user:additional-software:managing_packages" data-wiki-id="docs:guide-user:additional-software:managing_packages">packages</a> / <a href="/docs/guide-user/base-system/managing_services" class="wikilink1" title="docs:guide-user:base-system:managing_services" data-wiki-id="docs:guide-user:base-system:managing_services">services</a> / <a href="/docs/guide-user/base-system/log.essentials" class="wikilink1" title="docs:guide-user:base-system:log.essentials" data-wiki-id="docs:guide-user:base-system:log.essentials">logs</a></div>
+</li>
+</ul>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;DNS hijacking&quot;,&quot;hid&quot;:&quot;dns_hijacking&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-110&quot;} -->
+<h2 class="sectionedit6" id="introduction">Introduction</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> This how-to describes the method for intercepting <abbr title="Domain Name System">DNS</abbr> traffic on OpenWrt.</div>
+</li>
+<li class="level1"><div class="li"> You can combine it with <a href="/docs/guide-user/services/vpn/start" class="wikilink1" title="docs:guide-user:services:vpn:start" data-wiki-id="docs:guide-user:services:vpn:start">VPN</a> or <a href="/docs/guide-user/services/dns/start#encryption" class="wikilink1" title="docs:guide-user:services:dns:start" data-wiki-id="docs:guide-user:services:dns:start">DNS encryption</a> to protect <abbr title="Domain Name System">DNS</abbr> traffic.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Introduction&quot;,&quot;hid&quot;:&quot;introduction&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;111-377&quot;} -->
+<h2 class="sectionedit7" id="goals">Goals</h2>
+<div class="level2">
+<ul>
+<li class="level1 node"><div class="li"> Override preconfigured <abbr title="Domain Name System">DNS</abbr> provider for <abbr title="Local Area Network">LAN</abbr> clients.</div>
+<ul>
+<li class="level2"><div class="li"> Prevent <abbr title="Domain Name System">DNS</abbr> leaks for <abbr title="Local Area Network">LAN</abbr> clients when using <abbr title="Virtual Private Network">VPN</abbr> or <abbr title="Domain Name System">DNS</abbr> encryption.</div>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Goals&quot;,&quot;hid&quot;:&quot;goals&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;378-527&quot;} -->
+<h2 class="sectionedit8" id="web_interface_instructions">Web interface instructions</h2>
+<div class="level2">
+
+<p>
+Configure firewall to intercept <abbr title="Domain Name System">DNS</abbr> traffic.
+</p>
+<ol>
+<li class="level1"><div class="li"> Navigate to <strong>LuCI → Network → Firewall → Port Forwards</strong>.</div>
+</li>
+<li class="level1 node"><div class="li"> Click <strong>Add</strong> and specify:</div>
+<ul>
+<li class="level2"><div class="li"> Name: <code>Intercept-<abbr title="Domain Name System">DNS</abbr></code></div>
+</li>
+<li class="level2"><div class="li"> Restrict to address family: <abbr title="Internet Protocol version 4">IPv4</abbr> and <abbr title="Internet Protocol version 6">IPv6</abbr></div>
+</li>
+<li class="level2"><div class="li"> Protocol: <abbr title="Transmission Control Protocol">TCP</abbr>, <abbr title="User Datagram Protocol">UDP</abbr></div>
+</li>
+<li class="level2"><div class="li"> Source zone: <code>lan</code></div>
+</li>
+<li class="level2"><div class="li"> External port: <code>53</code></div>
+</li>
+<li class="level2"><div class="li"> Destination zone: unspecified</div>
+</li>
+<li class="level2"><div class="li"> Internal <abbr title="Internet Protocol">IP</abbr> address: any</div>
+</li>
+<li class="level2"><div class="li"> Internal port: any</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Click <strong>Save</strong>, then <strong>Save &amp; Apply</strong>.</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Web interface instructions&quot;,&quot;hid&quot;:&quot;web_interface_instructions&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:8,&quot;range&quot;:&quot;528-1003&quot;} -->
+<h2 class="sectionedit9" id="command-line_instructions">Command-line instructions</h2>
+<div class="level2">
+
+<p>
+Configure firewall to intercept <abbr title="Domain Name System">DNS</abbr> traffic.
+</p>
+<pre class="code bash"><span class="co0"># Intercept DNS traffic</span>
+uci <span class="re5">-q</span> del firewall.dns_int
+uci <span class="kw1">set</span> firewall.dns_int=<span class="st0">&quot;redirect&quot;</span>
+uci <span class="kw1">set</span> firewall.dns_int.name=<span class="st0">&quot;Intercept-DNS&quot;</span>
+uci <span class="kw1">set</span> firewall.dns_int.family=<span class="st0">&quot;any&quot;</span>
+uci <span class="kw1">set</span> firewall.dns_int.proto=<span class="st0">&quot;tcp udp&quot;</span>
+uci <span class="kw1">set</span> firewall.dns_int.src=<span class="st0">&quot;lan&quot;</span>
+uci <span class="kw1">set</span> firewall.dns_int.src_dport=<span class="st0">&quot;53&quot;</span>
+uci <span class="kw1">set</span> firewall.dns_int.dest_port=<span class="st0">&quot;53&quot;</span>
+uci <span class="kw1">set</span> firewall.dns_int.target=<span class="st0">&quot;DNAT&quot;</span>
+uci commit firewall
+service firewall restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Command-line instructions&quot;,&quot;hid&quot;:&quot;command-line_instructions&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:9,&quot;range&quot;:&quot;1004-1520&quot;} -->
+<h2 class="sectionedit10" id="testing">Testing</h2>
+<div class="level2">
+
+<p>
+Configure different <a href="https://en.wikipedia.org/wiki/Public_recursive_name_server" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Public_recursive_name_server">DNS providers</a> on the client and router.
+Verify the identified <abbr title="Domain Name System">DNS</abbr> provider only matches the router.
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="https://www.dnsleaktest.com/" class="urlextern" title="https://www.dnsleaktest.com/" rel="ugc nofollow">dnsleaktest.com</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Testing&quot;,&quot;hid&quot;:&quot;testing&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:10,&quot;range&quot;:&quot;1521-1750&quot;} -->
+<h2 class="sectionedit11" id="troubleshooting">Troubleshooting</h2>
+<div class="level2">
+
+<p>
+Collect and analyze the following information.
+</p>
+<pre class="code bash"><span class="co0"># Log and status</span>
+service firewall restart
+&nbsp;
+<span class="co0"># Runtime configuration</span>
+nft list ruleset
+&nbsp;
+<span class="co0"># Persistent configuration</span>
+uci show firewall</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Troubleshooting&quot;,&quot;hid&quot;:&quot;troubleshooting&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:11,&quot;range&quot;:&quot;1751-1977&quot;} -->
+<h2 class="sectionedit12" id="extras">Extras</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Extras&quot;,&quot;hid&quot;:&quot;extras&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:12,&quot;range&quot;:&quot;1978-1996&quot;} -->
+<h3 class="sectionedit13" id="dns_over_https">DNS over HTTPS</h3>
+<div class="level3">
+
+<p>
+Utilize banIP to <a href="/docs/guide-user/services/banip#blocking_doh" class="wikilink1" title="docs:guide-user:services:banip" data-wiki-id="docs:guide-user:services:banip">filter DoH</a> traffic forcing <abbr title="Local Area Network">LAN</abbr> clients to switch to plain <abbr title="Domain Name System">DNS</abbr>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;DNS over HTTPS&quot;,&quot;hid&quot;:&quot;dns_over_https&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:13,&quot;range&quot;:&quot;1997-2150&quot;} -->
+<h3 class="sectionedit14" id="dns_over_tls">DNS over TLS</h3>
+<div class="level3">
+
+<p>
+Configure firewall to filter <abbr title="DNS over TLS">DoT</abbr> traffic forcing <abbr title="Local Area Network">LAN</abbr> clients to switch to plain <abbr title="Domain Name System">DNS</abbr>.
+</p>
+<pre class="code bash"><span class="co0"># Filter DoT traffic</span>
+uci <span class="re5">-q</span> delete firewall.dot_fwd
+uci <span class="kw1">set</span> firewall.dot_fwd=<span class="st0">&quot;rule&quot;</span>
+uci <span class="kw1">set</span> firewall.dot_fwd.name=<span class="st0">&quot;Deny-DoT&quot;</span>
+uci <span class="kw1">set</span> firewall.dot_fwd.src=<span class="st0">&quot;lan&quot;</span>
+uci <span class="kw1">set</span> firewall.dot_fwd.dest=<span class="st0">&quot;wan&quot;</span>
+uci <span class="kw1">set</span> firewall.dot_fwd.dest_port=<span class="st0">&quot;853&quot;</span>
+uci <span class="kw1">set</span> firewall.dot_fwd.proto=<span class="st0">&quot;tcp udp&quot;</span>
+uci <span class="kw1">set</span> firewall.dot_fwd.target=<span class="st0">&quot;REJECT&quot;</span>
+uci commit firewall
+service firewall restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;DNS over TLS&quot;,&quot;hid&quot;:&quot;dns_over_tls&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:14,&quot;range&quot;:&quot;2151-2644&quot;} -->
+<h3 class="sectionedit15" id="dns_forwarding">DNS forwarding</h3>
+<div class="level3">
+
+<p>
+Set up <a href="/docs/guide-user/base-system/dhcp_configuration#dns_forwarding" class="wikilink1" title="docs:guide-user:base-system:dhcp_configuration" data-wiki-id="docs:guide-user:base-system:dhcp_configuration">DNS forwarding</a> to your local <abbr title="Domain Name System">DNS</abbr> server with Dnsmasq.
+Assuming the local <abbr title="Domain Name System">DNS</abbr> server is in the same subnet.
+Configure firewall to avoid looping.
+</p>
+<pre class="code bash"><span class="co0"># Configure firewall</span>
+uci <span class="kw1">set</span> firewall.dns_int.src_mac=<span class="st0">&quot;!11:22:33:44:55:66&quot;</span>
+uci commit firewall
+service firewall restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;DNS forwarding&quot;,&quot;hid&quot;:&quot;dns_forwarding&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:15,&quot;range&quot;:&quot;2645-3028&quot;} -->
+<h3 class="sectionedit16" id="dns_redirection">DNS redirection</h3>
+<div class="level3">
+
+<p>
+Avoid using Dnsmasq.
+Configure firewall to redirect <abbr title="Domain Name System">DNS</abbr> traffic to your local <abbr title="Domain Name System">DNS</abbr> server.
+Move the local <abbr title="Domain Name System">DNS</abbr> server to a separate subnet to avoid masquerading.
+</p>
+<pre class="code bash"><span class="co0"># Configure firewall</span>
+uci <span class="kw1">set</span> firewall.dns_int.name=<span class="st0">&quot;Redirect-DNS&quot;</span>
+uci <span class="kw1">set</span> firewall.dns_int.family=<span class="st_h">'ipv4'</span>
+uci <span class="kw1">set</span> firewall.dns_int.dest_ip=<span class="st0">&quot;192.168.2.2&quot;</span>
+uci <span class="kw1">set</span> firewall.dns_int.src_ip=<span class="st_h">'!192.168.2.2'</span>
+uci commit firewall
+service firewall restart
+&nbsp;
+<span class="co0"># Configure network</span>
+uci add_list network.lan.ipaddr=<span class="st0">&quot;192.168.2.1/24&quot;</span>
+uci commit network
+service network restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;DNS redirection&quot;,&quot;hid&quot;:&quot;dns_redirection&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:16,&quot;range&quot;:&quot;3029-&quot;} -->

@@ -1,0 +1,243 @@
+
+<h1 class="sectionedit1" id="init_user_space_boot_reference_for_chaos_calmerprocd">Init (User space boot) reference for Chaos Calmer: procd</h1>
+<div class="level1">
+
+<p>
+Analysis of how the user space part of the boot sequence is implemented in OpenWrt, Chaos Calmer release.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Init (User space boot) reference for Chaos Calmer: procd&quot;,&quot;hid&quot;:&quot;init_user_space_boot_reference_for_chaos_calmerprocd&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-180&quot;} -->
+<h2 class="sectionedit2" id="procd_replaces_init">Procd replaces init</h2>
+<div class="level2">
+
+<p>
+On a fully booted Chaos Calmer system, pid 1 is <code>/sbin/procd</code>:
+</p>
+<pre class="code">root@openwrt:~# ps
+  PID USER       VSZ STAT COMMAND
+    1 root      1440 S    /sbin/procd
+    ...</pre>
+
+<p>
+At boot, Linux kernel starts <code>/sbin/init</code> as the first user process. In Chaos Calmer, <code>/sbin/init</code> does the preinit/failsafe steps, those that depend only on the read-only partition in flashed image, then execs (that is: is replaced by) <code>/sbin/procd</code> to continue boot as specified by the configuration in writable flash partition. Procd started as pid 1 assumes several roles: service manager, hotplug events handler; this as of February 2016, when this research was done. <a href="/docs/techref/procd" class="wikilink1" title="docs:techref:procd" data-wiki-id="docs:techref:procd">Procd techref wiki page</a> at this point in time is a design document and work in progress, if you are reading here and know/understand procd&#039;s semantics and <abbr title="Application Programming Interface">API</abbr>, please update that page.
+</p>
+
+<p>
+Procd sources:<br/>
+
+<a href="http://git.openwrt.org/?p=project/procd.git;a=tree;hb=0da5bf2ff222d1a499172a6e09507388676b5a08" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=tree;hb=0da5bf2ff222d1a499172a6e09507388676b5a08" rel="ugc nofollow">http://git.openwrt.org/?p=project/procd.git;a=tree;hb=0da5bf2ff222d1a499172a6e09507388676b5a08</a><br/>
+
+at the commit used to build the procd package in Chaos Calmer release:<br/>
+
+<code><a href="http://git.openwrt.org/?p=15.05/openwrt.git;a=blob;f=package/system/procd/Makefile;h=2c7ea3bdccb1b1432cad76e3ba578758c58e5b48;hb=483dac821788b457d349233e770329186a0aa860#l18" class="urlextern" title="http://git.openwrt.org/?p=15.05/openwrt.git;a=blob;f=package/system/procd/Makefile;h=2c7ea3bdccb1b1432cad76e3ba578758c58e5b48;hb=483dac821788b457d349233e770329186a0aa860#l18" rel="ugc nofollow">PKG_SOURCE_VERSION:=0da5bf2ff222d1a499172a6e09507388676b5a08</a></code>
+</p>
+
+<p>
+<code>/sbin/init</code> source:<br/>
+
+<a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=initd/init.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l71" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=initd/init.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l71" rel="ugc nofollow">http://git.openwrt.org/?p=project/procd.git;a=blob;f=initd/init.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l71</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Procd replaces init&quot;,&quot;hid&quot;:&quot;procd_replaces_init&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;181-1751&quot;} -->
+<h2 class="sectionedit3" id="life_and_death_of_a_chaos_calmer_system">Life and death of a Chaos Calmer system</h2>
+<div class="level2">
+
+<p>
+This is the source code path followed in logical order of execution by the processor in user space while booting Chaos Calmer.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> All links to source repositories should show the code at the commit used in Chaos Calmer release.<br/>
+
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Pathnames evaluated at preinit time when / is read only have “(/rom)” prepended, to signify the path where the file is found on a fully booted system.
+</p>
+<ol>
+<li class="level1 node"><div class="li"> <code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=initd/init.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l71" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=initd/init.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l71" rel="ugc nofollow">main(int argc, char **argv)</a></code> in /sbin/init, line 71<br/>
+User space life begins here. OpenWrt calls this phase “preinit”.</div>
+<ol>
+<li class="level2"><div class="li"> <code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=initd/init.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l81" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=initd/init.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l81" rel="ugc nofollow">early()</a></code> <a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=initd/early.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l92" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=initd/early.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l92" rel="ugc nofollow">(definition)</a><br/>
+Mount filesystems: <code>/proc</code>, <code>/sys</code>, <code>/sys/fs/cgroup</code>, <code>/dev</code> (a tmpfs), <code>/dev/pts</code><br/>
+Populate <code>/dev</code> with entries from <code>/sys/dev/{char;block}</code><br/>
+Open <code>/dev/console</code> as STDIN/STDOUT/STDERR<br/>
+Make directories <code>/tmp</code> (optionally on zram), <code>/tmp/run</code>, <code>tmp/lock</code>, <code>/tmp/state</code><br/>
+<br/>
+This accounts for most of the filesystem layout, observed that <code>/etc/fstab</code> is a <a href="http://git.openwrt.org/?p=15.05/openwrt.git;a=blob;f=package/base-files/Makefile;hb=483dac821788b457d349233e770329186a0aa860#l161" class="urlextern" title="http://git.openwrt.org/?p=15.05/openwrt.git;a=blob;f=package/base-files/Makefile;hb=483dac821788b457d349233e770329186a0aa860#l161" rel="ugc nofollow">broken symlink, line 161</a>, with the following additions:<br/>
+- <code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=plug/coldplug.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l40" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=plug/coldplug.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l40" rel="ugc nofollow">procd_coldplug()</a></code> <a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=state.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l105" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=state.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l105" rel="ugc nofollow">invoked at hotplug setup time</a> will recreate <code>/dev</code> from scratch.<br/>
+- <code><a href="http://git.openwrt.org/?p=15.05/openwrt.git;a=blob;f=package/base-files/files/etc/init.d/boot;hb=483dac821788b457d349233e770329186a0aa860#l20" class="urlextern" title="http://git.openwrt.org/?p=15.05/openwrt.git;a=blob;f=package/base-files/files/etc/init.d/boot;hb=483dac821788b457d349233e770329186a0aa860#l20" rel="ugc nofollow">/etc/rc.d/S10boot</a></code> will invoke <code>mount_root</code> to setup a writable filesystem based on extroot or jffs2 overlay or a tmpfs backed <a href="/docs/guide-user/installation/snapshot" class="wikilink1" title="docs:guide-user:installation:snapshot" data-wiki-id="docs:guide-user:installation:snapshot">snapshot capable</a> overlay, add some directories and files, and mount debugfs.</div>
+</li>
+<li class="level2"><div class="li"> <code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=initd/init.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l82" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=initd/init.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l82" rel="ugc nofollow">cmdline()</a></code> <a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=initd/init.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l56" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=initd/init.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l56" rel="ugc nofollow">(definition)</a><br/>
+Check kernel cmdline for boot parameter “<code>init_debug={1,2,3,4}</code>”.</div>
+</li>
+<li class="level2"><div class="li"> Fork <code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=initd/init.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l87" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=initd/init.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l87" rel="ugc nofollow">/sbin/kmodloader (/rom)/etc/modules-boot.d/</a></code> <a href="http://git.openwrt.org/?p=project/ubox.git;a=blob;f=kmodloader.c;hb=907d046c8929fb74e5a3502a9498198695e62ad8#l830" class="urlextern" title="http://git.openwrt.org/?p=project/ubox.git;a=blob;f=kmodloader.c;hb=907d046c8929fb74e5a3502a9498198695e62ad8#l830" rel="ugc nofollow">kmodloader source</a><br/>
+Wait up to 120 seconds for <code>/sbin/kmodloader</code> to probe the kernel modules declared in <code>(/rom)/etc/modules-boot.d/</code><br/>
+At this point in the boot sequence, &#039;/etc/modules-boot.d&#039; is the one from the rom image (<code>/rom/etc/...</code> when boot is done). The overlay filesystem is mounted later.<br/>
+<br/>
+kmodloader is a multicall binary, invoked as<br/>
+<code>   kmodloader</code><br/>
+does <br/>
+<code>  <a href="http://git.openwrt.org/?p=project/ubox.git;a=blob;f=kmodloader.c;hb=907d046c8929fb74e5a3502a9498198695e62ad8#l732" class="urlextern" title="http://git.openwrt.org/?p=project/ubox.git;a=blob;f=kmodloader.c;hb=907d046c8929fb74e5a3502a9498198695e62ad8#l732" rel="ugc nofollow">main_loader()</a></code><br/>
+which reads files in <code>(/rom)/etc/modules-boot.d/</code>, looking for lines starting with the name of a module to load, optionally followed by a space and module parameters. There appear to be <a href="http://git.openwrt.org/?p=project/ubox.git;a=blob;f=kmodloader.c;hb=907d046c8929fb74e5a3502a9498198695e62ad8#l788" class="urlextern" title="http://git.openwrt.org/?p=project/ubox.git;a=blob;f=kmodloader.c;hb=907d046c8929fb74e5a3502a9498198695e62ad8#l788" rel="ugc nofollow">special treatment for files with names beginning with a number</a>: the modules they list are immediately loaded, then modules from files with name beginning with an ascii char greater than “9” are loaded all together in a final load_modprobe call.</div>
+</li>
+<li class="level2"><div class="li"> <code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=initd/init.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l116" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=initd/init.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l116" rel="ugc nofollow">uloop_init()</a></code> line 116 <a href="http://git.openwrt.org/?p=project/libubox.git;a=blob;f=uloop.c;hb=d1c66ef1131d14f0ed197b368d03f71b964e45f8#l211" class="urlextern" title="http://git.openwrt.org/?p=project/libubox.git;a=blob;f=uloop.c;hb=d1c66ef1131d14f0ed197b368d03f71b964e45f8#l211" rel="ugc nofollow">(definition)</a><br/>
+<a href="/docs/techref/libubox#libuboxulooph" class="wikilink1" title="docs:techref:libubox" data-wiki-id="docs:techref:libubox">Documentation of libubox/uloop.h</a> says:<br/>
+<em>Uloop is a loop runner for i/o. Gets in charge of polling the different file descriptors you have added to it, gets in charge of running timers, and helps you manage child processes. Supports epoll and kqueue as event running backends.</em><br/>
+<a href="http://git.openwrt.org/?p=project/libubox.git;a=blob;f=uloop.c;hb=d1c66ef1131d14f0ed197b368d03f71b964e45f8#l666" class="urlextern" title="http://git.openwrt.org/?p=project/libubox.git;a=blob;f=uloop.c;hb=d1c66ef1131d14f0ed197b368d03f71b964e45f8#l666" rel="ugc nofollow">uloop.c source in libubox</a> says uloop&#039;s process management duty is assigned by a call to<br/>
+<code>   <a href="http://git.openwrt.org/?p=project/libubox.git;a=blob;f=uloop.c;hb=d1c66ef1131d14f0ed197b368d03f71b964e45f8#l492" class="urlextern" title="http://git.openwrt.org/?p=project/libubox.git;a=blob;f=uloop.c;hb=d1c66ef1131d14f0ed197b368d03f71b964e45f8#l492" rel="ugc nofollow">int uloop_process_add(struct uloop_process *p)</a></code><br/>
+<code>p-&gt;pid</code> is the process id of a child process to monitor and <code>p-&gt;cb</code> a pointer to a callback function.<br/>
+When the managed child process will exit, uloop_run, running in parent context to receive SIGCHLD signal, will trigger execution of the callback.</div>
+</li>
+<li class="level2 node"><div class="li"> <code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=initd/init.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l117" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=initd/init.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l117" rel="ugc nofollow">preinit()</a></code> line 117 <a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=initd/preinit.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l86" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=initd/preinit.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l86" rel="ugc nofollow">(definition)</a></div>
+<ol>
+<li class="level3"><div class="li"> <a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=initd/preinit.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l94" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=initd/preinit.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l94" rel="ugc nofollow">Forks a &quot;plugd instance&quot;</a>, line 94<br/>
+<code>   /sbin/procd -h <a href="http://git.openwrt.org/?p=15.05/openwrt.git;a=blob;f=package/system/procd/files/hotplug-preinit.json;hb=483dac821788b457d349233e770329186a0aa860" class="urlextern" title="http://git.openwrt.org/?p=15.05/openwrt.git;a=blob;f=package/system/procd/files/hotplug-preinit.json;hb=483dac821788b457d349233e770329186a0aa860" rel="ugc nofollow">(/rom)/etc/hotplug-preinit.json</a></code><br/>
+to listen to kernel uevents for any required firmware or for notification of button pressed, handled by <code>    <a href="http://git.openwrt.org/?p=15.05/openwrt.git;a=blob;f=package/base-files/files/etc/rc.button/failsafe;hb=483dac821788b457d349233e770329186a0aa860" class="urlextern" title="http://git.openwrt.org/?p=15.05/openwrt.git;a=blob;f=package/base-files/files/etc/rc.button/failsafe;hb=483dac821788b457d349233e770329186a0aa860" rel="ugc nofollow">(/rom)/etc/rc.button/failsafe</a></code><br/>
+as the request to enter failsafe mode. A flag file <code>/tmp/failsafe_button</code> containing the value of <code>${BUTTON}</code> is created if failsafe has been requested.</div>
+</li>
+<li class="level3 node"><div class="li"> Forks, <a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=initd/preinit.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l106" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=initd/preinit.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l106" rel="ugc nofollow">at lines 106-111</a>,<br/>
+<code>    PREINIT=1 /bin/sh <a href="http://git.openwrt.org/?p=15.05/openwrt.git;a=blob;f=package/base-files/files/etc/preinit;hb=483dac821788b457d349233e770329186a0aa860" class="urlextern" title="http://git.openwrt.org/?p=15.05/openwrt.git;a=blob;f=package/base-files/files/etc/preinit;hb=483dac821788b457d349233e770329186a0aa860" rel="ugc nofollow">(/rom)/etc/preinit</a></code><br/>
+a shell to execute <code>(/rom)/etc/preinit</code> with <code>PREINIT=1</code> in its environment. Submits the child process to uloop management with the callback<br/>
+<code>      <a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=initd/preinit.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l51" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=initd/preinit.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l51" rel="ugc nofollow">spawn_procd()</a></code><br/>
+that will exec procd to replace init as pid 1 at completion of <code>(/rom)/etc/preinit</code>.</div>
+<ol>
+<li class="level4"><div class="li"> <code><a href="http://git.openwrt.org/?p=15.05/openwrt.git;a=blob;f=package/base-files/files/etc/preinit;h=9cc8a9a8f63dd824f9c75b711d779aa8b2452259;hb=483dac821788b457d349233e770329186a0aa860" class="urlextern" title="http://git.openwrt.org/?p=15.05/openwrt.git;a=blob;f=package/base-files/files/etc/preinit;h=9cc8a9a8f63dd824f9c75b711d779aa8b2452259;hb=483dac821788b457d349233e770329186a0aa860" rel="ugc nofollow">/etc/preinit</a></code><br/>
+A shell script, fully documented here <a href="/docs/techref/preinit_mount#preinit_operation" class="wikilink1" title="docs:techref:preinit_mount" data-wiki-id="docs:techref:preinit_mount">preinit_operation</a>. In short, parse files in <code>(/rom)/lib/preinit</code> to build 5 lists of hooks and an environment, then run the hooks from some of the lists depending on the state of the environment.<br/>
+One of the steps in a successful boot sequence is to mount the overlay file system with a hook setup by<br/>
+<code>    <a href="http://git.openwrt.org/?p=15.05/openwrt.git;a=blob;f=package/base-files/files/lib/preinit/80_mount_root;hb=483dac821788b457d349233e770329186a0aa860" class="urlextern" title="http://git.openwrt.org/?p=15.05/openwrt.git;a=blob;f=package/base-files/files/lib/preinit/80_mount_root;hb=483dac821788b457d349233e770329186a0aa860" rel="ugc nofollow">(/rom)/lib/preinit/80_mount_root</a></code><br/>
+to call<br/>
+<code>      <a href="http://git.openwrt.org/?p=project/fstools.git;a=blob;f=mount_root.c;hb=09027fc86babc3986027a0e677aca1b6999a9e14" class="urlextern" title="http://git.openwrt.org/?p=project/fstools.git;a=blob;f=mount_root.c;hb=09027fc86babc3986027a0e677aca1b6999a9e14" rel="ugc nofollow">mount_root</a></code><br/>
+which if extroot is not configured, mounts the writable data partition “rootfs_data” as overlay over the / partition “rootfs”. If the data partition is being prepared, overlays a tmpfs in ram.<br/>
+Filesystem snapshots are supported; this is a feature listed in Barrier Breaker announce, shell wrapper is <code><a href="http://git.openwrt.org/?p=15.05/openwrt.git;a=blob;f=package/system/fstools/files/snapshot;hb=483dac821788b457d349233e770329186a0aa860" class="urlextern" title="http://git.openwrt.org/?p=15.05/openwrt.git;a=blob;f=package/system/fstools/files/snapshot;hb=483dac821788b457d349233e770329186a0aa860" rel="ugc nofollow">/sbin/snapshot</a></code> script. The “<code>SNAPSHOT=magic</code>” environment variable is set in <code><a href="http://git.openwrt.org/?p=project/fstools.git;a=blob;f=libfstools/snapshot.c;hb=09027fc86babc3986027a0e677aca1b6999a9e14#l330" class="urlextern" title="http://git.openwrt.org/?p=project/fstools.git;a=blob;f=libfstools/snapshot.c;hb=09027fc86babc3986027a0e677aca1b6999a9e14#l330" rel="ugc nofollow">mount_snapshot()</a></code> line 330.</div>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li class="level2"><div class="li"> <code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=initd/init.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l118" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=initd/init.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l118" rel="ugc nofollow">uloop_run()</a></code>, line 118<br/>
+At exit of the <code>(/rom)/etc/preinit</code> shell script, invokes the callback spawn_procd()</div>
+</li>
+<li class="level2"><div class="li"> <code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=initd/preinit.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l51" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=initd/preinit.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l51" rel="ugc nofollow">spawn_procd()</a></code><br/>
+As a callback by uloop_run in pid 1, this is pid 1; execs <code>/sbin/procd</code><br/>
+<br/>
+</div>
+</li>
+</ol>
+</li>
+<li class="level1 node"><div class="li"> <code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=procd.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l41" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=procd.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l41" rel="ugc nofollow">/sbin/procd</a></code><br/>
+Execed by pid 1 <code>/sbin/init</code>, <code>/sbin/procd</code> replaces it as pid 1.</div>
+<ol>
+<li class="level2"><div class="li"> <code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=procd.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l67" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=procd.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l67" rel="ugc nofollow">setsid()</a></code>, line 67<br/>
+<em>The process group ID and session ID of the calling process are set to the PID of the calling process: <a href="http://man7.org/linux/man-pages/man2/setsid.2.html" class="urlextern" title="http://man7.org/linux/man-pages/man2/setsid.2.html" rel="ugc nofollow">man 2 setsid</a></em> See also <a href="http://man7.org/linux/man-pages/man7/credentials.7.html" class="urlextern" title="http://man7.org/linux/man-pages/man7/credentials.7.html" rel="ugc nofollow">man 7 credentials</a>.</div>
+</li>
+<li class="level2"><div class="li"> <code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=procd.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l68" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=procd.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l68" rel="ugc nofollow">uloop_init()</a></code>, line 68<br/>
+The uloop instance set up before by <code>/sbin/init</code> is gone. Creates a new one.</div>
+</li>
+<li class="level2"><div class="li"> <code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=procd.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l69" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=procd.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l69" rel="ugc nofollow">procd_signal()</a></code>, line 69 <a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=signal.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l82" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=signal.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l82" rel="ugc nofollow">(definition)</a>, line 82.<br/>
+Setup signal handlers. Reboot on SIGTERM or SIGINT, poweroff on SIGUSR2 or SIGUSR2.</div>
+</li>
+<li class="level2"><div class="li"> <code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=procd.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l70" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=procd.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l70" rel="ugc nofollow">trigger_init()</a></code>, line 70 <a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=service/trigger.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l319" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=service/trigger.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l319" rel="ugc nofollow">(definition)</a><br/>
+Procd triggers on config file/network interface changes, see <a href="/docs/guide-developer/procd-init-scripts#procd_triggers_on_config_filenetwork_interface_changes" class="wikilink1" title="docs:guide-developer:procd-init-scripts" data-wiki-id="docs:guide-developer:procd-init-scripts">procd_triggers_on_config_filenetwork_interface_changes</a><br/>
+Initialise a run queue. An <a href="http://git.openwrt.org/?p=project/libubox.git;a=blob;f=examples/runqueue-example.c;hb=d1c66ef1131d14f0ed197b368d03f71b964e45f8" class="urlextern" title="http://git.openwrt.org/?p=project/libubox.git;a=blob;f=examples/runqueue-example.c;hb=d1c66ef1131d14f0ed197b368d03f71b964e45f8" rel="ugc nofollow">example</a> is the sole documentation. A queued task has an uloop callback invoked when done, here sets the empty queue callback to do nothing.</div>
+</li>
+<li class="level2"><div class="li"> <code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=procd.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l74" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=procd.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l74" rel="ugc nofollow">procd_state_next()</a></code>, line 74 <a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=state.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l179" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=state.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l179" rel="ugc nofollow">(definition)</a><br/>
+Transitions from NONE to EARLY the state of a state machine implemented in <code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=state.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l96" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=state.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l96" rel="ugc nofollow">state_enter(void)</a></code> used to sequence the remaining boot steps.</div>
+</li>
+<li class="level2 node"><div class="li"> <code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=state.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l101" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=state.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l101" rel="ugc nofollow">STATE_EARLY</a></code> in <code>state_enter()</code></div>
+<ol>
+<li class="level3"><div class="li"> Emits “- early -” to syslog,</div>
+</li>
+<li class="level3"><div class="li"> Initialise the watchdog,</div>
+</li>
+<li class="level3"><div class="li"> <code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=state.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l104" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=state.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l104" rel="ugc nofollow">hotplug</a>(“<a href="http://git.openwrt.org/?p=15.05/openwrt.git;a=blob;f=package/system/procd/files/hotplug.json;hb=483dac821788b457d349233e770329186a0aa860" class="urlextern" title="http://git.openwrt.org/?p=15.05/openwrt.git;a=blob;f=package/system/procd/files/hotplug.json;hb=483dac821788b457d349233e770329186a0aa860" rel="ugc nofollow">/etc/hotplug.json</a>”)</code> <a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=plug/hotplug.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l568" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=plug/hotplug.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l568" rel="ugc nofollow">(definition)</a><br/>
+User space device hotplugging handler setup.<br/>
+Static variables in file scope are important. The filename of the script to execute is kept in hotplug.c global scope: <code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=plug/hotplug.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l64" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=plug/hotplug.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l64" rel="ugc nofollow">static char * rule_file;</a></code>.<br/>
+Opens a netlink socket (<a href="http://man7.org/linux/man-pages/man7/netlink.7.html" class="urlextern" title="http://man7.org/linux/man-pages/man7/netlink.7.html" rel="ugc nofollow">man 7 netlink</a>) and handles the file descriptor to uloop, to listen to uevents: kernel messages informing <em class="u">u</em>serspace of kernel <em class="u">events</em>. See <a href="https://www.kernel.org/doc/pending/hotplug.txt" class="urlextern" title="https://www.kernel.org/doc/pending/hotplug.txt" rel="ugc nofollow">https://www.kernel.org/doc/pending/hotplug.txt</a><br/>
+The uloop instance in pid 1 <a href="http://git.openwrt.org/?p=project/libubox.git;a=blob;f=uloop.c;hb=d1c66ef1131d14f0ed197b368d03f71b964e45f8#l259" class="urlextern" title="http://git.openwrt.org/?p=project/libubox.git;a=blob;f=uloop.c;hb=d1c66ef1131d14f0ed197b368d03f71b964e45f8#l259" rel="ugc nofollow">uses epoll_wait</a> to monitor file descriptors, the kernel netlink socket FD is one of them, and is instructed to invoke the callback <code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=plug/hotplug.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l555" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=plug/hotplug.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l555" rel="ugc nofollow">hotplug_handler()</a></code> on uevent arrival.<br/>
+This <code>hotplug_handler</code> callback stays active after coldplug, and will handle all uevents the kernel will emit.</div>
+</li>
+<li class="level3 node"><div class="li"> <code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=state.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l105" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=state.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l105" rel="ugc nofollow">procd_coldplug()</a></code> <a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=plug/coldplug.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l40" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=plug/coldplug.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l40" rel="ugc nofollow">(definition)</a><br/>
+Umounts <code>/dev/pts</code> and <code>/dev</code>, mounts a tmpfs on <code>/dev</code>,  creates directories <code>/dev/shm</code> and <code>/dev/pts</code>, forks <code>udevtrigger</code> to reconstruct kernel uevents went unheard before netlink socket opening (“coldplug”).</div>
+<ol>
+<li class="level4"><div class="li"> <code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=plug/udevtrigger.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=plug/udevtrigger.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08" rel="ugc nofollow">udevtrigger</a></code><br/>
+Scans <code>/sys/bus/*/devices</code>, <code>/sys/class</code>; and <code>/sys/block</code> if it isn&#039;t a subdir of <code>/sys/class</code>, writing “add” to the uevent file of all devices. Then the kernel synthesizes an “add” uevent message on netlink. See Injecting events into hotplug via “uevent” in <a href="https://www.kernel.org/doc/pending/hotplug.txt" class="urlextern" title="https://www.kernel.org/doc/pending/hotplug.txt" rel="ugc nofollow">https://www.kernel.org/doc/pending/hotplug.txt</a><br/>
+<br/>
+A callback chain, <code>udevtrigger_complete()</code> followed by <code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=plug/coldplug.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l27" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=plug/coldplug.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l27" rel="ugc nofollow">coldplug_complete()</a></code> is attached to completion of the child udevtrigger process, such that the still to be reached <code>uloop_run()</code> in procd <code>main()</code> function, after all uevents will have been processed, will advance procd state to STATE_UBUS, <a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=plug/coldplug.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l31" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=plug/coldplug.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l31" rel="ugc nofollow">line 31</a>.</div>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li class="level2 node"><div class="li"> <code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=procd.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l75" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=procd.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l75" rel="ugc nofollow">uloop_run</a></code>, line 75<br/>
+Solicited by udevtrigger in another process, the kernel emits uevents and uloop invokes the user space hotplug handler: the callback</div>
+<ol>
+<li class="level3 node"><div class="li"> <code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=plug/hotplug.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l529" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=plug/hotplug.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l529" rel="ugc nofollow">hotplug_handler</a></code><br/>
+to run <code>/etc/hotplug.json</code>. </div>
+<ol>
+<li class="level4 node"><div class="li"> The <code><a href="http://git.openwrt.org/?p=15.05/openwrt.git;a=blob;f=package/system/procd/files/hotplug.json;hb=87e9837a818a71f39c445ee33569279bd78451de" class="urlextern" title="http://git.openwrt.org/?p=15.05/openwrt.git;a=blob;f=package/system/procd/files/hotplug.json;hb=87e9837a818a71f39c445ee33569279bd78451de" rel="ugc nofollow">/etc/hotplug.json</a></code> script<br/>
+- creates and removes devices files, assigns them permissions,<br/>
+- loads firmware,<br/>
+- handles buttons by calling scripts in <code>/etc/rc.button/%BUTTON%</code> if the uevent has the “<code>BUTTON</code>” value,<br/>
+- and invokes <code>/sbin/hotplug-call “%SUBSYSTEM%”</code> to handle all other subsystem related actions.<br/>
+Subystems are: “platform” “net”, “input”, “usb”, “usbmisc”, “ieee1394”, “block”, “atm”, “zaptel”, “tty”, “button” (without BUTTON value, possible?), “usb-serial”. “usb-serial” is aliased to “tty” in hotplug.json.<br/>
+Documentation of json script syntax? Offline. <a href="http://git.openwrt.org/?p=project/libubox.git;a=blob;f=json_script.c;hb=d1c66ef1131d14f0ed197b368d03f71b964e45f8" class="urlextern" title="http://git.openwrt.org/?p=project/libubox.git;a=blob;f=json_script.c;hb=d1c66ef1131d14f0ed197b368d03f71b964e45f8" rel="ugc nofollow">Use the source</a>. It is the json representation of the abstract syntax tree of a script in a fairly intuitive scripting language.<br/>
+There are 2 levels at which decisions are taken: hotplug.json acts as fast path executor or lightweight dispatcher, the subsystem scripts in /etc/hotplug.d/%SUBSYSTEM%/ do the heavy lifting.<br/>
+Uevent messages from the kernel contain key-value pairs passed as environment variables to the scripts. The kernel function<br/>
+<code>    <a href="http://lxr.free-electrons.com/source/lib/kobject_uevent.c?v=3.18#L387" class="urlextern" title="http://lxr.free-electrons.com/source/lib/kobject_uevent.c?v=3.18#L387" rel="ugc nofollow">int add_uevent_var(struct kobj_uevent_env *env, const char *format, ...)</a></code><br/>
+creates them. This link <a href="http://lxr.free-electrons.com/ident?v=3.18;i=add_uevent_var" class="urlextern" title="http://lxr.free-electrons.com/ident?v=3.18;i=add_uevent_var" rel="ugc nofollow">http://lxr.free-electrons.com/ident?v=3.18;i=add_uevent_var</a> provides a list of all places in the Linux kernel where it is used. It is an authoritative reference of the upstream defined uevent variables. Button events are generated by the out of tree kernel modules <code><a href="http://git.openwrt.org/?p=15.05/openwrt.git;a=blob;f=package/kernel/button-hotplug/src/button-hotplug.c;hb=483dac821788b457d349233e770329186a0aa860#l124" class="urlextern" title="http://git.openwrt.org/?p=15.05/openwrt.git;a=blob;f=package/kernel/button-hotplug/src/button-hotplug.c;hb=483dac821788b457d349233e770329186a0aa860#l124" rel="ugc nofollow">button-hotplug</a></code> <code><a href="http://git.openwrt.org/?p=15.05/openwrt.git;a=blob;f=package/kernel/gpio-button-hotplug/src/gpio-button-hotplug.c;hb=483dac821788b457d349233e770329186a0aa860#l133" class="urlextern" title="http://git.openwrt.org/?p=15.05/openwrt.git;a=blob;f=package/kernel/gpio-button-hotplug/src/gpio-button-hotplug.c;hb=483dac821788b457d349233e770329186a0aa860#l133" rel="ugc nofollow">gpio-button-hotplug</a></code> specific to OpenWrt. </div>
+<ol>
+<li class="level5"><div class="li"> <code><a href="http://git.openwrt.org/?p=15.05/openwrt.git;a=blob;f=package/base-files/files/sbin/hotplug-call;hb=483dac821788b457d349233e770329186a0aa860" class="urlextern" title="http://git.openwrt.org/?p=15.05/openwrt.git;a=blob;f=package/base-files/files/sbin/hotplug-call;hb=483dac821788b457d349233e770329186a0aa860" rel="ugc nofollow">/sbin/hotplug-call</a> “%SUBSYSTEM%”</code><br/>
+is a shell script that scans <code>/etc/hotlug.d/%SUBSYSTEM%/*</code> and sources all scripts assigned to a subsystem. “button” subsystem is handled here if the uevent lacks the “BUTTON” value, unlikely or impossible?.</div>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li class="level3"><div class="li"> <code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=state.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l108" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=state.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l108" rel="ugc nofollow">STATE_UBUS</a></code><br/>
+At end of coldplug uevents processing, the callback <a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=plug/coldplug.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l34" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=plug/coldplug.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l34" rel="ugc nofollow">coldplug_complete calls</a> <code>procd_state_next</code> which results in advancing procd to STATE_UBUS.<br/>
+“- ubus -” is logged to console, the services infrastructure is initialised, then procd schedules connect to after 1“ (<a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=ubus.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l64" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=ubus.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l64" rel="ugc nofollow">line 67</a>) and starts <code>/sbin/ubus</code> as the system <a href="/docs/techref/ubus" class="wikilink1" title="docs:techref:ubus" data-wiki-id="docs:techref:ubus">ubus</a> service.<br/>
+Transition to next state is triggered by the callback <code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=ubus.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l43" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=ubus.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l43" rel="ugc nofollow">ubus_connect_cb</a></code> that at the end, line 118, calls <code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=state.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l186" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=state.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l186" rel="ugc nofollow">procd_state_ubus_connect()</a></code>, line 186, that calls <code>procd_state_next</code> to transition to</div>
+</li>
+<li class="level3 node"><div class="li"> <code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=state.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l118" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=state.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l118" rel="ugc nofollow">STATE_INIT</a></code><br/>
+”- init -“ is logged, <code><a href="http://git.openwrt.org/?p=15.05/openwrt.git;a=blob;f=package/base-files/files/etc/inittab;hb=483dac821788b457d349233e770329186a0aa860" class="urlextern" title="http://git.openwrt.org/?p=15.05/openwrt.git;a=blob;f=package/base-files/files/etc/inittab;hb=483dac821788b457d349233e770329186a0aa860" rel="ugc nofollow">/etc/inittab</a></code> is parsed and entries<br/>
+<code>     ::askconsole:/bin/ash --login</code><br/>
+<code>     ::sysinit:/etc/init.d/rcS S boot</code><br/>
+executed. inittab format is the same as the one from busybox (<a href="https://git.busybox.net/busybox/tree/examples/inittab?h=1_23_1&amp;id=1ecfe811fe2f70380170ef7d820e8150054e88ca" class="urlextern" title="https://git.busybox.net/busybox/tree/examples/inittab?h=1_23_1&amp;id=1ecfe811fe2f70380170ef7d820e8150054e88ca" rel="ugc nofollow">Busybox example inittab</a>).<br/>
+The ”<code>sysinit</code> action“ handler</div>
+<ol>
+<li class="level4 node"><div class="li"> <code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=inittab.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l148" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=inittab.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l148" rel="ugc nofollow">runrc</a></code><br/>
+instantiates a queue, whose empty handler <code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=inittab.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l143" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=inittab.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l143" rel="ugc nofollow">rcdone</a></code> will advance procd state.<br/>
+<code>runrc</code> <a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=inittab.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l151" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=inittab.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l151" rel="ugc nofollow">ignores</a> the process specification ”<code>/etc/init.d/rcS</code>“ (there is no such a script!), and runs</div>
+<ol>
+<li class="level5"><div class="li"> <code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=rcS.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l159" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=rcS.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l159" rel="ugc nofollow">rcS(pattern=&quot;S&quot; , param=&quot;boot&quot;, rcdone)</a></code> (line 159)<br/>
+ that invokes the equivalent of<br/>
+<code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=rcS.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l133" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=rcS.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l133" rel="ugc nofollow">_rc(&amp;q, *path=&quot;/etc/rc.d&quot;, *file=&quot;S&quot;, *pattern=&quot;*&quot;, *param=&quot;boot&quot;)</a></code><br/>
+to enqueue in glob sort order the scripts<br/>
+<code>    /etc/rc.d/S* boot</code><br/>
+with ”<code>boot</code>“ as the action. <code>/etc/rc.d/S*</code> are <a href="http://git.openwrt.org/?p=15.05/openwrt.git;a=blob;f=package/Makefile;hb=483dac821788b457d349233e770329186a0aa860#l117" class="urlextern" title="http://git.openwrt.org/?p=15.05/openwrt.git;a=blob;f=package/Makefile;hb=483dac821788b457d349233e770329186a0aa860#l117" rel="ugc nofollow">symlinks made by rc.common enable</a> to files in <code><a href="http://git.openwrt.org/?p=15.05/openwrt.git;a=tree;f=package/base-files/files/etc/init.d;hb=483dac821788b457d349233e770329186a0aa860" class="urlextern" title="http://git.openwrt.org/?p=15.05/openwrt.git;a=tree;f=package/base-files/files/etc/init.d;hb=483dac821788b457d349233e770329186a0aa860" rel="ugc nofollow">/etc/init.d</a></code>, that are shell scripts with the shebang <code>#!/bin/sh /etc/rc.common</code>.<br/>
+Invoking a <code>/etc/rc.d/S*</code> script runs <code><a href="http://git.openwrt.org/?p=15.05/openwrt.git;a=blob;f=package/base-files/files/etc/rc.common;hb=483dac821788b457d349233e770329186a0aa860" class="urlextern" title="http://git.openwrt.org/?p=15.05/openwrt.git;a=blob;f=package/base-files/files/etc/rc.common;hb=483dac821788b457d349233e770329186a0aa860" rel="ugc nofollow">rc.common</a></code> that sources the /etc/rc.d/S* script to set up a context, then invokes the function named as the action parameter (”<code>boot()</code>“), in that context.</div>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li class="level3"><div class="li"> <code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=state.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l130" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=state.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l130" rel="ugc nofollow">STATE_RUNNING</a></code><br/>
+Execution arrives here after rcS scripts are done.<br/>
+”- init complete -“ is logged.<br/>
+This is a stable state, keeping uloop_run in procd.c main() running, mostly waiting on epoll_wait. <a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=signal.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l33" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=signal.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l33" rel="ugc nofollow">Upon receipt of a signal</a> in SIGTERM, SIGINT (reboot), or SIGUSR2, SIGUSR2 (poweroff), procd transitions to</div>
+</li>
+<li class="level3"><div class="li"> <code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=state.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l134" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=state.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l134" rel="ugc nofollow">STATE_SHUTDOWN</a></code><br/>
+”- shutdown -“ is logged, /etc/inittab shutdown entry is executed, and procd sleeps <a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=state.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l169" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=state.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l169" rel="ugc nofollow">at line 169</a> while the kernel does poweroff or reboot.</div>
+</li>
+</ol>
+</li>
+<li class="level2"><div class="li"> <code><a href="http://git.openwrt.org/?p=project/procd.git;a=blob;f=procd.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l75" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=blob;f=procd.c;hb=0da5bf2ff222d1a499172a6e09507388676b5a08#l75" rel="ugc nofollow">uloop_done</a></code><br/>
+<code>return 0</code><br/>
+lines 75 &amp; 76 are never reached by pid 1, kernel would panic if init exited.</div>
+</li>
+</ol>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Life and death of a Chaos Calmer system&quot;,&quot;hid&quot;:&quot;life_and_death_of_a_chaos_calmer_system&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;1752-&quot;} -->

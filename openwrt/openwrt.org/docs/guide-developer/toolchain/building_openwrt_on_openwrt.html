@@ -1,0 +1,405 @@
+
+<h1 class="sectionedit1" id="building_openwrt_on_openwrt">Building OpenWrt ON OpenWrt</h1>
+<div class="level1">
+
+<p>
+While the intention in the past hasn&#039;t been to make OpenWrt self hosting, with a few additions it can be.  This is still experimental and requires workarounds for bugs in perl, llvm, and OpenWrt itself.  This is a work in progress, but building OpenWrt <em>inside of</em> OpenWrt is possible.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Building OpenWrt ON OpenWrt&quot;,&quot;hid&quot;:&quot;building_openwrt_on_openwrt&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-332&quot;} -->
+<h2 class="sectionedit2" id="purpose">Purpose</h2>
+<div class="level2">
+
+<p>
+Why Build OpenWrt on OpenWrt?
+</p>
+<ol>
+<li class="level1"><div class="li"> Becoming self-hosting is an important milestone for any <abbr title="Operating System">OS</abbr>.</div>
+</li>
+<li class="level1"><div class="li"> It makes building OpenWrt more accessible for those with less resources.</div>
+</li>
+<li class="level1"><div class="li"> Only building on a monoculture (x86-based full blown Linux systems) lets a lot of bugs slip under the radar. Building on a different system can (and did) expose issues that would inevitably crop up later.</div>
+</li>
+<li class="level1"><div class="li"> For the educational value and bragging rights of knowing that your device&#039;s <abbr title="Operating System">OS</abbr> was built on your device.</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Purpose&quot;,&quot;hid&quot;:&quot;purpose&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;333-844&quot;} -->
+<h2 class="sectionedit3" id="device_requirements">Device Requirements</h2>
+<div class="level2">
+
+<p>
+So far this has been tested on armv7l and aarch64 devices, but will likely work on most if not all OpenWrt supported architectures.  However the device&#039;s hardware does need to meet some minimum requirements:
+</p>
+<ul>
+<li class="level1"><div class="li"> 1GHz or faster CPU, multi-core is an asset.</div>
+</li>
+<li class="level1"><div class="li"> 512MiB of physical RAM per core you intend to use in the build for 32-bit devices.  For 64-bit devices you need double this.<sup>1</sup></div>
+</li>
+<li class="level1"><div class="li"> 2GiB of swap space.  This should be on a physical hard drive, or high quality external device (meaning not the device&#039;s internal eMMC).<sup>2</sup></div>
+</li>
+<li class="level1"><div class="li"> 1GiB of storage space on your root device for all the packages you will need.</div>
+</li>
+<li class="level1"><div class="li"> ~26GiB of storage space for the build.</div>
+</li>
+</ul>
+
+<p>
+Note<sup>1</sup>: The initial toolchain build (especially of llvm-bpf) is quite RAM-hungry.  The given memory requirements should be considered a minimum if you are building your own llvm-bpf.  If you are able to use a pre-built llvm-bpf, then you can get away with less RAM-per-core. If you run this procedure on a QEMU virtual machine, dont use ballooning memory as it will result in oom-errors (during tools/cmake).
+</p>
+
+<p>
+Note<sup>2</sup>: Your swap space (and to a lesser extent, the storage space for the build itself) should be on a hard drive or high quality solid state storage device. It should not under any circumstances be on the device&#039;s internal eMMC storage. This is to avoid NAND flash wear as this process is write heavy especially with swapping. Also, the larger your storage device is the more the wear will be spread.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Device Requirements&quot;,&quot;hid&quot;:&quot;device_requirements&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;845-2386&quot;} -->
+<h2 class="sectionedit4" id="setting_up_the_development_environment">Setting Up The Development Environment</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Setting Up The Development Environment&quot;,&quot;hid&quot;:&quot;setting_up_the_development_environment&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;2387-2438&quot;} -->
+<h3 class="sectionedit5" id="user">User</h3>
+<div class="level3">
+
+<p>
+Elements of the build system don&#039;t like to be built as root. OpenWrt is essentially single-user, so to get around this: <br/>
+
+</p>
+<pre class="code bash"><span class="kw3">export</span> <span class="re2">FORCE_UNSAFE_CONFIGURE</span>=<span class="nu0">1</span></pre>
+
+<p>
+You might want to add the above to your ~/.profile
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;User&quot;,&quot;hid&quot;:&quot;user&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;2439-2680&quot;} -->
+<h3 class="sectionedit6" id="openwrt_packages">OpenWrt Packages</h3>
+<div class="level3">
+
+<p>
+First of all you need a lot of OpenWrt packages:
+</p>
+<ul>
+<li class="level1"><div class="li"> The development tools themselves: <br/>
+<code>opkg install pkg-config make gcc diffutils autoconf automake check git git-http patch libtool-bin</code></div>
+</li>
+<li class="level1"><div class="li"> Miscelaneous tools used in the build system: <br/>
+<code>opkg install grep rsync tar python3 getopt procps-ng-ps gawk sed xz unzip gzip bzip2 flock wget-ssl</code></div>
+</li>
+<li class="level1"><div class="li"> Perl<sup>3</sup> and Python: <br/>
+<code>opkg install perl perlbase-findbin perlbase-pod perlbase-storable perlbase-feature perlbase-b perlbase-ipc perlbase-module perlbase-extutils perlbase-time perlbase-json-pp python3</code> </div>
+</li>
+<li class="level1"><div class="li"> A bunch of coreutils, since busybox versions aren&#039;t good enough in some cases, or aren&#039;t there: <br/>
+<code>opkg install coreutils-nohup coreutils-install coreutils-sort coreutils-ls coreutils-realpath coreutils-stat coreutils-nproc coreutils-od coreutils-mkdir coreutils-date coreutils-comm coreutils-printf coreutils-ln coreutils-cp coreutils-split coreutils-csplit coreutils-cksum coreutils-expr coreutils-tr coreutils-test coreutils-uniq coreutils-join</code></div>
+</li>
+<li class="level1"><div class="li"> A few libraries: <br/>
+<code>opkg install libncurses-dev zlib-dev musl-fts libzstd</code> <br/>
+<code>ln -s libncursesw.a /usr/lib/libncurses.a</code></div>
+</li>
+<li class="level1"><div class="li"> Some good-to-have packages to make life easier (instructions below will assume you have these): <br/>
+<code>opkg install joe joe-extras bash htop whereis less file findutils findutils-locate chattr lsattr xxd</code></div>
+</li>
+</ul>
+
+<p>
+Note<sup>3</sup>: The test systems this was performed on had quite a bit of perl pre-installed, so there may be more perl packages required.
+</p>
+
+<p>
+Before we can go further, we have our first workaround:
+</p>
+
+<p>
+<strong>OpenWrt Bug</strong>: OpenWrt doesn&#039;t put execute permissions on the scripts for the <code>automake</code>, <code>autoconf</code>, and <code>libtool</code> packages. This prevents a lot of build systems (including OpenWrt&#039;s own) from working correctly. To fix: <br/>
+<code>chmod +x /usr/share/automake-1.16;chmod -x /usr/share/automake-1.16/COPYING /usr/share/automake-1.16/INSTALL</code> <br/>
+<code>chmod +x /usr/share/autoconf/Autom4te/*</code> <br/>
+<code>chmod +x /usr/share/libtool/build-aux/*</code>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;OpenWrt Packages&quot;,&quot;hid&quot;:&quot;openwrt_packages&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:6,&quot;range&quot;:&quot;2681-4712&quot;} -->
+<h3 class="sectionedit7" id="libraries_and_tools">Libraries and Tools</h3>
+<div class="level3">
+
+<p>
+A few dev libraries are needed. Two of them <em>are</em> are included in OpenWrt, but by default OpenWrt strips them (using <code>sstrip</code>) so that you can&#039;t actually compile against them.  Switch to your ~/devel folder (or wherever you&#039;re going to use as your base build directory) and do the following:
+</p>
+
+</div>
+
+<h4 id="libraries">Libraries</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> <a href="https://github.com/xhebox/libuargp" class="urlextern" title="https://github.com/xhebox/libuargp" rel="ugc nofollow">libargp</a>: A GNU GLIBC extension used by elflibs<br/>
+<pre class="code bash"><span class="kw2">git clone</span> https:<span class="sy0">//</span>github.com<span class="sy0">/</span>xhebox<span class="sy0">/</span>libuargp.git
+<span class="kw3">cd</span> libuargp
+<span class="kw2">make</span>
+<span class="kw2">make</span> <span class="re2">prefix</span>=<span class="sy0">/</span>usr <span class="kw2">install</span>
+<span class="kw2">ln</span> <span class="re5">-s</span> libargp.so <span class="sy0">/</span>usr<span class="sy0">/</span>lib<span class="sy0">/</span>libargp.so.0
+<span class="kw3">cd</span> ..</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/void-linux/musl-fts" class="urlextern" title="https://github.com/void-linux/musl-fts" rel="ugc nofollow">libfts</a>: Another GNU GLIBC extension needed for elflib. <br/>
+We installed the non-dev version above already, so this will overwrite it with one that can be compiled against. We installed the non-dev version first so that it doesn&#039;t get installed later and overwrite your dev version with a lobotomized one: <br/>
+<pre class="code bash"><span class="kw2">git clone</span> https:<span class="sy0">//</span>github.com<span class="sy0">/</span>void-linux<span class="sy0">/</span>musl-fts.git
+<span class="kw3">cd</span> musl-fts
+.<span class="sy0">/</span>bootstrap.sh
+.<span class="sy0">/</span>configure <span class="re5">--prefix</span>=<span class="sy0">/</span>usr
+<span class="kw2">make</span>
+<span class="kw2">make</span> <span class="kw2">install</span>
+<span class="kw3">cd</span> ..</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/void-linux/musl-obstack" class="urlextern" title="https://github.com/void-linux/musl-obstack" rel="ugc nofollow">libobstack</a>: The final GNU GLIBC extension needed for elflib <br/>
+<pre class="code bash"><span class="kw2">git clone</span> https:<span class="sy0">//</span>github.com<span class="sy0">/</span>void-linux<span class="sy0">/</span>musl-obstack.git
+<span class="kw3">cd</span> musl-obstack
+.<span class="sy0">/</span>bootstrap.sh
+.<span class="sy0">/</span>configure <span class="re5">--prefix</span>=<span class="sy0">/</span>usr
+<span class="kw2">make</span>
+<span class="kw2">make</span> <span class="kw2">install</span>
+<span class="kw3">cd</span> ..</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> libdl, librt, libresolv, and libpthread: <br/>
+These are libraries for functions which are actually included in musl libc directly.  However, since some tools try and link explicitly against these libs, you will run into “file not found” errors.  To get around that, just make stub libraries for them: <br/>
+<pre class="code bash"><span class="kw2">ar</span> <span class="re5">-rc</span> <span class="sy0">/</span>usr<span class="sy0">/</span>lib<span class="sy0">/</span>libdl.a
+<span class="kw2">ar</span> <span class="re5">-rc</span> <span class="sy0">/</span>usr<span class="sy0">/</span>lib<span class="sy0">/</span>librt.a
+<span class="kw2">ar</span> <span class="re5">-rc</span> <span class="sy0">/</span>usr<span class="sy0">/</span>lib<span class="sy0">/</span>libpthread.a
+<span class="kw2">ar</span> <span class="re5">-rc</span> <span class="sy0">/</span>usr<span class="sy0">/</span>lib<span class="sy0">/</span>libresolv.a</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/facebook/zstd/" class="urlextern" title="https://github.com/facebook/zstd/" rel="ugc nofollow">libzstd</a>: A compression library now needed by llvm-bpf. <br/>
+Like musl-fts above, OpenWrt does support this library, but by default ships a lobotomized version that can&#039;t be built against.  We install the OpenWrt version above so it won&#039;t be later installed and overwrite the proper version we&#039;re making below: <br/>
+<pre class="code bash"><span class="kw2">wget</span> https:<span class="sy0">//</span>github.com<span class="sy0">/</span>facebook<span class="sy0">/</span>zstd<span class="sy0">/</span>releases<span class="sy0">/</span>download<span class="sy0">/</span>v1.5.2<span class="sy0">/</span>zstd-1.5.2.tar.gz
+<span class="kw2">tar</span> <span class="re5">-xvzf</span> zstd-1.5.2.tar.gz
+<span class="kw3">cd</span> zstd-1.5.2<span class="sy0">/</span>lib
+<span class="kw2">make</span>
+<span class="kw2">make</span> <span class="re2">prefix</span>=<span class="sy0">/</span>usr <span class="kw2">install</span>
+<span class="kw3">cd</span> ..<span class="sy0">/</span>..</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> bzcat: Not a bug per se, though one might call it a bug by omission. The bzip2 binary also acts as bunzip2 and bzcat, but it can only do so if the proper softlinks are made when it&#039;s installed, which the OpenWrt package doesn&#039;t do. So: <br/>
+<pre class="code bash"><span class="kw2">ln</span> <span class="re5">-s</span> <span class="kw2">bzip2</span> <span class="sy0">/</span>usr<span class="sy0">/</span>bin<span class="sy0">/</span><span class="kw2">bunzip2</span>
+<span class="kw2">ln</span> <span class="re5">-s</span> <span class="kw2">bzip2</span> <span class="sy0">/</span>usr<span class="sy0">/</span>bin<span class="sy0">/</span><span class="kw2">bzcat</span></pre>
+</div>
+</li>
+<li class="level1"><div class="li"> swig: Needed for uboot <br/>
+<pre class="code bash"><span class="kw2">git clone</span> https:<span class="sy0">//</span>github.com<span class="sy0">/</span>akimd<span class="sy0">/</span>bison.git
+<span class="kw2">git clone</span> https:<span class="sy0">//</span>github.com<span class="sy0">/</span>swig<span class="sy0">/</span>swig.git
+<span class="kw3">cd</span> swig
+<span class="kw2">sh</span> autogen.sh
+.<span class="sy0">/</span>configure <span class="re5">--prefix</span>=<span class="sy0">/</span>usr <span class="re5">--without-pcre</span>
+opkg <span class="kw2">install</span> <span class="kw2">bison</span> <span class="kw2">m4</span>
+<span class="kw2">chmod</span> +x .<span class="sy0">/</span>swig<span class="sy0">/</span>Tools<span class="sy0">/</span>config<span class="sy0">/</span>install-sh
+<span class="kw3">export</span> <span class="re2">BISON_PKGDATADIR</span>=<span class="sy0">/</span>home<span class="sy0">/</span>buildbot<span class="sy0">/</span>bison<span class="sy0">/</span>data
+<span class="kw2">cp</span> <span class="sy0">/</span>usr<span class="sy0">/</span>share<span class="sy0">/</span>autoconf<span class="sy0">/</span>m4sugar<span class="sy0">/*</span> <span class="sy0">/</span>home<span class="sy0">/</span>buildbot<span class="sy0">/</span>bison<span class="sy0">/</span>data<span class="sy0">/</span>m4sugar<span class="sy0">/</span>
+<span class="kw3">export</span> <span class="re2">M4</span>=<span class="kw2">m4</span>
+<span class="kw2">make</span>
+<span class="kw2">make</span> <span class="kw2">install</span></pre>
+</div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="tools">Tools</h4>
+<div class="level4">
+
+<p>
+The single tool needed in the build system that OpenWrt doesn&#039;t support is <code>rev</code>, a little-known and littler-used Unix tool.  It&#039;s part of util-linux, which does provide a lot of packages for OpenWrt, but rev isn&#039;t one of them.  It is, however, built as part of the process below, so it&#039;ll be be installed later.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Libraries and Tools&quot;,&quot;hid&quot;:&quot;libraries_and_tools&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:7,&quot;range&quot;:&quot;4713-8113&quot;} -->
+<h2 class="sectionedit8" id="getting_and_building_openwrt">Getting and Building OpenWrt</h2>
+<div class="level2">
+
+<p>
+This is based on the <a href="/docs/guide-developer/toolchain/use-buildsystem" class="wikilink1" title="docs:guide-developer:toolchain:use-buildsystem" data-wiki-id="docs:guide-developer:toolchain:use-buildsystem">build system instructions</a>, with a bunch of deviations to fix various bugs along the way:
+</p>
+
+<p>
+Make sure you&#039;re in your devel directory from before. The following assume you are building SNAPSHOT, but can be (with appropriate changes) be used for release versions as well.
+</p>
+<ol>
+<li class="level1"><div class="li"> Get OpenWrt master and associated packages: <br/>
+<pre class="code bash"><span class="kw2">git clone</span> https:<span class="sy0">//</span>git.openwrt.org<span class="sy0">/</span>openwrt<span class="sy0">/</span>openwrt.git
+<span class="kw3">cd</span> openwrt
+<span class="kw2">git checkout</span> master
+<span class="kw2">git pull</span>
+.<span class="sy0">/</span>scripts<span class="sy0">/</span>feeds update <span class="re5">-a</span>
+.<span class="sy0">/</span>scripts<span class="sy0">/</span>feeds <span class="kw2">install</span> <span class="re5">-a</span></pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Get the config file for <a href="https://downloads.openwrt.org/snapshots/targets/" class="urlextern" title="https://downloads.openwrt.org/snapshots/targets/" rel="ugc nofollow">your architecture</a> and save it as .config. For example, for a device based on the mt7622 chipset (such as the BPI-R64) it is this: <br/>
+<pre class="code bash"><span class="kw2">wget</span> https:<span class="sy0">//</span>downloads.openwrt.org<span class="sy0">/</span>snapshots<span class="sy0">/</span>targets<span class="sy0">/</span>mediatek<span class="sy0">/</span>mt7622<span class="sy0">/</span>config.buildinfo <span class="re5">-O</span> .config</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Expand the configuration: <br/>
+<pre class="code bash"><span class="kw2">make</span> defconfig</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> <strong>DECISION POINT</strong>: llvm-bpf - build yourself or get pre-built <br/>
+llvm-bpf is the the Berkeley Packet Filter bytecode compiler for Linux.  It is a tool that is needed in order to build OpenWrt, but also can be built along with the rest of the OpenWrt toolchain below.  Compiling llvm is easily the single most time and resource intensive step in building OpenWrt.  If there is a pre-made one for your platform of the correct version for the version of OpenWrt you are building, then it is recommended to use it.  Check the resources below.  If you are using a pre-build one, then get it now and untar it into your openwrt working folder, so it will be there when you configure OpenWrt.  For example: <br/>
+<pre class="code bash"><span class="kw2">wget</span> https:<span class="sy0">//</span>va1der.ca<span class="sy0">/</span>~public<span class="sy0">/</span>openwrt<span class="sy0">/</span>llvm<span class="sy0">/</span>llvm-bpf-15.0.7.Linux-armv7l.tar.xz
+<span class="kw2">tar</span> <span class="re5">-xvaf</span> llvm-bpf-15.0.7.Linux-armv7l.tar.xz</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Configure OpenWrt: <br/>
+<code>make menuconfig</code>  <br/>
+Things to remember when you configure the build: Change “Target Profile” to build for only your platform (since by default it will want to build for all platforms using a given chipset).  Also, if you obtained a pre-build llvm-bpf then change “Advanced Configuration Options → BPF Toolchain” to use the pre-built binary you obtained.  Make any other tweaks you normally do, then save.</div>
+</li>
+<li class="level1"><div class="li"> <strong>If you are using pre-made llvm from step 4, then skip all of this step</strong> (read the NOTE at the end though). <br/>
+If you were unable or didn&#039;t want a pre-built llvm-bpf, then now is when you will build it.  But first... <br/>
+<strong>llvm-bpf bugs:</strong>  There are two bugs in llvm&#039;s build system.  One that <a href="https://discourse.llvm.org/t/build-of-14-06-fails-on-armv7-due-to-libatomic-not-being-linked/67091" class="urlextern" title="https://discourse.llvm.org/t/build-of-14-06-fails-on-armv7-due-to-libatomic-not-being-linked/67091" rel="ugc nofollow">causes a built failure due to libatomic not being linked</a>, and one that <a href="https://discourse.llvm.org/t/build-of-15-0-7-fails-due-to-libstdc-not-being-linked-against/68132" class="urlextern" title="https://discourse.llvm.org/t/build-of-15-0-7-fails-due-to-libstdc-not-being-linked-against/68132" rel="ugc nofollow">causes a build failure when gcc is used instead of g++ at the linking stage</a>. We will copy patches for both into the OpenWrt build system: <br/>
+<pre class="code bash"><span class="kw2">mkdir</span> tools<span class="sy0">/</span>llvm-bpf<span class="sy0">/</span>patches
+<span class="kw2">wget</span> https:<span class="sy0">//</span>va1der.ca<span class="sy0">/</span>~public<span class="sy0">/</span>openwrt<span class="sy0">/</span>patches<span class="sy0">/</span>llvm-bpf<span class="sy0">/</span><span class="nu0">901</span>-fix-fuzzer-linking.patch <span class="re5">-O</span> tools<span class="sy0">/</span>llvm-bpf<span class="sy0">/</span>patches<span class="sy0">/</span><span class="nu0">901</span>-fix-fuzzer-linking.patch
+<span class="kw2">wget</span> https:<span class="sy0">//</span>va1der.ca<span class="sy0">/</span>~public<span class="sy0">/</span>openwrt<span class="sy0">/</span>patches<span class="sy0">/</span>llvm-bpf<span class="sy0">/</span><span class="nu0">902</span>-use-libatomic-as-required.patch <span class="re5">-O</span> tools<span class="sy0">/</span>llvm-bpf<span class="sy0">/</span>patches<span class="sy0">/</span><span class="nu0">902</span>-use-libatomic-as-required.patch</pre>
+
+<p>
+ After musl-1.2.4 there were changes, such as lseek64 missing, and replaced with lseek, so llvm fails to build. To fix this, you need to make a minor change to llvm-bpf&#039;s Makefile, just under include $(INCLUDE_DIR)/cmake.mk add following “HOST_CFLAGS+= -D_LARGEFILE64_SOURCE”, so it will look a bit like this: 
+</p>
+<pre class="code">...
+CMAKE_SOURCE_SUBDIR := llvm
+
+include $(INCLUDE_DIR)/host-build.mk
+include $(INCLUDE_DIR)/cmake.mk
+
+HOST_CFLAGS+= -D_LARGEFILE64_SOURCE
+
+LLVM_BPF_PREFIX = llvm-bpf-$(PKG_VERSION).$(HOST_OS)-$(HOST_ARCH)
+...</pre>
+
+<p>
+ Once those patches are copied and Makefile is fixed, you can build llvm. <strong>Caution!</strong> This is memory intensive, and a multi-core build on a system with marginal memory can push the system so far into memory-debt swapping that it can damage solid-state storage. A single-core build will take longer, but is safer. This is going to take a long time. Note that a drawback of OpenWrt&#039;s build system is that any time the build of any one package is interrupted, it starts that package from the beginning the next time. You don&#039;t want compilation to stop on a random net blip after ten hours, so use <code>nohup</code>. And start getting into the habit of using <code>V=sc</code> and logging everything, because this whole process is still experimental: <br/>
+
+</p>
+<pre class="code bash"><span class="kw2">nohup</span> <span class="kw2">nice</span> <span class="kw2">make</span> <span class="re5">-j</span> <span class="nu0">1</span> <span class="re2">V</span>=sc tools<span class="sy0">/</span>llvm-bpf<span class="sy0">/</span>compile <span class="sy0">&gt;</span> ~<span class="sy0">/</span>llvmcomp01.out <span class="sy0">&amp;</span></pre>
+
+<p>
+ Periodically check htop to make sure it is going well, and check the log when it stops. Hopefully there&#039;s no error, but if there is, welcome to the experiment. Debug, rinse and repeat and report it here for the rest of us. <br/>
+<br/>
+<strong>NOTE:</strong> Once llvm-bpf is out of the way, <strong>if</strong> you have multiple cores <strong>and</strong> enough RAM per core, then you should be ok to use multi-core compiling. Always keep a periodic eye on your build, though and htop is your friend. For all examples throughout these instructions, <code>-j 1</code> will be supplied to make for pasted commands for safety.  But feel free to increase the core count at your discretion.
+</p>
+</div>
+</li>
+<li class="level1"><div class="li"> Now build the rest of the toolchain:  <br/>
+<pre class="code bash"><span class="kw2">nohup</span> <span class="kw2">nice</span> <span class="kw2">make</span> <span class="re5">-j</span> <span class="nu0">1</span> <span class="re2">V</span>=sc toolchain<span class="sy0">/</span><span class="kw2">install</span> <span class="sy0">&gt;</span> ~<span class="sy0">/</span>toolchain01.out <span class="sy0">&amp;</span></pre>
+
+<p>
+ As with llvm, and all else, periodically check htop and the output log, debug, and repeat.
+</p>
+</div>
+</li>
+<li class="level1"><div class="li"> With the toolchain complete, you can do a make download. It had to wait until now because <a href="https://github.com/openwrt/openwrt/issues/11193" class="urlextern" title="https://github.com/openwrt/openwrt/issues/11193" rel="ugc nofollow">a bug in qosify&#039;s makefile</a> prevents make download from working before the toolchain is complete in some cases. <br/>
+<pre class="code bash"><span class="kw2">make</span> download</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Build the the one missing tool noted above: <code>rev</code>. OpenWrt doesn&#039;t make a package out of it, even though it&#039;s built by default when OpenWrt builts packages out of its own util-linux.  So we&#039;re going to build OpenWrt&#039;s util-linux then copy <code>rev</code> out. This is quick, probably no need to log it:  <br/>
+<pre class="code bash"><span class="kw2">make</span> <span class="re5">-j</span> <span class="nu0">1</span> package<span class="sy0">/</span>util-linux<span class="sy0">/</span>compile
+<span class="kw2">cp</span> $<span class="br0">&#40;</span><span class="kw2">find</span> . <span class="re5">-wholename</span> \<span class="sy0">*</span>ipkg-install<span class="sy0">/</span>usr<span class="sy0">/</span>bin<span class="sy0">/</span><span class="kw2">rev</span><span class="br0">&#41;</span> <span class="sy0">/</span>usr<span class="sy0">/</span>bin<span class="sy0">/</span><span class="kw2">rev</span></pre>
+</div>
+</li>
+<li class="level1"><div class="li"> <strong>perl bugs</strong>: Here we fix three bugs in perl. One which <a href="https://github.com/openwrt/openwrt/issues/11591" class="urlextern" title="https://github.com/openwrt/openwrt/issues/11591" rel="ugc nofollow">causes a problem with perl on musl</a>, one where recent compilers cause a seg fault, and <a href="https://github.com/Perl/perl5/issues/20606" class="urlextern" title="https://github.com/Perl/perl5/issues/20606" rel="ugc nofollow">one in Perl&#039;s Configure script</a>. Fort these we need two patches. The first patch we will apply directly to OpenWrt&#039;s perl makefile: <br/>
+<pre class="code bash"><span class="br0">&#40;</span> <span class="kw3">cd</span> feeds<span class="sy0">/</span>packages<span class="sy0">/</span>lang<span class="sy0">/</span><span class="kw2">perl</span> <span class="sy0">&amp;&amp;</span> <span class="kw2">wget</span> https:<span class="sy0">//</span>va1der.ca<span class="sy0">/</span>~public<span class="sy0">/</span>openwrt<span class="sy0">/</span>patches<span class="sy0">/</span>perl<span class="sy0">/</span>perl_fix_memmem_and_segfault.patch <span class="re5">-O</span> - <span class="nu0">2</span><span class="sy0">&gt;</span> <span class="sy0">/</span>dev<span class="sy0">/</span>null <span class="sy0">|</span> <span class="kw2">patch</span> <span class="re5">-p</span> <span class="nu0">1</span> <span class="br0">&#41;</span></pre>
+
+<p>
+ That fixes the first two bugs. This next fixes perl&#039;s configure bug, and we&#039;re just going to download and store it in the OpenWrt build system and let OpenWrt sic it on Perl when it builds it:
+</p>
+<pre class="code bash"><span class="kw2">wget</span> https:<span class="sy0">//</span>va1der.ca<span class="sy0">/</span>~public<span class="sy0">/</span>openwrt<span class="sy0">/</span>patches<span class="sy0">/</span>perl<span class="sy0">/</span><span class="nu0">997</span>-fix-Configure-gcc-parse.patch <span class="re5">-O</span> feeds<span class="sy0">/</span>packages<span class="sy0">/</span>lang<span class="sy0">/</span>perl<span class="sy0">/</span>patches<span class="sy0">/</span><span class="nu0">997</span>-fix-Configure-gcc-parse.patch</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> <strong>DECISION POINT</strong>: perl bug - Test to see if your the OpenWrt device you are building on is affected by one of the above bugs. Some are, and if it is, you need to build perl right now with the above patch to fix your existing system.  This is because the host system&#039;s perl is used when OpenWrt builds openssl. Download and run the script: <br/>
+<pre class="code bash"><span class="kw2">wget</span> https:<span class="sy0">//</span>va1der.ca<span class="sy0">/</span>~public<span class="sy0">/</span>openwrt<span class="sy0">/</span>patches<span class="sy0">/</span>perl<span class="sy0">/</span>test_index.perl <span class="re5">-O</span> ~<span class="sy0">/</span>test_index.pl
+<span class="kw2">chmod</span> +x ~<span class="sy0">/</span>test_index.pl
+~<span class="sy0">/</span>test_index.pl</pre>
+
+<p>
+ This will tell you if your perl is affected by the index() bug. If it is then build perl with the above bug patch above and copy libperl.so over top of of your system&#039;s buggy one: <br/>
+
+</p>
+<pre class="code bash"><span class="kw2">make</span> <span class="re5">-j</span> <span class="nu0">1</span> package<span class="sy0">/</span>perl<span class="sy0">/</span>compile
+<span class="kw2">cp</span> $<span class="br0">&#40;</span><span class="kw2">find</span> staging_dir <span class="re5">-name</span> libperl.so<span class="br0">&#41;</span> <span class="sy0">/</span>usr<span class="sy0">/</span>lib<span class="sy0">/</span>perl5<span class="sy0">/</span><span class="nu0">5.28</span><span class="sy0">/</span>CORE<span class="sy0">/</span>
+~<span class="sy0">/</span>test_index.pl</pre>
+
+<p>
+ The test should now show the index() bug is fixed
+</p>
+</div>
+</li>
+<li class="level1"><div class="li"> That was the last bug fix - you can now proceed with the rest of the build.  This is likely to take a while (not as long as LLVM though). Continue to use <code>nohup</code>, tell make to give verbose output with <code>V=sc</code>, and continue to redirect that output to a log: <br/>
+<pre class="code bash"><span class="kw2">nohup</span> <span class="kw2">nice</span> <span class="kw2">make</span> <span class="re5">-j</span> <span class="nu0">1</span> <span class="re2">V</span>=sc world <span class="sy0">&gt;</span> world01.out <span class="sy0">&amp;</span></pre>
+</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Getting and Building OpenWrt&quot;,&quot;hid&quot;:&quot;getting_and_building_openwrt&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:8,&quot;range&quot;:&quot;8114-16467&quot;} -->
+<h2 class="sectionedit9" id="resources">Resources</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Resources&quot;,&quot;hid&quot;:&quot;resources&quot;,&quot;codeblockOffset&quot;:23,&quot;secid&quot;:9,&quot;range&quot;:&quot;16468-16489&quot;} -->
+<h3 class="sectionedit10" id="llvm-bpf">llvm-bpf</h3>
+<div class="level3">
+
+<p>
+As noted above, it&#039;s beneficial to use a prebuilt llvm if possible.  The following are available:
+</p>
+
+</div>
+
+<h4 id="armv7l_arm_32_little_endian">armv7l (ARM 32 little endian)</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> <a href="https://va1der.ca/~public/openwrt/llvm/llvm-bpf-14.0.6.Linux-armv7l.tar.xz" class="urlextern" title="https://va1der.ca/~public/openwrt/llvm/llvm-bpf-14.0.6.Linux-armv7l.tar.xz" rel="ugc nofollow">llvm-bpf-14.0.6.Linux-armv7l.tar.xz</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://va1der.ca/~public/openwrt/llvm/llvm-bpf-15.0.7.Linux-armv7l.tar.xz" class="urlextern" title="https://va1der.ca/~public/openwrt/llvm/llvm-bpf-15.0.7.Linux-armv7l.tar.xz" rel="ugc nofollow">llvm-bpf-15.0.7.Linux-armv7l.tar.xz</a></div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="aarch64_arm_64">aarch64 (ARM 64)</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> <a href="https://va1der.ca/~public/openwrt/llvm/llvm-bpf-14.0.6.Linux-aarch64.tar.xz" class="urlextern" title="https://va1der.ca/~public/openwrt/llvm/llvm-bpf-14.0.6.Linux-aarch64.tar.xz" rel="ugc nofollow">llvm-bpf-14.0.6.Linux-aarch64.tar.xz</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://va1der.ca/~public/openwrt/llvm/llvm-bpf-15.0.7.Linux-aarch64.tar.xz" class="urlextern" title="https://va1der.ca/~public/openwrt/llvm/llvm-bpf-15.0.7.Linux-aarch64.tar.xz" rel="ugc nofollow">llvm-bpf-15.0.7.Linux-aarch64.tar.xz</a></div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="amd64_aka_x86_64">AMD64 (aka x86_64)</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> <a href="https://downloads.openwrt.org/releases/22.03.3/targets/mediatek/mt7622/llvm-bpf-13.0.0.Linux-x86_64.tar.xz" class="urlextern" title="https://downloads.openwrt.org/releases/22.03.3/targets/mediatek/mt7622/llvm-bpf-13.0.0.Linux-x86_64.tar.xz" rel="ugc nofollow">llvm-bpf-13.0.0.Linux-x86_64.tar.xz</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://downloads.openwrt.org/snapshots/targets/mediatek/filogic/llvm-bpf-15.0.7.Linux-x86_64.tar.xz" class="urlextern" title="https://downloads.openwrt.org/snapshots/targets/mediatek/filogic/llvm-bpf-15.0.7.Linux-x86_64.tar.xz" rel="ugc nofollow">llvm-bpf-15.0.7.Linux-x86_64.tar.xz</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;llvm-bpf&quot;,&quot;hid&quot;:&quot;llvm-bpf&quot;,&quot;codeblockOffset&quot;:23,&quot;secid&quot;:10,&quot;range&quot;:&quot;16490-17473&quot;} -->
+<h2 class="sectionedit11" id="on_errors">On Errors</h2>
+<div class="level2">
+
+<p>
+The above procedure has been tested, but this is still very much an experimental process and Your Mileage May Vary™. On the first successful attempt output was up to log file world13.out on two different platforms.  The majority of errors were simple ones, caused by missing tools or inadequate ones where the basic busybox version wasn&#039;t good enough.  There still may be missing packages in the above procedure, since it was tested on existing systems with preset installation packages that you may or may not have.  There may be other subtle issues on other architectures. When htop tells you compilation has stopped, look at the log. Jump to the end, then (if you were doing multi-core builds) search backwards for “Error” (often with capital E) to find what exactly went wrong. Most of the time it&#039;s a missing tool. Sometimes the issue has been subtle problems with multi-core building.  The timing of and staging of different parts of a build when doing a multi-core build changes on different architectures, and deficiencies in dependency settings may not show up in normal x86 builds that do on other archtectures.  If you, for example, run into issues of symbols not being found on linking, sometimes simply redoing the build, or building that package in a single-thread build resolves the issue.  Feel free to post your results in the <a href="https://forum.openwrt.org/t/building-openwrt-on-openwrt-a-howto/146213" class="urlextern" title="https://forum.openwrt.org/t/building-openwrt-on-openwrt-a-howto/146213" rel="ugc nofollow">forum thread for this</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;On Errors&quot;,&quot;hid&quot;:&quot;on_errors&quot;,&quot;codeblockOffset&quot;:23,&quot;secid&quot;:11,&quot;range&quot;:&quot;17474-18940&quot;} -->
+<h2 class="sectionedit12" id="summary">Summary</h2>
+<div class="level2">
+
+<p>
+There were quite a number of bugs that were exposed while developing this procedure. Bugs in OpenWrt, Perl, LLVM, and other places. However, one shouldn&#039;t consider the presence of bugs the deciding factor on whether a system is, in general, self-hosting. OpenWrt needs one small utility (rev), and three bandaid libs to cover for GNU extensions to GLIBC. That makes OpenWrt about 99.9% self-hosting ready. This is a great achievement, especially for an embedded <abbr title="Operating System">OS</abbr> where self-hosting wasn&#039;t even the goal, and more especially considering the enormous amount of complex code and a build system that uses so many different build tools. The OpenWrt devs are to be greatly commended for an excellent embedded <abbr title="Operating System">OS</abbr>!
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Summary&quot;,&quot;hid&quot;:&quot;summary&quot;,&quot;codeblockOffset&quot;:23,&quot;secid&quot;:12,&quot;range&quot;:&quot;18941-&quot;} -->

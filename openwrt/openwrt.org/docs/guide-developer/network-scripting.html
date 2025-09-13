@@ -1,0 +1,516 @@
+
+<h1 class="sectionedit1" id="network_scripts">Network scripts</h1>
+<div class="level1">
+
+<p>
+netifd can (probably) bring up a wired, static ip configuration without shell scripts.
+For everything else (PPPoE or 3G) it needs <em>protocol handlers</em> implemented as sets of shell functions.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Network scripts&quot;,&quot;hid&quot;:&quot;network_scripts&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-223&quot;} -->
+<h2 class="sectionedit2" id="writing_protocol_handlers">Writing protocol handlers</h2>
+<div class="level2">
+
+<p>
+Each protocol handler is a shell script in <code>/lib/netifd/proto/</code>.
+It is run (or maybe sourced) when netifd daemon starts.
+Changes made to the scripts do not take effect until netifd restarts.
+The name of the file usually matches <code>option proto</code> in <code>/etc/config/network</code>.
+</p>
+
+<p>
+To be able to access the network functions, the script needs to include the necessary shell scripts at the beginning:
+</p>
+<pre class="code bash"><span class="co0">#!/bin/sh</span>
+&nbsp;
+<span class="br0">&#91;</span> <span class="re5">-n</span> <span class="st0">&quot;<span class="es2">$INCLUDE_ONLY</span>&quot;</span> <span class="br0">&#93;</span> <span class="sy0">||</span> <span class="br0">&#123;</span>
+	. <span class="sy0">/</span>lib<span class="sy0">/</span>functions.sh
+	. ..<span class="sy0">/</span>netifd-proto.sh
+	init_proto <span class="st0">&quot;$@&quot;</span>
+<span class="br0">&#125;</span></pre>
+
+<p>
+Current working directory is <code>/lib/netifd/proto/</code> when the handler is sourced.
+</p>
+
+<p>
+At the end of the script a handler should register itself by calling <code>add_protocol <em>protocolname</em></code>.
+</p>
+
+<p>
+A handler should at least define 2 shell functions: <code>proto_<em>protocolname</em>_init_config</code> and <code>proto_<em>protocolname</em>_setup</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Writing protocol handlers&quot;,&quot;hid&quot;:&quot;writing_protocol_handlers&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;224-1095&quot;} -->
+<h3 class="sectionedit3" id="init_config">init_config</h3>
+<div class="level3">
+
+<p>
+The main purpose of this function is to let netifd know which parameters does this protocol have.
+These parameters then can be stored in <code>/etc/config/network</code>.
+</p>
+<pre class="code bash">proto_protocolname_init_config<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+	proto_config_add_string <span class="st0">&quot;stringparam&quot;</span>
+	proto_config_add_int <span class="st0">&quot;intparam&quot;</span>
+	proto_config_add_boolean <span class="st0">&quot;boolparam&quot;</span>
+	...
+<span class="br0">&#125;</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;init_config&quot;,&quot;hid&quot;:&quot;init_config&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;1096-1453&quot;} -->
+<h3 class="sectionedit4" id="setup">Setup</h3>
+<div class="level3">
+
+<p>
+The setup procedure implements the actual protocol specifc configuration logic and interface bringup.
+</p>
+
+<p>
+When called, one or two parameters are passed:
+</p>
+<ol>
+<li class="level1"><div class="li"> Config, the UCI section name suitable for <code>config_get</code> calls</div>
+</li>
+<li class="level1"><div class="li"> Interface name (only if <code>no_device=0</code>)</div>
+</li>
+</ol>
+<pre class="code bash">proto_protocolname_setup<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+	<span class="kw3">local</span> <span class="re2">config</span>=<span class="st0">&quot;$1&quot;</span>
+	<span class="co0"># set up the interface</span>
+<span class="br0">&#125;</span></pre>
+
+<p>
+This function must be implemented by any protocol backend.
+</p>
+
+<p>
+There&#039;s usually no need to call <code>ifconfig <em>iface</em> up</code> at the end of this function.
+If <code>no_device=0</code>, netifd won&#039;t even try to start our profile until the device is already up.
+It waits for <code>operstate=up</code> and <code>carrier=1</code>, then starts the profile.
+</p>
+
+<p>
+If <code>no_device=1</code>, netifd will bring it up, when it receives a notification from us:
+</p>
+<pre class="code bash">proto_protocolname_setup <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+	...
+	proto_init_update <span class="st0">&quot;<span class="es2">$iface</span>&quot;</span> <span class="nu0">1</span>
+	proto_send_update <span class="st0">&quot;<span class="es2">$config</span>&quot;</span>
+	...
+<span class="br0">&#125;</span></pre>
+
+<p>
+However, this only works once.
+If someone called <code>ifconfig <em>iface</em> down</code>, netifd won&#039;t try to bring it up again (at least in BB), so just in case you may put the “up” command in the function.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Setup&quot;,&quot;hid&quot;:&quot;setup&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:4,&quot;range&quot;:&quot;1454-2552&quot;} -->
+<h3 class="sectionedit5" id="teardown">Teardown</h3>
+<div class="level3">
+
+<p>
+Protocols that need special shutdown handling, for example to kill associated daemons, may implement a stop procedure.
+This procedure is called when an interface is brought down before the associated UCI state is cleared.
+</p>
+
+<p>
+The function is called when we do <code>ifdown <em>profile</em></code> or when <code>no_device=0</code> and netifd detects link connectivity loss.
+</p>
+
+<p>
+When called, two parameters are passed:
+</p>
+<ol>
+<li class="level1"><div class="li"> Config, the UCI section name suitable for <code>config_get</code> calls</div>
+</li>
+<li class="level1"><div class="li"> iface, the network device</div>
+</li>
+</ol>
+<pre class="code bash">proto_protocolname_teardown<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+	<span class="kw3">local</span> <span class="re2">config</span>=<span class="st0">&quot;$1&quot;</span>
+	<span class="kw3">local</span> <span class="re2">iface</span>=<span class="st0">&quot;$2&quot;</span>
+	<span class="co0"># tear down the interface</span>
+<span class="br0">&#125;</span></pre>
+
+<p>
+This function is optional.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Teardown&quot;,&quot;hid&quot;:&quot;teardown&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:5,&quot;range&quot;:&quot;2553-3204&quot;} -->
+<h3 class="sectionedit6" id="coldplug">Coldplug</h3>
+<div class="level3">
+
+<p>
+By default, only interfaces present in <code>/proc/net/dev</code>, like <em>eth0</em>, are brought up on boot.
+Protocols which use virtual interfaces must set two variables at the beginning of init_config.
+</p>
+<pre class="code bash">proto_protocolname_init_config<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+	<span class="re2">no_device</span>=<span class="nu0">1</span>
+	<span class="re2">available</span>=<span class="nu0">1</span>
+	...
+<span class="br0">&#125;</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Coldplug&quot;,&quot;hid&quot;:&quot;coldplug&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:6,&quot;range&quot;:&quot;3205-3505&quot;} -->
+<h3 class="sectionedit7" id="debugging">Debugging</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> STDERR in protos is redirected to the syslog. <code>echo “message” &gt; 2&gt;&amp;1</code> can be used to print.</div>
+</li>
+<li class="level1"><div class="li"> As <code>set -x</code> also prints to STDERR, it can be used to trace which commands are called inside the proto. However this is very spammy.</div>
+</li>
+<li class="level1"><div class="li"> There is a pending patch: <a href="https://patchwork.ozlabs.org/project/openwrt/patch/20201229233319.164640-1-me@irrelefant.net/" class="urlextern" title="https://patchwork.ozlabs.org/project/openwrt/patch/20201229233319.164640-1-me@irrelefant.net/" rel="ugc nofollow">https://patchwork.ozlabs.org/project/openwrt/patch/20201229233319.164640-1-me@irrelefant.net/</a>.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Debugging&quot;,&quot;hid&quot;:&quot;debugging&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:7,&quot;range&quot;:&quot;3506-3887&quot;} -->
+<h3 class="sectionedit8" id="available_proto_flags">Available proto flags</h3>
+<div class="level3">
+
+<p>
+Flags can be added to a proto handler in <code>proto_protoname_init_config</code>, by setting their value to <code>1</code>.
+The information about all loaded protocols can be obtained by calling <em>ubus call network get_proto_handlers</em>.
+</p>
+<div class="table sectionedit9"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Name </th><th class="col1"> Name in <em>ubus call network get_proto_handlers</em> </th><th class="col2"> Meaning </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> no_device </td><td class="col1"> no_device </td><td class="col2"> The interface does not have a lower device. <span style='color:#ff7f27; '>TBD: Explain implications.</span></td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> </td><td class="col1"> immediate </td><td class="col2"> <span style='color:#ff7f27; '>TBD: I only saw this for the proto static. Maybe this is impossible to set from shell protos?</span> </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> available </td><td class="col1"> init_available </td><td class="col2"> Initialize the device directly as available, without the device specified by ifname being present <span style='color:#ff7f27; '>TBD: Is that correct?</span></td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> renew_handler </td><td class="col1"> renew_available </td><td class="col2"> Has a renew handler, which can be called. <span style='color:#ff7f27; '>TBD: How can it be called? Is it called automatically by sth.?</span> </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0"> teardown_on_l3_link_down </td><td class="col1"> teardown_on_l3_link_down </td><td class="col2"> <span style='color:#ff7f27; '>TBD</span> </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0"> </td><td class="col1"> force_link_default </td><td class="col2"> <span style='color:#ff7f27; '>TBD: I only saw this for the proto static. Maybe this is impossible to set from shell protos?</span> </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0"> no_proto_task </td><td class="col1"> no_task </td><td class="col2"> <span style='color:#ff7f27; '>TBD</span> </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:9,&quot;range&quot;:&quot;4140-5092&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Available proto flags&quot;,&quot;hid&quot;:&quot;available_proto_flags&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:8,&quot;range&quot;:&quot;3888-5093&quot;} -->
+<h3 class="sectionedit10" id="error_codes">Error codes</h3>
+<div class="level3">
+
+<p>
+If errors for interfaces occur, the json object in <em>ifstatus interfacename</em> or in <em>ubus call network.interface dump</em> have an attribute <em>“error”</em>.
+If there are no errors, this attribute is not existing.
+</p>
+<div class="table sectionedit11"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> CODE </th><th class="col1"> Meaning </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> NO_DEVICE </td><td class="col1"> The configured device in ifname is not found. </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> DEVICE_CLAIM_FAILED </td><td class="col1"> One of the reasons for this is, that the device configured by ifname does not exist. Usually this would result in NO_DEVICE as the device is only claimed when it is available. However when the proto flags <em>available=1</em> and <em>no_device=0</em> are set, the device specified by ifname is tried to be claimed directly. <span style='color:#ff7f27; '>TBD: Is this the only case? Is this correct?</span> </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> SETUP_FAILED </td><td class="col1"> <span style='color:#ff7f27; '>TBD</span> </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table1&quot;,&quot;secid&quot;:11,&quot;range&quot;:&quot;5325-5859&quot;} -->
+<p>
+Custom error codes can be thrown from the proto scripts aswell.
+This is done via <code>proto_notify_error “$config” MY_CUSTOM_ERROR_ID</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Error codes&quot;,&quot;hid&quot;:&quot;error_codes&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:10,&quot;range&quot;:&quot;5094-5995&quot;} -->
+<h3 class="sectionedit12" id="how_does_it_work_internally">How does it work internally?</h3>
+<div class="level3">
+<pre class="code bash">init_proto <span class="re1">$proto</span> <span class="re1">$cmd</span> <span class="re1">$interface</span> <span class="re1">$data</span> <span class="re1">$ifname</span></pre>
+
+<p>
+This function takes all all arguments from the <em>proto.sh</em> file, interprets them and then defines the implementation of <em>add_protocol()</em>.
+</p>
+
+<p>
+If <code>$cmd = “dump”</code> then <em>add_protocol()</em> will do the following:
+</p>
+<ul>
+<li class="level1"><div class="li"> A json output dump of the results of <code>proto_protocolname_init_config</code> will be printed.</div>
+</li>
+<li class="level1"><div class="li"> Other parameters than <code>$cmd</code> will be ignored.</div>
+</li>
+</ul>
+
+<p>
+If <code>$cmd ∈ {“setup”, “teardown”, “renew”}</code> <em>add_protocol()</em> will do the following:
+</p>
+<ul>
+<li class="level1"><div class="li"> If <code>$proto ≠ protoname</code> nothing will be done.</div>
+</li>
+<li class="level1"><div class="li"> <code>$data</code> is loaded via <em>json_load</em></div>
+</li>
+<li class="level1"><div class="li"> <code>proto_protoname_... $interface $ifname</code> will be called.</div>
+</li>
+</ul>
+
+<p>
+Otherwise the script will fail with something like:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>add_protocol: not found</code></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;How does it work internally?&quot;,&quot;hid&quot;:&quot;how_does_it_work_internally&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:12,&quot;range&quot;:&quot;5996-6793&quot;} -->
+<h2 class="sectionedit13" id="api">API</h2>
+<div class="level2">
+
+<p>
+The following functions are defined in <code>/lib/netifd/netifd-proto.sh</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;API&quot;,&quot;hid&quot;:&quot;api&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:13,&quot;range&quot;:&quot;6794-6882&quot;} -->
+<h3 class="sectionedit14" id="netifd_functions">netifd functions</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="initialization_functions">initialization functions</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> <code>add_protocol</code></div>
+</li>
+<li class="level1"><div class="li"> <code>init_proto</code></div>
+</li>
+<li class="level1"><div class="li"> <code>proto_config_add_boolean</code></div>
+</li>
+<li class="level1"><div class="li"> <code>proto_config_add_int</code></div>
+</li>
+<li class="level1"><div class="li"> <code>proto_config_add_string</code></div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="notification_functions">notification functions</h4>
+<div class="level4">
+
+<p>
+Note: some of these function exit immediately.
+These functions are dispatched to ubus and arrive <a href="https://git.openwrt.org/?p=project/netifd.git;a=blob;f=proto-shell.c;hb=c00c8335d6188daa326ecfe5a62da15a9b9987e1#l792" class="interwiki iw_commit" title="https://git.openwrt.org/?p=project/netifd.git;a=blob;f=proto-shell.c;hb=c00c8335d6188daa326ecfe5a62da15a9b9987e1#l792">here</a>
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>proto_block_restart $interface</code></div>
+</li>
+<li class="level1"><div class="li"> <code>proto_init_update $ifname $up [$external]</code></div>
+</li>
+<li class="level1"><div class="li"> <code>proto_kill_command $interface [$signal]</code></div>
+</li>
+<li class="level1"><div class="li"> <code>proto_notify_error $interface $str1 [$str2] [$str3] ...</code></div>
+</li>
+<li class="level1"><div class="li"> <code>proto_run_command</code></div>
+</li>
+</ul>
+
+<p>
+We can start a daemon that maintains the connection asynchronously by calling <code>proto_run_command “$config” <em>custom_script</em></code>.
+Netifd remembers its pid.
+It can be killed manually by calling <code>proto_kill_command “$config”</code>.
+Netifd can automatically kill it, when the profile stopped.
+</p>
+
+<p>
+ * <code>proto_add_host_dependency</code>
+</p>
+
+<p>
+It seems to avoid race conditions in protos.
+We can register the following type of dependencies by calling:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>proto_add_host_dependency “$config” “$host” “$ifname”</code></div>
+</li>
+<li class="level1"><div class="li"> <code>proto_add_host_dependency “$config” \&#039;\&#039; “$ifname”</code> (only wait for an iface)</div>
+</li>
+<li class="level1"><div class="li"> (maybe more?)</div>
+</li>
+</ul>
+
+<p>
+Only if <code>$iface</code> is up, the corresponding <code>$config</code> will be loaded.
+So we need another proto to be completed, we can use this here.
+</p>
+
+<p>
+From some observations I think it looks like technically the <code>$config</code> is initially loaded, then the <code>proto_add_host_dependency</code> is called inside the proto handler and then the <code>$config</code> is removed again until <code>$iface</code> is available, up, ... or so.
+However, currently I do not know where to find the source code, so this is only a vague idea of what happens.
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>proto_send_update $interface </code></div>
+</li>
+<li class="level1"><div class="li"> <code> proto_set_available $interface $state</code></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;netifd functions&quot;,&quot;hid&quot;:&quot;netifd_functions&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:14,&quot;range&quot;:&quot;6883-8728&quot;} -->
+<h3 class="sectionedit15" id="common_functions">common functions</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> <code> json_add_string </code></div>
+</li>
+<li class="level1"><div class="li"> <code> json_dump </code></div>
+</li>
+<li class="level1"><div class="li"> <code> json_init </code></div>
+</li>
+<li class="level1"><div class="li"> <code> json_get_var </code></div>
+</li>
+<li class="level1"><div class="li"> <code> json_get_vars </code></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;common functions&quot;,&quot;hid&quot;:&quot;common_functions&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:15,&quot;range&quot;:&quot;8729-8869&quot;} -->
+<h2 class="sectionedit16" id="examples">Examples</h2>
+<div class="level2">
+
+<p>
+<a href="https://github.com/openwrt/openwrt/blob/master/package/base-files/files/lib/functions/network.sh" class="urlextern" title="https://github.com/openwrt/openwrt/blob/master/package/base-files/files/lib/functions/network.sh" rel="ugc nofollow">Network functions</a> rely on runtime configuration and can return unexpected result if you are using MWAN or <abbr title="Virtual Private Network">VPN</abbr>.
+Replace automatic <abbr title="Wide Area Network">WAN</abbr> detection with explicit interface definition if necessary.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Examples&quot;,&quot;hid&quot;:&quot;examples&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:16,&quot;range&quot;:&quot;8870-9184&quot;} -->
+<h3 class="sectionedit17" id="get_lan_address">Get LAN address</h3>
+<div class="level3">
+<pre class="code bash"><span class="co0"># Runtime configuration</span>
+<span class="re2">NET_IF</span>=<span class="st0">&quot;lan&quot;</span>
+. <span class="sy0">/</span>lib<span class="sy0">/</span>functions<span class="sy0">/</span>network.sh
+network_flush_cache
+network_get_ipaddr NET_ADDR <span class="st0">&quot;<span class="es3">${NET_IF}</span>&quot;</span>
+network_get_ipaddr6 NET_ADDR6 <span class="st0">&quot;<span class="es3">${NET_IF}</span>&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;<span class="es3">${NET_ADDR}</span>&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;<span class="es3">${NET_ADDR6}</span>&quot;</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Get LAN address&quot;,&quot;hid&quot;:&quot;get_lan_address&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:17,&quot;range&quot;:&quot;9185-9437&quot;} -->
+<h3 class="sectionedit18" id="get_wan_interface">Get WAN interface</h3>
+<div class="level3">
+<pre class="code bash"><span class="co0"># Runtime configuration</span>
+. <span class="sy0">/</span>lib<span class="sy0">/</span>functions<span class="sy0">/</span>network.sh
+network_flush_cache
+network_find_wan NET_IF
+network_find_wan6 NET_IF6
+<span class="kw3">echo</span> <span class="st0">&quot;<span class="es3">${NET_IF}</span>&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;<span class="es3">${NET_IF6}</span>&quot;</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Get WAN interface&quot;,&quot;hid&quot;:&quot;get_wan_interface&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:18,&quot;range&quot;:&quot;9438-9643&quot;} -->
+<h3 class="sectionedit19" id="get_wan_l2_device">Get WAN L2 device</h3>
+<div class="level3">
+<pre class="code bash"><span class="co0"># Runtime configuration</span>
+. <span class="sy0">/</span>lib<span class="sy0">/</span>functions<span class="sy0">/</span>network.sh
+network_flush_cache
+network_find_wan NET_IF
+network_find_wan6 NET_IF6
+network_get_physdev NET_L2D <span class="st0">&quot;<span class="es3">${NET_IF}</span>&quot;</span>
+network_get_physdev NET_L2D6 <span class="st0">&quot;<span class="es3">${NET_IF6}</span>&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;<span class="es3">${NET_L2D}</span>&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;<span class="es3">${NET_L2D6}</span>&quot;</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Get WAN L2 device&quot;,&quot;hid&quot;:&quot;get_wan_l2_device&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:19,&quot;range&quot;:&quot;9644-9933&quot;} -->
+<h3 class="sectionedit20" id="get_wan_l3_device">Get WAN L3 device</h3>
+<div class="level3">
+<pre class="code bash"><span class="co0"># Runtime configuration</span>
+. <span class="sy0">/</span>lib<span class="sy0">/</span>functions<span class="sy0">/</span>network.sh
+network_flush_cache
+network_find_wan NET_IF
+network_find_wan6 NET_IF6
+network_get_device NET_L3D <span class="st0">&quot;<span class="es3">${NET_IF}</span>&quot;</span>
+network_get_device NET_L3D6 <span class="st0">&quot;<span class="es3">${NET_IF6}</span>&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;<span class="es3">${NET_L3D}</span>&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;<span class="es3">${NET_L3D6}</span>&quot;</span>
+&nbsp;
+<span class="co0"># Persistent configuration</span>
+uci get network.wan.device
+uci get network.wan6.device</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Get WAN L3 device&quot;,&quot;hid&quot;:&quot;get_wan_l3_device&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:20,&quot;range&quot;:&quot;9934-10304&quot;} -->
+<h3 class="sectionedit21" id="get_wan_address">Get WAN address</h3>
+<div class="level3">
+<pre class="code bash"><span class="co0"># Runtime configuration</span>
+. <span class="sy0">/</span>lib<span class="sy0">/</span>functions<span class="sy0">/</span>network.sh
+network_flush_cache
+network_find_wan NET_IF
+network_find_wan6 NET_IF6
+network_get_ipaddr NET_ADDR <span class="st0">&quot;<span class="es3">${NET_IF}</span>&quot;</span>
+network_get_ipaddr6 NET_ADDR6 <span class="st0">&quot;<span class="es3">${NET_IF6}</span>&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;<span class="es3">${NET_ADDR}</span>&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;<span class="es3">${NET_ADDR6}</span>&quot;</span>
+&nbsp;
+<span class="co0"># Persistent static configuration</span>
+uci get network.wan.ipaddr
+uci get network.wan6.ip6addr</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Get WAN address&quot;,&quot;hid&quot;:&quot;get_wan_address&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:21,&quot;range&quot;:&quot;10305-10686&quot;} -->
+<h3 class="sectionedit22" id="get_wan_gateway">Get WAN gateway</h3>
+<div class="level3">
+<pre class="code bash"><span class="co0"># Runtime configuration</span>
+. <span class="sy0">/</span>lib<span class="sy0">/</span>functions<span class="sy0">/</span>network.sh
+network_flush_cache
+network_find_wan NET_IF
+network_find_wan6 NET_IF6
+network_get_gateway NET_GW <span class="st0">&quot;<span class="es3">${NET_IF}</span>&quot;</span>
+network_get_gateway6 NET_GW6 <span class="st0">&quot;<span class="es3">${NET_IF6}</span>&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;<span class="es3">${NET_GW}</span>&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;<span class="es3">${NET_GW6}</span>&quot;</span>
+&nbsp;
+<span class="co0"># Persistent static configuration</span>
+uci get network.wan.gateway
+uci get network.wan6.ip6gw</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Get WAN gateway&quot;,&quot;hid&quot;:&quot;get_wan_gateway&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:22,&quot;range&quot;:&quot;10687-11061&quot;} -->
+<h3 class="sectionedit23" id="get_wan_prefix">Get WAN prefix</h3>
+<div class="level3">
+<pre class="code bash"><span class="co0"># Runtime configuration</span>
+. <span class="sy0">/</span>lib<span class="sy0">/</span>functions<span class="sy0">/</span>network.sh
+network_flush_cache
+network_find_wan6 NET_IF6
+network_get_prefix6 NET_PFX6 <span class="st0">&quot;<span class="es3">${NET_IF6}</span>&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;<span class="es3">${NET_PFX6}</span>&quot;</span>
+&nbsp;
+<span class="co0"># Persistent static configuration</span>
+uci get network.wan6.ip6prefix</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Get WAN prefix&quot;,&quot;hid&quot;:&quot;get_wan_prefix&quot;,&quot;codeblockOffset&quot;:13,&quot;secid&quot;:23,&quot;range&quot;:&quot;11062-11332&quot;} -->
+<h3 class="sectionedit24" id="get_wan_gateway_for_unmanaged_default_route">Get WAN gateway for unmanaged default route</h3>
+<div class="level3">
+<pre class="code bash"><span class="co0"># Runtime configuration</span>
+ubus call network.interface dump \
+<span class="sy0">|</span> jsonfilter <span class="re5">-e</span> <span class="st0">&quot;$['interface'][*]['inactive']
+['route'][*]['target'='0.0.0.0','mask'='0','nexthop']&quot;</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Get WAN gateway for unmanaged default route&quot;,&quot;hid&quot;:&quot;get_wan_gateway_for_unmanaged_default_route&quot;,&quot;codeblockOffset&quot;:14,&quot;secid&quot;:24,&quot;range&quot;:&quot;11333-&quot;} -->

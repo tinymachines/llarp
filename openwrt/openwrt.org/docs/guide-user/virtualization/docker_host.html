@@ -1,0 +1,614 @@
+
+<h1 class="sectionedit1" id="openwrt_as_docker_container_host">OpenWrt as Docker container host</h1>
+<div class="level1">
+
+<p>
+<a href="https://docs.docker.com/get-started/docker-overview/#docker-architecture" class="urlextern" title="https://docs.docker.com/get-started/docker-overview/#docker-architecture" rel="ugc nofollow">Docker</a> uses <abbr title="Operating System">OS</abbr>-level virtualization to deliver software in packages called containers. This is used to automate deployment of applications so that they work efficiently in different environments in isolation. To run containers, users may install Docker Community Edition, use native OpenWrt tools, or Podman. While Docker CE is perhaps the most typical method, this guide covers several options.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;OpenWrt as Docker container host&quot;,&quot;hid&quot;:&quot;openwrt_as_docker_container_host&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-523&quot;} -->
+<h2 class="sectionedit2" id="prerequisites">Prerequisites</h2>
+<div class="level2">
+
+<p>
+For devices with small flash partitions you may need to add <a href="/docs/guide-user/storage/usb-drives" class="wikilink1" title="docs:guide-user:storage:usb-drives" data-wiki-id="docs:guide-user:storage:usb-drives">external storage</a> for the containers and data.
+</p>
+
+<p>
+Also in many cases you will be running the container as a specific user that will need access to some folder outside the container for its configuration and data. So you will probably need to <a href="/docs/guide-user/additional-software/create-new-users" class="wikilink1" title="docs:guide-user:additional-software:create-new-users" data-wiki-id="docs:guide-user:additional-software:create-new-users">create new users and groups</a> for applications, create folders, and then change the owner of these folders to the user who will run the container.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Prerequisites&quot;,&quot;hid&quot;:&quot;prerequisites&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;524-1090&quot;} -->
+<h2 class="sectionedit3" id="docker_community_edition">Docker Community Edition</h2>
+<div class="level2">
+
+<p>
+First install dockerd, <code>opkg install dockerd</code>. This daemon provides the <a href="https://docs.docker.com/engine/api/" class="urlextern" title="https://docs.docker.com/engine/api/" rel="ugc nofollow">Docker Engine API</a> and manages Docker objects such as images, containers, networks, and volumes.
+</p>
+
+<p>
+Then you need a client, e.g. docker, <code>opkg install docker</code> to connect to the daemon and start containers. This client is command line based.
+</p>
+
+<p>
+For a LuCI web client install luci-app-dockerman, <code>opkg install luci-app-dockerman</code>. This package will also install dockerd and docker-compose as dependencies. It can work with dockerd on local and remote hosts. The default folder for docker in dockerman is <strong>/opt/docker/</strong> so mount your storage at <strong>/opt</strong> or change the folder in <strong>Docker</strong> &gt;  <strong>Overview</strong> &gt; <strong>Docker Root Dir</strong> then restart the dockerd service.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Docker Community Edition&quot;,&quot;hid&quot;:&quot;docker_community_edition&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;1091-1901&quot;} -->
+<h3 class="sectionedit4" id="adding_images">Adding images</h3>
+<div class="level3">
+
+<p>
+Search for an image on <a href="https://hub.docker.com/" class="urlextern" title="https://hub.docker.com/" rel="ugc nofollow">Docker Hub</a>, then copy the image name from the <strong>Docker Pull Command</strong> text box. For example, if the text is <strong>docker pull linuxserver/transmission</strong>, then copy <strong>linuxserver/transmission</strong>.
+</p>
+
+<p>
+In Luci go to <strong>Docker</strong> &gt; <strong>Images</strong> and paste that text in the <strong>Pull Image</strong> box, then click <strong>Pull</strong>. The page will show the download progress.
+</p>
+
+<p>
+Note for larger container pulls LuCI could timeout, so you will need to use the command line. For example, Unifi-network-application includes java runtime environment and approaches 500MB. For this use <abbr title="Secure Shell">SSH</abbr> and enter: <code>docker pull lscr.io/linuxserver/unifi-network-application:latest</code>.
+</p>
+
+<p>
+Once you have your images, in Luci go to <strong>Docker</strong> &gt; <strong>Containers</strong> &gt; <strong>Add</strong>. In the new container page select the docker image from the <strong>Docker Image</strong> menu, then set all other parameters (usually the available/useful parameters are described in the description of the container on Docker Hub), then press Submit to create the container.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Adding images&quot;,&quot;hid&quot;:&quot;adding_images&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;1902-2947&quot;} -->
+<h3 class="sectionedit5" id="configure_the_docker_daemon">Configure the Docker daemon</h3>
+<div class="level3">
+
+<p>
+Config is located in <code>/etc/config/dockerd</code>.
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>data_root</code> a folder where to store images and containers. It&#039;s also mounted by a docker. You may want to change it to a USB disk. It&#039;s file system can&#039;t be fat or ntfs. By default <code>/opt/docker/</code></div>
+</li>
+<li class="level1"><div class="li"> <code>log_level</code> Default <code>warn</code>.</div>
+</li>
+<li class="level1"><div class="li"> <code>hosts</code> an <abbr title="Application Programming Interface">API</abbr> listener. By default is used a UNIX socket <code>/var/run/docker.sock</code>.</div>
+</li>
+<li class="level1"><div class="li"> <code>iptables</code> Enable iptables rules. Default <code>1</code></div>
+</li>
+<li class="level1"><div class="li"> <code>bip</code> network bridge <abbr title="Internet Protocol">IP</abbr>. Default <code>172.18.0.1/24</code></div>
+</li>
+<li class="level1"><div class="li"> <code>fixed_cidr</code> Allocate IPs from a range. Default <code>172.17.0.0/16</code></div>
+</li>
+<li class="level1"><div class="li"> <code>fixed_cidr_v6</code> same as fixed_cidr for <abbr title="Internet Protocol version 6">IPv6</abbr>. Default &#039;fc00:1::/80&#039;</div>
+</li>
+<li class="level1"><div class="li"> <code>ipv6</code> Enable <abbr title="Internet Protocol version 6">IPv6</abbr> networking. Default <code>1</code></div>
+</li>
+<li class="level1"><div class="li"> <code>ip</code> Default <code>::ffff:0.0.0.0</code></div>
+</li>
+<li class="level1"><div class="li"> <code>dns</code> <abbr title="Domain Name System">DNS</abbr> Servers. Default <code>172.17.0.1</code></div>
+</li>
+<li class="level1"><div class="li"> <code>registry_mirrors</code> <abbr title="Uniform Resource Locator">URL</abbr> of a registries. Default <code><a href="https://hub.docker.com" class="urlextern" title="https://hub.docker.com" rel="ugc nofollow">https://hub.docker.com</a></code></div>
+</li>
+</ul>
+
+<p>
+The following settings require a restart of docker to take full effect, A reload will only have partial or no effect:
+</p>
+<ul>
+<li class="level1"><div class="li"> bip</div>
+</li>
+<li class="level1"><div class="li"> blocked_interfaces</div>
+</li>
+<li class="level1"><div class="li"> extra_iptables_args</div>
+</li>
+<li class="level1"><div class="li"> device</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configure the Docker daemon&quot;,&quot;hid&quot;:&quot;configure_the_docker_daemon&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;2948-4022&quot;} -->
+<h2 class="sectionedit6" id="native_openwrt_tools">Native OpenWrt tools</h2>
+<div class="level2">
+
+<p>
+Instead of running Docker CE users may want to use the procd init system which supports Open Container Initiative Runtime Specification set by <a href="https://opencontainers.org/" class="urlextern" title="https://opencontainers.org/" rel="ugc nofollow">Opencontainers.org</a>. This extends its slim containers (&#039;ujail&#039;) capability. The uxc command line tool handles the basic operations on containers as defined by the <abbr title="specification">spec</abbr>. This allows to use it as a drop-in replacement for Docker&#039;s &#039;runc&#039; (or &#039;crun&#039;) on OpenWrt hosts with a reduced footprint.
+</p>
+
+<p>
+Detailed but possibly outdated info available on <a href="https://gitlab.com/prpl-foundation/prplos/prplos/-/wikis/uxc" class="urlextern" title="https://gitlab.com/prpl-foundation/prplos/prplos/-/wikis/uxc" rel="ugc nofollow">https://gitlab.com/prpl-foundation/prplos/prplos/-/wikis/uxc</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Native OpenWrt tools&quot;,&quot;hid&quot;:&quot;native_openwrt_tools&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;4023-4632&quot;} -->
+<h3 class="sectionedit7" id="install_packages">Install packages</h3>
+<div class="level3">
+
+<p>
+Install the following:
+</p>
+<pre class="code">opkg install kmod-veth uxc procd-ujail procd-ujail-console</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Install packages&quot;,&quot;hid&quot;:&quot;install_packages&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;4633-4757&quot;} -->
+<h3 class="sectionedit8" id="create_veth_pair_for_container">Create veth pair for container</h3>
+<div class="level3">
+<pre class="code">uci batch &lt;&lt;EOF
+set network.veth0=device
+set network.veth0.type=&#039;veth&#039;
+set network.veth0.name=&#039;vhost0&#039;
+set network.veth0.peer_name=&#039;virt0&#039;
+add_list network.lan.ifname=&#039;vhost0&#039;
+set network.virt0=interface
+set network.virt0.ifname=&#039;virt0&#039;
+set network.virt0.proto=&#039;none&#039;
+# set proto=&#039;none&#039; assuming DHCP client inside container
+# use &#039;static&#039; otherwise and also set ipaddr, gateway and dns
+set network.virt0.jail=&#039;container1&#039;
+set network.virt0.jail_ifname=&#039;host0&#039;
+commit network
+EOF</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Create veth pair for container&quot;,&quot;hid&quot;:&quot;create_veth_pair_for_container&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:8,&quot;range&quot;:&quot;4758-5294&quot;} -->
+<h3 class="sectionedit9" id="creating_an_oci_run-time_bundle">Creating an OCI run-time bundle</h3>
+<div class="level3">
+
+<p>
+To create an OCI run-time bundle, which is needed for uxc, follow these steps.
+</p>
+
+<p>
+First build a container image.
+</p>
+<pre class="code">docker build -t container1 .</pre>
+
+<p>
+Note the image ID that is printed at the end, and use it after the @ in the next command.
+</p>
+<pre class="code">skopeo copy containers-storage:[overlay@$HOME/.local/share/containers/storage+/run/user/1000/containers]@b0897a4ee285938413663f4c7b2b06d21e45c4358cebb04093ac9de9de118bf2 oci:container1:latest
+sudo umoci unpack --image container1 container1-bundle
+sudo rsync -aH container1-bundle root@192.168.0.1:/mnt/sda3/debian</pre>
+
+<p>
+This is quite cumbersome. If someone knows a better way, please do update this page.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Creating an OCI run-time bundle&quot;,&quot;hid&quot;:&quot;creating_an_oci_run-time_bundle&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:9,&quot;range&quot;:&quot;5295-5999&quot;} -->
+<h3 class="sectionedit10" id="import_a_oci_runtime_container">Import a OCI runtime container</h3>
+<div class="level3">
+
+<p>
+(assuming OCI run-time bundle with config.json in /mnt/sda3/debian)
+</p>
+<pre class="code">uxc create container1 /mnt/sda3/debian true
+uxc start container1
+
+uxc list
+uxc state container</pre>
+
+<p>
+If the container uses a stdio console, you can attach it using
+</p>
+<pre class="code">ujail-console -c container1</pre>
+
+<p>
+(there is no buffer, so if you like to see the complete bootlog of a container, make sure to attach a console after the &#039;create&#039; call but before starting it)
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Import a OCI runtime container&quot;,&quot;hid&quot;:&quot;import_a_oci_runtime_container&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:10,&quot;range&quot;:&quot;6000-6483&quot;} -->
+<h2 class="sectionedit11" id="podman">Podman</h2>
+<div class="level2">
+
+<p>
+<a href="https://podman.io/" class="urlextern" title="https://podman.io/" rel="ugc nofollow">https://podman.io/</a> is alternative to Docker and it is compatible with Docker client commands.
+Here is example setup using podman to create web server container with proxy.
+</p>
+
+<p>
+Install necessary packages:
+</p>
+<pre class="code bash">opkg <span class="kw2">install</span> podman</pre>
+
+<p>
+If you want to use rootless containers, the package slirp4netns is installed as a dependency.
+There&#039;s also authoritative <abbr title="Domain Name System">DNS</abbr> server for netavark available as package aardvark-dns.
+This guide excludes their setup currently.
+</p>
+
+<p>
+<strong>Network</strong>
+</p>
+
+<p>
+Let&#039;s start by reviewing our container network&#039;s settings.
+/etc/containers/networks/podman.json:
+</p>
+<pre class="code">{
+     &quot;name&quot;: &quot;podman&quot;,
+     &quot;id&quot;: &quot;5ef894788befd4d42498314b6e66282ca730aa2e1e82f9b9597bf4d1725ca074&quot;,
+     &quot;driver&quot;: &quot;bridge&quot;,
+     &quot;network_interface&quot;: &quot;podman0&quot;,
+     &quot;created&quot;: &quot;2023-02-20T08:56:34.652030952Z&quot;,
+     &quot;subnets&quot;: [
+          {
+               &quot;subnet&quot;: &quot;10.129.0.0/24&quot;,
+               &quot;gateway&quot;: &quot;10.129.0.1&quot;
+          }
+     ],
+     &quot;ipv6_enabled&quot;: false,
+     &quot;internal&quot;: false,
+     &quot;dns_enabled&quot;: true,
+     &quot;ipam_options&quot;: {
+          &quot;driver&quot;: &quot;host-local&quot;
+     }
+}</pre>
+
+<p>
+I have a rather large network (10.0.0.0/9) so that&#039;s why the <em>odd</em> subnet - you can choose your own, but this is a example setup based on my settings.
+In this file you define your network named podman. You can have multiple networks.
+</p>
+
+<p>
+<strong>Firewall/Zone</strong>
+</p>
+
+<p>
+Next, we make sure internal port forwarding/firewalling of podman is disabled, check the network section of /etc/containers/containers.conf:
+</p>
+<pre class="code">[network]
+network_backend = &quot;netavark&quot;
+firewall_driver = &quot;none&quot;
+network_config_dir = &quot;/etc/containers/networks/&quot;
+default_network = &quot;podman&quot;
+default_subnet = &quot;10.129.0.0/24&quot;
+default_rootless_network_cmd = &quot;slirp4netns&quot;
+#dns_bind_port = 53</pre>
+
+<p>
+We do this to rather use openwrt&#039;s own firewall, as when using podman&#039;s/netavark&#039;s, rules are lost every time that firewall is re-loaded, including
+when you start your first container network, when podman0 interface comes up.
+</p>
+
+<p>
+Be aware that this means you must manually configure a <abbr title="Network Address Translation">NAT</abbr> rule on the firewall when you want to expose a port from a container, as podman will not do that for you!
+</p>
+
+<p>
+Next is time to setup network and firewall on the openwrt&#039;s side, add this to /etc/config/network:
+</p>
+<pre class="code">config device
+	option type &#039;bridge&#039;
+	option name &#039;podman0&#039;
+	option bridge_empty &#039;1&#039;
+	option ipv6 &#039;0&#039;
+
+config interface &#039;podman0&#039;
+	option proto &#039;static&#039;
+	option device &#039;podman0&#039;
+	option ipaddr &#039;10.129.0.1&#039;
+	option netmask &#039;255.255.255.0&#039;</pre>
+
+<p>
+And we also want to use firewall, in this setup we allow access from lan to podman, but not the other way around, we also
+grant access from wan, and to wan. /etc/config/firewall:
+</p>
+<pre class="code">config zone
+	option name &#039;Podman&#039;
+	option input &#039;DROP&#039;
+	option output &#039;ACCEPT&#039;
+	option forward &#039;REJECT&#039;
+	list network &#039;podman0&#039;</pre>
+
+<p>
+Now that we have blocked access to <abbr title="Local Area Network">LAN</abbr>, our containers are missing access to <abbr title="Domain Name System">DNS</abbr>, unless we configure them to use something else,
+such as 8.8.8.8 - so we make a exception, containers can connect to lan, but only on port 53 (<abbr title="Domain Name System">DNS</abbr>):
+</p>
+<pre class="code">config rule
+	option name &#039;Allow-Podman-DNS&#039;
+	option src &#039;Podman&#039;
+	option dest_port &#039;53&#039;
+	option target &#039;ACCEPT&#039;</pre>
+
+<p>
+Now initial network setup is complete.
+</p>
+
+<p>
+<strong>Service</strong>
+</p>
+
+<p>
+Next we make sure that podman service is started on boot. This is optional, but if you want to follow this guide, it comes handy later.
+Podman service does not create/start/etc any containers, it only starts background service and creates unix socket used for communication.
+This socket is located at /var/run/podman/podman.sock - this socket accepts similar/compatible communication as docker. A so called
+podman-docker-compatibility package usually only contains a link to this socket to standard docker&#039;s socket path, and a docker wrapper
+script that forwards it&#039;s command-line to podman command. Service actually starts when you use podman, but we want to make sure it&#039;s listed
+as openwrt instance, and for further more advanced setup, this is helpful.
+</p>
+<pre class="code bash"><span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>podman <span class="kw3">enable</span></pre>
+
+<p>
+After reboot, you can start using your podman setup. Guide continues, we make a web server and caddy proxy as example projects
+and handle forwarding of traffic to them. We will store our container data in /srv. 
+</p>
+
+<p>
+<strong>Container storage (optional) </strong>
+</p>
+
+<p>
+I have a lot of disk space available, so I set my graphroot to hard drive, instead of
+storing container data in RAM, such as /tmp or /var which it defaults. First make a proper path:
+</p>
+<pre class="code bash"><span class="kw2">mkdir</span> <span class="re5">-p</span> <span class="sy0">/</span>srv<span class="sy0">/</span>.podman<span class="sy0">/</span>storage</pre>
+
+<p>
+And edit your /etc/containers/storage.conf:
+</p>
+<pre class="code">graphroot = &quot;/srv/.podman/storage&quot;</pre>
+
+<p>
+default was: “<em>/var/lib/containers/storage</em>”
+</p>
+
+<p>
+Without setting graphroot, your setup works also, it&#039;s just that I happen to have a lot of disk
+space in my setups, I rather store them on hard drive instead of memory, such as /tmp or /var.
+</p>
+
+<p>
+<strong>Local image storage (optional)</strong>
+</p>
+
+<p>
+My setup builds my containers on every boot and I want to speed up that process, so I want images for Caddy proxy and nginx web server to
+be stored in permanent storage. But beware, every time you want to make changes to these images, you need to restart this process completely
+from beginning, first by resetting <em>additionalimagestores</em> setting to it&#039;s default value, remove physical image files and ofcourse before
+all this, you must remove containers using these images, along the images, from Podman&#039;s own system, and finally pull new images, and
+restore <em>additionalimagestores</em> setting to your image path. Also as Podman&#039;s service lacks stop functionality, some reboots are
+necessary as well. Complicated? Yes it is, but in the end it might pay off, as images don&#039;t need to be pulled after every reboot.
+To begin with, reboot your computer and make sure any containers are not created, started or even exist, this will help to avoid problems.
+</p>
+
+<p>
+Create directory /srv/.podman/images:
+</p>
+<pre class="code">mkdir -p /srv/.podman/images</pre>
+
+<p>
+Then check your /etc/containers/storage.conf:
+</p>
+<pre class="code">additionalimagestores = []</pre>
+
+<p>
+If you have to change this line, you must reboot to podman service restart so this takes effect.
+Following line should be found, it is default setting. With this line, we do not have images locally stored in permanent store.
+Next issue following commands:
+</p>
+<pre class="code">podman --root /srv/.podman/images images
+podman --root /srv/.podman/images pull docker.io/me/my_caddy_image:latest
+podman --root /srv/.podman/images pull docker.io/me/my_nginx_image:latest</pre>
+
+<p>
+replace image urls with your own, first command sets up path images as local image store,
+and next commands pull your images to local image store. You can also pull your pause
+image, for example: <em>k8s.gcr.io/pause:3.5</em>
+</p>
+
+<p>
+After this, make changes to your /etc/containers/storage.conf:
+</p>
+<pre class="code">additionalimagestores = [
+        &quot;/srv/.podman/images&quot;
+]</pre>
+
+<p>
+and reboot. Now when creating containers that use locally stored images, they do not need
+to be pulled from internet, they are instantly available. If you use not locally stored
+images, they work fine; they just are pulled from internet.
+</p>
+
+<p>
+This is a one time operation; changes, removals, adds of locally stored images cannot
+be modified very easily. To restart process; remove containers using locally stored images,
+remove then these images from podman (podman image rm &lt;imageid&gt;), change
+your <em>additionalimagestores</em> back to [], disable podman service, and make sure, podman
+service doesn&#039;t start by creation/start of containers during boot. Then you remove all files,
+from /srv/.podman/images:
+</p>
+<pre class="code">rm -rf /srv/.podman/images</pre>
+
+<p>
+reboot again, and begin this again from start of this section of guide.
+</p>
+
+<p>
+<strong>Pod</strong>
+We will start by creating a pod. Pod can hold multiple containers, they share some attributes,
+such as ip address. As we are trying to build a web server setup, we want <abbr title="Internet Protocol">IP</abbr> address to be
+always same for this pod. I have created a script /srv/create.sh to construct this pod:
+</p>
+<pre class="code bash"><span class="co0">#!/bin/sh</span>
+&nbsp;
+podman pod create \
+		<span class="re5">--replace</span> \
+		<span class="re5">--name</span> servers \
+		<span class="re5">--hostname</span> srv \
+		<span class="re5">--ip</span> 10.129.0.2
+&nbsp;
+podman pod start servers</pre>
+
+<p>
+This creates, or replaces if one exists, pod named servers, gives it a hostname srv (not important) and a static
+<abbr title="Internet Protocol">IP</abbr> address 10.129.0.2.
+</p>
+
+<p>
+<strong>Containers</strong>
+All configurations and statically exported data is also in /srv. In /srv/caddy I have all needed to build my
+caddy container, such as configurations and what ever caddy container of your choice needs. I also have a
+build script there, /srv/caddy/create.sh:
+</p>
+<pre class="code bash"><span class="co0">#!/bin/sh</span>
+&nbsp;
+podman create \
+	<span class="re5">--name</span> caddy \
+	<span class="re5">--pod</span> servers \
+	<span class="re5">--replace</span> \
+	<span class="re5">--systemd</span> <span class="kw2">false</span> \
+	<span class="re5">--label</span> <span class="re2">app</span>=caddy \
+	<span class="re5">--volume</span> <span class="sy0">/</span>srv<span class="sy0">/</span>caddy<span class="sy0">/</span>conf<span class="sy0">/</span>:<span class="sy0">/</span>etc<span class="sy0">/</span>caddy<span class="sy0">/</span>:Z,rw \
+	<span class="re5">--volume</span> <span class="sy0">/</span>srv<span class="sy0">/</span>caddy<span class="sy0">/</span>htdocs<span class="sy0">/</span>:<span class="sy0">/</span>var<span class="sy0">/</span>htdocs<span class="sy0">/</span>:z,rw \
+	<span class="re5">--volume</span> <span class="sy0">/</span>srv<span class="sy0">/</span>caddy<span class="sy0">/</span>logs<span class="sy0">/</span>:<span class="sy0">/</span>var<span class="sy0">/</span>log<span class="sy0">/</span>:z,rw \
+	<span class="re5">--volume</span> <span class="sy0">/</span>dev<span class="sy0">/</span>log:<span class="sy0">/</span>dev<span class="sy0">/</span>log:Z,rw \
+	<span class="re5">--mount</span>=<span class="st0">&quot;type=bind,src=/etc/acme/domain.tld_ecc/domain.tld.cer,dst=/etc/caddy/ssl/server.pem,ro=true,idmap=uids=0-82-1;gids=0-82-1&quot;</span> \
+	<span class="re5">--mount</span>=<span class="st0">&quot;type=bind,src=/etc/acme/domain.tld_ecc/domain.tld.key,dst=/etc/caddy/ssl/server.key,ro=true,idmap=uids=0-82-1;gids=0-82-1&quot;</span> \
+	docker.io<span class="sy0">/</span>me<span class="sy0">/</span>my_caddy_image:latest
+&nbsp;
+podman start caddy</pre>
+
+<p>
+In this guide I do not review configuration of Caddy, look it up from caddy&#039;s docs. My caddy is set to run as user www:www-data which in that
+setup are uid 82 and gid 82, acme is used to fetch certificates, but user www(82) cannot read root owned files, so we use idmapping to map
+those 2 files for user www:www-data. There are multiple ways to do this, this is just one approach. You could also setup a system that chmod&#039;s
+those files to be available for reading to everyone, or at least for user and/or group 82. Or copy them locally and chown them in that
+location statically.
+</p>
+
+<p>
+And I have a similar script for nginx:
+</p>
+<pre class="code bash"><span class="co0">#!/bin/sh</span>
+&nbsp;
+podman create \
+	<span class="re5">--name</span> nginx \
+	<span class="re5">--pod</span> servers \
+	<span class="re5">--replace</span> \
+	<span class="re5">--systemd</span> <span class="kw2">false</span> \
+	<span class="re5">--label</span> <span class="re2">app</span>=nginx \
+	<span class="re5">--volume</span> <span class="sy0">/</span>srv<span class="sy0">/</span>nginx<span class="sy0">/</span>conf<span class="sy0">/</span>:<span class="sy0">/</span>etc<span class="sy0">/</span>nginx<span class="sy0">/</span>:Z,rw \
+	<span class="re5">--volume</span> <span class="sy0">/</span>srv<span class="sy0">/</span>nginx<span class="sy0">/</span>logs<span class="sy0">/</span>:<span class="sy0">/</span>var<span class="sy0">/</span>log<span class="sy0">/</span>nginx<span class="sy0">/</span>:Z,rw \
+	<span class="re5">--volume</span> <span class="sy0">/</span>srv<span class="sy0">/</span>nginx<span class="sy0">/</span>htdocs<span class="sy0">/</span>:<span class="sy0">/</span>var<span class="sy0">/</span>htdocs<span class="sy0">/</span>:z,rw \
+	<span class="re5">--volume</span> <span class="sy0">/</span>dev<span class="sy0">/</span>log:<span class="sy0">/</span>dev<span class="sy0">/</span>log:Z,rw \
+	docker.io<span class="sy0">/</span>me<span class="sy0">/</span>my_nginx_image:latest
+&nbsp;
+podman start nginx</pre>
+
+<p>
+Now after you have configured properly your caddy and nginx, we should have a server properly running.
+We need to setup redirections from wan.
+</p>
+
+<p>
+<strong>Expose to wan</strong>
+</p>
+
+<p>
+Now that we have caddy serving at 10.129.0.2, ports 80 and 443, we edit /etc/config/firewall again:
+</p>
+<pre class="code">config redirect
+	option name &#039;Allow-HTTP&#039;
+	option src &#039;wan&#039;
+	option dest &#039;podman&#039;
+	option src_dport &#039;80&#039;
+	option dest_ip &#039;10.129.0.2&#039;
+	option dest_port &#039;80&#039;
+	option proto &#039;tcp&#039;
+	option reflection &#039;0&#039;
+	option target &#039;DNAT&#039;
+	option enabled &#039;1&#039;
+
+config redirect
+	option name &#039;Allow-HTTPS&#039;
+	option src &#039;wan&#039;
+	option dest &#039;podman&#039;
+	option src_dport &#039;443&#039;
+	option dest_ip &#039;10.129.0.2&#039;
+	option dest_port &#039;443&#039;
+	option proto &#039;tcp&#039;
+	option reflection &#039;0&#039;
+	option target &#039;DNAT&#039;
+	option enabled &#039;1&#039;</pre>
+
+<p>
+<strong>Automation</strong>
+</p>
+
+<p>
+Finally, we want our pod and containers to build and start during boot, we also have
+acme handling our certificates, so we want to restart caddy when certificates are renewed.
+</p>
+
+<p>
+I added /srv/scripts directory, and added there file restart_caddy.sh:
+</p>
+<pre class="code bash"><span class="co0">#!/bin/sh</span>
+&nbsp;
+<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>podman enabled <span class="sy0">||</span> <span class="kw3">exit</span>
+logger <span class="re5">-t</span> acme <span class="re5">-p</span> daemon.info <span class="st0">&quot;SSL certificates renewed, restarting container servers:caddy&quot;</span>
+&nbsp;
+podman stop caddy
+<span class="kw2">sleep</span> <span class="nu0">1</span>
+podman start caddy</pre>
+
+<p>
+And then rest is handled by /etc/rc.local:
+</p>
+<pre class="code bash"><span class="co0"># Put your custom commands here that should be executed once</span>
+<span class="co0"># the system init finished. By default this file does nothing.</span>
+&nbsp;
+add_podman_trigger<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+&nbsp;
+	<span class="kw3">local</span> <span class="re2">counter</span>=<span class="nu0">10</span>
+	<span class="kw3">local</span> <span class="re2">running</span>=<span class="nu0">0</span>
+&nbsp;
+	<span class="br0">&#91;</span> <span class="re5">-x</span> <span class="st0">&quot;/etc/init.d/acme&quot;</span> <span class="br0">&#93;</span> <span class="sy0">||</span> <span class="kw3">exit</span>
+	<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>acme enabled <span class="sy0">||</span> <span class="kw3">exit</span>
+&nbsp;
+	<span class="kw1">while</span> <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es2">$counter</span>&quot;</span> <span class="re5">-gt</span> <span class="nu0">0</span> <span class="br0">&#93;</span>; <span class="kw1">do</span>
+		<span class="br0">&#91;</span> <span class="st0">&quot;<span class="es4">$(service podman status)</span>&quot;</span> = <span class="st0">&quot;running&quot;</span> <span class="br0">&#93;</span> <span class="sy0">&amp;&amp;</span> <span class="br0">&#123;</span>
+			<span class="re2">running</span>=<span class="nu0">1</span>
+			<span class="re2">counter</span>=<span class="nu0">0</span>
+		<span class="br0">&#125;</span> <span class="sy0">||</span> <span class="br0">&#123;</span>
+			<span class="kw2">sleep</span> <span class="nu0">1</span>
+			<span class="re2">counter</span>=$<span class="br0">&#40;</span><span class="br0">&#40;</span><span class="re1">$counter</span>-<span class="nu0">1</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+		<span class="br0">&#125;</span>
+	<span class="kw1">done</span>
+&nbsp;
+	<span class="br0">&#91;</span> <span class="st0">&quot;<span class="es2">$running</span>&quot;</span> <span class="re5">-eq</span> <span class="nu0">1</span> <span class="br0">&#93;</span> <span class="sy0">&amp;&amp;</span> <span class="br0">&#123;</span>
+		ubus call service <span class="kw1">set</span> <span class="st_h">'{ &quot;name&quot;: &quot;podman&quot;, &quot;triggers&quot;: [[ &quot;acme.renew&quot;, [[ &quot;run_script&quot;, &quot;/srv/scripts/restart_caddy.sh&quot; ]], 2000 ]], &quot;data&quot;: {}}'</span>
+		logger <span class="re5">-t</span> podman <span class="re5">-p</span> daemon.info <span class="st0">&quot;podman: added service trigger for acme.renew event to restart servers:caddy&quot;</span>
+	<span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+start_podman_services<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+&nbsp;
+	<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>podman enabled <span class="sy0">&amp;&amp;</span> <span class="br0">&#123;</span>
+		<span class="br0">&#91;</span> <span class="re5">-f</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>.podman_created <span class="br0">&#93;</span> <span class="sy0">||</span> <span class="br0">&#123;</span>
+&nbsp;
+			<span class="kw2">touch</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>.podman_created
+&nbsp;
+			<span class="kw2">sleep</span> <span class="nu0">1</span>
+			<span class="sy0">/</span>srv<span class="sy0">/</span>create.sh
+			<span class="kw2">sleep</span> <span class="nu0">2</span>
+			<span class="sy0">/</span>srv<span class="sy0">/</span>caddy<span class="sy0">/</span>create.sh
+			<span class="kw2">sleep</span> <span class="nu0">2</span>
+			<span class="sy0">/</span>srv<span class="sy0">/</span>nginx<span class="sy0">/</span>create.sh
+&nbsp;
+			add_podman_trigger <span class="sy0">&amp;</span>
+		<span class="br0">&#125;</span>
+	<span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+
+<p>
+This is why starting podman service with /etc/init.d/podman comes handy, we can ignore
+all container related during boot, by just simply disabling service as nothing podman
+related is started if service is disabled. This builds our pod and both containers and
+then adds a trigger for podman service to restart caddy when <abbr title="Secure Socket Layer">SSL</abbr> certificates are renewed.
+There&#039;s a routine that checks if podman service has started, because trigger must be
+added AFTER podman service has started.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Podman&quot;,&quot;hid&quot;:&quot;podman&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:11,&quot;range&quot;:&quot;6484-&quot;} -->

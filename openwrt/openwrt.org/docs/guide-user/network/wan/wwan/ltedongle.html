@@ -1,0 +1,779 @@
+
+<h1 class="sectionedit1" id="how_to_use_lte_modem_in_qmi_mode_for_wan_connection">How to use LTE modem in QMI mode for WAN connection</h1>
+<div class="level1">
+
+<p>
+Many of currently available 3G/4G/5G modems use <strong>QMI</strong> and/or <strong>MBIM</strong> protocol to interact with the <em>host system</em>, e.g. with a router.
+For your information, <a href="https://blogs.gnome.org/dcbw/2010/04/15/mobile-broadband-and-qualcomm-proprietary-protocols/" class="urlextern" title="https://blogs.gnome.org/dcbw/2010/04/15/mobile-broadband-and-qualcomm-proprietary-protocols/" rel="ugc nofollow">QMI</a> is a proprietary protocol by Qualcomm. In contrast to QMI, <a href="https://modemmanager.org/docs/libmbim/mbim-protocol/" class="urlextern" title="https://modemmanager.org/docs/libmbim/mbim-protocol/" rel="ugc nofollow">MBIM</a> is more standardized protocol for such modems.
+</p>
+
+<p>
+This recipe explains how to setup and configure OpenWrt for using 3G/4G/5G USB modems for <abbr title="Wide Area Network">WAN</abbr> connection, using QMI or MBIM protocol.
+</p>
+
+<p>
+The same applies to external modems connected to USB ports and internal models installed into M.2(NGFF) or mPCIe slots.
+</p>
+
+<p>
+You may want to checkout the <a href="/docs/guide-user/network/wan/multiwan/mwan3" class="wikilink1" title="docs:guide-user:network:wan:multiwan:mwan3" data-wiki-id="docs:guide-user:network:wan:multiwan:mwan3">mwan3</a> (Multi <abbr title="Wide Area Network">WAN</abbr> load balancing/failover) package to use this simultaneously with other connections to the Internet.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;How to use LTE modem in QMI mode for WAN connection&quot;,&quot;hid&quot;:&quot;how_to_use_lte_modem_in_qmi_mode_for_wan_connection&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-942&quot;} -->
+<h2 class="sectionedit2" id="about">About</h2>
+<div class="level2">
+
+<p>
+Many modern USB modems may operate in different modes. If your modem provides only <em>serial</em> interface(s) like <code>/dev/ttyUSBx</code> - please refer to <a href="/docs/guide-user/network/wan/wwan/3gdongle" class="wikilink1" title="docs:guide-user:network:wan:wwan:3gdongle" data-wiki-id="docs:guide-user:network:wan:wwan:3gdongle">How to use 3g/UMTS USB Dongle for WAN connection</a>. For more information about other protocols commonly used:
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong>MBIM</strong>, see below on this page</div>
+</li>
+<li class="level1"><div class="li"> <strong>NCM</strong>, see <a href="/docs/guide-user/network/wan/wwan/ethernetoverusb_ncm" class="wikilink1" title="docs:guide-user:network:wan:wwan:ethernetoverusb_ncm" data-wiki-id="docs:guide-user:network:wan:wwan:ethernetoverusb_ncm">How To use LTE modem in NCM mode for WAN connection</a></div>
+</li>
+<li class="level1"><div class="li"> <strong>ECM</strong>, see <a href="/docs/guide-user/network/wan/wwan/ethernetoverusb_cdc" class="wikilink1" title="docs:guide-user:network:wan:wwan:ethernetoverusb_cdc" data-wiki-id="docs:guide-user:network:wan:wwan:ethernetoverusb_cdc">Use cdc_ether driver based dongles for WAN connection</a></div>
+</li>
+<li class="level1"><div class="li"> <strong>RNDIS</strong>, see <a href="/docs/guide-user/network/wan/wwan/ethernetoverusb_rndis" class="wikilink1" title="docs:guide-user:network:wan:wwan:ethernetoverusb_rndis" data-wiki-id="docs:guide-user:network:wan:wwan:ethernetoverusb_rndis">How To use LTE modem in RNDIS mode for WAN connection</a></div>
+</li>
+</ul>
+
+<p>
+If it is possible to switch your modem to provide QMI or MBIM interface - then this article is for you.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;About&quot;,&quot;hid&quot;:&quot;about&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;943-1790&quot;} -->
+<h3 class="sectionedit3" id="legacy_modem_preparation">Legacy Modem Preparation</h3>
+<div class="level3">
+
+<p>
+If QMI or MBIM interface is not exposed by the modem initially you may need to switch it to another mode or <em>composition</em> by using <a href="/docs/guide-user/network/wan/wwan/usb-modeswitching" class="wikilink1" title="docs:guide-user:network:wan:wwan:usb-modeswitching" data-wiki-id="docs:guide-user:network:wan:wwan:usb-modeswitching">USB mode switch</a> tool or a vendor-specific AT command.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Please read about <a href="/docs/guide-user/network/wan/wwan/at_commands" class="wikilink1" title="docs:guide-user:network:wan:wwan:at_commands" data-wiki-id="docs:guide-user:network:wan:wwan:at_commands">AT commands</a> for your modem.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Legacy Modem Preparation&quot;,&quot;hid&quot;:&quot;legacy_modem_preparation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;1791-2168&quot;} -->
+<h3 class="sectionedit4" id="lte_or_5g_modem_preparation">LTE or 5G Modem Preparation</h3>
+<div class="level3">
+
+<p>
+More recent modems are set by default to MBIM or QMI mode.
+</p>
+
+<p>
+This is an example of switching modes for popular Quectel modems (don&#039;t expect these proprietary commands to work on devices from other manufacturers):
+</p>
+<pre class="code">AT+QCFG=&quot;usbnet&quot;	# check the current mode
+AT+QCFG=&quot;usbnet&quot;,0	# set QMI or RMNET mode
+AT+QCFG=&quot;usbnet&quot;,1	# set ECM mode
+AT+QCFG=&quot;usbnet&quot;,2	# set MBIM mode</pre>
+
+<p>
+Reset the modem to apply changes - power toggle it or send <code>AT+CFUN=1,1</code> command.
+</p>
+
+<p>
+<br/>
+
+It is worth checking the list of <em>PDP Contexts</em> and particularly the <em>APNs</em> configured on the modem. Use a <em>terminal</em> program to query the modem with <code>AT+CGDCONT?</code> and observe the output. Example:
+</p>
+<pre class="code">AT+CGDCONT?
++CGDCONT: 1,&quot;IPV4V6&quot;,&quot;internet&quot;,...
++CGDCONT: 2,&quot;IPV4V6&quot;,&quot;ims&quot;,...
++CGDCONT: 3,&quot;IPV4V6&quot;,&quot;sos&quot;,...</pre>
+
+<p>
+Typically, but not always, context #1 is used for Internet connection. If it is not configured with the correct information (<abbr title="Internet Protocol">IP</abbr> type and APN), it is recommended to set the desired parameters. Example:
+</p>
+<pre class="code">AT+CGDCONT=1,&quot;IP&quot;,&quot;internet&quot;</pre>
+
+<p>
+Replace <code><abbr title="Internet Protocol">IP</abbr></code> with <code>IPV4V6</code> or <code>IPV6</code> if necessary and use your APN instead of <code>internet</code>.
+</p>
+
+<p>
+For an alternative method, see <a href="/docs/guide-user/network/wan/wwan/ltedongle#manual_validation" class="wikilink1" title="docs:guide-user:network:wan:wwan:ltedongle" data-wiki-id="docs:guide-user:network:wan:wwan:ltedongle">Manual validation</a> section below.
+</p>
+
+<p>
+<br/>
+
+While in the <em>terminal</em>, check the modem firmware version with <code>ATI</code> and see if there is an upgrade available.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;LTE or 5G Modem Preparation&quot;,&quot;hid&quot;:&quot;lte_or_5g_modem_preparation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;2169-3605&quot;} -->
+<h3 class="sectionedit5" id="router_preparation">Router Preparation</h3>
+<div class="level3">
+
+<p>
+1. Install OpenWrt
+</p>
+
+<p>
+2. Complete Steps <a href="/docs/guide-quick-start/checks_and_troubleshooting" class="wikilink1" title="docs:guide-quick-start:checks_and_troubleshooting" data-wiki-id="docs:guide-quick-start:checks_and_troubleshooting">OpenWrt Configuration</a>
+</p>
+
+<p>
+Router should be turned on and connected to the Internet to get the needed packages. Please refer to: <a href="/docs/guide-user/network/wan/internet.connection" class="wikilink1" title="docs:guide-user:network:wan:internet.connection" data-wiki-id="docs:guide-user:network:wan:internet.connection">Internet Connection</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Router Preparation&quot;,&quot;hid&quot;:&quot;router_preparation&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:5,&quot;range&quot;:&quot;3606-3925&quot;} -->
+<h3 class="sectionedit6" id="required_packages">Required Packages</h3>
+<div class="level3">
+
+<p>
+To make use of QMI protocol, packages <code>kmod-usb-net-qmi-wwan</code> (driver) and <code>uqmi</code> (control utility) are needed. For MBIM protocol the packages are <code>kmod-usb-net-cdc-mbim</code> and <code>umbim</code>. 
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Required Packages&quot;,&quot;hid&quot;:&quot;required_packages&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:6,&quot;range&quot;:&quot;3926-4147&quot;} -->
+<h3 class="sectionedit7" id="optional_packages">Optional Packages</h3>
+<div class="level3">
+
+<p>
+1. Add protocol support to LuCI - install <code>luci-proto-qmi</code> for QMI or <code>luci-proto-mbim</code> for MBIM.
+</p>
+
+<p>
+2. Add support for <em>serial</em> interfaces (ttyUSBx) - install <code>kmod-usb-serial-option</code> or  <code>kmod-usb-serial-qualcomm</code> depending on the modem.
+</p>
+
+<p>
+That is needed to interact with the modem using AT commands, for configuration purposes or to be able to send/receive SMS and USSD.
+A <em>terminal</em> program like <code>picocom</code> will be needed to actually send AT commands.
+</p>
+
+<p>
+3. Install <a href="/packages/pkgdata/usb-modeswitch" class="wikilink1" title="packages:pkgdata:usb-modeswitch" data-wiki-id="packages:pkgdata:usb-modeswitch">usb-modeswitch</a> package <em class="u">only if</em> that is needed for switching the modem into a “working” state. More about: <a href="/docs/guide-user/network/wan/wwan/usb-modeswitching" class="wikilink1" title="docs:guide-user:network:wan:wwan:usb-modeswitching" data-wiki-id="docs:guide-user:network:wan:wwan:usb-modeswitching">USB mode switch</a>
+</p>
+
+<p>
+4. Add support for <em>storage</em> component of your modem - refer to: <a href="/docs/guide-user/storage/usb-drives" class="wikilink1" title="docs:guide-user:storage:usb-drives" data-wiki-id="docs:guide-user:storage:usb-drives">USB Storage</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Optional Packages&quot;,&quot;hid&quot;:&quot;optional_packages&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:7,&quot;range&quot;:&quot;4148-4976&quot;} -->
+<h2 class="sectionedit8" id="sample_installation">Sample installation</h2>
+<div class="level2">
+
+<p>
+1. Install all the needed packages either in LuCI → System → Software or via command line:
+</p>
+<ul>
+<li class="level1"><div class="li"> if the modem is in QMI mode:</div>
+</li>
+</ul>
+<pre class="code">root@OpenWrt:~# opkg update
+root@OpenWrt:~# opkg install kmod-usb-net-qmi-wwan uqmi luci-proto-qmi kmod-usb-serial-option picocom</pre>
+<ul>
+<li class="level1"><div class="li"> if the modem is in MBIM mode:</div>
+</li>
+</ul>
+<pre class="code">root@OpenWrt:~# opkg update
+root@OpenWrt:~# opkg install kmod-usb-net-cdc-mbim umbim luci-proto-mbim kmod-usb-serial-option picocom</pre>
+
+<p>
+You can also add the necessary packages when building a new image with <a href="https://firmware-selector.openwrt.org/" class="urlextern" title="https://firmware-selector.openwrt.org/" rel="ugc nofollow">Firmware Selector</a>.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> If your have not enough space on your device - think about upgrading your hardware or installing <a href="/docs/guide-user/additional-software/extroot_configuration" class="wikilink1" title="docs:guide-user:additional-software:extroot_configuration" data-wiki-id="docs:guide-user:additional-software:extroot_configuration">Rootfs on External Storage (extroot)</a>. Refer to your router wiki page or forum thread for possibility and instructions.
+</p>
+
+<p>
+2. Reboot the router by executing <code>reboot</code> on the console.
+</p>
+
+<p>
+3. Check if you got a new <em>device</em>:
+</p>
+<pre class="code">root@OpenWrt:~# ls -l /dev/cdc*
+
+crw-r--r--    1 root     root      180, 176 Oct  1 12:03 /dev/cdc-wdm0</pre>
+
+<p>
+If there is no such device found - try to get more details:
+</p>
+<ul>
+<li class="level1"><div class="li"> Open System Log from LuCI web interface and see what it shows regarding newly discovered USB device(s)</div>
+</li>
+<li class="level1"><div class="li"> execute <code>dmesg</code> on the console and see if any relevant information is present in the kernel log</div>
+</li>
+<li class="level1"><div class="li"> check the details about USB devices detected by the system by running <code>cat /sys/kernel/debug/usb/devices</code> on the console:</div>
+</li>
+</ul>
+<pre class="code">[...]
+T:  Bus=01 Lev=01 Prnt=01 Port=00 Cnt=01 Dev#=  2 Spd=480  MxCh= 0
+D:  Ver= 2.00 Cls=ef(misc ) Sub=02 Prot=01 MxPS=64 #Cfgs=  1
+P:  Vendor=2c7c ProdID=0306 Rev= 3.10
+S:  Manufacturer=Quectel
+S:  Product=EP06-E
+S:  SerialNumber=0123456789ABCDEF
+C:* #Ifs= 5 Cfg#= 1 Atr=a0 MxPwr=500mA
+I:* If#= 0 Alt= 0 #EPs= 2 Cls=ff(vend.) Sub=ff Prot=ff Driver=option
+E:  Ad=81(I) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+E:  Ad=01(O) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+I:* If#= 1 Alt= 0 #EPs= 3 Cls=ff(vend.) Sub=00 Prot=00 Driver=option
+E:  Ad=83(I) Atr=03(Int.) MxPS=  10 Ivl=32ms
+E:  Ad=82(I) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+E:  Ad=02(O) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+I:* If#= 2 Alt= 0 #EPs= 3 Cls=ff(vend.) Sub=00 Prot=00 Driver=option
+E:  Ad=85(I) Atr=03(Int.) MxPS=  10 Ivl=32ms
+E:  Ad=84(I) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+E:  Ad=03(O) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+I:* If#= 3 Alt= 0 #EPs= 3 Cls=ff(vend.) Sub=00 Prot=00 Driver=option
+E:  Ad=87(I) Atr=03(Int.) MxPS=  10 Ivl=32ms
+E:  Ad=86(I) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+E:  Ad=04(O) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+I:* If#= 4 Alt= 0 #EPs= 3 Cls=ff(vend.) Sub=ff Prot=ff Driver=qmi_wwan
+E:  Ad=89(I) Atr=03(Int.) MxPS=   8 Ivl=32ms
+E:  Ad=88(I) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+E:  Ad=05(O) Atr=02(Bulk) MxPS= 512 Ivl=0ms</pre>
+
+<p>
+See Troubleshooting Section of this page for more information.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Sample installation&quot;,&quot;hid&quot;:&quot;sample_installation&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:8,&quot;range&quot;:&quot;4977-7835&quot;} -->
+<h2 class="sectionedit9" id="configuration">Configuration</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:9,&quot;range&quot;:&quot;7836-7861&quot;} -->
+<h3 class="sectionedit10" id="with_luci_web_interface">With LuCi web interface</h3>
+<div class="level3">
+
+<p>
+[QMI]: Assuming <code>luci-proto-qmi</code> package is installed, navigate to Network → Interfaces, then Add new interface… → Protocol: QMI Cellular
+</p>
+
+<p>
+[MBIM]: Assuming <code>luci-proto-mbim</code> package is installed, navigate to Network → Interfaces, then Add new interface… → Protocol: MBIM Cellular
+</p>
+
+<p>
+[Common]:
+</p>
+
+<p>
+Select Interface “cdc-wdm0” in the drop-down. If it is not available there, check if the corresponding driver (<code>kmod-usb-net-*</code>) is loaded, reset the modem if its mode has recently been changed.
+</p>
+
+<p>
+Enter your <code>APN</code> and select the <code><abbr title="Internet Protocol">IP</abbr> type</code> as instructed by the carrier, <em class="u">don&#039;t set <code><abbr title="Internet Protocol">IP</abbr> type</code> to <code>IPV4V6</code> until you&#039;re 100% sure that provider supports <abbr title="Internet Protocol version 6">IPv6</abbr></em>, that is critical in QMI mode.
+</p>
+
+<p>
+Note: in <abbr title="Internet Protocol version 6">IPv6</abbr>-only mode it is recommended to enable <code>dhcpv6</code> option in order to automatically start the 464XLAT interface (that requires <a href="/packages/pkgdata/464xlat" class="wikilink1" title="packages:pkgdata:464xlat" data-wiki-id="packages:pkgdata:464xlat">464xlat</a> package).
+</p>
+
+<p>
+Assign the firewall zone (wan) on &#039;Firewall Settings&#039; tab.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;With LuCi web interface&quot;,&quot;hid&quot;:&quot;with_luci_web_interface&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:10,&quot;range&quot;:&quot;7862-8840&quot;} -->
+<h3 class="sectionedit11" id="editing_text_configuration_files">Editing text configuration files</h3>
+<div class="level3">
+
+<p>
+Add new interface to <code>/etc/config/network</code> using a <em>text editor</em> like <code>vi</code> or <code>nano</code>:
+</p>
+<pre class="code">config interface &#039;wwan&#039;
+        option proto &#039;qmi&#039;
+        option device &#039;/dev/cdc-wdm0&#039;
+        option apn &#039;internet&#039;
+        option pdptype &#039;ip&#039;</pre>
+
+<p>
+Replace “qmi” with “mbim” if necessary to match the modem configuration. Make sure the APN name is one provided by your carrier.
+</p>
+
+<p>
+Add the same interface name to the existing “wan” firewall zone in <code>/etc/config/firewall</code>:
+</p>
+<pre class="code">config zone
+    option name &#039;wan&#039;
+    [...]
+    list network &#039;wwan&#039;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Editing text configuration files&quot;,&quot;hid&quot;:&quot;editing_text_configuration_files&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:11,&quot;range&quot;:&quot;8841-9453&quot;} -->
+<h3 class="sectionedit12" id="qmi_protocol_configuration_parameters">QMI Protocol Configuration Parameters</h3>
+<div class="level3">
+
+<p>
+QMI (and MBIM) interfaces could be manually configured in <a href="/docs/guide-user/base-system/uci" class="wikilink1" title="docs:guide-user:base-system:uci" data-wiki-id="docs:guide-user:base-system:uci">UCI</a> using <a href="/docs/techref/uci" class="wikilink1" title="docs:techref:uci" data-wiki-id="docs:techref:uci">uci command line</a> or <a href="/docs/guide-user/base-system/user.beginner.cli#editingfiles" class="wikilink1" title="docs:guide-user:base-system:user.beginner.cli" data-wiki-id="docs:guide-user:base-system:user.beginner.cli"> text editor</a>.<br/>
+
+</p>
+<div class="table sectionedit13"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign"> Name              </th><th class="col1 leftalign"> Type       </th><th class="col2 centeralign">  Required  </th><th class="col3 centeralign">  Default          </th><th class="col4 leftalign"> Description                                                                                                                                                                                                                                                             </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> <strong>device</strong>        </td><td class="col1 leftalign"> file path  </td><td class="col2 centeralign">  yes       </td><td class="col3 centeralign">  (none)           </td><td class="col4 leftalign"> QMI device node, typically <strong>/dev/cdc-wdm0</strong>                                                                                                                                                                                                                            </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> <strong>apn</strong>           </td><td class="col1 leftalign"> string     </td><td class="col2 centeralign">  yes       </td><td class="col3 centeralign">  (none)           </td><td class="col4 leftalign"> Used APN                                                                                                                                                                                                                                                                </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> <strong>v6apn</strong>         </td><td class="col1 leftalign"> string     </td><td class="col2 centeralign">  no        </td><td class="col3 centeralign">  (none)           </td><td class="col4 leftalign"> APN for <abbr title="Internet Protocol version 6">IPv6</abbr>, if different from <abbr title="Internet Protocol version 4">IPv4</abbr> APN                                                                                                                                                                                                                                </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"> <strong>auth</strong>          </td><td class="col1 leftalign"> string     </td><td class="col2 centeralign">  no        </td><td class="col3 centeralign">  (none)           </td><td class="col4 leftalign"> Authentication type: <strong>pap</strong>, <strong>chap</strong>, <strong>both</strong>, <strong>none</strong>                                                                                                                                                                                                              </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 leftalign"> <strong>username</strong>      </td><td class="col1 leftalign"> string     </td><td class="col2 centeralign">  no        </td><td class="col3 centeralign">  (none)           </td><td class="col4 leftalign"> Username for PAP/CHAP authentication                                                                                                                                                                                                                                    </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0 leftalign"> <strong>password</strong>      </td><td class="col1 leftalign"> string     </td><td class="col2 centeralign">  no        </td><td class="col3 centeralign">  (none)           </td><td class="col4 leftalign"> Password for PAP/CHAP authentication                                                                                                                                                                                                                                    </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0 leftalign"> <strong>pincode</strong>       </td><td class="col1 leftalign"> number     </td><td class="col2 centeralign">  no        </td><td class="col3 centeralign">  (none)           </td><td class="col4 leftalign"> PIN code to unlock SIM card                                                                                                                                                                                                                                             </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0 leftalign"> <strong>delay</strong>         </td><td class="col1 leftalign"> number     </td><td class="col2 centeralign">  no        </td><td class="col3 centeralign">  0                </td><td class="col4 leftalign"> Seconds to wait before trying to interact with the modem (some ZTE modems require up to 30 s.)                                                                                                                                                                          </td>
+	</tr>
+	<tr class="row9">
+		<td class="col0 leftalign"> <strong>modes</strong>         </td><td class="col1 leftalign"> string     </td><td class="col2 centeralign">  no        </td><td class="col3 centeralign">  (modem default)  </td><td class="col4 leftalign"> Allowed network modes, comma separated list of: <strong>all</strong>, <strong>lte</strong>, <strong>umts</strong>, <strong>gsm</strong>, <strong>cdma</strong>, <strong>td-scdma</strong>                                                                                                                                                             </td>
+	</tr>
+	<tr class="row10">
+		<td class="col0 leftalign"> <strong>pdptype</strong>       </td><td class="col1 leftalign"> string     </td><td class="col2 centeralign">  no        </td><td class="col3 centeralign">  <abbr title="Internet Protocol">IP</abbr>               </td><td class="col4 leftalign"> PDP Context Type, <abbr title="Internet Protocol">IP</abbr> (for <abbr title="Internet Protocol version 4">IPv4</abbr>), IPV6 (for <abbr title="Internet Protocol version 6">IPv6</abbr>) or IPV4V6 (for dual-stack). Connection will fail if selected type is unsupported by the carrier.                                                                                                                       </td>
+	</tr>
+	<tr class="row11">
+		<td class="col0 leftalign"> <strong>profile</strong>       </td><td class="col1 leftalign"> number     </td><td class="col2 centeralign">  no        </td><td class="col3 centeralign">  1                </td><td class="col4 leftalign"> PDP Context Identifier                                                                                                                                                                                                                                                  </td>
+	</tr>
+	<tr class="row12">
+		<td class="col0 leftalign"> <strong>v6profile</strong>     </td><td class="col1 leftalign"> number     </td><td class="col2 centeralign">  no        </td><td class="col3 centeralign">  (none)           </td><td class="col4 leftalign"> PDP Context Identifier for <abbr title="Internet Protocol version 6">IPv6</abbr> if different from <abbr title="Internet Protocol version 4">IPv4</abbr> profile                                                                                                                                                                                                          </td>
+	</tr>
+	<tr class="row13">
+		<td class="col0 leftalign"> <strong>dhcp</strong>          </td><td class="col1 leftalign"> boolean    </td><td class="col2 centeralign">  no        </td><td class="col3 centeralign">  1                </td><td class="col4 leftalign"> Whether to use <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> (<strong>default</strong>) or uqmi (<strong>0</strong>) to get <abbr title="Internet Protocol version 4">IPv4</abbr> interface configuration                                                                                                                                                                                   </td>
+	</tr>
+	<tr class="row14">
+		<td class="col0 leftalign"> <strong>dhcpv6</strong>        </td><td class="col1 leftalign"> boolean    </td><td class="col2 centeralign">  no        </td><td class="col3 centeralign">  0                </td><td class="col4 leftalign"> Whether to use <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> (<strong>1</strong>) or uqmi (<strong>default</strong>) to get <abbr title="Internet Protocol version 6">IPv6</abbr> interface configuration                                                                                                                                                                                   </td>
+	</tr>
+	<tr class="row15">
+		<td class="col0 leftalign"> <strong>sourcefilter</strong>  </td><td class="col1 leftalign"> boolean    </td><td class="col2 centeralign">  no        </td><td class="col3 centeralign">  1                </td><td class="col4 leftalign"> Used to disable source-based <abbr title="Internet Protocol version 6">IPv6</abbr> routing                                                                                                                                                                                                                               </td>
+	</tr>
+	<tr class="row16">
+		<td class="col0 leftalign"> <strong>delegate</strong>      </td><td class="col1 leftalign"> boolean    </td><td class="col2 centeralign">  no        </td><td class="col3 centeralign">  1                </td><td class="col4 leftalign"> Used to disable <abbr title="Internet Protocol version 6">IPv6</abbr> Prefix Delegation                                                                                                                                                                                                                                  </td>
+	</tr>
+	<tr class="row17">
+		<td class="col0 leftalign"> <strong>autoconnect</strong>   </td><td class="col1 leftalign"> boolean    </td><td class="col2 centeralign">  no        </td><td class="col3 centeralign">  1                </td><td class="col4 leftalign">                                                                                                                                                                                                                                                                         </td>
+	</tr>
+	<tr class="row18">
+		<td class="col0 leftalign"> <strong>plmn</strong>          </td><td class="col1 leftalign"> number     </td><td class="col2 centeralign">  no        </td><td class="col3 centeralign">  (none)           </td><td class="col4 leftalign"> Limit network registration to specific operator. First 3 digits is the <strong>MCC</strong> (Mobile Country Code) and last 3 digits is the <strong>MNC</strong> (Mobile Network Code); for example, if lock is required for a network with MCC 338 and MNC 20, then plmn should be set to 338020  </td>
+	</tr>
+	<tr class="row19">
+		<td class="col0 leftalign"> <strong>timeout</strong>       </td><td class="col1 leftalign"> number     </td><td class="col2 centeralign">  no        </td><td class="col3 centeralign">  10               </td><td class="col4 leftalign"> Timeout (in seconds) to wait for SIM operations                                                                                                                                                                                                                         </td>
+	</tr>
+	<tr class="row20">
+		<td class="col0 leftalign"> <strong>mtu</strong>           </td><td class="col1 leftalign"> number     </td><td class="col2 centeralign">  no        </td><td class="col3 centeralign">  (none)           </td><td class="col4 leftalign"> Interface <abbr title="Maximum Transmission Unit">MTU</abbr> size                                                                                                                                                                                                                                                      </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:13,&quot;range&quot;:&quot;9729-16742&quot;} -->
+<p>
+Here is a brief help about <code>uqmi</code> command line usage:
+</p>
+<div class="hiddenGlobal  hiddenActive"><div class="hiddenElements"></div><div class="hiddenHead  hiddenSinceBeginning"><div class="hiddenOnHidden">
+<p>
+Click to display ⇲
+</p>
+</div><div class="hiddenOnVisible">
+<p>
+Click to hide ⇱
+</p>
+</div></div> <!-- .hiddenHead --><div class="hiddenBody"><pre class="code sh">Usage: uqmi &lt;options|actions&gt;
+Options:
+  --single, -s:                     Print output as a single line (for scripts)
+  --device=NAME, -d NAME:           Set device name to NAME (required)
+  --keep-client-id &lt;name&gt;:          Keep Client ID for service &lt;name&gt;
+  --release-client-id &lt;name&gt;:       Release Client ID after exiting
+  --mbim, -m                        NAME is an MBIM device with EXT_QMUX support
+  --timeout, -t                     response timeout in msecs
+&nbsp;
+Services:                           dms, nas, pds, wds, wms
+&nbsp;
+Actions:
+  --get-versions:                   Get service versions
+  --set-client-id &lt;name&gt;,&lt;id&gt;:      Set Client ID for service &lt;name&gt; to &lt;id&gt;
+                                    (implies --keep-client-id)
+  --get-client-id &lt;name&gt;:           Connect and get Client ID for service &lt;name&gt;
+                                    (implies --keep-client-id)
+  --sync:                           Release all Client IDs
+  --start-network:                  Start network connection (use with options below)
+    --apn &lt;apn&gt;:                    Use APN
+    --auth-type pap|chap|both|none: Use network authentication type
+    --username &lt;name&gt;:              Use network username
+    --password &lt;password&gt;:          Use network password
+    --ip-family &lt;family&gt;:           Use ip-family for the connection (ipv4, ipv6, unspecified)
+    --autoconnect:                  Enable automatic connect/reconnect
+    --profile &lt;index&gt;:              Use connection profile
+  --stop-network &lt;pdh&gt;:             Stop network connection (use with option below)
+    --autoconnect:                  Disable automatic connect/reconnect
+  --get-data-status:                Get current data access status
+  --set-ip-family &lt;val&gt;:            Set ip-family (ipv4, ipv6, unspecified)
+  --set-autoconnect &lt;val&gt;:          Set automatic connect/reconnect (disabled, enabled, paused)
+  --get-profile-settings &lt;val,#&gt;:   Get APN profile settings (3gpp, 3gpp2),#
+  --get-default-profile &lt;val&gt;:      Get default profile number (3gpp, 3gpp2)
+  --create-profile &lt;val&gt;            Create profile (3gpp, 3gpp2)
+    --apn &lt;apn&gt;:                    Use APN
+    --pdp-type ipv4|ipv6|ipv4v6&gt;:   Use pdp-type for the connection
+    --username &lt;name&gt;:              Use network username
+    --password &lt;password&gt;:          Use network password
+    --auth-type pap|chap|both|none: Use network authentication type
+    --no-roaming false|true         To allow roaming, set to false
+  --modify-profile &lt;val&gt;,#          Modify profile number (3gpp, 3gpp2)
+    --apn &lt;apn&gt;:                    Use APN
+    --pdp-type ipv4|ipv6|ipv4v6&gt;:   Use pdp-type for the connection
+    --username &lt;name&gt;:              Use network username
+    --password &lt;password&gt;:          Use network password
+    --auth-type pap|chap|both|none: Use network authentication type
+    --no-roaming false|true         To allow roaming, set to false
+  --get-current-settings:           Get current connection settings
+  --get-capabilities:               List device capabilities
+  --get-pin-status:                 Get PIN verification status
+  --verify-pin1 &lt;pin&gt;:              Verify PIN1
+  --verify-pin2 &lt;pin&gt;:              Verify PIN2
+  --set-pin1-protection &lt;state&gt;:    Set PIN1 protection state (disabled, enabled)
+    --pin &lt;pin&gt;:                    PIN1 needed to change state
+  --set-pin2-protection &lt;state&gt;:    Set PIN2 protection state (disabled, enabled)
+    --pin &lt;pin2&gt;:                   PIN2 needed to change state
+  --change-pin1:                    Change PIN1
+    --pin &lt;old pin&gt;:                Current PIN1
+    --new-pin &lt;new pin&gt;:            New pin
+  --change-pin2:                    Change PIN2
+    --pin &lt;old pin&gt;:                Current PIN2
+    --new-pin &lt;new pin&gt;:            New pin
+  --unblock-pin1:                   Unblock PIN1
+    --puk &lt;puk&gt;:                    PUK needed to unblock
+    --new-pin &lt;new pin&gt;:            New pin
+  --unblock-pin2:                   Unblock PIN2
+    --puk &lt;puk&gt;:                    PUK needed to unblock
+    --new-pin &lt;new pin&gt;:            New pin
+  --get-iccid:                      Get the ICCID
+  --get-imsi:                       Get International Mobile Subscriber ID
+  --get-imei:                       Get International Mobile Equipment ID
+  --get-msisdn:                     Get the MSISDN (telephone number)
+  --reset-dms:                      Reset the DMS service
+  --get-device-operating-mode       Get the device operating mode
+  --set-device-operating-mode &lt;m&gt;   Set the device operating mode
+                                    (modes: online, low_power, factory_test, offline
+                                     reset, shutting_down, persistent_low_power,
+                                     mode_only_low_power)
+  --fcc-auth:                       Set FCC authentication
+  --uim-verify-pin1 &lt;pin&gt;:          Verify PIN1 (new devices)
+  --uim-verify-pin2 &lt;pin&gt;:          Verify PIN2 (new devices)
+  --uim-get-sim-state:              Get current SIM state
+  --uim-power-off:                  Power off SIM card
+    --uim-slot:                     SIM slot [1-2]
+  --uim-power-on:                   Power on SIM card
+    --uim-slot:                     SIM slot [1-2]
+  --set-network-modes &lt;modes&gt;:      Set usable network modes (Syntax: &lt;mode1&gt;[,&lt;mode2&gt;,...])
+                                    Available modes: all, lte, umts, gsm, cdma, td-scdma
+  --set-network-preference &lt;mode&gt;:  Set preferred network mode to &lt;mode&gt;
+                                    Available modes: auto, gsm, wcdma
+  --set-network-roaming &lt;mode&gt;:     Set roaming preference:
+                                    Available modes: any, off, only
+  --network-scan:                   Initiate network scan
+  --network-register:               Initiate network register
+  --set-plmn:                       Register at specified network
+    --mcc &lt;mcc&gt;:                    Mobile Country Code (0 - auto)
+    --mnc &lt;mnc&gt;:                    Mobile Network Code
+  --get-plmn:                       Get preferred network selection info
+  --get-signal-info:                Get signal strength info
+  --get-serving-system:             Get serving system info
+  --get-system-info:                Get system info
+  --get-lte-cphy-ca-info:           Get LTE Cphy CA Info
+  --get-cell-location-info:         Get Cell Location Info
+  --get-tx-rx-info &lt;radio&gt;:         Get TX/RX Info (gsm, umts, lte)
+  --list-messages:                  List SMS messages
+    --storage &lt;mem&gt;:                Messages storage (sim (default), me)
+  --delete-message &lt;id&gt;:            Delete SMS message at index &lt;id&gt;
+    --storage &lt;mem&gt;:                Messages storage (sim (default), me)
+  --get-message &lt;id&gt;:               Get SMS message at index &lt;id&gt;
+    --storage &lt;mem&gt;:                Messages storage (sim (default), me)
+  --get-raw-message &lt;id&gt;:           Get SMS raw message contents at index &lt;id&gt;
+    --storage &lt;mem&gt;:                Messages storage (sim (default), me)
+  --send-message &lt;data&gt;:            Send SMS message (use options below)
+    --send-message-smsc &lt;nr&gt;:       SMSC number
+    --send-message-target &lt;nr&gt;:     Destination number (required)
+    --send-message-flash:           Send as Flash SMS
+  --wda-set-data-format &lt;type&gt;:     Set data format (type: 802.3|raw-ip)
+  --wda-get-data-format:            Get data format</pre>
+</div></div>
+<p>
+<br/>
+
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;QMI Protocol Configuration Parameters&quot;,&quot;hid&quot;:&quot;qmi_protocol_configuration_parameters&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:12,&quot;range&quot;:&quot;9454-24146&quot;} -->
+<h3 class="sectionedit14" id="mbim_protocol_support">MBIM Protocol support</h3>
+<div class="level3">
+
+<p>
+MBIM configuration is very similar to QMI. Supported interface configuration options:
+</p>
+<div class="table sectionedit15"><table class="inline">
+	<tr class="row0">
+		<th class="col0 leftalign"> <strong>Name</strong>            </th><th class="col1 leftalign"> <strong>Type</strong>   </th><td class="col2 centeralign">  <strong>Required</strong>  </td><td class="col3 centeralign">  <strong>Default</strong>  </td><td class="col4 leftalign"> <strong>Description</strong>                                                                                  </td>
+	</tr>
+	<tr class="row1">
+		<td class="col0 leftalign"> <strong>device</strong>          </td><td class="col1 leftalign"> file path  </td><td class="col2 centeralign">  yes           </td><td class="col3 centeralign">  (none)       </td><td class="col4 leftalign"> MBIM device node, typically <strong>/dev/cdc-wdm0</strong>                                                    </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> <strong>apn</strong>             </td><td class="col1 leftalign"> string     </td><td class="col2 centeralign">  yes           </td><td class="col3 centeralign">  (none)       </td><td class="col4 leftalign"> Used APN                                                                                         </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> <strong>auth</strong>            </td><td class="col1 leftalign"> string     </td><td class="col2 centeralign">  no            </td><td class="col3 centeralign">  (none)       </td><td class="col4 leftalign"> Authentication type: <strong>pap</strong>, <strong>chap</strong>, <strong>both</strong>, <strong>none</strong>                                       </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"> <strong>username</strong>        </td><td class="col1 leftalign"> string     </td><td class="col2 centeralign">  no            </td><td class="col3 centeralign">  (none)       </td><td class="col4 leftalign"> Username for PAP/CHAP authentication                                                             </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 leftalign"> <strong>password</strong>        </td><td class="col1 leftalign"> string     </td><td class="col2 centeralign">  no            </td><td class="col3 centeralign">  (none)       </td><td class="col4 leftalign"> Password for PAP/CHAP authentication                                                             </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0 leftalign"> <strong>pincode</strong>         </td><td class="col1 leftalign"> number     </td><td class="col2 centeralign">  no            </td><td class="col3 centeralign">  (none)       </td><td class="col4 leftalign"> PIN code to unlock SIM card                                                                      </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0 leftalign"> <strong>delay</strong>           </td><td class="col1 leftalign"> number     </td><td class="col2 centeralign">  no            </td><td class="col3 centeralign">  0            </td><td class="col4 leftalign"> Seconds to wait before trying to interact with the modem                                         </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0 leftalign"> <strong>pdptype</strong>         </td><td class="col1 leftalign"> string     </td><td class="col2 centeralign">  no            </td><td class="col3 centeralign">  <abbr title="Internet Protocol">IP</abbr>           </td><td class="col4 leftalign"> PDP Context Type, <abbr title="Internet Protocol">IP</abbr> (for <abbr title="Internet Protocol version 4">IPv4</abbr>), IPV6 (for <abbr title="Internet Protocol version 6">IPv6</abbr>) or IPV4V6 (for dual-stack)                      </td>
+	</tr>
+	<tr class="row9">
+		<td class="col0 leftalign"> <strong>ipv6</strong>            </td><td class="col1 leftalign"> boolean    </td><td class="col2 centeralign">  no            </td><td class="col3 centeralign">  1            </td><td class="col4 leftalign"> Set it to 0 to disable <abbr title="Internet Protocol version 6">IPv6</abbr> operation                                                            </td>
+	</tr>
+	<tr class="row10">
+		<td class="col0 leftalign"> <strong>dhcp</strong>            </td><td class="col1 leftalign"> boolean    </td><td class="col2 centeralign">  no            </td><td class="col3 centeralign">  0            </td><td class="col4 leftalign"> Whether to use <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> (<strong>1</strong>) or “umbim” tool (<strong>default</strong>) to get <abbr title="Internet Protocol version 4">IPv4</abbr> interface configuration    </td>
+	</tr>
+	<tr class="row11">
+		<td class="col0 leftalign"> <strong>dhcpv6</strong>          </td><td class="col1 leftalign"> boolean    </td><td class="col2 centeralign">  no            </td><td class="col3 centeralign">  0            </td><td class="col4 leftalign"> Whether to use DHCPv6 (<strong>1</strong>) or “umbim” tool (<strong>default</strong>) to get <abbr title="Internet Protocol version 6">IPv6</abbr> interface configuration  </td>
+	</tr>
+	<tr class="row12">
+		<td class="col0 leftalign"> <strong>sourcefilter</strong>    </td><td class="col1 leftalign"> boolean    </td><td class="col2 centeralign">  no            </td><td class="col3 centeralign">  1            </td><td class="col4 leftalign"> Used to disable source-based <abbr title="Internet Protocol version 6">IPv6</abbr> routing                                                        </td>
+	</tr>
+	<tr class="row13">
+		<td class="col0 leftalign"> <strong>extendprefix</strong>    </td><td class="col1 leftalign"> boolean    </td><td class="col2 centeralign">  no            </td><td class="col3 centeralign">  0            </td><td class="col4 leftalign"> Accept a /64 <abbr title="Internet Protocol version 6">IPv6</abbr> prefix via SLAAC and extend it on one downstream interface                     </td>
+	</tr>
+	<tr class="row14">
+		<td class="col0 leftalign"> <strong>delegate</strong>        </td><td class="col1 leftalign"> boolean    </td><td class="col2 centeralign">  no            </td><td class="col3 centeralign">  1            </td><td class="col4 leftalign"> Used to disable <abbr title="Internet Protocol version 6">IPv6</abbr> Prefix Delegation                                                           </td>
+	</tr>
+	<tr class="row15">
+		<td class="col0 leftalign"> <strong>allow_roaming </strong>  </td><td class="col1 leftalign"> boolean    </td><td class="col2 centeralign">  no            </td><td class="col3 centeralign">  0            </td><td class="col4 leftalign"> Allow connection if the modem is registered to the network in roaming                            </td>
+	</tr>
+	<tr class="row16">
+		<td class="col0 leftalign"> <strong>allow_partner</strong>   </td><td class="col1 leftalign"> boolean    </td><td class="col2 centeralign">  no            </td><td class="col3 centeralign">  0            </td><td class="col4 leftalign"> Allow connection if the modem is registered to a partner network                                 </td>
+	</tr>
+	<tr class="row17">
+		<td class="col0 leftalign"> <strong>mtu</strong>             </td><td class="col1 leftalign"> number     </td><td class="col2 centeralign">  no            </td><td class="col3 centeralign">  (none)       </td><td class="col4 leftalign"> Interface <abbr title="Maximum Transmission Unit">MTU</abbr> size                                                                               </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table1&quot;,&quot;secid&quot;:15,&quot;range&quot;:&quot;24265-27306&quot;} -->
+<p>
+Here is a brief help about <code>umbim</code> command line:
+</p>
+<pre class="code sh">root@OpenWrt:~# umbim help
+Usage: umbim &lt;caps|pinstate|unlock|home|registration|subscriber|attach|detach|connect|disconnect|config|radio&gt; [options]
+Options:
+    -d &lt;device&gt;         the device (/dev/cdc-wdmX)
+    -t &lt;transaction&gt;    the transaction id
+    -n                  no close
+    -v                  verbose</pre>
+
+<p>
+<code>uqmi</code> tool can talk to MBIM modems using <code>--mbim</code> or <code>-m</code> option on the command line.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;MBIM Protocol support&quot;,&quot;hid&quot;:&quot;mbim_protocol_support&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:14,&quot;range&quot;:&quot;24147-27786&quot;} -->
+<h3 class="sectionedit16" id="manual_validation">Manual validation</h3>
+<div class="level3">
+
+<p>
+Check the currently configured APN:
+</p>
+<pre class="code">root@OpenWrt:~# uqmi -d /dev/cdc-wdm0 --get-profile-settings 3gpp,1
+{
+        &quot;apn&quot;: &quot;internet&quot;,
+        &quot;pdp-type&quot;: &quot;ipv4v6&quot;,
+        &quot;username&quot;: &quot;&quot;,
+        &quot;password&quot;: &quot;&quot;,
+        &quot;auth&quot;: &quot;none&quot;,
+        &quot;no-roaming&quot;: false,
+        &quot;apn-disabled&quot;: false
+}</pre>
+
+<p>
+Change the APN and/or <abbr title="Internet Protocol">IP</abbr> type (an alternative method to using AT commands mentioned above):
+</p>
+<pre class="code">root@OpenWrt:~# uqmi -d /dev/cdc-wdm0 --set-device-operating-mode low_power
+root@OpenWrt:~# uqmi -d /dev/cdc-wdm0 --modify-profile 3gpp,1 --apn internet --pdp-type=ipv4 --username=&quot;&quot; --password=&quot;&quot; --auth=none
+root@OpenWrt:~# uqmi -d /dev/cdc-wdm0 --set-device-operating-mode online</pre>
+
+<p>
+where “internet” is the APN of your provider
+</p>
+
+<p>
+Check network registration and signal strength:
+</p>
+<pre class="code">root@OpenWrt:~# uqmi -d /dev/cdc-wdm0 --get-serving-system
+{
+        &quot;registration&quot;: &quot;registered&quot;,
+        &quot;plmn_mcc&quot;: 123,
+        &quot;plmn_mnc&quot;: 45,
+        &quot;plmn_description&quot;: &quot;OperatorName&quot;,
+        &quot;roaming&quot;: false
+}</pre>
+
+<p>
+and
+</p>
+<pre class="code">root@OpenWrt:~# uqmi -d /dev/cdc-wdm0 --get-signal-info
+{
+        &quot;type&quot;: &quot;lte&quot;,
+        &quot;rssi&quot;: -71,
+        &quot;rsrq&quot;: -9,
+        &quot;rsrp&quot;: -94,
+        &quot;snr&quot;: 70
+}</pre>
+
+<p>
+Check the connection status:
+</p>
+<pre class="code">root@OpenWrt:~# uqmi -d /dev/cdc-wdm0 --get-data-status
+&quot;disconnected&quot;</pre>
+
+<p>
+To manually start the Internet connection issue a command:
+</p>
+<pre class="code">root@OpenWrt:~# uqmi -d /dev/cdc-wdm0 --start-network internet --autoconnect</pre>
+
+<p>
+where “internet” is the APN of your provider
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Some providers will accept almost any APN, in this case using “internet” is fine.
+</p>
+
+<p>
+Check the status:
+</p>
+<pre class="code">root@OpenWrt:~# uqmi -d /dev/cdc-wdm0 --get-data-status
+&quot;connected&quot;</pre>
+
+<p>
+<code>--autoconnect</code> key says that you want always be connected, once the modem is physically connected to the router and cellular network is in range.
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> It will be kept after reboot.
+</p>
+
+<p>
+In case you need additional authentication, please look at the possible arguments for <code>uqmi</code> utility:
+</p>
+<pre class="code">  --start-network &lt;apn&gt;:            Start network connection (use with options below)
+    --auth-type pap|chap|both|none: Use network authentication type
+    --username &lt;name&gt;:              Use network username
+    --password &lt;password&gt;:          Use network password
+    --autoconnect:                  Enable automatic connect/reconnect
+  --stop-network &lt;pdh&gt;:             Stop network connection (use with option below)
+    --autoconnect:                  Disable automatic connect/reconnect</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Manual validation&quot;,&quot;hid&quot;:&quot;manual_validation&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:16,&quot;range&quot;:&quot;27787-30329&quot;} -->
+<h3 class="sectionedit17" id="checking_your_balance">Checking your balance</h3>
+<div class="level3">
+
+<p>
+To check your balance or send any other AT commands, you need to have USB serial device like: /dev/ttyUSB0
+</p>
+
+<p>
+If you have it (if not then install missing USB serial drivers), you can run in first terminal:
+</p>
+<pre class="code">cat /dev/ttyUSB0</pre>
+
+<p>
+and in the second (*101# is my USSD code):
+</p>
+<pre class="code">echo -ne &#039;AT+CUSD=1,&quot;*101#&quot;,15\r\n&#039; &gt; /dev/ttyUSB0</pre>
+
+<p>
+You should see in first terminal USSD response.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Checking your balance&quot;,&quot;hid&quot;:&quot;checking_your_balance&quot;,&quot;codeblockOffset&quot;:19,&quot;secid&quot;:17,&quot;range&quot;:&quot;30330-30756&quot;} -->
+<h3 class="sectionedit18" id="modem_status_page_in_luci">Modem Status page in LuCI</h3>
+<div class="level3">
+
+<p>
+This important feature is not yet officially available in OpenWrt, but you can try external package like <a href="https://github.com/4IceG/luci-app-3ginfo-lite" class="urlextern" title="https://github.com/4IceG/luci-app-3ginfo-lite" rel="ugc nofollow">https://github.com/4IceG/luci-app-3ginfo-lite</a> for displaying modem status and <a href="https://github.com/4IceG/luci-app-sms-tool-js" class="urlextern" title="https://github.com/4IceG/luci-app-sms-tool-js" rel="ugc nofollow">https://github.com/4IceG/luci-app-sms-tool-js</a> for SMS support.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Modem Status page in LuCI&quot;,&quot;hid&quot;:&quot;modem_status_page_in_luci&quot;,&quot;codeblockOffset&quot;:21,&quot;secid&quot;:18,&quot;range&quot;:&quot;30757-31042&quot;} -->
+<h3 class="sectionedit19" id="troubleshooting">Troubleshooting</h3>
+<div class="level3">
+
+<p>
+<em class="u"><strong>Everything is okay but modem doesn&#039;t establish connection. What can I try?</strong></em>
+</p>
+
+<p>
+You may want to try adding the argument <em>--get-client-id wds</em> and <em>--set-client-id</em> when running <em>uqmi</em> like:
+</p>
+<pre class="code">wds=`uqmi -s -d /dev/cdc-wdm0 --get-client-id wds`
+uqmi -d /dev/cdc-wdm0 --set-client-id wds,&quot;$wds&quot; --start-network your_apn</pre>
+
+<p>
+Moreover based on this <a href="http://tiebing.blogspot.com/2015/03/linux-running-4g-lte-modem.html" class="urlextern" title="http://tiebing.blogspot.com/2015/03/linux-running-4g-lte-modem.html" rel="ugc nofollow">article</a> I discovered that need to reset my modem (tested on Dell Wireless 5804 413c:819b) in boot process, so you can try add the following commands in your /etc/rc.local:
+</p>
+<pre class="code">/sbin/uqmi -d /dev/cdc-wdm0 --set-device-operating-mode offline
+/sbin/uqmi -d /dev/cdc-wdm0 --set-device-operating-mode reset
+/bin/sleep 20
+/sbin/uqmi -d /dev/cdc-wdm0 --set-device-operating-mode online
+/sbin/uqmi -d /dev/cdc-wdm0 --set-autoconnect enabled
+/sbin/uqmi -d /dev/cdc-wdm0 --network-register</pre>
+
+<p>
+<em class="u"><strong>My router is not detecting the modem. What should I do?</strong></em>
+</p>
+
+<p>
+Try the following commands:
+</p>
+<pre class="code">usbmode -l</pre>
+
+<p>
+It should respond with a message about your USB device is detected. If it does, issue the next command. If it doesn&#039;t, you might want to get help from the forum.
+</p>
+<pre class="code">usbmode -s</pre>
+
+<p>
+Then wait for the modem to get issued an <abbr title="Internet Protocol">IP</abbr> from your <abbr title="Internet Service Provider">ISP</abbr>.
+</p>
+
+<p>
+<em class="u"><strong>No serial or network device is present (/dev/ttyUSB, /dev/cdc-wdm)</strong></em>
+</p>
+
+<p>
+You may need to install the missing packages 
+</p>
+<pre class="code">opkg install kmod-usb-net-qmi-wwan kmod-usb-serial-option kmod-usb-serial-qualcomm</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Troubleshooting&quot;,&quot;hid&quot;:&quot;troubleshooting&quot;,&quot;codeblockOffset&quot;:21,&quot;secid&quot;:19,&quot;range&quot;:&quot;31043-&quot;} -->

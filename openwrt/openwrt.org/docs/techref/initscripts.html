@@ -1,0 +1,354 @@
+<div class="table sectionedit1"><table class="inline">
+	<tr class="row0">
+		<td class="col0"><img src="/lib/images/smileys/fixme.svg" class="icon smiley" alt="FIXME" /> This <strong>mostly</strong> applies to traditional SysV-style initscripts, See <a href="/docs/guide-developer/procd-init-scripts" class="wikilink1" title="docs:guide-developer:procd-init-scripts" data-wiki-id="docs:guide-developer:procd-init-scripts">procd-init-scripts</a> as well for procd-style initscripts</td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:1,&quot;range&quot;:&quot;2-156&quot;} -->
+<h1 class="sectionedit2" id="init_scripts">Init Scripts</h1>
+<div class="level1">
+
+<p>
+<a href="https://en.wikipedia.org/wiki/Init" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Init">Init</a> scripts configure the <a href="https://en.wikipedia.org/wiki/Daemon_(computing)" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Daemon_(computing)">daemons</a> of the Linux system. Init scripts are run to start required processes as part of the <a href="/docs/techref/process.boot" class="wikilink1" title="docs:techref:process.boot" data-wiki-id="docs:techref:process.boot">boot process</a>. In OpenWrt init is implemented with init.d. The init process that calls the scripts at boot time is provided by <a href="/docs/techref/process.boot#busybox_init" class="wikilink1" title="docs:techref:process.boot" data-wiki-id="docs:techref:process.boot">Busybox</a>. This article explains how init.d scripts work and how to create them. Note that this is mostly equivalent to other init.d implementations and in-depth documentation can be found elsewhere. You could also take a look at the set of <a href="https://git.openwrt.org/?p=openwrt/openwrt.git;a=blob;f=package/base-files/files/etc/rc.common;hb=HEAD" class="interwiki iw_commit" title="https://git.openwrt.org/?p=openwrt/openwrt.git;a=blob;f=package/base-files/files/etc/rc.common;hb=HEAD">shell functions in /etc/rc.common</a> to see how the building blocks of the init scripts are implemented.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Init Scripts&quot;,&quot;hid&quot;:&quot;init_scripts&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;158-967&quot;} -->
+<h2 class="sectionedit3" id="example_init_script">Example Init Script</h2>
+<div class="level2">
+
+<p>
+Init scripts are explained best by example. Suppose we have a daemon we want to handle by init.d. We create a file <code>/etc/init.d/example</code>, which as a bare minimum looks as follows:
+</p>
+<div class="table sectionedit4"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Code </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"><pre class="code bash"><span class="co0">#!/bin/sh /etc/rc.common</span>
+<span class="co0"># Example script</span>
+<span class="co0"># Copyright (C) 2007 OpenWrt.org</span>
+&nbsp;
+<span class="re2">START</span>=<span class="nu0">10</span>
+<span class="re2">STOP</span>=<span class="nu0">15</span>
+&nbsp;
+start<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>        
+        <span class="kw3">echo</span> start
+        <span class="co0"># commands to launch application</span>
+<span class="br0">&#125;</span>                 
+&nbsp;
+stop<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>          
+        <span class="kw3">echo</span> stop
+        <span class="co0"># commands to kill application </span>
+<span class="br0">&#125;</span></pre>
+</td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table1&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;1182-1499&quot;} -->
+<p>
+This init script is just a shell script. The first line is a <a href="https://en.wikipedia.org/wiki/Shebang_(Unix)" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Shebang_(Unix)">shebang line</a> that uses <code><a href="/docs/guide-user/base-system/notuci.config#etcrccommon" class="wikilink1" title="docs:guide-user:base-system:notuci.config" data-wiki-id="docs:guide-user:base-system:notuci.config">/etc/rc.common</a></code> as a wrapper to provide its main and default functionality and to check the script prior to execution. 
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Look inside <code><a href="https://git.openwrt.org/?p=openwrt/openwrt.git;a=blob;f=package/base-files/files/etc/rc.common;hb=HEAD" class="interwiki iw_commit" title="https://git.openwrt.org/?p=openwrt/openwrt.git;a=blob;f=package/base-files/files/etc/rc.common;hb=HEAD">rc.common</a></code> to understand its functionality.
+</p>
+
+<p>
+By this <code>rc.common</code> template, the available commands for an init scripts are as follows:
+</p>
+<pre class="code">      start   Start the service
+      stop    Stop the service
+      restart Restart the service
+      reload  Reload configuration files (or restart if that fails)
+      enable  Enable service autostart
+      disable Disable service autostart</pre>
+
+<p>
+All these arguments can be passed to the script when run. For example, to restart the service call it with <code>restart</code>:
+</p>
+<div class="table sectionedit5"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Shell Output </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"><pre class="code">root@OpenWrt:/# /etc/init.d/example restart</pre>
+</td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table2&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;2412-2487&quot;} -->
+<p>
+The script&#039;s necessary <code>start()</code> and <code>stop()</code> functions determine the core steps necessary to start and stop this service.
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong>start()</strong> - these commands will be run when it is called with &#039;start&#039; as its parameter.</div>
+</li>
+<li class="level1"><div class="li"> <strong>stop()</strong> - these commands will be run when it is called with &#039;stop&#039; as its parameter.</div>
+</li>
+</ul>
+
+<p>
+The <code>START=</code> and <code>STOP=</code> lines determine at which point in the <a href="/docs/techref/process.boot#init" class="wikilink1" title="docs:techref:process.boot" data-wiki-id="docs:techref:process.boot">init sequence</a> this script gets executed. At boot time <code>init.d</code> just starts executing scripts it finds in <code>/etc/rc.d</code> according to their file names. The init scripts can be placed here as symbolic links to the <code>init.d</code> scripts in <code>/etc/init.d/</code>. Using <a href="#enable_and_disable" title="docs:techref:initscripts ↵" class="wikilink1">the enable and disable commands</a> this is done automatically. In this case:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code><strong>START=10</strong></code> - this means the file will be symlinked as /etc/rc.d/S10example - in other words, it will start after the init scripts with START=9 and below, but before START=11 and above.</div>
+</li>
+<li class="level1"><div class="li"> <code><strong>STOP=15</strong></code> - this means the file will be symlinked as /etc/rc.d/K15example - this means it will be stopped after the init scripts with STOP=14 and below, but before STOP=16 and above. This is optional.</div>
+</li>
+</ul>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> If multiple init scripts have the same start value, the call order is determined by the alphabetical order of the init script&#039;s names.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Don&#039;t forget to make sure the script has execution permission, by running <code>chmod +x /etc/init.d/example</code>.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> START and STOP values should fall in the range 1-99 as they are run alphabetically meaning 100 would execute after 10.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> OpenWrt will run the initscript <strong>in the host system during build</strong> (currently using actions “enable” or “disable”), and it must correctly deal with that special case without undue side-effects. Refer to the “enable and disable” section below for more on this pitfall.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Example Init Script&quot;,&quot;hid&quot;:&quot;example_init_script&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;968-4320&quot;} -->
+<h3 class="sectionedit6" id="other_functions">Other functions</h3>
+<div class="level3">
+
+<p>
+The <code>rc.common</code> script defines other functions that you can override if you need to, eg:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>boot()</code> - called once each time the system starts up. By default this function calls <code>start $@</code>, so if your service has a “one-off” component (eg. turn on some hardware) and an ongoing component (eg. use the hardware), you will almost certainly want to call <code>start “$@”</code> at the end of your own <code>boot()</code> function too. If there is no ongoing component, you can leave it out.</div>
+</li>
+<li class="level1"><div class="li"> <code>shutdown()</code> - called once each time the system is shut down (whether for reboot or poweroff). Like the <code>boot()</code> function, this function calls <code>stop</code> by default (note no arguments), so if your service has an ongoing component like above, and a one-off shutdown command (eg. turn off some hardware), you will want to call <code>stop</code> first, and then your one-off command.</div>
+</li>
+</ul>
+
+<p>
+These functions can be called by procd init scripts too.
+</p>
+
+<p>
+For example:
+</p>
+<div class="table sectionedit7"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Code </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"><pre class="code">boot() {
+  echo &quot;Turning on extra comms device&quot;
+  # This is a made up command to illustrate the point
+  comms2_power --on
+  start &quot;$@&quot;
+}
+
+start() {
+  # Service that uses the device we turned on in boot()
+  my_service
+}
+
+shutdown() {
+  # The service is finished, so turn off the hardware
+  stop
+  echo &quot;Turning off extra comms device&quot;
+  comms2_power --off
+}</pre>
+</td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table3&quot;,&quot;secid&quot;:7,&quot;range&quot;:&quot;5277-5659&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Other functions&quot;,&quot;hid&quot;:&quot;other_functions&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:6,&quot;range&quot;:&quot;4321-5660&quot;} -->
+<h3 class="sectionedit8" id="custom_commands">Custom commands</h3>
+<div class="level3">
+
+<p>
+You can add your own custom commands by using the EXTRA_COMMANDS variable, and provide help for those commands with the EXTRA_HELP variable, then adding sections for each of your custom commands:
+</p>
+<div class="table sectionedit9"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Code </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"><pre class="code bash"><span class="re2">EXTRA_COMMANDS</span>=<span class="st0">&quot;custom&quot;</span>
+<span class="re2">EXTRA_HELP</span>=<span class="st0">&quot;        custom  Help for the custom command&quot;</span>
+&nbsp;
+custom<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw3">echo</span> <span class="st0">&quot;custom command&quot;</span>
+        <span class="co0"># do your custom stuff</span>
+<span class="br0">&#125;</span></pre>
+</td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table4&quot;,&quot;secid&quot;:9,&quot;range&quot;:&quot;5885-6069&quot;} -->
+<p>
+If you run the script with this code added, with no parameters, this is what you&#039;ll see:
+</p>
+<div class="table sectionedit10"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Shell Output </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"><pre class="code">root@OpenWrt:/# /etc/init.d/example
+Syntax: /etc/init.d/example [command]
+
+Available commands:
+        start   Start the service
+        stop    Stop the service
+        restart Restart the service
+        reload  Reload configuration files (or restart if that fails)
+        enable  Enable service autostart
+        disable Disable service autostart
+        custom  Help for the custom command</pre>
+</td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table5&quot;,&quot;secid&quot;:10,&quot;range&quot;:&quot;6161-6587&quot;} -->
+<p>
+If you have multiple custom commands to add, you can add help text for each of them:
+</p>
+<div class="table sectionedit11"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Code </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"><pre class="code bash"><span class="re2">EXTRA_COMMANDS</span>=<span class="st0">&quot;custom1 custom2 custom3&quot;</span>
+<span class="re2">EXTRA_HELP</span>=<span class="co2">&lt;&lt;EOF
+        custom1 Help for the custom1 command
+        custom2 Help for the custom2 command
+        custom3 Help for the custom3 command
+EOF</span>
+&nbsp;
+custom1 <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw3">echo</span> <span class="st0">&quot;custom1&quot;</span>
+        <span class="co0"># do the stuff for custom1</span>
+<span class="br0">&#125;</span>
+custom2 <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw3">echo</span> <span class="st0">&quot;custom2&quot;</span>
+        <span class="co0"># do the stuff for custom2</span>
+<span class="br0">&#125;</span>
+custom3 <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw3">echo</span> <span class="st0">&quot;custom3&quot;</span>
+        <span class="co0"># do the stuff for custom3</span>
+<span class="br0">&#125;</span></pre>
+</td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table6&quot;,&quot;secid&quot;:11,&quot;range&quot;:&quot;6675-7122&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Custom commands&quot;,&quot;hid&quot;:&quot;custom_commands&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:8,&quot;range&quot;:&quot;5661-7125&quot;} -->
+<h2 class="sectionedit12" id="enable_and_disable">Enable and disable</h2>
+<div class="level2">
+
+<p>
+In order to automatically start the init script on boot, it must be installed into /etc/rc.d/ (see above).  On recent versions of OpenWrt, the build system will attempt to “enable” and/or “disable” initscripts during package install and removal by itself (refer to default_postinst() and default_prerm() in /lib/functions.sh from package base-files -- this thing is utterly undocumented, including how to AVOID the automatic behavior where unwanted), and it will “enable” the initscripts on packages *included* in the ROM images during build, see below.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> WARNING <img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> OpenWrt initscripts <strong>will be run</strong> while building OpenWrt images (when installing packages in what will become a ROM image) in the <strong>host system</strong> (right now, for actions “<em>enable</em>” and “<em>disable</em>”).  <strong>They must not fail, or have undesired side-effects in that situation.</strong>  When being run by the build system, environment variable <strong>${IPKG_INSTROOT}</strong> will be set to the working directory being used.  On the “target system”, that environment variable will be empty/unset.  Refer to “/lib/functions.sh” and also to “/etc/rc.common” in package “base-files” for the nasty details.
+</p>
+
+<p>
+Invoke the “enable” command to run the initscript on boot:
+</p>
+<div class="table sectionedit13"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Shell Output </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"><pre class="code">root@OpenWrt:/# /etc/init.d/example enable</pre>
+</td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table7&quot;,&quot;secid&quot;:13,&quot;range&quot;:&quot;8376-8450&quot;} -->
+<p>
+This will create one or more symlinks in <code>/etc/rc.d/</code> which automatically execute at boot time (see <a href="/docs/techref/process.boot" class="wikilink1" title="docs:techref:process.boot" data-wiki-id="docs:techref:process.boot">Boot process</a>)) and shutdown. This makes the application behave as a system service, by starting when the device boots and stopping at shutdown, as configured in the init.d script. 
+</p>
+
+<p>
+To disable the script, use the “disable” command:
+</p>
+<div class="table sectionedit14"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Shell Output </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"><pre class="code">root@OpenWrt:/# /etc/init.d/example disable</pre>
+</td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table8&quot;,&quot;secid&quot;:14,&quot;range&quot;:&quot;8817-8892&quot;} -->
+<p>
+which is configured to remove the symlinks again. 
+</p>
+
+<p>
+The current state can be queried with the “enabled” command:
+</p>
+<div class="table sectionedit15"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Shell Output </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"><pre class="code">root@OpenWrt:/# /etc/init.d/example enabled &amp;&amp; echo on
+on</pre>
+</td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table9&quot;,&quot;secid&quot;:15,&quot;range&quot;:&quot;9008-9097&quot;} -->
+<p>
+<img src="/lib/images/smileys/fixme.svg" class="icon smiley" alt="FIXME" /> Many useful daemons are included in the official binaries, but they are not enabled by default. For example, the <code>cron</code> daemon is not activated by default, thus only editing the <code>crontab</code> won&#039;t do anything. You have to either start the daemon with <code>/etc/init.d/cron start</code> or enable it with <code>/etc/init.d/cron enable</code>. You can <code>disable</code>, <code>stop</code> and <code>restart</code> most of those daemons, too. -- This might not be true anymore!
+</p>
+
+<p>
+To query the state of all init scripts, you can use the command below:
+</p>
+<div class="table sectionedit16"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Shell Output </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"><pre class="code">for F in /etc/init.d/* ; do $F enabled &amp;&amp; echo $F on || echo $F **disabled**; done</pre>
+</td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"><pre class="code">root@OW2:~# for F in /etc/init.d/* ; do $F enabled &amp;&amp; echo $F on || echo $F **disabled**; done
+/etc/init.d/boot on
+/etc/init.d/collectd on
+...
+/etc/init.d/led on
+/etc/init.d/log on
+/etc/init.d/luci_statistics on
+/etc/init.d/miniupnpd **disabled**
+/etc/init.d/network on
+/etc/init.d/odhcpd on
+...</pre>
+</td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table10&quot;,&quot;secid&quot;:16,&quot;range&quot;:&quot;9612-10037&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Enable and disable&quot;,&quot;hid&quot;:&quot;enable_and_disable&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:12,&quot;range&quot;:&quot;7126-&quot;} -->

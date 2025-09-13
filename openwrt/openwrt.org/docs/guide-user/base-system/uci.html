@@ -1,0 +1,855 @@
+
+<h1 class="sectionedit1" id="the_uci_system">The UCI system</h1>
+<div class="level1">
+
+<p>
+See also: <a href="/docs/guide-developer/uci-defaults" class="wikilink1" title="docs:guide-developer:uci-defaults" data-wiki-id="docs:guide-developer:uci-defaults">UCI defaults</a>, <a href="/docs/guide-developer/network-scripting#examples" class="wikilink1" title="docs:guide-developer:network-scripting" data-wiki-id="docs:guide-developer:network-scripting">Network scripting</a>
+</p>
+
+<p>
+The abbreviation <a href="/docs/techref/uci" class="wikilink1" title="docs:techref:uci" data-wiki-id="docs:techref:uci">UCI</a> stands for <em><strong><em class="u">U</em></strong>nified <strong><em class="u">C</em></strong>onfiguration <strong><em class="u">I</em></strong>nterface</em>, and is a system to centralize the configuration of OpenWrt services.
+</p>
+
+<p>
+UCI is the successor to the NVRAM-based configuration found in the White Russian series of OpenWrt. It is the main configuration user interface for the most important system settings including the main network interface configuration, wireless settings, logging functionality and remote access configuration.
+</p>
+
+<p>
+Many packages in the OpenWrt repository have been made compatible with the UCI system.
+Applications are made UCI-compatible by simply writing the original configuration file (which is read by the program) according to the chosen settings in the corresponding UCI file.
+This is done upon running the initialization scripts in <code>/etc/init.d/</code>.
+See <a href="/docs/techref/initscripts" class="wikilink1" title="docs:techref:initscripts" data-wiki-id="docs:techref:initscripts">Init scripts</a> for more information.
+Thus, when starting a daemon with such a UCI-compatible initialization script, you should be aware that the program&#039;s original configuration file gets overwritten.
+For example, in the case of <a href="/docs/guide-user/services/nas/cifs.server" class="wikilink1" title="docs:guide-user:services:nas:cifs.server" data-wiki-id="docs:guide-user:services:nas:cifs.server">Samba/CIFS</a>, the file <code>/etc/samba/smb.conf</code> is overwritten with UCI settings from the UCI configuration file <code>/etc/config/samba</code> when running <code>/etc/init.d/samba start</code>.
+In addition, the application&#039;s configuration file is often stored in RAM instead of in flash, because it does not need to be stored in non-volatile memory and it is rewritten after every change, based on the UCI file.
+There are ways to disable UCI in case you want to adjust settings in the original configuration file not available through UCI, in <a href="/docs/guide-user/services/nas/cifs.server" class="wikilink1" title="docs:guide-user:services:nas:cifs.server" data-wiki-id="docs:guide-user:services:nas:cifs.server">cifs.server</a> you can see how to disable UCI for samba, for example.
+</p>
+
+<p>
+For those non-UCI compatible programs, there is a convenient <a href="/docs/guide-user/base-system/notuci.config" class="wikilink1" title="docs:guide-user:base-system:notuci.config" data-wiki-id="docs:guide-user:base-system:notuci.config">list of some non-UCI configuration files</a> you may want to tend to.
+Note that, for most third party programs, you should consult the program&#039;s own documentation.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;The UCI system&quot;,&quot;hid&quot;:&quot;the_uci_system&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-2196&quot;} -->
+<h2 class="sectionedit2" id="common_principles">Common principles</h2>
+<div class="level2">
+
+<p>
+OpenWrt&#039;s central configuration is split into several files located in the <code>/etc/config/</code> directory.
+Each file relates roughly to the part of the system it configures.
+You can edit the configuration files with a text editor or modify them with the command line utility program <code>uci</code>.
+UCI configuration files are also modifiable through various programming APIs (like Shell, Lua and C), which is also how web interfaces like <a href="/docs/guide-user/luci/luci.essentials" class="wikilink1" title="docs:guide-user:luci:luci.essentials" data-wiki-id="docs:guide-user:luci:luci.essentials">LuCI</a> make changes to the UCI files.
+</p>
+
+<p>
+Upon changing a UCI configuration file, whether through a text editor or the command line, the services or executables that are affected must be (re)started (or, in some cases, simply reloaded) by an <a href="/docs/techref/initscripts" class="wikilink1" title="docs:techref:initscripts" data-wiki-id="docs:techref:initscripts">init.d call</a>, such that the updated UCI configuration is applied to them.
+Many programs are made compatible with UCI by simply making their init.d script first update their standard program-specific configuration files, based on the updated UCI configuration in <code>/etc/config</code>, and then restarting the executable.
+This implies that solely (re)starting the executable directly, without calling the appropriate init.d script, would not behave as expected as it would not yet result in the incorporation of configuration updates into the program&#039;s standard <a href="http://en.wikipedia.org/wiki/Configuration_file" class="urlextern" title="http://en.wikipedia.org/wiki/Configuration_file" rel="ugc nofollow">configuration file(s)</a>.
+</p>
+
+<p>
+As an example of modifying the UCI configuration, suppose you want to change the device&#039;s <abbr title="Internet Protocol">IP</abbr> address from the default <code>192.168.1.1</code> to <code>192.168.2.1</code>.
+To do this, using any text editor, such as vi, change the line
+</p>
+<pre class="code bash">option ipaddr	192.168.1.1</pre>
+
+<p>
+in the file <code>/etc/config/network</code> to: 
+</p>
+<pre class="code bash">option ipaddr	192.168.2.1</pre>
+
+<p>
+Next, commit the settings by running
+</p>
+<pre class="code bash"><span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>network restart</pre>
+
+<p>
+In this case, remember that you have to login again using <abbr title="Secure Shell">SSH</abbr> as the device is now accessible at its new <abbr title="Internet Protocol">IP</abbr> address!
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Common principles&quot;,&quot;hid&quot;:&quot;common_principles&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;2197-4150&quot;} -->
+<h2 class="sectionedit3" id="configuration_files">Configuration files</h2>
+<div class="level2">
+<div class="table sectionedit4"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign"> File                                                                                            </th><th class="col1 leftalign"> Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<th class="col0 leftalign" colspan="2"> Basic                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       </th>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/base-system/dhcp" class="wikilink1" title="docs:guide-user:base-system:dhcp" data-wiki-id="docs:guide-user:base-system:dhcp">/etc/config/dhcp</a>                                           </td><td class="col1 leftalign"> <a href="/docs/guide-user/base-system/dhcp.dnsmasq" class="wikilink1" title="docs:guide-user:base-system:dhcp.dnsmasq" data-wiki-id="docs:guide-user:base-system:dhcp.dnsmasq">Dnsmasq</a> and <a href="/docs/techref/odhcpd" class="wikilink1" title="docs:techref:odhcpd" data-wiki-id="docs:techref:odhcpd">odhcpd</a> settings: <abbr title="Domain Name System">DNS</abbr>, <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr>, DHCPv6                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/base-system/dropbear" class="wikilink1" title="docs:guide-user:base-system:dropbear" data-wiki-id="docs:guide-user:base-system:dropbear">/etc/config/dropbear</a>                                   </td><td class="col1 leftalign"> <abbr title="Secure Shell">SSH</abbr> server options                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/firewall/firewall_configuration" class="wikilink1" title="docs:guide-user:firewall:firewall_configuration" data-wiki-id="docs:guide-user:firewall:firewall_configuration">/etc/config/firewall</a>                        </td><td class="col1 leftalign"> <abbr title="Network Address Translation">NAT</abbr>, packet filter, port forwarding, etc.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/network/ucicheatsheet" class="wikilink1" title="docs:guide-user:network:ucicheatsheet" data-wiki-id="docs:guide-user:network:ucicheatsheet">/etc/config/network</a>                                   </td><td class="col1 leftalign"> Switch, interface and route configuration:<br/>
+<a href="/docs/guide-user/network/network_configuration" class="wikilink1" title="docs:guide-user:network:network_configuration" data-wiki-id="docs:guide-user:network:network_configuration">General</a>, <a href="/docs/guide-user/network/ipv4/configuration" class="wikilink1" title="docs:guide-user:network:ipv4:configuration" data-wiki-id="docs:guide-user:network:ipv4:configuration">IPv4</a>, <a href="/docs/guide-user/network/ipv6/configuration" class="wikilink1" title="docs:guide-user:network:ipv6:configuration" data-wiki-id="docs:guide-user:network:ipv6:configuration">IPv6</a>, <a href="/docs/guide-user/network/routing/routes_configuration" class="wikilink1" title="docs:guide-user:network:routing:routes_configuration" data-wiki-id="docs:guide-user:network:routing:routes_configuration">Routes</a>, <a href="/docs/guide-user/network/routing/ip_rules" class="wikilink1" title="docs:guide-user:network:routing:ip_rules" data-wiki-id="docs:guide-user:network:routing:ip_rules">Rules</a>, <a href="/docs/guide-user/network/wan/wan_interface_protocols" class="wikilink1" title="docs:guide-user:network:wan:wan_interface_protocols" data-wiki-id="docs:guide-user:network:wan:wan_interface_protocols">WAN</a>, <a href="/docs/guide-user/network/network_interface_alias" class="wikilink1" title="docs:guide-user:network:network_interface_alias" data-wiki-id="docs:guide-user:network:network_interface_alias">Aliases</a>, <a href="/docs/guide-user/network/network_configuration" class="wikilink1" title="docs:guide-user:network:network_configuration" data-wiki-id="docs:guide-user:network:network_configuration">Switches</a>, <a href="/docs/guide-user/network/vlan/switch_configuration" class="wikilink1" title="docs:guide-user:network:vlan:switch_configuration" data-wiki-id="docs:guide-user:network:vlan:switch_configuration">VLAN</a>, <a href="/docs/guide-user/network/ipv6_ipv4_transitioning" class="wikilink1" title="docs:guide-user:network:ipv6_ipv4_transitioning" data-wiki-id="docs:guide-user:network:ipv6_ipv4_transitioning">IPv4/IPv6 transitioning</a>, <a href="/docs/guide-user/network/tunneling_interface_protocols" class="wikilink1" title="docs:guide-user:network:tunneling_interface_protocols" data-wiki-id="docs:guide-user:network:tunneling_interface_protocols">Tunneling</a>  </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/base-system/system_configuration" class="wikilink1" title="docs:guide-user:base-system:system_configuration" data-wiki-id="docs:guide-user:base-system:system_configuration">/etc/config/system</a>                         </td><td class="col1 leftalign"> Misc. system settings, <a href="/docs/guide-user/advanced/ntp_configuration" class="wikilink1" title="docs:guide-user:advanced:ntp_configuration" data-wiki-id="docs:guide-user:advanced:ntp_configuration">NTP</a>, <a href="/docs/guide-user/services/rng" class="wikilink1" title="docs:guide-user:services:rng" data-wiki-id="docs:guide-user:services:rng">RNG</a>, <a href="/docs/guide-user/advanced/watchcat" class="wikilink1" title="docs:guide-user:advanced:watchcat" data-wiki-id="docs:guide-user:advanced:watchcat">Watchcat</a>                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/network/wifi/basic" class="wikilink1" title="docs:guide-user:network:wifi:basic" data-wiki-id="docs:guide-user:network:wifi:basic">/etc/config/wireless</a>                                     </td><td class="col1 leftalign"> Wireless settings and wifi network definition                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              </td>
+	</tr>
+	<tr class="row8">
+		<th class="col0 leftalign" colspan="2"> <abbr title="Internet Protocol version 6">IPv6</abbr>                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        </th>
+	</tr>
+	<tr class="row9">
+		<td class="col0 leftalign"> <a href="/doc/uci/ahcpd" class="wikilink2" title="doc:uci:ahcpd" rel="nofollow" data-wiki-id="doc:uci:ahcpd">/etc/config/ahcpd</a>                                                             </td><td class="col1 leftalign"> Ad-Hoc Configuration Protocol (AHCP) server and forwarder configuration                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </td>
+	</tr>
+	<tr class="row10">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/network/ipv6/dhcp6c" class="wikilink1" title="docs:guide-user:network:ipv6:dhcp6c" data-wiki-id="docs:guide-user:network:ipv6:dhcp6c">/etc/config/dhcp6c</a>                                      </td><td class="col1 leftalign"> WIDE-DHCPv6 client                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         </td>
+	</tr>
+	<tr class="row11">
+		<td class="col0 leftalign"> <a href="/doc/uci/dhcp6s" class="wikilink2" title="doc:uci:dhcp6s" rel="nofollow" data-wiki-id="doc:uci:dhcp6s">/etc/config/dhcp6s</a>                                                           </td><td class="col1 leftalign"> WIDE-DHCPv6 server                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         </td>
+	</tr>
+	<tr class="row12">
+		<td class="col0 leftalign"> <a href="/doc/uci/gw6c" class="wikilink2" title="doc:uci:gw6c" rel="nofollow" data-wiki-id="doc:uci:gw6c">/etc/config/gw6c</a>                                                               </td><td class="col1 leftalign"> GW6c client configuration                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  </td>
+	</tr>
+	<tr class="row13">
+		<th class="col0 leftalign" colspan="2"> Other                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       </th>
+	</tr>
+	<tr class="row14">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/services/tls/acmesh" class="wikilink1" title="docs:guide-user:services:tls:acmesh" data-wiki-id="docs:guide-user:services:tls:acmesh">/etc/config/acme</a>                                        </td><td class="col1 leftalign"> Configure issuing of <abbr title="Transport Layer Security">TLS</abbr> certificates via ACME                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             </td>
+	</tr>
+	<tr class="row15">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/services/babeld" class="wikilink1" title="docs:guide-user:services:babeld" data-wiki-id="docs:guide-user:services:babeld">/etc/config/babeld</a>                                          </td><td class="col1 leftalign"> babeld configuration                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       </td>
+	</tr>
+	<tr class="row16">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/services/bbstored" class="wikilink2" title="docs:guide-user:services:bbstored" rel="nofollow" data-wiki-id="docs:guide-user:services:bbstored">/etc/config/bbstored</a>                                      </td><td class="col1 leftalign"> BoxBackup server configuration                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             </td>
+	</tr>
+	<tr class="row17">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/services/vpn/cloudfare_tunnel" class="wikilink1" title="docs:guide-user:services:vpn:cloudfare_tunnel" data-wiki-id="docs:guide-user:services:vpn:cloudfare_tunnel">/etc/config/cloudflared</a>                       </td><td class="col1 leftalign"> Cloudflare tunnel                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          </td>
+	</tr>
+	<tr class="row18">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/base-system/ddns" class="wikilink1" title="docs:guide-user:base-system:ddns" data-wiki-id="docs:guide-user:base-system:ddns">/etc/config/ddns</a>                                           </td><td class="col1 leftalign"> Dynamic <abbr title="Domain Name System">DNS</abbr> configuration (ddns-scripts)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   </td>
+	</tr>
+	<tr class="row19">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/services/dns/dnscrypt-proxy" class="wikilink1" title="docs:guide-user:services:dns:dnscrypt-proxy" data-wiki-id="docs:guide-user:services:dns:dnscrypt-proxy">/etc/config/dnscrypt-proxy</a>                      </td><td class="col1 leftalign"> DNSCrypt proxy                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             </td>
+	</tr>
+	<tr class="row20">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/virtualization/docker_host" class="wikilink1" title="docs:guide-user:virtualization:docker_host" data-wiki-id="docs:guide-user:virtualization:docker_host">/etc/config/dockerd</a>                              </td><td class="col1 leftalign"> The Docker CE Engine Daemon                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </td>
+	</tr>
+	<tr class="row21">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/services/email/emailrelay" class="wikilink1" title="docs:guide-user:services:email:emailrelay" data-wiki-id="docs:guide-user:services:email:emailrelay">/etc/config/emailrelay</a>                            </td><td class="col1 leftalign"> E-MailRelay: simple <abbr title="Simple Mail Transfer Protocol">SMTP</abbr> server and proxy with <abbr title="Post Office Protocol">POP</abbr> support. Package <a href="/packages/pkgdata/emailrelay" class="wikilink1" title="packages:pkgdata:emailrelay" data-wiki-id="packages:pkgdata:emailrelay">emailrelay</a>                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       </td>
+	</tr>
+	<tr class="row22">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/services/w_o_l/etherwake" class="wikilink1" title="docs:guide-user:services:w_o_l:etherwake" data-wiki-id="docs:guide-user:services:w_o_l:etherwake">/etc/config/etherwake</a>                              </td><td class="col1 leftalign"> Wake-on-Lan: etherwake                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     </td>
+	</tr>
+	<tr class="row23">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/firewall/freifunk_p2pblock" class="wikilink2" title="docs:guide-user:firewall:freifunk_p2pblock" rel="nofollow" data-wiki-id="docs:guide-user:firewall:freifunk_p2pblock">/etc/config/freifunk_p2pblock</a>                    </td><td class="col1 leftalign"> Uses iptables layer7-, ipp2p- and recent-modules to block p2p/filesharing traffic                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          </td>
+	</tr>
+	<tr class="row24">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/storage/fstab" class="wikilink1" title="docs:guide-user:storage:fstab" data-wiki-id="docs:guide-user:storage:fstab">/etc/config/fstab</a>                                             </td><td class="col1 leftalign"> Mount points and swap                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      </td>
+	</tr>
+	<tr class="row25">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/storage/hd-idle" class="wikilink1" title="docs:guide-user:storage:hd-idle" data-wiki-id="docs:guide-user:storage:hd-idle">/etc/config/hd-idle</a>                                         </td><td class="col1 leftalign"> Another idle-daemon for attached hard drives                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               </td>
+	</tr>
+	<tr class="row26">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/base-system/httpd" class="wikilink1" title="docs:guide-user:base-system:httpd" data-wiki-id="docs:guide-user:base-system:httpd">/etc/config/httpd</a>                                         </td><td class="col1 leftalign"> Web server options (Busybox httpd, deprecated)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             </td>
+	</tr>
+	<tr class="row27">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/services/dns/ipset-dns" class="wikilink1" title="docs:guide-user:services:dns:ipset-dns" data-wiki-id="docs:guide-user:services:dns:ipset-dns">/etc/config/ipset-dns</a>                                </td><td class="col1 leftalign"> Configure <a href="https://git.zx2c4.com/ipset-dns/about/" class="urlextern" title="https://git.zx2c4.com/ipset-dns/about/" rel="ugc nofollow">ipset-dns</a>                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             </td>
+	</tr>
+	<tr class="row28">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/services/dns/kadnode" class="wikilink1" title="docs:guide-user:services:dns:kadnode" data-wiki-id="docs:guide-user:services:dns:kadnode">/etc/config/kadnode</a>                                    </td><td class="col1 leftalign"> KadNode p2p <abbr title="Domain Name System">DNS</abbr>                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            </td>
+	</tr>
+	<tr class="row29">
+		<td class="col0 leftalign"> <a href="/doc/uci/luci" class="wikilink2" title="doc:uci:luci" rel="nofollow" data-wiki-id="doc:uci:luci">/etc/config/luci</a>                                                               </td><td class="col1 leftalign"> Base LuCI config                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           </td>
+	</tr>
+	<tr class="row30">
+		<td class="col0 leftalign"> <a href="/doc/uci/luci_statistics" class="wikilink2" title="doc:uci:luci_statistics" rel="nofollow" data-wiki-id="doc:uci:luci_statistics">/etc/config/luci_statistics</a>                                         </td><td class="col1 leftalign"> Configuration of Statistics packet                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         </td>
+	</tr>
+	<tr class="row31">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/services/snmp/mini_snmpd" class="wikilink1" title="docs:guide-user:services:snmp:mini_snmpd" data-wiki-id="docs:guide-user:services:snmp:mini_snmpd">/etc/config/mini_snmpd</a>                             </td><td class="col1 leftalign"> mini_snmpd settings                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        </td>
+	</tr>
+	<tr class="row32">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/services/media_server/minidlna" class="wikilink1" title="docs:guide-user:services:media_server:minidlna" data-wiki-id="docs:guide-user:services:media_server:minidlna">/etc/config/minidlna</a>                         </td><td class="col1 leftalign"> MiniDLNA settings                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          </td>
+	</tr>
+	<tr class="row33">
+		<td class="col0 leftalign"> <a href="/doc/uci/mjpg-streamer" class="wikilink2" title="doc:uci:mjpg-streamer" rel="nofollow" data-wiki-id="doc:uci:mjpg-streamer">/etc/config/mjpg-streamer</a>                                             </td><td class="col1 leftalign"> Streaming application for Linux-UVC compatible webcams                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     </td>
+	</tr>
+	<tr class="row34">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/storage/mountd" class="wikilink1" title="docs:guide-user:storage:mountd" data-wiki-id="docs:guide-user:storage:mountd">/etc/config/mountd</a>                                           </td><td class="col1 leftalign"> OpenWrt automount daemon                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   </td>
+	</tr>
+	<tr class="row35">
+		<td class="col0 leftalign"> <a href="/doc/uci/mroute" class="wikilink2" title="doc:uci:mroute" rel="nofollow" data-wiki-id="doc:uci:mroute">/etc/config/mroute</a>                                                           </td><td class="col1 leftalign"> Configuration files for multiple <abbr title="Wide Area Network">WAN</abbr> routes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </td>
+	</tr>
+	<tr class="row36">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/network/wan/multiwan/multiwan_package" class="wikilink1" title="docs:guide-user:network:wan:multiwan:multiwan_package" data-wiki-id="docs:guide-user:network:wan:multiwan:multiwan_package">/etc/config/multiwan</a>                  </td><td class="col1 leftalign"> Simple multi <abbr title="Wide Area Network">WAN</abbr> configuration                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             </td>
+	</tr>
+	<tr class="row37">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/network/wan/multiwan/mwan3" class="wikilink1" title="docs:guide-user:network:wan:multiwan:mwan3" data-wiki-id="docs:guide-user:network:wan:multiwan:mwan3">/etc/config/mwan3</a>                                </td><td class="col1 leftalign"> Multi-<abbr title="Wide Area Network">WAN</abbr> config with load balancing and failover                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          </td>
+	</tr>
+	<tr class="row38">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/services/captive-portal/nodogsplash" class="wikilink1" title="docs:guide-user:services:captive-portal:nodogsplash" data-wiki-id="docs:guide-user:services:captive-portal:nodogsplash">/etc/config/nodogsplash</a>                 </td><td class="col1 leftalign"> nodogsplash configuration                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  </td>
+	</tr>
+	<tr class="row39">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/services/ntp/client" class="wikilink1" title="docs:guide-user:services:ntp:client" data-wiki-id="docs:guide-user:services:ntp:client">/etc/config/ntpclient</a>                                   </td><td class="col1 leftalign"> Getting the correct time                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   </td>
+	</tr>
+	<tr class="row40">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/services/ups/software.nut" class="wikilink1" title="docs:guide-user:services:ups:software.nut" data-wiki-id="docs:guide-user:services:ups:software.nut">/etc/config/nut_server</a>                            </td><td class="col1 leftalign"> Controlling a UPS (Uninterruptible Power Supply) and/or sharing with other hosts                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           </td>
+	</tr>
+	<tr class="row41">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/services/ups/software.nut" class="wikilink1" title="docs:guide-user:services:ups:software.nut" data-wiki-id="docs:guide-user:services:ups:software.nut">/etc/config/nut_monitor</a>                           </td><td class="col1 leftalign"> Monitoring a UPS (Uninterruptible Power Supply) from a remote host or local nut-server                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     </td>
+	</tr>
+	<tr class="row42">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/services/ups/software.nut" class="wikilink1" title="docs:guide-user:services:ups:software.nut" data-wiki-id="docs:guide-user:services:ups:software.nut">/etc/config/nut_cgi</a>                               </td><td class="col1 leftalign"> Web UI for NUT (viewing only in UCI)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       </td>
+	</tr>
+	<tr class="row43">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/services/print_server/p910nd" class="wikilink1" title="docs:guide-user:services:print_server:p910nd" data-wiki-id="docs:guide-user:services:print_server:p910nd">/etc/config/p910nd</a>                             </td><td class="col1 leftalign"> config for non-spooling Printer daemon <a href="/docs/guide-user/services/print_server/p910nd.server" class="wikilink1" title="docs:guide-user:services:print_server:p910nd.server" data-wiki-id="docs:guide-user:services:print_server:p910nd.server">p910nd.server</a>                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             </td>
+	</tr>
+	<tr class="row44">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/services/nas/pure-ftpd" class="wikilink2" title="docs:guide-user:services:nas:pure-ftpd" rel="nofollow" data-wiki-id="docs:guide-user:services:nas:pure-ftpd">/etc/config/pure-ftpd</a>                                </td><td class="col1 leftalign"> Pure-FTPd server config                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    </td>
+	</tr>
+	<tr class="row45">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/network/traffic-shaping/traffic_shaping" class="wikilink1" title="docs:guide-user:network:traffic-shaping:traffic_shaping" data-wiki-id="docs:guide-user:network:traffic-shaping:traffic_shaping">/etc/config/qos</a>                     </td><td class="col1 leftalign"> Implementing Quality of Service for the <em>upload</em>                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         </td>
+	</tr>
+	<tr class="row46">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/services/vpn/ipsec/racoon/basic" class="wikilink2" title="docs:guide-user:services:vpn:ipsec:racoon:basic" rel="nofollow" data-wiki-id="docs:guide-user:services:vpn:ipsec:racoon:basic">/etc/config/racoon</a>                          </td><td class="col1 leftalign"> racoon IPsec daemon                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        </td>
+	</tr>
+	<tr class="row47">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/services/nas/samba" class="wikilink1" title="docs:guide-user:services:nas:samba" data-wiki-id="docs:guide-user:services:nas:samba">/etc/config/samba</a>                                        </td><td class="col1 leftalign"> settings for the Microsoft file and print services daemon                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  </td>
+	</tr>
+	<tr class="row48">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/services/snmp/snmpd" class="wikilink1" title="docs:guide-user:services:snmp:snmpd" data-wiki-id="docs:guide-user:services:snmp:snmpd">/etc/config/snmpd</a>                                       </td><td class="col1 leftalign"> SNMPd settings                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             </td>
+	</tr>
+	<tr class="row49">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/network/traffic-shaping/sqm_configuration" class="wikilink1" title="docs:guide-user:network:traffic-shaping:sqm_configuration" data-wiki-id="docs:guide-user:network:traffic-shaping:sqm_configuration">/etc/config/sqm</a>                   </td><td class="col1 leftalign"> SQM settings                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               </td>
+	</tr>
+	<tr class="row50">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/services/ssh/sshtunnel" class="wikilink1" title="docs:guide-user:services:ssh:sshtunnel" data-wiki-id="docs:guide-user:services:ssh:sshtunnel">/etc/config/sshtunnel</a>                                </td><td class="col1 leftalign"> Settings for the package <code>sshtunnel</code>                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     </td>
+	</tr>
+	<tr class="row51">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/services/voip/stund" class="wikilink2" title="docs:guide-user:services:voip:stund" rel="nofollow" data-wiki-id="docs:guide-user:services:voip:stund">/etc/config/stund</a>                                       </td><td class="col1 leftalign"> STUN server configuration                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  </td>
+	</tr>
+	<tr class="row52">
+		<td class="col0 leftalign"> <a href="/doc/uci/tinc" class="wikilink2" title="doc:uci:tinc" rel="nofollow" data-wiki-id="doc:uci:tinc">/etc/config/tinc</a>                                                               </td><td class="col1 leftalign"> <a href="/docs/guide-user/services/vpn/tinc" class="wikilink2" title="docs:guide-user:services:vpn:tinc" rel="nofollow" data-wiki-id="docs:guide-user:services:vpn:tinc">tinc</a> package configuration                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           </td>
+	</tr>
+	<tr class="row53">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/services/tor/client" class="wikilink1" title="docs:guide-user:services:tor:client" data-wiki-id="docs:guide-user:services:tor:client">/etc/config/tor</a>                                         </td><td class="col1 leftalign"> Tor configuration                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          </td>
+	</tr>
+	<tr class="row54">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/services/tor/hs" class="wikilink1" title="docs:guide-user:services:tor:hs" data-wiki-id="docs:guide-user:services:tor:hs">/etc/config/tor-hs</a>                                          </td><td class="col1 leftalign"> Tor hidden services configuration                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          </td>
+	</tr>
+	<tr class="row55">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/services/downloading_and_filesharing/transmission" class="wikilink1" title="docs:guide-user:services:downloading_and_filesharing:transmission" data-wiki-id="docs:guide-user:services:downloading_and_filesharing:transmission">/etc/config/transmission</a>  </td><td class="col1 leftalign"> BitTorrent configuration                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   </td>
+	</tr>
+	<tr class="row56">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/services/webserver/uhttpd" class="wikilink1" title="docs:guide-user:services:webserver:uhttpd" data-wiki-id="docs:guide-user:services:webserver:uhttpd">/etc/config/uhttpd</a>                                </td><td class="col1 leftalign"> Web server options (uHTTPd)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </td>
+	</tr>
+	<tr class="row57">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/firewall/upnp/miniupnpd" class="wikilink1" title="docs:guide-user:firewall:upnp:miniupnpd" data-wiki-id="docs:guide-user:firewall:upnp:miniupnpd">/etc/config/upnpd</a>                                   </td><td class="col1 leftalign"> miniupnpd UPnP server settings                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             </td>
+	</tr>
+	<tr class="row58">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/base-system/users" class="wikilink1" title="docs:guide-user:base-system:users" data-wiki-id="docs:guide-user:base-system:users">/etc/config/users</a>                                         </td><td class="col1 leftalign"> user database for different services                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       </td>
+	</tr>
+	<tr class="row59">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/services/media_server/ushare" class="wikilink1" title="docs:guide-user:services:media_server:ushare" data-wiki-id="docs:guide-user:services:media_server:ushare">/etc/config/ushare</a>                             </td><td class="col1 leftalign"> uShare UPnP server settings                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </td>
+	</tr>
+	<tr class="row60">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/services/vblade" class="wikilink1" title="docs:guide-user:services:vblade" data-wiki-id="docs:guide-user:services:vblade">/etc/config/vblade</a>                                          </td><td class="col1 leftalign"> vblade userspace AOE target                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                </td>
+	</tr>
+	<tr class="row61">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/services/network_monitoring/vnstat" class="wikilink1" title="docs:guide-user:services:network_monitoring:vnstat" data-wiki-id="docs:guide-user:services:network_monitoring:vnstat">/etc/config/vnstat</a>                       </td><td class="col1 leftalign"> vnstat downloader settings                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 </td>
+	</tr>
+	<tr class="row62">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/network/wifi/wifi_toggle" class="wikilink1" title="docs:guide-user:network:wifi:wifi_toggle" data-wiki-id="docs:guide-user:network:wifi:wifi_toggle">/etc/config/wifitoggle</a>                             </td><td class="col1 leftalign"> Toggle WiFi with a button                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  </td>
+	</tr>
+	<tr class="row63">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/services/w_o_l/wol" class="wikilink1" title="docs:guide-user:services:w_o_l:wol" data-wiki-id="docs:guide-user:services:w_o_l:wol">/etc/config/wol</a>                                          </td><td class="col1 leftalign"> Wake-on-Lan: wol                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           </td>
+	</tr>
+	<tr class="row64">
+		<td class="col0 leftalign"> <a href="/docs/guide-user/services/proxy/znc" class="wikilink1" title="docs:guide-user:services:proxy:znc" data-wiki-id="docs:guide-user:services:proxy:znc">/etc/config/znc</a>                                          </td><td class="col1 leftalign"> ZNC bouncer configuration                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;4183-57287&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration files&quot;,&quot;hid&quot;:&quot;configuration_files&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:3,&quot;range&quot;:&quot;4151-57288&quot;} -->
+<h2 class="sectionedit5" id="file_syntax">File syntax</h2>
+<div class="level2">
+
+<p>
+The UCI configuration files usually consist of one or more <code>config</code> statements, so called sections with one or more option statements defining the actual values.
+</p>
+
+<p>
+A <code>#</code> begins comments in the usual way.
+Specifically, if a line contains a <code>#</code> outside of a string literal, it and all characters after it in the line are considered a comment and ignored.
+</p>
+
+<p>
+Below is an example of a simple configuration file (see also <a href="#uci_dataobject_model" title="docs:guide-user:base-system:uci ↵" class="wikilink1">uci_dataobject_model</a>):
+</p>
+<pre class="code bash">package <span class="st_h">'example'</span>
+&nbsp;
+config <span class="st_h">'example'</span> <span class="st_h">'test'</span>
+        option   <span class="st_h">'string'</span>      <span class="st_h">'some value'</span>
+        option   <span class="st_h">'boolean'</span>     <span class="st_h">'1'</span>
+        list     <span class="st_h">'collection'</span>  <span class="st_h">'first item'</span>
+        list     <span class="st_h">'collection'</span>  <span class="st_h">'second item'</span></pre>
+<ul>
+<li class="level1"><div class="li"> The <code>config &#039;example&#039; &#039;test</code>&#039; statement defines the start of a section with the type <code>example</code> and the name <code>test</code>. There can also be so called anonymous sections with only a type, but no name identifier. The type is important for the processing programs to decide how to treat the enclosed options.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> The <code>option &#039;string&#039; &#039;some value</code>&#039; and <code>option &#039;boolean&#039; &#039;1</code>&#039; lines define simple values within the section. Note that there are no syntactical differences between text and boolean options. Per convention, boolean options may have one of the values &#039;0&#039;, &#039;no&#039;, &#039;off&#039;, &#039;false&#039; or &#039;disabled&#039; to specify a false value or &#039;1&#039; , &#039;yes&#039;, &#039;on&#039;, &#039;true&#039; or &#039;enabled&#039; to specify a true value.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> In the lines starting with a <code>list</code> keyword an option with multiple values is defined. All <code>list</code> statements that share the same name, <code>collection</code> in our example, will be combined into a single list of values with the same order as in the configuration file.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> The indentation of the <code>option</code> and <code>list</code> statements is a convention to improve the readability of the configuration file but it&#039;s not syntactically required.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> If an option is absent and not required, the default value is assumed. If it is absent and required, it may trigger an error in the application or other unwanted behaviour.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> A way to disable a config section, that does not have a <code>enabled</code> option to be disabled, is renaming the config section identifier (or type, in this case <code>example</code>) to a value not recognized by the processes that uses those values. Normally a <code>disabled_identifier</code> as config section type/identifier is sufficient.</div>
+</li>
+</ul>
+
+<p>
+Usually you do not need to enclose identifiers or values in quotes. Quotes are only required if the enclosed value contains spaces or tabs. Also it&#039;s legal to use double- instead of single-quotes when typing configuration options.
+</p>
+
+<p>
+All of the examples below are valid UCI syntax:
+</p>
+<pre class="code bash">option  example   value
+option  example  <span class="st0">&quot;value&quot;</span>
+option <span class="st_h">'example'</span>  value
+option <span class="st_h">'example'</span> <span class="st0">&quot;value&quot;</span>
+option <span class="st0">&quot;example&quot;</span> <span class="st_h">'value'</span></pre>
+
+<p>
+In contrast, the following examples are not valid UCI syntax:
+</p>
+<pre class="code bash"><span class="co0"># missing quotes around the value</span>
+option  example   v_a l u-e
+<span class="co0"># unbalanced quotes</span>
+option <span class="st_h">'example&quot; &quot;value'</span></pre>
+
+<p>
+It is important to know that UCI identifiers and config file names may contain only the characters <code>a-z</code>, <code>0-9</code> and <code>_</code>.
+E.g. no hyphens (<code>-</code>) are allowed.
+Option values may contain any character (as long they are properly quoted).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;File syntax&quot;,&quot;hid&quot;:&quot;file_syntax&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:5,&quot;range&quot;:&quot;57289-60496&quot;} -->
+<h2 class="sectionedit6" id="editor_plugins">Editor plugins</h2>
+<div class="level2">
+
+<p>
+Syntax highlighting and (slightly) more in vim: <a href="https://github.com/cmcaine/vim-uci" class="urlextern" title="https://github.com/cmcaine/vim-uci" rel="ugc nofollow">vim-uci</a> - works well with sshfs (need openssh-sftp-server).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Editor plugins&quot;,&quot;hid&quot;:&quot;editor_plugins&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:6,&quot;range&quot;:&quot;60497-60672&quot;} -->
+<h2 class="sectionedit7" id="command-line_utility">Command-line utility</h2>
+<div class="level2">
+
+<p>
+For adjusting settings, one normally changes the UCI config files directly.
+However, for scripting purposes, all of UCI configuration can also be read and changed using the <code>uci</code> command line utility.
+For developers requiring automatic parsing of the UCI configuration, it is therefore redundant, unwise, and inefficient to use <code>awk</code> and <code>grep</code> to parse OpenWrt&#039;s config files.
+The <code>uci</code> utility offers all functionality with respect to modifying and parsing UCI.
+</p>
+
+<p>
+Below is the usage, as well as some useful examples of how to use this powerful utility.
+</p>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:8,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap">
+<p>
+When using <code>uci</code> to write configuration files, the files are always rewritten in whole and non-recognised commands are omitted. This means that any extraneous lines in the file are deleted, such as comments. If you have UCI configuration files that you have edited yourself and you want to preserve your own comments and blank lines, you should not use the command line utility but edit the files normally. Note that some files, such as the uHTTPd configuration file, already contain many comments when the application is first installed. Also, note that some applications such as <a href="/docs/techref/luci" class="wikilink1" title="docs:techref:luci" data-wiki-id="docs:techref:luci">LuCI</a> also use the <code>uci</code> utility and thus may rewrite UCI configuration files.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:9,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+When there are multiple sections of the same type in a config, UCI supports array-like references for them.
+If there are 8 <abbr title="Network Time Protocol">NTP</abbr> servers defined in <code>/etc/config/system</code>, UCI will let you reference their sections as <code>system.@timeserver[0]</code> for the first or <code>system.@timeserver[7]</code> for the last one.
+You can also use negative indexes, such as <code>system.@timeserver[-1]</code>.
+“-1” means the last one, “-2” means the second-to-last one, and so on.
+This comes in very handy when appending new rules to the end of a list.
+See the examples below.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Command-line utility&quot;,&quot;hid&quot;:&quot;command-line_utility&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:7,&quot;range&quot;:&quot;60673-62520&quot;} -->
+<h3 class="sectionedit10" id="usage">Usage</h3>
+<div class="level3">
+<pre class="code"># uci
+Usage: uci [&lt;options&gt;] &lt;command&gt; [&lt;arguments&gt;]
+
+Commands:
+	batch
+	export     [&lt;config&gt;]
+	import     [&lt;config&gt;]
+	changes    [&lt;config&gt;]
+	commit     [&lt;config&gt;]
+	add        &lt;config&gt; &lt;section-type&gt;
+	add_list   &lt;config&gt;.&lt;section&gt;.&lt;option&gt;=&lt;string&gt;
+	del_list   &lt;config&gt;.&lt;section&gt;.&lt;option&gt;=&lt;string&gt;
+	show       [&lt;config&gt;[.&lt;section&gt;[.&lt;option&gt;]]]
+	get        &lt;config&gt;.&lt;section&gt;[.&lt;option&gt;]
+	set        &lt;config&gt;.&lt;section&gt;[.&lt;option&gt;]=&lt;value&gt;
+	delete     &lt;config&gt;.&lt;section&gt;[.&lt;option&gt;]
+	rename     &lt;config&gt;.&lt;section&gt;[.&lt;option&gt;]=&lt;name&gt;
+	revert     &lt;config&gt;[.&lt;section&gt;[.&lt;option&gt;]]
+	reorder    &lt;config&gt;.&lt;section&gt;=&lt;position&gt;
+
+Options:
+	-c &lt;path&gt;  set the search path for config files (default: /etc/config)
+	-d &lt;str&gt;   set the delimiter for list values in uci show
+	-f &lt;file&gt;  use &lt;file&gt; as input instead of stdin
+	-m         when importing, merge data into an existing package
+	-n         name unnamed sections on export (default)
+	-N         don&#039;t name unnamed sections
+	-p &lt;path&gt;  add a search path for config change files
+	-P &lt;path&gt;  add a search path for config change files and use as default
+	-q         quiet mode (don&#039;t print error messages)
+	-s         force strict mode (stop on parser errors, default)
+	-S         disable strict mode
+	-X         do not use extended syntax on &#039;show&#039;</pre>
+<div class="sortable"><div class="table sectionedit11"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> <code>Command</code> </th><th class="col1"> Target </th><th class="col2"> Description </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> <code>commit</code> </td><td class="col1"> <code>[&lt;config&gt;]</code> </td><td class="col2"> Writes changes of the given configuration file, or if none is given, all configuration files, to the filesystem. All “uci set”, “uci add”, “uci rename” and “uci delete” commands are staged into a temporary location and written to flash at once with “uci commit”. This is not needed after editing configuration files with a text editor, but for scripts, GUIs and other programs working directly with UCI files. </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> <code>batch</code> </td><td class="col1"> - </td><td class="col2"> Executes a multi-line UCI script which is typically wrapped into a <em>here</em> document syntax. </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> <code>export</code> </td><td class="col1"> <code>[&lt;config&gt;]</code> </td><td class="col2"> Exports the configuration in a machine readable format. It is used internally to evaluate configuration files as shell scripts. </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> <code>import</code> </td><td class="col1"> <code>[&lt;config&gt;]</code> </td><td class="col2"> Imports configuration files in UCI syntax. </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0"> <code>changes</code> </td><td class="col1"> <code>[&lt;config&gt;]</code> </td><td class="col2"> List staged changes to the given configuration file or if none given, all configuration files. </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0"> <code>add</code> </td><td class="col1"> <code>&lt;config&gt; &lt;section-type&gt;</code> </td><td class="col2"> Add an anonymous section of type <code>section-type</code> to the given configuration. </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0"> <code>add_list</code> </td><td class="col1"> <code>&lt;config&gt;.&lt;section&gt;.&lt;option&gt;=&lt;string&gt;</code> </td><td class="col2"> Add the given string to an existing list option. </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0"> <code>del_list</code> </td><td class="col1"> <code>&lt;config&gt;.&lt;section&gt;.&lt;option&gt;=&lt;string&gt;</code> </td><td class="col2"> Remove the given string from an existing list option. </td>
+	</tr>
+	<tr class="row9">
+		<td class="col0"> <code>show</code> </td><td class="col1"> <code>[&lt;config&gt;[.&lt;section&gt;[.&lt;option&gt;]]]</code> </td><td class="col2"> Show the given option, section or configuration in compressed notation. </td>
+	</tr>
+	<tr class="row10">
+		<td class="col0"> <code>get</code> </td><td class="col1"> <code>&lt;config&gt;.&lt;section&gt;[.&lt;option&gt;]</code> </td><td class="col2"> Get the value of the given option or the type of the given section. </td>
+	</tr>
+	<tr class="row11">
+		<td class="col0"> <code>set</code> </td><td class="col1"> <code>&lt;config&gt;.&lt;section&gt;[.&lt;option&gt;]=&lt;value&gt;</code> </td><td class="col2"> Set the value of the given option, or add a new section with the type set to the given value. </td>
+	</tr>
+	<tr class="row12">
+		<td class="col0"> <code>delete</code> </td><td class="col1"> <code>&lt;config&gt;.&lt;section&gt;[.&lt;option&gt;]</code> </td><td class="col2"> Delete the given section or option. </td>
+	</tr>
+	<tr class="row13">
+		<td class="col0"> <code>rename</code> </td><td class="col1"> <code>&lt;config&gt;.&lt;section&gt;[.&lt;option&gt;]=&lt;name&gt;</code> </td><td class="col2"> Rename the given option or section to the given name. </td>
+	</tr>
+	<tr class="row14">
+		<td class="col0"> <code>revert</code> </td><td class="col1"> <code>&lt;config&gt;[.&lt;section&gt;[.&lt;option&gt;]]</code> </td><td class="col2"> Revert the given option, section or configuration file. </td>
+	</tr>
+	<tr class="row15">
+		<td class="col0"> <code>reorder</code> </td><td class="col1"> <code>&lt;config&gt;.&lt;section&gt;=&lt;position&gt;</code> </td><td class="col2"> Move a section to another position. </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table1&quot;,&quot;secid&quot;:11,&quot;range&quot;:&quot;63846-65960&quot;} --></div>
+<p>
+Note that you cannot delete an entire config using <code>uci delete</code> eg. <code>uci delete umdns</code> will not work. If you are really, truly sure you want to wipe an entire config, this shell code snippet will do it by looping and deleting the first entry in the config until it is empty:
+</p>
+<pre class="code bash"><span class="kw1">while</span> uci <span class="re5">-q</span> delete umdns.<span class="sy0">@</span>umdns<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>; <span class="kw1">do</span> :; <span class="kw1">done</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Usage&quot;,&quot;hid&quot;:&quot;usage&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:10,&quot;range&quot;:&quot;62521-66322&quot;} -->
+<h2 class="sectionedit12" id="uci_dataobject_model">UCI data/object model</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;UCI data\/object model&quot;,&quot;hid&quot;:&quot;uci_dataobject_model&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:12,&quot;range&quot;:&quot;66323-66356&quot;} -->
+<h3 class="sectionedit13" id="elements">Elements</h3>
+<div class="level3">
+
+<p>
+The elements in UCI model are:
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong>config</strong>: main configuration groups like <strong>network</strong>, <strong>system</strong>, <strong>firewall</strong>. Each configuration group has it&#039;s own file in <strong>/etc/config</strong></div>
+</li>
+<li class="level1"><div class="li"> <strong>sections</strong>: config is divided into sections. A section can either be <strong>named</strong> or <strong>unnamed</strong>.</div>
+</li>
+<li class="level1"><div class="li"> <strong>types</strong>: a section can have a type. E.g in the network config we typically have 4 sections of the type “interface”. The sections are “lan”, “wan”, “loopback” and “wan6”</div>
+</li>
+<li class="level1"><div class="li"> <strong>options</strong>: each section have some options where you set your configuration values</div>
+</li>
+<li class="level1"><div class="li"> <strong>values</strong>: value of option</div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="sections_naming">Sections naming</h4>
+<div class="level4">
+
+<p>
+Sections deserve some extra explanation in regards to naming.
+A section can be <em>named</em> or <em>unnamed</em>. 
+Unnamed sections will get an <strong>autogenerated ID/CFGID</strong> (like “cfg073777”) and be presented with an <strong>anonymous-name</strong> (like “@switch[0]”)
+</p>
+
+<p>
+Section names may only contain alphanum and “_” (for shell compatibility).  Hyphen &#039;-&#039; is not allowed.
+</p>
+
+<p>
+Example of <strong>anonymous-name</strong>:
+</p>
+<pre class="code bash"><span class="co0"># uci show network</span>
+...
+network.<span class="sy0">@</span>switch<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>=switch
+network.<span class="sy0">@</span>switch<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.name=<span class="st_h">'switch0'</span>
+network.<span class="sy0">@</span>switch<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.reset=<span class="st_h">'1'</span>
+network.<span class="sy0">@</span>switch<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.enable_vlan=<span class="st_h">'1'</span>
+...</pre>
+
+<p>
+Example of <strong>autogenerated ID/CFGID</strong>:
+</p>
+<pre class="code bash"><span class="co0"># uci show network.@switch[0]</span>
+network.cfg073777=switch
+network.cfg073777.name=<span class="st_h">'switch0'</span>
+network.cfg073777.reset=<span class="st_h">'1'</span>
+network.cfg073777.enable_vlan=<span class="st_h">'1'</span></pre>
+
+</div>
+
+<h4 id="different_presentation">Different presentation</h4>
+<div class="level4">
+
+<p>
+The same config section can be presented in different ways:
+</p>
+<ul>
+<li class="level1"><div class="li"> Human-friendly: as presented in the config files or with the command “uci export &lt;config&gt;”</div>
+</li>
+<li class="level1"><div class="li"> Programmable: as presented with the command “uci show &lt;config&gt;”</div>
+</li>
+</ul>
+<div class="table sectionedit14"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0" colspan="3"> Different model presentations </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> <strong>Human-friendly</strong>, named section (“uci export network”) </td><td class="col1"> <strong>Human-friendly</strong>, unnamed section (“uci export network”) </td><td class="col2"> </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> <img src="/_media/media/doc/howtos/uci_hr_named.png" class="media" loading="lazy" alt="" /> </td><td class="col1"> <img src="/_media/media/doc/howtos/uci_hr_unmaned.png" class="media" loading="lazy" alt="" /> </td><td class="col2"> </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> <strong>Programmable</strong>, named section (“uci show network.wan”) </td><td class="col1"> <strong>Programmable</strong>, unnamed section, anonymous name (“uci show network”) </td><td class="col2"> <strong>Programmable</strong>, unnamed section, CFGID (“uci show network.@switch[0]”) </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> <img src="/_media/media/doc/howtos/uci_prg_named.png" class="media" loading="lazy" alt="" /> </td><td class="col1"> <img src="/_media/media/doc/howtos/uci_prg_unmaned_an.png" class="media" loading="lazy" alt="" /> </td><td class="col2"> <img src="/_media/media/doc/howtos/uci_prg_unmaned_cfgid.png" class="media" loading="lazy" alt="" /> </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table2&quot;,&quot;secid&quot;:14,&quot;range&quot;:&quot;67996-68634&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Elements&quot;,&quot;hid&quot;:&quot;elements&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:13,&quot;range&quot;:&quot;66357-68635&quot;} -->
+<h3 class="sectionedit15" id="examples">Examples</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="setting_a_value">Setting a value</h4>
+<div class="level4">
+
+<p>
+If we want to change the listening port of the <a href="/docs/guide-user/services/webserver/http.uhttpd" class="wikilink1" title="docs:guide-user:services:webserver:http.uhttpd" data-wiki-id="docs:guide-user:services:webserver:http.uhttpd">uHTTPd Web Server</a> from 80 to 8080 we change the configuration in <code>/etc/config/uhttpd</code> :
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> uhttpd.main.listen_http=<span class="st_h">'8080'</span>
+uci commit uhttpd
+<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>uhttpd restart</pre>
+
+<p>
+Done, now the configuration file is updated and uHTTPd listens on port 8080.
+</p>
+
+</div>
+
+<h4 id="export_an_entire_configuration">Export an entire configuration</h4>
+<div class="level4">
+<pre class="code bash">uci <span class="kw3">export</span> configuration_name</pre>
+
+<p>
+Commonly available configurations are: <strong>defaults</strong>, <strong>dnsmasq</strong>, <strong>dropbear</strong>, <strong>firewall</strong>, <strong>fstab</strong>, <strong>net</strong>, <strong>qos</strong>, <strong>samba</strong>, <strong>system</strong>, <strong>wireless</strong>.
+</p>
+
+</div>
+
+<h4 id="show_a_configuration">Show a configuration</h4>
+<div class="level4">
+<pre class="code bash">uci show configuration_name</pre>
+
+<p>
+Here an example:
+</p>
+<pre class="code bash"><span class="co0"># uci show system </span>
+system.<span class="sy0">@</span>system<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>=system 
+system.<span class="sy0">@</span>system<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.hostname=<span class="st_h">'OpenWrt'</span> 
+system.<span class="sy0">@</span>system<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.timezone=<span class="st_h">'UTC'</span> 
+system.ntp=timeserver 
+system.ntp.server=<span class="st_h">'0.openwrt.pool.ntp.org'</span> <span class="st_h">'1.openwrt.pool.ntp.org'</span> <span class="st_h">'2.openwrt.pool.ntp.org'</span> <span class="st_h">'3.openwrt.pool.ntp.org'</span> 
+system.ntp.enabled=<span class="st_h">'1'</span> 
+system.ntp.enable_server=<span class="st_h">'0'</span></pre>
+
+</div>
+
+<h4 id="display_just_the_value_of_an_option">Display just the value of an option</h4>
+<div class="level4">
+<pre class="code bash">uci get httpd.<span class="sy0">@</span>httpd<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.port</pre>
+
+</div>
+
+<h4 id="append_an_entry_to_a_list">Append an entry to a list</h4>
+<div class="level4">
+<pre class="code bash">uci add_list system.ntp.server=<span class="st_h">'0.de.pool.ntp.org'</span></pre>
+
+</div>
+
+<h4 id="replace_a_list_completely">Replace a list completely</h4>
+<div class="level4">
+<pre class="code bash">uci delete system.ntp.server
+uci add_list system.ntp.server=<span class="st_h">'0.de.pool.ntp.org'</span>
+uci add_list system.ntp.server=<span class="st_h">'1.de.pool.ntp.org'</span>
+uci add_list system.ntp.server=<span class="st_h">'2.de.pool.ntp.org'</span></pre>
+
+</div>
+
+<h4 id="adding_a_new_anonymous_section_to_configuration">Adding a new anonymous section to configuration</h4>
+<div class="level4">
+<pre class="code bash">uci add configuration_name section_type</pre>
+
+<p>
+It will generate a new unnamed section of type <code>section_type</code> inside the configuration called <code>configuration_name</code>.
+Afterwards you can add keys to this section as normal.
+The add command will print an auto generated alphanumeric section name that you can use for further adding keys to the newly added section.
+</p>
+
+<p>
+Add a new firewall config section of type <code>rule</code> and refer to it by index:
+</p>
+<pre class="code bash">uci add firewall rule
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>rule<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.src=<span class="st_h">'wan'</span></pre>
+
+<p>
+Add a new firewall config section of type <code>rule</code> and refer to it by its auto generated name:
+</p>
+<pre class="code bash"><span class="re2">sid</span>=$<span class="br0">&#40;</span>uci add firewall rule<span class="br0">&#41;</span>
+uci <span class="kw1">set</span> firewall.<span class="re1">$sid</span>.src=<span class="st_h">'wan'</span></pre>
+
+</div>
+
+<h4 id="adding_a_named_section_to_configuration">Adding a named section to configuration</h4>
+<div class="level4">
+
+<p>
+In order to add a named section of a given type, the option-less form of the <code>uci set</code> command must be used.
+</p>
+<pre class="code bash"><span class="kw2">touch</span> <span class="sy0">/</span>etc<span class="sy0">/</span>config<span class="sy0">/</span>example
+uci <span class="kw1">set</span> example.this_name=blah
+uci <span class="kw1">set</span> example.this_name.xxx=yyy
+uci <span class="kw1">set</span> example.other_name=blah
+uci <span class="kw1">set</span> example.other_name.yyy=zzz
+uci commit example</pre>
+<pre class="code bash">uci show example</pre>
+<pre class="code">example.this_name=blah
+example.this_name.xxx=yyy
+example.other_name=blah
+example.other_name.yyy=zzz</pre>
+<pre class="code bash"><span class="kw2">cat</span> <span class="sy0">/</span>etc<span class="sy0">/</span>config<span class="sy0">/</span>example</pre>
+<pre class="code">config blah &#039;this_name&#039;
+    option xxx &#039;yyy&#039;
+    
+config blah &#039;other_name&#039;
+    option xxx &#039;zzz&#039;</pre>
+
+</div>
+
+<h4 id="showing_the_not-yet-saved_modified_values">Showing the not-yet-saved modified values</h4>
+<div class="level4">
+<pre class="code bash">uci changes</pre>
+
+</div>
+
+<h4 id="saving_modified_values_of_a_single_configuration">Saving modified values of a single configuration</h4>
+<div class="level4">
+<pre class="code bash">uci commit configuration_name 
+reload_config</pre>
+
+</div>
+
+<h4 id="saving_all_modified_values">Saving all modified values</h4>
+<div class="level4">
+<pre class="code bash">uci commit
+reload_config</pre>
+
+</div>
+
+<h4 id="generating_a_full_uci_section_with_a_simple_copy-paste">Generating a full UCI section with a simple copy-paste</h4>
+<div class="level4">
+
+<p>
+This block of code catches the code printed by uci when you add a new section (see above) and reuses it in all the new keys you want to add after it. This automates what would be a very fun typing or copy-paste job. You can also do this in your scripts.
+</p>
+
+<p>
+Generic version:
+</p>
+<pre class="code bash"><span class="re2">rule_name</span>=$<span class="br0">&#40;</span>uci add <span class="sy0">&lt;</span>config<span class="sy0">&gt;</span> <span class="sy0">&lt;</span>section-type<span class="sy0">&gt;</span><span class="br0">&#41;</span> 
+uci batch <span class="co2">&lt;&lt; EOI
+set &lt;config&gt;.$rule_name.&lt;option1&gt;='value'
+set &lt;config&gt;.$rule_name.&lt;option2&gt;='value'
+set &lt;config&gt;.$rule_name.&lt;option3&gt;='value'
+...
+EOI</span>
+uci commit</pre>
+
+<p>
+A working example:
+</p>
+<pre class="code bash"><span class="re2">rule_name</span>=$<span class="br0">&#40;</span>uci add firewall rule<span class="br0">&#41;</span> 
+uci batch <span class="co2">&lt;&lt; EOI
+set firewall.$rule_name.enabled='1'
+set firewall.$rule_name.target='ACCEPT'
+set firewall.$rule_name.src='wan'
+set firewall.$rule_name.proto='tcp udp'
+set firewall.$rule_name.dest_port='111'
+set firewall.$rule_name.name='NFS_share'
+EOI</span>
+uci commit</pre>
+
+</div>
+
+<h4 id="uci_paths">UCI paths</h4>
+<div class="level4">
+
+<p>
+Consider this example config file:
+</p>
+<pre class="code bash">config bar <span class="st_h">'first'</span>
+	option name	<span class="st_h">'Mr. First'</span>
+config bar
+	option name	<span class="st_h">'Mr. Second'</span>
+config bar <span class="st_h">'third'</span>
+	option name	<span class="st_h">'Mr. Third'</span></pre>
+
+<p>
+Then the paths below are equal in every group:
+</p>
+<pre class="code bash"><span class="co0"># Mr. First</span>
+uci get foo.<span class="sy0">@</span>bar<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.name
+uci get foo.<span class="sy0">@</span>bar<span class="br0">&#91;</span>-<span class="nu0">0</span><span class="br0">&#93;</span>.name
+uci get foo.<span class="sy0">@</span>bar<span class="br0">&#91;</span>-<span class="nu0">3</span><span class="br0">&#93;</span>.name
+uci get foo.first.name
+&nbsp;
+<span class="co0"># Mr. Second</span>
+uci get foo.<span class="sy0">@</span>bar<span class="br0">&#91;</span><span class="nu0">1</span><span class="br0">&#93;</span>.name
+uci get foo.<span class="sy0">@</span>bar<span class="br0">&#91;</span>-<span class="nu0">2</span><span class="br0">&#93;</span>.name
+<span class="co0"># uci get foo.second.name won't work; label 'second' undefined</span>
+&nbsp;
+<span class="co0"># Mr. Third</span>
+uci get foo.<span class="sy0">@</span>bar<span class="br0">&#91;</span><span class="nu0">2</span><span class="br0">&#93;</span>.name
+uci get foo.<span class="sy0">@</span>bar<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.name
+uci get foo.third.name</pre>
+
+<p>
+If you show it, you get :
+</p>
+<pre class="code bash"><span class="co0"># uci show foo</span>
+foo.first=bar
+foo.first.name=<span class="st_h">'Mr. First'</span>
+foo.<span class="sy0">@</span>bar<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>=bar
+foo.<span class="sy0">@</span>bar<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.name=<span class="st_h">'Mr. Second'</span>
+foo.third=bar
+foo.third.name=<span class="st_h">'Mr. Third'</span></pre>
+
+<p>
+But if you used <code>uci show foo.@bar[0]</code>, you will see:
+</p>
+<pre class="code bash"><span class="co0"># uci show foo.@bar[0]</span>
+foo.first=bar
+foo.first.name=<span class="st_h">'Mr. First'</span></pre>
+
+</div>
+
+<h4 id="add_a_firewall_rule">Add a firewall rule</h4>
+<div class="level4">
+
+<p>
+This is a good example of both adding a firewall rule to forward the <abbr title="Transmission Control Protocol">TCP</abbr> <abbr title="Secure Shell">SSH</abbr> port, and of the negative (-1) syntax used with uci.
+</p>
+<pre class="code bash">uci add firewall rule
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>rule<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.src=<span class="st_h">'wan'</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>rule<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.target=<span class="st_h">'ACCEPT'</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>rule<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.proto=<span class="st_h">'tcp'</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>rule<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.dest_port=<span class="st_h">'22'</span>
+uci commit firewall
+<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>firewall restart</pre>
+
+</div>
+
+<h4 id="get_ssid">Get SSID</h4>
+<div class="level4">
+<pre class="code bash">uci get wireless.<span class="sy0">@</span>wifi-iface<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.ssid</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Examples&quot;,&quot;hid&quot;:&quot;examples&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:15,&quot;range&quot;:&quot;68636-74212&quot;} -->
+<h2 class="sectionedit16" id="porting_uci_to_a_different_linux_distribution">Porting UCI to a different Linux distribution</h2>
+<div class="level2">
+
+<p>
+See <a href="/docs/techref/uci#usage_outside_of_openwrt" class="wikilink1" title="docs:techref:uci" data-wiki-id="docs:techref:uci">UCI (Unified Configuration Interface) – Technical Reference</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Porting UCI to a different Linux distribution&quot;,&quot;hid&quot;:&quot;porting_uci_to_a_different_linux_distribution&quot;,&quot;codeblockOffset&quot;:36,&quot;secid&quot;:16,&quot;range&quot;:&quot;74213-74383&quot;} -->
+<h2 class="sectionedit17" id="corrupted_configs">Corrupted configs</h2>
+<div class="level2">
+
+<p>
+See also:
+<a href="/docs/guide-user/advanced/uci_extras" class="wikilink1" title="docs:guide-user:advanced:uci_extras" data-wiki-id="docs:guide-user:advanced:uci_extras">UCI extras</a>
+</p>
+
+<p>
+If you manually edited the configs in <code>/etc/config</code>, it is possible that some of them are corrupted due to typos.
+</p>
+<pre class="code bash"><span class="co0"># uci show fstab</span>
+uci: Parse error <span class="br0">&#40;</span>invalid <span class="kw3">command</span><span class="br0">&#41;</span> at line <span class="nu0">20</span>, byte <span class="nu0">0</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Corrupted configs&quot;,&quot;hid&quot;:&quot;corrupted_configs&quot;,&quot;codeblockOffset&quot;:36,&quot;secid&quot;:17,&quot;range&quot;:&quot;74384-&quot;} -->

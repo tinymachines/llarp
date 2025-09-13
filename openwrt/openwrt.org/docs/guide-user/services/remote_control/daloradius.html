@@ -1,0 +1,246 @@
+
+<h1 class="sectionedit1" id="daloradius_management_system">daloRADIUS management system</h1>
+<div class="level1">
+
+<p>
+This page covers installation of DaloRADIUS and extending it. All this should be done on an extroot as it will take too much space for most routers and in the case of mysql poses the risk of wearing down your flash!
+Warning: all this has been commited from memory!
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;daloRADIUS management system&quot;,&quot;hid&quot;:&quot;daloradius_management_system&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-309&quot;} -->
+<h2 class="sectionedit2" id="basics">Basics</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Basics&quot;,&quot;hid&quot;:&quot;basics&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;310-328&quot;} -->
+<h3 class="sectionedit3" id="prerequisites">Prerequisites</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> You need to have a freeradius server up and running.<br/>
+Unfortunately, this is not documented on this wiki yet, but relatively straightforward. This howto expects that you have one already up and running.</div>
+</li>
+<li class="level1"><div class="li"> You should have configured your Wifi to use your radius server.<br/>
+For this, see <a href="/docs/guide-user/network/wifi/basic#wpa_enterprise_access_point" class="wikilink1" title="docs:guide-user:network:wifi:basic" data-wiki-id="docs:guide-user:network:wifi:basic">wpa_enterprise_access_point</a>. Don&#039;t forget, that you will need wpad instead of wpad-mini for enterprise WPA!</div>
+</li>
+<li class="level1"><div class="li"> It might be a good idea to have <a href="/doc/howto/luci.on.lighttpd" class="wikilink2" title="doc:howto:luci.on.lighttpd" rel="nofollow" data-wiki-id="doc:howto:luci.on.lighttpd">LuCI running on Lighthttpd</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Prerequisites&quot;,&quot;hid&quot;:&quot;prerequisites&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;329-886&quot;} -->
+<h3 class="sectionedit4" id="required_packages">Required Packages</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="server_openwrt">Server (OpenWrt)</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> <strong><code>lighttpd</code></strong>  as webserver</div>
+</li>
+<li class="level1"><div class="li"> <strong><code>lighttpd-mod-fastcgi</code></strong>  to run php5</div>
+</li>
+<li class="level1"><div class="li"> <strong><code>php5-fastcgi</code></strong></div>
+</li>
+<li class="level1"><div class="li"> <strong><code>php-pear-db</code></strong> prerequisite for daloradius</div>
+</li>
+<li class="level1"><div class="li"> <strong><code>php5-mod-session</code></strong> prerequisite for daloradius</div>
+</li>
+<li class="level1"><div class="li"> <strong><code>php5-mod-gd</code></strong> prerequisite for daloradius</div>
+</li>
+<li class="level1"><div class="li"> <strong><code>php5-mod-mysql</code></strong> prerequisite for daloradius</div>
+</li>
+<li class="level1"><div class="li"> <strong><code>mysql-server</code></strong> prerequisite for daloradius</div>
+</li>
+<li class="level1"><div class="li"> <strong><code>freeradius2-mod-sql-mysql</code></strong> to connect freeradius to your DB</div>
+</li>
+<li class="level1"><div class="li"> <strong><code>samba36-server</code></strong> if you want to use the NT-Hash authentification described below</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Required Packages&quot;,&quot;hid&quot;:&quot;required_packages&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;887-1478&quot;} -->
+<h2 class="sectionedit5" id="installation">Installation</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation&quot;,&quot;hid&quot;:&quot;installation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;1479-1503&quot;} -->
+<h3 class="sectionedit6" id="packages">Packages</h3>
+<div class="level3">
+<pre class="code bash">opkg <span class="kw2">install</span> lighttpd lighttpd-mod-fastcgi php5-fastcgi php-pear-db php5-mod-session php5-mod-gd php5-mod-mysql mysql-server freeradius2-mod-sql-mysql</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Packages&quot;,&quot;hid&quot;:&quot;packages&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;1504-1694&quot;} -->
+<h3 class="sectionedit7" id="download_unpack_daloradius">Download &amp; unpack daloradius</h3>
+<div class="level3">
+
+<p>
+Download daloradius-XXX.tar.gz from <a href="http://sourceforge.net/projects/daloradius/files/latest/download" class="urlextern" title="http://sourceforge.net/projects/daloradius/files/latest/download" rel="ugc nofollow">http://sourceforge.net/projects/daloradius/files/latest/download</a>
+</p>
+<pre class="code">gunzip daloradius-XXX.tar.gz
+tar xzvf daloradius-XXX.tar
+mv daloradius-XXX /www/daloradius</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Download &amp; unpack daloradius&quot;,&quot;hid&quot;:&quot;download_unpack_daloradius&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:7,&quot;range&quot;:&quot;1695-1948&quot;} -->
+<h3 class="sectionedit8" id="necessary_configuration">Necessary configuration</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="lighttpd">lighttpd</h4>
+<div class="level4">
+
+<p>
+In <code>/etc/lighttpd/lighttpd.conf</code> (note that bin-path differs from the default in this file!):
+</p>
+<pre class="code">#### fastcgi module
+## read fastcgi.txt for more info
+fastcgi.server = (
+        &quot;.php&quot; =&gt; (
+                &quot;localhost&quot; =&gt; (
+                        &quot;socket&quot; =&gt; &quot;/tmp/php-fastcgi.socket&quot;,
+                        &quot;bin-path&quot; =&gt; &quot;/usr/bin/php-fcgi&quot;
+                )
+        )
+)</pre>
+
+</div>
+
+<h4 id="php">php</h4>
+<div class="level4">
+
+<p>
+Create a file <code>/etc/php5/pear.ini</code> or edit your <code>/etc/php.ini</code>
+</p>
+<pre class="code">include_path = &quot;.:/usr/lib/php/&quot;</pre>
+
+</div>
+
+<h4 id="mysql">mysql</h4>
+<div class="level4">
+
+<p>
+Set a <code>datadir</code> in <code>/etc/my.cnf</code>
+</p>
+<pre class="code">datadir         = /data/mysql/</pre>
+
+<p>
+and run
+</p>
+<pre class="code bash">mysql_install_db <span class="re5">--force</span></pre>
+
+<p>
+Create a DB &#039;radius&#039; and a user by the same name. Insert your password.
+</p>
+<pre class="code bash"><span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span>EOF <span class="sy0">|</span> mysql <span class="re5">-u</span> root
+CREATE DATABASE radius CHARACTER SET utf8;
+GRANT ALL ON radius.<span class="sy0">*</span> TO <span class="st_h">'username'</span><span class="sy0">@</span><span class="st_h">'127.0.0.1'</span> IDENTIFIED BY <span class="st_h">'password'</span> WITH GRANT OPTION;
+EOF</pre>
+
+</div>
+
+<h4 id="daloradius">daloradius</h4>
+<div class="level4">
+
+<p>
+Fill database
+</p>
+<pre class="code bash">mysl <span class="re5">-u</span> root radius <span class="sy0">&lt;</span> <span class="sy0">/</span>www<span class="sy0">/</span>daloradius<span class="sy0">/</span>contrib<span class="sy0">/</span>db<span class="sy0">/</span>fr2-mysql-daloradius-and-freeradius.sql</pre>
+
+<p>
+edit <code>/www/daloradius/library/daloradius.conf.php</code> to your needs - at LEAST the CONFIG_DB_HOST (change to 127.0.0.1 so that user above matches), CONFIG_DB_PORT, CONFIG_DB_USER and CONFIG_DB_PASS.
+</p>
+
+</div>
+
+<h4 id="freeradius">freeradius</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> The freeradius-mod-sql-mysql package is missing the <code>$INCLUDE sql/${database}/dialup.conf</code> file. google it, download it and put it in the right place on your machine.</div>
+</li>
+<li class="level1"><div class="li"> Add your credentials to the <code>/etc/freeradius/sql.conf</code></div>
+</li>
+<li class="level1"><div class="li"> Uncomment the sql module in <code>/etc/freeradius/sites/default</code></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Necessary configuration&quot;,&quot;hid&quot;:&quot;necessary_configuration&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:8,&quot;range&quot;:&quot;1949-3597&quot;} -->
+<h3 class="sectionedit9" id="done">done</h3>
+<div class="level3">
+
+<p>
+Daloradius should be available now at <code>http://openwrt.lan/daloradius/index.php</code> - have fun!
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;done&quot;,&quot;hid&quot;:&quot;done&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:9,&quot;range&quot;:&quot;3598-3712&quot;} -->
+<h2 class="sectionedit10" id="nt-hashes">NT-Hashes</h2>
+<div class="level2">
+
+<p>
+Quite probably, you are going to use MSCHAPv2, and probably you don&#039;t wanna store cleartext passwords. Which means, you&#039;ll have to use NT-Hashes.
+</p>
+
+<p>
+To get NT-Hashes, you need the smbencrypt tool. This is not available for openwrt, but smbpasswd is and uses the same algorithm. This script serves as a workaround (ugly!):
+</p>
+<pre class="code bash"><span class="co0">#!/bin/bash</span>
+<span class="re2">PWD</span>=<span class="re4">$1</span>
+<span class="re2">DUMMYUSER</span>=<span class="st0">&quot;smbencrypt_dummy&quot;</span>
+&nbsp;
+<span class="co0"># if there is no user $DUMMYUSER, we have to add it to /etc/passwd using the nobody group</span>
+<span class="kw2">grep</span> <span class="re5">-q</span> smbencrypt_dummy <span class="sy0">/</span>etc<span class="sy0">/</span><span class="kw2">passwd</span> <span class="sy0">||</span> <span class="kw3">echo</span> <span class="st0">&quot;<span class="es2">$DUMMYUSER</span>:*:65533:65534:dummy_user_for_fake_smbencrypt:/var:/bin/false&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span><span class="kw2">passwd</span>
+&nbsp;
+<span class="co0"># add entry to /etc/samba/smbpasswd</span>
+<span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span>EOF <span class="sy0">|</span> smbpasswd <span class="re5">-s</span> <span class="re5">-a</span> <span class="re1">$DUMMYUSER</span>
+<span class="re4">$1</span>
+<span class="re4">$1</span>
+EOF
+&nbsp;
+<span class="co0"># get entry</span>
+<span class="re2">NTHASH</span>=<span class="sy0">`</span><span class="kw2">grep</span> <span class="re1">$DUMMYUSER</span> <span class="sy0">/</span>etc<span class="sy0">/</span>samba<span class="sy0">/</span>smbpasswd <span class="sy0">|</span> <span class="kw2">cut</span> <span class="re5">-d</span><span class="st_h">':'</span> -f4<span class="sy0">`</span>
+&nbsp;
+<span class="co0"># remove $DUMMYUSER from /etc/samba/smbpasswd</span>
+smbpasswd <span class="re5">-x</span> <span class="re1">$DUMMYUSER</span>
+&nbsp;
+<span class="co0">#remove $DUMMYUSER from /etc/passwd</span>
+<span class="kw2">sed</span> <span class="re5">-i</span> <span class="st0">&quot;/<span class="es2">$DUMMYUSER</span>/d&quot;</span> <span class="sy0">/</span>etc<span class="sy0">/</span><span class="kw2">passwd</span>
+&nbsp;
+<span class="co0"># output results</span>
+<span class="kw2">cat</span> <span class="co2">&lt;&lt;EOF
+LM Hash                            NT Hash
+--------------------------------   --------------------------------
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX   $NTHASH
+EOF</span></pre>
+
+<p>
+To be able to enter such an NT-Hash in Daloradius, add to <code>/www/daloradius/mng-new.php</code> after line 618:
+</p>
+<pre class="code">                        &lt;option value=&#039;NT-Password&#039;&gt;NT-Password&lt;/option&gt;</pre>
+
+<p>
+note that at this state you still have to enter your calculated NT-Hash in the password text field!
+</p>
+
+<p>
+If you want daloradius to calculate your NT-Hash for you if you select NT-Password, you have to add the following code to <code>/www/daloradius/mng-new.php</code> after line 438 (don&#039;t forget to copy the above script to /bin/smbencrypt!):
+</p>
+<pre class="code">// or calculate an NT hash
+                                        } elseif ($passwordtype==&quot;NT-Password&quot;){
+                                                $dbPassword = &quot;&#039;&quot;.shell_exec(&quot;smbencrypt &#039;&quot;.escapeshellcmd($dbPassword).&quot;&#039; | tail -n1 | sed &#039;s/^X* *//&#039;&quot;).&quot;&#039;&quot;;
+                                        }</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;NT-Hashes&quot;,&quot;hid&quot;:&quot;nt-hashes&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:10,&quot;range&quot;:&quot;3713-5692&quot;} -->
+<h2 class="sectionedit11" id="final_warning">Final warning</h2>
+<div class="level2">
+
+<p>
+From what I&#039;ve seen so far, daloradius is cool - but the code looks to me like it&#039;s prone to all kinds of injections. As it is an interface that should ony accessed by the administrator (you!): put it behind an <abbr title="Hypertext Transfer Protocol">HTTP</abbr> auth - see <code>lighttpd_mod_auth</code>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Final warning&quot;,&quot;hid&quot;:&quot;final_warning&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:11,&quot;range&quot;:&quot;5693-&quot;} -->

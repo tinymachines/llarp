@@ -1,0 +1,628 @@
+
+<h1 class="sectionedit1" id="cryptographic_hardware_accelerators">Cryptographic Hardware Accelerators</h1>
+<div class="level1">
+
+<p>
+A Cryptographic Hardware Accelerator can be
+</p>
+<ul>
+<li class="level1"><div class="li"> integrated into the <a href="/docs/techref/hardware/soc" class="wikilink1" title="docs:techref:hardware:soc" data-wiki-id="docs:techref:hardware:soc">soc</a> as a separate processor, as a special purpose CPU (aka Core).</div>
+</li>
+<li class="level1"><div class="li"> integrated in a <a href="https://en.wikipedia.org/wiki/Coprocessor" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Coprocessor">Coprocessor</a> on the circuit board</div>
+</li>
+<li class="level1"><div class="li"> contained on a Chip on an extension circuit board, this can be connected to the mainboard via some BUS, e.g. PCI</div>
+</li>
+<li class="level1"><div class="li"> an <a href="https://en.wikipedia.org/wiki/Template:Multimedia_extensions" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Template:Multimedia_extensions">ISA extension</a> like e.g. <a href="https://en.wikipedia.org/wiki/AES instruction set" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/AES instruction set">AES instruction set</a> and thus integral part of the CPU (in that case, a kernel driver is not needed)</div>
+</li>
+</ul>
+
+<p>
+The purpose is to offload the very computing intensive tasks of encryption/decryption and compression/decompression.<br/>
+
+As can be seen in this <a href="https://en.wikipedia.org/wiki/AES instruction set" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/AES instruction set">AES instruction set</a> article, the acceleration is usually achieved by doing certain arithmetic calculation in hardware.
+</p>
+
+<p>
+Its use in applications usually involves a number of layers:
+</p>
+<ul>
+<li class="level1"><div class="li"> The kernel needs a hardware-specific driver to use its capabilities.  It is usually built into the kernel for boards that support them, and allows access by services that run in kernel-mode.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> To use them in userspace, when the acceleration is not in the instruction set of the CPU, it is supported via a kernel driver (/dev/crypto or AF_ALG socket).</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> The above steps provide the bare minimum to allow userspace use, but it is more usual to use them inside a crypto library, such as gnutls or openssl, allowing access by most apps linked to them.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Cryptographic Hardware Accelerators&quot;,&quot;hid&quot;:&quot;cryptographic_hardware_accelerators&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1454&quot;} -->
+<h2 class="sectionedit2" id="performance">Performance</h2>
+<div class="level2">
+
+<p>
+Depending on which arithmetic calculations are being done in the specific hardware, the results differ widely. You should not concern yourself with theoretical bla,bla but find out how a certain implementation performs in the task you want to do with it! 
+</p>
+<ul>
+<li class="level1"><div class="li"> You could attach a USB drive to your device and mount a <a href="/docs/guide-user/storage/usb-drives" class="wikilink1" title="docs:guide-user:storage:usb-drives" data-wiki-id="docs:guide-user:storage:usb-drives">local filesystem</a> like ext3 from it. Then you want to read from and write to this filesystem from the Internet over a secured protocol. Let&#039;s use <code>sshfs</code>. You would set up a  <a href="/docs/guide-user/services/ssh/sshfs.server" class="wikilink1" title="docs:guide-user:services:ssh:sshfs.server" data-wiki-id="docs:guide-user:services:ssh:sshfs.server">sshfs.server</a> on your device and a <a href="/docs/guide-user/services/ssh/sshfs.client" class="wikilink1" title="docs:guide-user:services:ssh:sshfs.client" data-wiki-id="docs:guide-user:services:ssh:sshfs.client">sshfs.client</a> on the other end. Now how fast can you read/write to this with and without Cryptographic Hardware Accelerators. If the other end, the client, is a “fully grown PC” with a 2GHz CPU, it will probably perform fast enough to use the entire bandwidth of your Internet connection. If the server side is some embedded device, with let&#039;s say some 400MHz MIPS CPU, it will benefit highly from some integrated (and supported!) acceleration. You probably want sufficient performance such that you can consume your entire bandwidth. Now go and find some benchmark showing you the difference; both with and without acceleration. You will not be able to extrapolate this information from specifications you find on this page or on the web.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> you may wish to run an OpenVPN or an OpenConnect server on your router/embedded device, instead of using WEP/WPA/WPA2. There will be no reading from/writing to a USB device. Find benchmarks that show you exactly the performance for this purpose. You won&#039;t be able to extrapolate this information from other benchmarks.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> think of other practical uses, and find specific benchmarks.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Performance&quot;,&quot;hid&quot;:&quot;performance&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;1455-3242&quot;} -->
+<h2 class="sectionedit3" id="finding_out_what_s_available_in_the_kernel">Finding out what&#039;s available in the Kernel</h2>
+<div class="level2">
+
+<p>
+If your board has cryptographic acceleration hardware, the respective drivers should already be built into the kernel.  Some crypto engines have their own packages, and these may need to be installed first. 
+</p>
+
+<p>
+To see all of the available crypto drivers running on your system (this means <strong>after</strong> installing the packages, if needed), take a look at <code>/proc/crypto</code>.
+</p>
+<pre class="code"># cat /proc/crypto
+name         : cbc(aes)
+driver       : mv-cbc-aes
+module       : kernel
+priority     : 300
+refcnt       : 1
+selftest     : passed
+internal     : no
+type         : skcipher
+async        : yes
+blocksize    : 16
+min keysize  : 16
+max keysize  : 32
+ivsize       : 16
+chunksize    : 16
+walksize     : 16
+
+name         : cbc(aes)
+driver       : cbc-aes-neonbs
+module       : kernel
+priority     : 250
+refcnt       : 1
+selftest     : passed
+internal     : no
+type         : skcipher
+async        : yes
+blocksize    : 16
+min keysize  : 16
+max keysize  : 32
+ivsize       : 16
+chunksize    : 16
+walksize     : 16
+
+name         : sha256
+driver       : mv-sha256
+module       : kernel
+priority     : 300
+refcnt       : 1
+selftest     : passed
+internal     : no
+type         : ahash
+async        : yes
+blocksize    : 64
+digestsize   : 32
+
+name         : sha256
+driver       : sha256-neon
+module       : kernel
+priority     : 250
+refcnt       : 2
+selftest     : passed
+internal     : no
+type         : shash
+blocksize    : 64
+digestsize   : 32
+
+name         : sha256
+driver       : sha256-asm
+module       : kernel
+priority     : 150
+refcnt       : 1
+selftest     : passed
+internal     : no
+type         : shash
+blocksize    : 64
+digestsize   : 32
+
+name         : sha256
+driver       : sha256-generic
+module       : sha256_generic
+priority     : 100
+refcnt       : 1
+selftest     : passed
+internal     : no
+type         : shash
+blocksize    : 64
+digestsize   : 32</pre>
+
+<p>
+This was cropped to show only AES-CBC and SHA256.  Both AF_ALG and <code>/dev/crypto</code> interfaces allow userspace access to any crypto driver offering symmetric-key ciphers, and digest algorithms.  This means hardware acceleration, but also software-only drivers.  The use of software drivers is almost always slower than an implementation in userspace, because the context switches slow operations down considerably.
+</p>
+
+<p>
+To identify hardware-drivers, look for drivers with types <code>skcipher</code> and <code>shash</code>, having priority &gt;= 300, but beware that AES-NI and similar CPU instructions will have a high priority as well, and do not need <code>/dev/crypto</code> or AF_ALG to be used!
+</p>
+
+<p>
+Notice in this case the two drivers offering <code>cbc(aes)</code>: <code>cbc-aes-neonbs</code> (software driver, using neon asm instruction, and <code>mv-cbc-aes</code> (Marvell CESA, hw accelerated), and four offering <code>sha256</code>: <code>sha256-generic</code> (soft, generic C code), <code>sha256-asm</code> (soft, basic arm asm), <code>sha256-neon</code> (soft, using neon asm instruction), and <code>mv-sha256</code> (Marvell CESA).  The kernel will export the one with the highest priority for each algorithm.  In this case, it would be the hw accelerated Marvell CESA drivers: mv-cbc-aes, and mv-sha256.
+</p>
+
+<p>
+For IPsec ESP, which is done by the Kernel, this will be enough to tell you if you are able to use the crypto accelerator, and you don&#039;t need to do anything further.  Just make sure you&#039;re using the same algorithm made available by your crypto driver.  For other uses, openssl should be checked.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Finding out what&#039;s available in the Kernel&quot;,&quot;hid&quot;:&quot;finding_out_what_s_available_in_the_kernel&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;3243-6660&quot;} -->
+<h2 class="sectionedit4" id="enabling_the_userspace_interface">Enabling the userspace interface</h2>
+<div class="level2">
+
+<p>
+The crypto drivers enable the algorithms for kernel use.  To be able to access them from userspace, another driver needs to be used.  In OpenWrt, there are two of them: <code>cryptodev</code>, and <code>AF_ALG</code>.  Opinions on the subject may vary, but <code>cryptodev</code> has the speed advantage here.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Enabling the userspace interface&quot;,&quot;hid&quot;:&quot;enabling_the_userspace_interface&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:4,&quot;range&quot;:&quot;6661-6989&quot;} -->
+<h3 class="sectionedit5" id="cryptodev">cryptodev</h3>
+<div class="level3">
+
+<p>
+Cryptodev uses a <code>/dev/crypto</code> device to export the kernel algorithms.  In OpenWrt 19.07 and later, it is provided by the <code>kmod-cryptodev</code> and is installed automatically when you install <code>libopenssl-devcrypto</code>.
+</p>
+
+<p>
+In OpenWrt 18.06.x and earlier, <code>/dev/crypto</code> required compiling the driver yourself.  Run <code>make menuconfig</code> and select
+</p>
+<ul>
+<li class="level1 node"><div class="li"> kmod-crypto-core: m</div>
+<ul>
+<li class="level2"><div class="li"> kmod-cryptodev: m</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+Installing the `kmod-cryptodev` package will create a `/dev/crypto` device, even if you don&#039;t have any hw-crypto.  <strong><code>/dev/crypto</code> will export kernel crypto drivers regardless of being implemented in software or hardware.  Use of kernel software drivers may severely slow crypto performance, so don&#039;t install this package unless you know you have hw-crypto drivers installed!</strong>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;cryptodev&quot;,&quot;hid&quot;:&quot;cryptodev&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:5,&quot;range&quot;:&quot;6990-7783&quot;} -->
+<h3 class="sectionedit6" id="af_alg">AF_ALG</h3>
+<div class="level3">
+
+<p>
+The AF_ALG interface uses sockets to allow access to the kernel crypto algorithms, so you won&#039;t see anything in the filesystem.  It is provided by the <code>kmod-crypto-user</code> package.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;AF_ALG&quot;,&quot;hid&quot;:&quot;af_alg&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:6,&quot;range&quot;:&quot;7784-7983&quot;} -->
+<h2 class="sectionedit7" id="checking_openssl_support">Checking openssl support</h2>
+<div class="level2">
+
+<p>
+Openssl supports hardware crypto acceleration through an engine.  You can see what engines are available, along with the enabled algorithms, and configuration commands by running <code>openssl engine -t -c</code>:
+</p>
+<pre class="code">(devcrypto) /dev/crypto engine
+ [DES-CBC, DES-EDE3-CBC, BF-CBC, AES-128-CBC, AES-192-CBC, AES-256-CBC, AES-128-CTR, AES-192-CTR, AES-256-CTR, AES-128-ECB, AES-192-ECB, AES-256-ECB, CAMELLIA-128-CBC,
+CAMELLIA-192-CBC, CAMELLIA-256-CBC,MD5, SHA1, RIPEMD160, SHA224, SHA256, SHA384, SHA512]
+     [ available ]
+(rdrand) Intel RDRAND engine
+ [RAND]
+     [ available ]
+(dynamic) Dynamic engine loading support
+     [ unavailable ]</pre>
+
+<p>
+For openssl-1.0.2 and earlier, the engine was called <code>cryptodev</code>.  It was renamed to <code>devcrypto</code> in openssl 1.1.0. In this example, engine &#039;devcrypto&#039; is available, showing the list of algorithms available.
+</p>
+
+<p>
+Starting in OpenSSL 1.1.0, an AF_ALG engine can be used.  In OpenWrt 19.07, it is packaged as <code>libopenssl-afalg</code>, but it requires a custom build: the package will not show up under &#039;Libraries&#039;, &#039;<abbr title="Secure Socket Layer">SSL</abbr>&#039;, &#039;libopenssl&#039; unless you go to &#039;Global build settings&#039;, &#039;Kernel build options&#039;, and select &#039;Compile the kernel with asynchronous IO support&#039;.  This engine supports only AES-CBC, and needs to be enabled in <code>/etc/ssl/openssl.cnf</code>, but it does not accept the <code>CIPHERS</code>, <code>DIGESTSS</code>, or <code>USE_SOFTDRIVERS</code> options.
+</p>
+
+<p>
+In OpenWrt 19.07, the shipped <code>/etc/ssl/openssl.cnf</code> already has the basic engine configuration sections for both the devcrypto and the original afalg engines.  To enable them, uncomment the respective lines under the <code>[engines]</code> section.
+</p>
+
+<p>
+Shortly after 19.07.0 was released, an alternate AF_ALG engine was added, <code>libopenssl-afalg_sync</code> that is basically a mirror of the devcrypto engine, but using the AF_ALG interface.  It accepts all of the options, and is configured the same way as the <code>devcrypto</code> engine.  You may follow the steps below, just configure it under <code>afalg</code>, instead of <code>devcrypto</code>.  As of 19.07.0, the <code>openssl.cnf</code> file does not have the <code>CIPHERS</code>, <code>DIGESTS</code> and <code>USE_SOFTDRIVERS</code> options listed, but you can just copy them from the [devcrypto] section.  Note that the OpenWrt package is called <code>afalg_sync</code>, but for openssl the engine, it is simply <code>afalg</code>.  It can&#039;t coexist with the original engine.  Even though opinions my vary, its creator, cotequeiroz, states that the afalg_sync (as of v1.0.1) performance is better than the original afalg engine, but poorer than devcrypto.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Checking openssl support&quot;,&quot;hid&quot;:&quot;checking_openssl_support&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:7,&quot;range&quot;:&quot;7984-10526&quot;} -->
+<h2 class="sectionedit8" id="checking_openssl_support_for_aes-ni_hw_crypto_on_x86_64_normal_pc_hardware">Checking openssl support for AES-NI hw crypto on x86_64 (normal PC hardware)</h2>
+<div class="level2">
+
+<p>
+OpenSSL in OpenWrt on x86 supports AES-NI CPU instructions natively and should use them automatically where available.
+</p>
+
+<p>
+You can try two different commands and see whether performance differs.
+</p>
+
+<p>
+This should use AES-NI and should have better performance:
+</p>
+<pre class="code">openssl speed -elapsed -evp aes-128-cbc</pre>
+
+<p>
+This has a runtime switch that disables use of AES-NI in openSSL and therefore has lower performance.
+</p>
+<pre class="code">OPENSSL_ia32cap=&quot;~0x200000200000000&quot; openssl speed -elapsed -evp aes-128-cbc</pre>
+
+<p>
+This is an example of the results showing OpenSSL with AES-NI support (faster)
+</p>
+<pre class="code">root@routegateway:~# openssl speed -elapsed -evp aes-128-cbc
+You have chosen to measure elapsed time instead of user CPU time.
+Doing aes-128-cbc for 3s on 16 size blocks: 117879925 aes-128-cbc&#039;s in 3.00s
+Doing aes-128-cbc for 3s on 64 size blocks: 39584711 aes-128-cbc&#039;s in 3.00s
+Doing aes-128-cbc for 3s on 256 size blocks: 10062149 aes-128-cbc&#039;s in 3.00s
+Doing aes-128-cbc for 3s on 1024 size blocks: 2530718 aes-128-cbc&#039;s in 3.00s
+Doing aes-128-cbc for 3s on 8192 size blocks: 318704 aes-128-cbc&#039;s in 3.00s
+Doing aes-128-cbc for 3s on 16384 size blocks: 158373 aes-128-cbc&#039;s in 3.00s
+OpenSSL 1.1.1g  21 Apr 2020
+built on: Sun Aug  2 16:16:00 2020 UTC
+options:bn(64,64) rc4(16x,int) des(int) aes(partial) blowfish(ptr)
+compiler: x86_64-openwrt-linux-musl-gcc -fPIC -pthread -m64 -Wa,--noexecstack -Wall -O3 -pipe -fno-caller-saves -fno-plt -fhonour-copts -Wno-error=unused-but-set-variable -Wno-error=unused-result -Wformat -Werror=format-security -fstack-protector -D_FORTIFY_SOURCE=1 -Wl,-z,now -Wl,-z,relro -O3 -fpic -ffunction-sections -fdata-sections -znow -zrelro -DOPENSSL_USE_NODELETE -DL_ENDIAN -DOPENSSL_PIC -DOPENSSL_CPUID_OBJ -DOPENSSL_IA32_SSE2 -DOPENSSL_BN_ASM_MONT -DOPENSSL_BN_ASM_MONT5 -DOPENSSL_BN_ASM_GF2m -DSHA1_ASM -DSHA256_ASM -DSHA512_ASM -DKECCAK1600_ASM -DRC4_ASM -DMD5_ASM -DAESNI_ASM -DVPAES_ASM -DGHASH_ASM -DECP_NISTZ256_ASM -DX25519_ASM -DPOLY1305_ASM -DNDEBUG
+The &#039;numbers&#039; are in 1000s of bytes per second processed.
+type             16 bytes     64 bytes    256 bytes   1024 bytes   8192 bytes  16384 bytes
+aes-128-cbc     628692.93k   844473.83k   858636.71k   863818.41k   870274.39k   864927.74k</pre>
+
+<p>
+This is the result without AES-NI support (slower).
+</p>
+<pre class="code">root@routegateway:~# OPENSSL_ia32cap=&quot;~0x200000200000000&quot; openssl speed -elapsed -evp aes-128-cbc
+You have chosen to measure elapsed time instead of user CPU time.
+Doing aes-128-cbc for 3s on 16 size blocks: 37905593 aes-128-cbc&#039;s in 3.00s
+Doing aes-128-cbc for 3s on 64 size blocks: 10779104 aes-128-cbc&#039;s in 3.00s
+Doing aes-128-cbc for 3s on 256 size blocks: 2769347 aes-128-cbc&#039;s in 3.00s
+Doing aes-128-cbc for 3s on 1024 size blocks: 702288 aes-128-cbc&#039;s in 3.00s
+Doing aes-128-cbc for 3s on 8192 size blocks: 88129 aes-128-cbc&#039;s in 3.00s
+Doing aes-128-cbc for 3s on 16384 size blocks: 44055 aes-128-cbc&#039;s in 3.00s
+OpenSSL 1.1.1g  21 Apr 2020
+built on: Sun Aug  2 16:16:00 2020 UTC
+options:bn(64,64) rc4(16x,int) des(int) aes(partial) blowfish(ptr)
+compiler: x86_64-openwrt-linux-musl-gcc -fPIC -pthread -m64 -Wa,--noexecstack -Wall -O3 -pipe -fno-caller-saves -fno-plt -fhonour-copts -Wno-error=unused-but-set-variable -Wno-error=unused-result -Wformat -Werror=format-security -fstack-protector -D_FORTIFY_SOURCE=1 -Wl,-z,now -Wl,-z,relro -O3 -fpic -ffunction-sections -fdata-sections -znow -zrelro -DOPENSSL_USE_NODELETE -DL_ENDIAN -DOPENSSL_PIC -DOPENSSL_CPUID_OBJ -DOPENSSL_IA32_SSE2 -DOPENSSL_BN_ASM_MONT -DOPENSSL_BN_ASM_MONT5 -DOPENSSL_BN_ASM_GF2m -DSHA1_ASM -DSHA256_ASM -DSHA512_ASM -DKECCAK1600_ASM -DRC4_ASM -DMD5_ASM -DAESNI_ASM -DVPAES_ASM -DGHASH_ASM -DECP_NISTZ256_ASM -DX25519_ASM -DPOLY1305_ASM -DNDEBUG
+The &#039;numbers&#039; are in 1000s of bytes per second processed.
+type             16 bytes     64 bytes    256 bytes   1024 bytes   8192 bytes  16384 bytes
+aes-128-cbc     202163.16k   229954.22k   236317.61k   239714.30k   240650.92k   240599.04k</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Checking openssl support for AES-NI hw crypto on x86_64 (normal PC hardware)&quot;,&quot;hid&quot;:&quot;checking_openssl_support_for_aes-ni_hw_crypto_on_x86_64_normal_pc_hardware&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:8,&quot;range&quot;:&quot;10527-14576&quot;} -->
+<h3 class="sectionedit9" id="using_the_libopenssl-devcrypto_package">Using the libopenssl-devcrypto package</h3>
+<div class="level3">
+
+<p>
+Starting with 19.x branch, the /dev/crypto support can be packaged separately from the main openssl library, as the <code>libopenssl-devcrypto</code> package.  The engine is not enabled by default, even when the package is installed.  It requires editing the <code>/etc/ssl/openssl.cnf</code>, as follows.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Using the libopenssl-devcrypto package&quot;,&quot;hid&quot;:&quot;using_the_libopenssl-devcrypto_package&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:9,&quot;range&quot;:&quot;14577-14914&quot;} -->
+<h2 class="sectionedit10" id="configuring_the_devcrypto_engine">Configuring the devcrypto engine</h2>
+<div class="level2">
+
+<p>
+When using the standalone package, this becomes mandatory.  If the engine is built into libcrypto, it is only optional.
+</p>
+
+<p>
+To configure the engine, you must first add a line to the default section (i.e. the first, unnamed section), adding the following line, which tells which section is used to configure the library.  The sections are lines within brackets []:
+</p>
+<pre class="code"># this points to the main library configuration section
+openssl_conf = openssl_def</pre>
+
+<p>
+This will point the main openssl configuration to be done in a section called <code>openssl_def</code>.
+Then, that section needs to be created, anywhere past the last line in the unnamed section.  I&#039;d just add it to the very end of the file.  It will add an engine configuration section, where you can add a section for every engine you&#039;re configuring, and finally, a section to configure the engine itself.  In this example, we are configuring just the /dev/crypto engine:
+</p>
+<pre class="code">[openssl_def]
+# this is the main library configuration section
+engines=engine_section
+
+[engine_section]
+# this is the engine configuration section, where the engines are listed
+devcrypto=devcrypto_section
+
+[devcrypto_section]
+# this is the section where the devcrypto engine commands are used
+CIPHERS=ALL
+DIGESTS=NONE</pre>
+
+<p>
+You can use the <code>-vv</code> option of the <code>openssl engine</code> command to view the available configuration commands, along with a description of each command.  Notice the line disabling all digests.  Digests are computed fairly fast in software, and to use hardware crypto requires a context switch, which is an “expensive” operation.  So in order to be worth using an algorithm, it needs to be much faster than software to offset the cost of the context switch.  Efficiency depends on the length of each operation.  For ciphers, it is faster to use hardware than software in chunks of 1000 bytes or more, depending on your hardware.  For digests, the size has to be 10x greater.  Considering an <abbr title="Maximum Transmission Unit">MTU</abbr> of 1500 bytes, which is the de facto limit on <abbr title="Transport Layer Security">TLS</abbr> encryption block limit, it will not be worth to enable digests.  You can use a different configuration file for every application, by setting the environment variable <code>OPENSSL_CONF</code> to the full path of the configuration file to be used.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuring the devcrypto engine&quot;,&quot;hid&quot;:&quot;configuring_the_devcrypto_engine&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:10,&quot;range&quot;:&quot;14915-17201&quot;} -->
+<h3 class="sectionedit11" id="showingdevcrypto_algorithm_information">Showing /dev/crypto algorithm information</h3>
+<div class="level3">
+
+<p>
+There&#039;s a command for the devcrypto engine not to be used in <code>openssl.cnf</code> that will show some useful information about the algorithms available.  It shows a list of engine-supported algorithms, whether it can be used (a session can be opened) with /dev/crypto or not, along with the corresponding kernel driver, and whether it is hw-accelerated or not. To use it, run:
+</p>
+<pre class="code"># openssl engine -pre DUMP_INFO devcrypto
+(devcrypto) /dev/crypto engine
+Information about ciphers supported by the /dev/crypto engine:
+Cipher DES-CBC, NID=31, /dev/crypto info: id=1, driver=mv-cbc-des (hw accelerated)
+Cipher DES-EDE3-CBC, NID=44, /dev/crypto info: id=2, driver=mv-cbc-des3-ede (hw accelerated)
+Cipher BF-CBC, NID=91, /dev/crypto info: id=3, CIOCGSESSION (session open call) failed
+Cipher CAST5-CBC, NID=108, /dev/crypto info: id=4, CIOCGSESSION (session open call) failed
+Cipher AES-128-CBC, NID=419, /dev/crypto info: id=11, driver=mv-cbc-aes (hw accelerated)
+Cipher AES-192-CBC, NID=423, /dev/crypto info: id=11, driver=mv-cbc-aes (hw accelerated)
+Cipher AES-256-CBC, NID=427, /dev/crypto info: id=11, driver=mv-cbc-aes (hw accelerated)
+Cipher RC4, NID=5, /dev/crypto info: id=12, CIOCGSESSION (session open call) failed
+Cipher AES-128-CTR, NID=904, /dev/crypto info: id=21, driver=ctr-aes-neonbs (software)
+Cipher AES-192-CTR, NID=905, /dev/crypto info: id=21, driver=ctr-aes-neonbs (software)
+Cipher AES-256-CTR, NID=906, /dev/crypto info: id=21, driver=ctr-aes-neonbs (software)
+Cipher AES-128-ECB, NID=418, /dev/crypto info: id=23, driver=mv-ecb-aes (hw accelerated)
+Cipher AES-192-ECB, NID=422, /dev/crypto info: id=23, driver=mv-ecb-aes (hw accelerated)
+Cipher AES-256-ECB, NID=426, /dev/crypto info: id=23, driver=mv-ecb-aes (hw accelerated)
+
+Information about digests supported by the /dev/crypto engine:
+Digest MD5, NID=4, /dev/crypto info: id=13, driver=mv-md5 (hw accelerated), CIOCCPHASH capable
+Digest SHA1, NID=64, /dev/crypto info: id=14, driver=mv-sha1 (hw accelerated), CIOCCPHASH capable
+Digest RIPEMD160, NID=117, /dev/crypto info: id=102, driver=unknown. CIOCGSESSION (session open) failed
+Digest SHA224, NID=675, /dev/crypto info: id=103, driver=sha224-neon (software), CIOCCPHASH capable
+Digest SHA256, NID=672, /dev/crypto info: id=104, driver=mv-sha256 (hw accelerated), CIOCCPHASH capable
+Digest SHA384, NID=673, /dev/crypto info: id=105, driver=sha384-neon (software), CIOCCPHASH capable
+Digest SHA512, NID=674, /dev/crypto info: id=106, driver=sha512-neon (software), CIOCCPHASH capable</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Showing \/dev\/crypto algorithm information&quot;,&quot;hid&quot;:&quot;showingdevcrypto_algorithm_information&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:11,&quot;range&quot;:&quot;17202-19776&quot;} -->
+<h3 class="sectionedit12" id="measuring_the_algorithm_speed">Measuring the algorithm speed</h3>
+<div class="level3">
+
+<p>
+<strong>As stated above, the best way to determine the speed is to benchmark the actual application you&#039;re using.</strong>
+If that&#039;s not feasible, <code>openssl speed</code> can be used to compare the algorithm speed with and without the engine.  To measure the speed without the engine, set <code>CIPHERS=NONE</code> and <code>DIGESTS=NONE</code> in <code>/etc/ssl/openssl.cnf</code>.  You must use the <code>-elapsed</code> option to get a reasonable calculation.  That&#039;s because the speed command will use the CPU user time by default.  When using the engine, most all of the processing will be done in kernel time, and the user time will be close to zero, yielding an exaggerated result.  This is the measurement of the AES-256-CTR algorithm, implemented 100% in software (you must configure <code>USE_SOFTDRIVERS=1</code> in <code>openssl.cnf</code> to be able to use software drivers with devcrypto).
+</p>
+<pre class="code"># time openssl speed -evp aes-256-ctr
+Doing aes-256-ctr for 3s on 16 size blocks: 1506501 aes-256-ctr&#039;s in 0.32s
+Doing aes-256-ctr for 3s on 64 size blocks: 830921 aes-256-ctr&#039;s in 0.18s
+Doing aes-256-ctr for 3s on 256 size blocks: 526267 aes-256-ctr&#039;s in 0.15s
+Doing aes-256-ctr for 3s on 1024 size blocks: 167828 aes-256-ctr&#039;s in 0.07s
+Doing aes-256-ctr for 3s on 8192 size blocks: 22723 aes-256-ctr&#039;s in 0.00s
+Doing aes-256-ctr for 3s on 16384 size blocks: 11400 aes-256-ctr&#039;s in 0.00s
+OpenSSL 1.1.1b  26 Feb 2019
+built on: Wed Dec 13 18:43:03 2017 UTC
+options:bn(64,32) rc4(char) des(long) aes(partial) blowfish(ptr)
+compiler: arm-openwrt-linux-muslgnueabi-gcc -fPIC -pthread -Wa,--noexecstack -Wall -O3 -pipe -mcpu=cortex-a9 -mfpu=vfpv3-d16 -fno-caller-saves -fno-plt -fhonour-copts -Wno-error=unused-but-set-variable -Wno-error=unused-result -mfloat-abi=hard -Wformat -Werror=format-security -fstack-protector -D_FORTIFY_SOURCE=1 -Wl,-z,now -Wl,-z,relro -O3 -fpic -ffunction-sections -fdata-sections -znow -zrelro -DOPENSSL_USE_NODELETE -DOPENSSL_PIC -DOPENSSL_CPUID_OBJ -DOPENSSL_BN_ASM_MONT -DOPENSSL_BN_ASM_GF2m -DSHA1_ASM -DSHA256_ASM -DSHA512_ASM -DKECCAK1600_ASM -DAES_ASM -DBSAES_ASM -DGHASH_ASM -DECP_NISTZ256_ASM -DPOLY1305_ASM -DNDEBUG -DOPENSSL_PREFER_CHACHA_OVER_GCM
+The &#039;numbers&#039; are in 1000s of bytes per second processed.
+type             16 bytes     64 bytes    256 bytes   1024 bytes   8192 bytes  16384 bytes
+aes-256-ctr      75325.05k   295438.58k   898162.35k  2455083.89k         infk         infk
+real    0m 18.04s
+user    0m 0.72s
+sys     0m 17.27s</pre>
+
+<p>
+Notice the infinite speeds.  If you spend 0 seconds in CPU user time, and use that as a divisor, you get infinity.  The speed command, with the addtion of the <code>-elapsed</code> parameter will return a more realistic result:
+</p>
+<pre class="code"># time openssl speed -evp aes-256-ctr -elapsed
+type             16 bytes     64 bytes    256 bytes   1024 bytes   8192 bytes  16384 bytes
+aes-256-ctr       7975.70k    17403.54k    44777.30k    57178.79k    62076.25k    62395.73k
+real    0m 18.04s
+user    0m 0.88s
+sys     0m 17.11s</pre>
+
+<p>
+This is the result of the AES-256-CTR without the engine:
+</p>
+<pre class="code">type             16 bytes     64 bytes    256 bytes   1024 bytes   8192 bytes  16384 bytes
+aes-256-ctr      39684.36k    47027.86k    53044.99k    60888.06k    63548.07k    63706.45k
+real    0m 18.04s
+user    0m 17.98s
+sys     0m 0.00s</pre>
+
+<p>
+In this case <code>-elapsed</code> does not matter much, as almost 100% of the execution time is spent in user-mode, and CPU user time would actually be a better measurement by not counting time spent in other processes.
+With that out of the way, let&#039;s see an actual hardware-implemented cipher:
+</p>
+<pre class="code"># time openssl speed -evp aes-256-cbc -elapsed
+The &#039;numbers&#039; are in 1000s of bytes per second processed.
+type             16 bytes     64 bytes    256 bytes   1024 bytes   8192 bytes  16384 bytes
+aes-256-cbc       1551.04k     6126.44k    21527.81k    55995.05k    95027.20k    99936.94k
+real    0m 18.04s
+user    0m 0.21s
+sys     0m 5.13s</pre>
+
+<p>
+For comparison, this is the same cipher, implemented by the libcrypto software:
+</p>
+<pre class="code"># time openssl speed -evp aes-256-cbc -elapsed
+type             16 bytes     64 bytes    256 bytes   1024 bytes   8192 bytes  16384 bytes
+aes-256-cbc      39603.10k    47420.37k    50270.38k    51002.71k    51249.15k    51232.77k
+real    0m 18.03s
+user    0m 18.00s
+sys     0m 0.01s</pre>
+
+<p>
+This is typical for a <code>/dev/crypto</code> cipher.  There&#039;s a cost in CPU usage: the context switches needed to run the code in the kernel, represented by the 5.13s of system time used.  That cost will not vary much with the size of the crypto operation.  Because of that, for small batches, the acceleration of hardware drivers will be penalised by context switches and slow you down considerably.  As the block size increases, <code>/dev/crypto</code> becomes the best choice.  Be aware of how the application uses the cipher.  For example, AES-128-ECB is used by openssl to seed the rng, using 16-byte calls.  I haven&#039;t seen any other use of the ECB ciphers, so it is best to disable them entirely.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Measuring the algorithm speed&quot;,&quot;hid&quot;:&quot;measuring_the_algorithm_speed&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:12,&quot;range&quot;:&quot;19777-24786&quot;} -->
+<h3 class="sectionedit13" id="disabling_digests">Disabling digests</h3>
+<div class="level3">
+
+<p>
+Don&#039;t enable digests unless you know what you&#039;re doing.  They are usually slower than software, except for large (&gt; 10k) blocks.  Some applications--openssh, for example--will not work with <code>/dev/crypto</code> digests.  This is a limitation of how the engine works.  Openssh will save a partial digest, and then fork, duplicating that context, and working with successive copies of it, which is useful for HMAC, where the hash of the key remains constant.  In the kernel, however, those contexts are still linked to the same session, so when one process calls another update, or closes that digest context, the kernel session is changed/closed for all of the instances, and you&#039;ll get a libcrypto failure.  For well-behaved applications using large update blocks, you may enable digests.  Use a separate copy of the <code>openssl.cnf</code> configuration file, and set <code>OPENSSL_CONF=_path_to_file</code> in the environment before running it (add it to the respective file in /etc/init.d/).  Again, <strong>benchmarking the actual application you&#039;re using is the best way to gauge the impact of hardware crypto.</strong>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Disabling digests&quot;,&quot;hid&quot;:&quot;disabling_digests&quot;,&quot;codeblockOffset&quot;:14,&quot;secid&quot;:13,&quot;range&quot;:&quot;24787-25905&quot;} -->
+<h2 class="sectionedit14" id="enabling_specific_hardware_driver">Enabling specific hardware driver</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Enabling specific hardware driver&quot;,&quot;hid&quot;:&quot;enabling_specific_hardware_driver&quot;,&quot;codeblockOffset&quot;:14,&quot;secid&quot;:14,&quot;range&quot;:&quot;25906-25951&quot;} -->
+<h3 class="sectionedit15" id="soekris_vpn1411">Soekris vpn1411</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> <a href="http://www.soekris.com/vpn1401.htm" class="urlextern" title="http://www.soekris.com/vpn1401.htm" rel="ugc nofollow">http://www.soekris.com/vpn1401.htm</a></div>
+</li>
+</ul>
+
+<p>
+Run <code>make menuconfig</code> and select
+</p>
+
+<p>
+Kernel modules → Cryptographic <abbr title="Application Programming Interface">API</abbr> modules
+</p>
+<ul>
+<li class="level1 node"><div class="li"> kmod-crypto-core: m</div>
+<ul>
+<li class="level2"><div class="li"> kmod-crypto-aes: m</div>
+</li>
+<li class="level2"><div class="li"> kmod-crypto-des: m</div>
+</li>
+<li class="level2"><div class="li"> kmod-crypto-hw-hifn-795x: m</div>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Soekris vpn1411&quot;,&quot;hid&quot;:&quot;soekris_vpn1411&quot;,&quot;codeblockOffset&quot;:14,&quot;secid&quot;:15,&quot;range&quot;:&quot;25952-26212&quot;} -->
+<h3 class="sectionedit16" id="marvell_cesa">Marvell CESA</h3>
+<div class="level3">
+
+<p>
+Cryptographic Engine and Security Acceleration
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="http://www.google.com/search?sclient=psy&amp;hl=en&amp;source=hp&amp;q=site%3Awww.marvell.com+cesa&amp;btnG=Search" class="urlextern" title="http://www.google.com/search?sclient=psy&amp;hl=en&amp;source=hp&amp;q=site%3Awww.marvell.com+cesa&amp;btnG=Search" rel="ugc nofollow">PDF download</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="/toh/seagate/dockstar#crypto_hardware_acceleration" class="wikilink1" title="toh:seagate:dockstar" data-wiki-id="toh:seagate:dockstar">Seagate Dockstar</a></div>
+</li>
+<li class="level1"><div class="li"> 2.6.32: AES <a href="http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=85a7f0ac5370901916a21935e1fafbe397b70f80" class="urlextern" title="http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=85a7f0ac5370901916a21935e1fafbe397b70f80" rel="ugc nofollow">commit</a></div>
+</li>
+<li class="level1"><div class="li"> 2.6.35: SHA1 and HMAC-SHA1 <a href="http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=750052dd2400cd09e0864d75b63c2c0bf605056f" class="urlextern" title="http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=750052dd2400cd09e0864d75b63c2c0bf605056f" rel="ugc nofollow">commit</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/changeset/22877" class="urlextern" title="https://dev.openwrt.org/changeset/22877" rel="ugc nofollow">r22877</a>: [kirkwood] Add kernel package for the mv_cesa crypto module</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/changeset/23145" class="urlextern" title="https://dev.openwrt.org/changeset/23145" rel="ugc nofollow">r23145</a>: [kirkwood] Fix mv_cesa module dependencies and .ko file location Thanks KanjiMonster &amp; Memphiz</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/changeset/23229" class="urlextern" title="https://dev.openwrt.org/changeset/23229" rel="ugc nofollow">r23229</a>: [packages/kernel] Make mv_cesa crypto module available on Orion as well.</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/changeset/23383" class="urlextern" title="https://dev.openwrt.org/changeset/23383" rel="ugc nofollow">r23383</a>: [package] kernel: underscores in package names are bad, rename kmod-crypto-mv_cesa to kmod-crypto-mv-cesa</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/changeset/26406" class="urlextern" title="https://dev.openwrt.org/changeset/26406" rel="ugc nofollow">r26406</a>: kernel: add a missing dependency for the mv_cesa crypto driver</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/changeset/26407" class="urlextern" title="https://dev.openwrt.org/changeset/26407" rel="ugc nofollow">r26407</a>: kernel: mv_cesa depends on CRYPTO_BLKCIPHER2 and CRYPTO_HASH2</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/changeset/26413" class="urlextern" title="https://dev.openwrt.org/changeset/26413" rel="ugc nofollow">r26413</a>: kernel: remove double definition of depends in crypto-mv-cesa and make it look like the other entries. Thank you Maarten</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Marvell CESA&quot;,&quot;hid&quot;:&quot;marvell_cesa&quot;,&quot;codeblockOffset&quot;:14,&quot;secid&quot;:16,&quot;range&quot;:&quot;26213-27763&quot;} -->
+<h3 class="sectionedit17" id="geode_aes_engine">Geode AES engine</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> <a href="/toh/pcengines/alix#using_the_geode_s_aes_engine" class="wikilink1" title="toh:pcengines:alix" data-wiki-id="toh:pcengines:alix">using_the_geode_s_aes_engine</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Geode AES engine&quot;,&quot;hid&quot;:&quot;geode_aes_engine&quot;,&quot;codeblockOffset&quot;:14,&quot;secid&quot;:17,&quot;range&quot;:&quot;27764-27848&quot;} -->
+<h3 class="sectionedit18" id="via_padlock">VIA padlock</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> <a href="http://www.via.com.tw/en/initiatives/padlock/hardware.jsp" class="urlextern" title="http://www.via.com.tw/en/initiatives/padlock/hardware.jsp" rel="ugc nofollow">VIA Padlock security engine</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://en.wikipedia.org/wiki/Padlock_(disambiguation)" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Padlock_(disambiguation)">Padlock_(disambiguation)</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;VIA padlock&quot;,&quot;hid&quot;:&quot;via_padlock&quot;,&quot;codeblockOffset&quot;:14,&quot;secid&quot;:18,&quot;range&quot;:&quot;27849-28001&quot;} -->
+<h3 class="sectionedit19" id="historical">Historical</h3>
+<div class="level3">
+
+<p>
+<sup><strong>Note:</strong> If you want to learn about the current situation, you should search the Internet or maybe ask in the forum. This is outdated. Especially if you want to know how fast a copy from a mounted filesystem (say ext3 over USB) via scp is. Search for such benchmarks.</sup>
+</p>
+
+<p>
+<sup>Some models of the BCM47xx/53xx family support hardware accelerated encryption for IPSec (AES, DES, 3DES), simple hash calculations (MD5, SHA1) and <abbr title="Transport Layer Security">TLS</abbr>/<abbr title="Secure Socket Layer">SSL</abbr>+HMAC processing. Not all devices have a hw crypto supporting chip. At least Asus WL500GD/X, Netgear WGT634U and Asus WL700gE do have hw crypto.  Testing of a WGT634U indicates, however, that a pin under the BCM5365 was not pulled low to enable strong bulk cryptography, limiting the functionality to single DES.</sup>
+</p>
+<ul>
+<li class="level1 node"><div class="li"> <sup>How did you find that out?</sup></div>
+<ul>
+<li class="level2"><div class="li"> <sup>Do you get an interrupt when sending a crypto job to the chip and limiting the request to DES only?)</sup></div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+<sup>The specification states the hardware is able to support 75Mbps (9,4MB/s) of encrypted throughput. Without hardware acceleration using the blowfish encryption throughput is only ~0,4MB/s.</sup>
+<sup>Benchmark results that show the difference between software and hardware accelerated encryption/decryption can be found <a href="https://web.archive.org/web/20101103235726/http://www.danm.de/files/src/bcm5365p/bench/" class="urlextern" title="https://web.archive.org/web/20101103235726/http://www.danm.de/files/src/bcm5365p/bench/" rel="ugc nofollow">here</a>. Due to the overhead of hardware/DMA transfers and buffer copies between kernel/user space it gives only a good return for packet sizes greater than 256 bytes. This size can be reduced for IPSec, because network hardware uses DMA and there is no need to copy the (encrypted) data between kernel and user space.</sup>
+<sup>The hardware specification needed for programming the crypto <abbr title="Application Programming Interface">API</abbr> of the bcm5365P (Broadcom 5365P) can be found <a href="http://voodoowarez.com/bcm5365p.pdf" class="urlextern" title="http://voodoowarez.com/bcm5365p.pdf" rel="ugc nofollow">here</a>.</sup>
+</p>
+<ul>
+<li class="level1"><div class="li"> <sup>The crypto chip is accessible through the SSB bus (Sonics Silicon Backplane). A Linux driver for SSB is available in OpenWRT&#039;s kernel &gt;= 2.6.23 (Kamikaze)</sup></div>
+</li>
+<li class="level1"><div class="li"> <sup>An example about how to communicate with the crypto chip can be found <a href="https://web.archive.org/web/20110606025239/https://www.danm.de/files/src/bcm5365p/" class="urlextern" title="https://web.archive.org/web/20110606025239/https://www.danm.de/files/src/bcm5365p/" rel="ugc nofollow">here</a> (file b5365ips.tar.bz2).</sup></div>
+</li>
+<li class="level1"><div class="li"> <sup>An OCF Linux driver that works with the ASUS WL500gP can be found in Trunk (SVN) or <a href="http://www.danm.de/files/src/bcm5365p/" class="urlextern" title="http://www.danm.de/files/src/bcm5365p/" rel="ugc nofollow">here</a> and is called <strong>ubsec_ssb</strong>. Only OCF-enabled applications can be accelerated. That means, if you want e.g. an accelerated OpenSSH you have to manually enable cryptodev in OpenSSL. The driver is still considered experimental.</sup></div>
+</li>
+<li class="level1"><div class="li"> <sup>Links to mailing-list posts with references to more recent and working version of Linux driver for Broadcom crypto chips <a href="http://marc.theaimsgroup.com/?l=openssl-dev&amp;m=110915540208913&amp;w=2" class="urlextern" title="http://marc.theaimsgroup.com/?l=openssl-dev&amp;m=110915540208913&amp;w=2" rel="ugc nofollow">here</a> and <a href="http://www.mail-archive.com/openssl-dev@openssl.org/msg18804.html" class="urlextern" title="http://www.mail-archive.com/openssl-dev@openssl.org/msg18804.html" rel="ugc nofollow">here</a>.</sup></div>
+</li>
+<li class="level1"><div class="li"> <sup>Sun Crypto Accelerator 500 and 1000 (X6762A) cards are based on BCM5821. Might be worth checking Solaris references as well. <a href="https://web.archive.org/web/20110606041805/http://src.opensolaris.org/source/xref/crypto/quantis/usr/src/uts/common/crypto/io/" class="urlextern" title="https://web.archive.org/web/20110606041805/http://src.opensolaris.org/source/xref/crypto/quantis/usr/src/uts/common/crypto/io/" rel="ugc nofollow">Here</a> is OpenSolaris driver for Broadcom crypto chips.</sup></div>
+</li>
+<li class="level1"><div class="li"> <sup>Asus WL-700gE sources come with patched FreeSwan to utilize ubsec.</sup></div>
+</li>
+<li class="level1"><div class="li"> <sup>Closed-source binary included in Asus Wl-700gE sources do support AES based on headers.</sup></div>
+</li>
+<li class="level1"><div class="li"> <sup>There&#039;s a <a href="http://ocf-linux.sourceforge.net/" class="urlextern" title="http://ocf-linux.sourceforge.net/" rel="ugc nofollow">Linux port</a> of the OpenBSD Cryptographic Framework (OCF) but the ubsec driver (Broadcom 58xx PCI cards) is not ported yet. If you compile OCF with the /dev/crypto device driver, userspace applications and libraries such as OpenSSL can be accelerated. There are patches for Openswan as well.</sup></div>
+</li>
+<li class="level1"><div class="li"> <sup><a href="http://forum.openwrt.org/viewtopic.php?id=5032" class="urlextern" title="http://forum.openwrt.org/viewtopic.php?id=5032" rel="ugc nofollow">Discussion</a> about hardware accelerated crypto.</sup></div>
+</li>
+<li class="level1"><div class="li"> <sup>Various versions of old <a href="https://web.archive.org/web/20070502031603/http://www.sukkamehulinko.romikselle.com/openwrt/bcm5820/" class="urlextern" title="https://web.archive.org/web/20070502031603/http://www.sukkamehulinko.romikselle.com/openwrt/bcm5820/" rel="ugc nofollow">BCM5820 driver sources</a>.</sup></div>
+</li>
+<li class="level1"><div class="li"> <sup>BCM5801/BCM5805/BCM5820 Security Processor Software Reference Library <a href="http://www.broadcom.com/products/access_request.php?category_id=0&amp;id=7&amp;filename=5801-5805-5820-SRL101-R.pdf" class="urlextern" title="http://www.broadcom.com/products/access_request.php?category_id=0&amp;id=7&amp;filename=5801-5805-5820-SRL101-R.pdf" rel="ugc nofollow">http://www.broadcom.com/products/access_request.php?category_id=0&amp;id=7&amp;filename=5801-5805-5820-SRL101-R.pdf</a></sup></div>
+</li>
+<li class="level1"><div class="li"> <sup>Cisco PIX VAC+ Encryption module is 64-bit PCI card based on Broadcom BCM5823. Another similar card is Checkpoint <abbr title="Virtual Private Network">VPN</abbr>-1 Accelerator Card II, III and IV from <a href="http://www.silicom.co.il/" class="urlextern" title="http://www.silicom.co.il/" rel="ugc nofollow">Silicom</a>.</sup></div>
+</li>
+</ul>
+
+<p>
+<sup>|  SoC / CPU  |  Accelerated Methods  |  Datasheet  |</sup>
+</p>
+
+<p>
+<sup>|  BCM94704AGR  |  WEP 128, AES OCB AES CCM  |  <a href="https://web.archive.org/web/20070226095209/http://www.broadcom.com/collateral/pb/94704AGR-PB00-R.pdf" class="urlextern" title="https://web.archive.org/web/20070226095209/http://www.broadcom.com/collateral/pb/94704AGR-PB00-R.pdf" rel="ugc nofollow">94704AGR-PB00-R.pdf</a>  |</sup>
+</p>
+
+<p>
+<sup>|  BCM?4704P  |  WEP 128, AES OCB, AES CCM, <abbr title="Virtual Private Network">VPN</abbr>  |  <a href="http://www.broadcom.com/collateral/pb/94704AGR-PB00-R.pdf" class="urlextern" title="http://www.broadcom.com/collateral/pb/94704AGR-PB00-R.pdf" rel="ugc nofollow">94704AGR-PB00-R.pdf</a>  |</sup>
+</p>
+
+<p>
+<sup>| BCM5365  |  AES (up to 256-bit CTR and CBC modes), DES, 3DES (CBC), HMAC-SHA1, HMAC-MD5, SHA1 and MD5. IPSec encryption and single pass authentication.  |  <a href="https://web.archive.org/web/20060312204710/http://www.broadcom.com/collateral/pb/5365_5365P-PB01-R.pdf" class="urlextern" title="https://web.archive.org/web/20060312204710/http://www.broadcom.com/collateral/pb/5365_5365P-PB01-R.pdf" rel="ugc nofollow">5365_5365P-PB01-R.pdf</a>  |</sup>
+</p>
+
+<p>
+<sup>| BCM5365P  |  AES (up to 256-bit CTR and CBC modes), DES, 3DES (CBC), HMAC-SHA1, HMAC-MD5, SHA1 and MD5. IPSec encryption and single pass authentication.  |  <a href="http://www.broadcom.com/collateral/pb/5365_5365P-PB01-R.pdf" class="urlextern" title="http://www.broadcom.com/collateral/pb/5365_5365P-PB01-R.pdf" rel="ugc nofollow">5365_5365P-PB01-R.pdf</a>  |</sup>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Historical&quot;,&quot;hid&quot;:&quot;historical&quot;,&quot;codeblockOffset&quot;:14,&quot;secid&quot;:19,&quot;range&quot;:&quot;28002-&quot;} -->

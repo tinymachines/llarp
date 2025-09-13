@@ -1,0 +1,293 @@
+# Firewall Builder: Shorewall-lite
+
+Since mid 2015, Shorewall-lite is no longer offered as an installable package in OpenWrt. This document details installing [Shorewall-lite](http://shorewall.net/Shorewall-Lite.html "http://shorewall.net/Shorewall-Lite.html") on recent (2015+) OpenWrt routers. While this procedure is unlike the standard OpenWrt opkg method, the Shorewall-lite installation is very lightweight and easy. However, the task may be made difficult by the limited resources on a given router. Shorewall-lite can run on an OpenWrt router using the stripped IP tool that is the default, but using opkg to install the ip-full and tc modules on the router offers a more proven Linux solution.
+
+Once installed, instructions for using Shorewall-lite &amp; Shorewall can be found here ([http://shorewall.net/Shorewall-Lite.html](http://shorewall.net/Shorewall-Lite.html "http://shorewall.net/Shorewall-Lite.html"), [http://www.shorewall.org/Shorewall-5.html](http://www.shorewall.org/Shorewall-5.html "http://www.shorewall.org/Shorewall-5.html"), &amp; [http://shorewall.net/Documentation\_Index.html](http://shorewall.net/Documentation_Index.html "http://shorewall.net/Documentation_Index.html")), and here [shorewall-on-openwrt](/docs/guide-user/firewall/shorewall/shorewall-on-openwrt "docs:guide-user:firewall:shorewall:shorewall-on-openwrt").
+
+This has not been tested. It is retained here for completeness.
+
+![FIXME](/lib/images/smileys/fixme.svg) Shorewall-lite and others variants ARE offered as an installable packages now
+
+## Choosing the right router and firmware
+
+Routers that have more than 4 MB flash or have USB ports are relatively facile, as there is enough space to directly install Shorewall-lite locally, or on a USB boot drive (→ [extroot\_configuration](/docs/guide-user/additional-software/extroot_configuration "docs:guide-user:additional-software:extroot_configuration")), and one can use a stock release of the OpenWrt firmware and tools for the task.
+
+If your router is one of the space constrained devices, you can opt for the easy way, using a pre-built daily snapshot “trunk image” ([https://downloads.openwrt.org/snapshots/trunk/](https://downloads.openwrt.org/snapshots/trunk/ "https://downloads.openwrt.org/snapshots/trunk/")), or if you need to compile kernel modules or packages, you can build your own firmware as described in [Using the OpenWrt build system](#using_the_openwrt_build_system "docs:guide-user:firewall:other_firewall_rules_builders:shorewall ↵") below (the hard way). Both methods offer a small footprint firmware **without Luci/web setup support** and you’ll need to configure the router from configuration files, not the web interface, or use the [two step method](#two-step_with_luciweb_setup "docs:guide-user:firewall:other_firewall_rules_builders:shorewall ↵") discussed below. Unless you need to use the build system, ignore the topic and details in that section below, it is much less work to use the OpenWrt snapshot trunk firmware with opkg installed ip-full and tc modules. However, users that cannot manage with the stock OpenWrt firmwares will want to first skip the next section and instead go straight to the [Using the OpenWrt build system](#using_the_openwrt_build_system "docs:guide-user:firewall:other_firewall_rules_builders:shorewall ↵") step. NB: The first run through the OpenWrt build takes hours, overnight is a good time to make the first run.
+
+Proceed to the next step once you are ready to install an OpenWrt firmware on your router using the one or two step methods, discussed below. Also have the administrative system ready to install Shorewall.
+
+## Install Shorewall to administrative system
+
+- On the administrative (build) system, fetch the latest or preferred release from [http://www.shorewall.net/download.htm](http://www.shorewall.net/download.htm "http://www.shorewall.net/download.htm"), that includes: shorewall, shorewall-core, and shorewall-lite packages (docs too, if you like from [http://www.shorewall.net/pub/shorewall](http://www.shorewall.net/pub/shorewall "http://www.shorewall.net/pub/shorewall")). This example puts those files in /usr/src, use another directory freely.
+- Install Shorewall on the administrative system as usual (first shorewall-core, then shorewall).
+- Remove the /etc/default &amp;| /etc/init.d shorewall files from the administrative system, this Shorewall is building for another system.
+- Debian users should fetch the base files from /usr/share/shorewall/configfiles/* to your working directory, other distributions should find those files in /etc/shorewall. Copy them to a working directory, e.g.: /usr/src/shoWRT. Edit the working Shorewall files to set up Shorewall and make Shorewall-lite for the router.
+
+## Install OpenWrt to the router
+
+### Two-Step with Luci/web setup
+
+If you want to provide your own router configuration files, skip this section and go to the [One Step](#one_steplast_step_without_luciweb "docs:guide-user:firewall:other_firewall_rules_builders:shorewall ↵") section below, otherwise:
+
+Install a release OpenWrt Luci-ready image for your device ([toh](/toh/start "toh:start")) from their server ([https://downloads.openwrt.org](https://downloads.openwrt.org "https://downloads.openwrt.org")/) or from a Luci-ready release-like firmware you’ve built (see below). Use that release to configure the router. If you have enough free space, or set up the extroot USB boot drive, you can now install ip-full and tc, and skip directly to the [Install Shorewall-lite on the router](#install_shorewall-lite_on_the_router "docs:guide-user:firewall:other_firewall_rules_builders:shorewall ↵") section below.
+
+By using a two step installation on a constrained router, you will later be able to manage the config files from the CLI, but will first use Luci and the standard OpenWrt setups to make the initial configuration files. Use the System/Backup to make and export the configuration. Keep that as a reference, but DO NOT RESTORE THAT FILE with sysupgrade. All efforts to use sysupgrade -r break the router and require a failsafe/firstboot/sysupgrade repair.
+
+Proceed to the next step to reflash the device with the production firmware once the router has a basic configuration ready for Shorewall-lite.
+
+### One step/Last step without Luci/web
+
+If you have a resource constrained router, install the image you’ve built, that has room for or already includes ip-full, tc, and for shorewall-lite. If your router already had OpenWrt on it, from the Two Step method or some prior install, use the sysupgrade image. That image will inherit your configuration, otherwise, assert your own /etc/config, &amp; /etc/ files to set up the interface names and networks.
+
+To sysupgrade, use scp to copy your built firmware (for example, openwrt-ar71xx-generic-dir-601-b1-squashfs-sysupgrade.bin) from the openwrt/bin/ar71xx/ directory to /tmp on the router, and there use: `sysupgrade openwrt-ar71xx-generic-dir-601-b1-squashfs-sysupgrade.bin` to install the firmware.
+
+See the OpenWrt installation instructions for your router if this is a first time installation and the router has not had OpenWrt on it before ([toh](/toh/start "toh:start")).
+
+If you included modules in your build, and you want to use opkg to install them on the router, edit the router’s /etc/opkg.conf file to prefix a line like: “src/gz snapshots [http://192.168.1.100/openwrt/ar71xx/packages](http://192.168.1.100/openwrt/ar71xx/packages "http://192.168.1.100/openwrt/ar71xx/packages")” ( replace the example URL link with your own web server hosting the firmware files), that adds the new opkg repository to the router. Next, edit the /etc/opkg/distfeeds.conf and swap your source url into the text, and last, run `opkg update`. You can now use opkg to install the modules as usual. For example,
+
+```
+opkg update; opkg install ip-full; opkg install tc
+```
+
+You should now have an OpenWrt device with ip-full, &amp; tc. You are now ready to install Shorewall-lite on the router.
+
+## Install Shorewall-lite on the router
+
+- From the Administrative machine, copy the expanded Shorewall-core files from the release tarball in /usr/src to /tmp/shorewall-core on the router. Copy the shorewallrc.openwrt file to /tmp/shorewall.core/shorewallrc and if storage space is limited, only install.sh, lib.base, lib.cli, lib.common, shorewallrc, &amp; wait4up.
+- Log in (ssh) to the router and install the core files.
+  
+  ```
+    cd  /tmp/shorewall-core; chmod +x install.sh; ./install.sh
+    cd  /tmp; rm -R /tmp/shorewall-core
+  ```
+- From the Administrative machine, copy the expanded shorewall-lite files from the release tarball to /tmp/shorewall-lite on the router.
+- Log in to the router.
+  
+  ```
+    cd  /tmp/shorewall-lite; rm  ./manpages/*; chmod +x install.sh; ./install.sh
+    cd  /tmp; rm -R /tmp/shorewall-lite
+  ```
+  
+  You should see something like:
+  
+  ```
+  Installing OpenWRT-specific configuration...
+  Installing Shorewall Lite Version 5.0.8-RC2
+  ...
+  Shorewall Lite Version 5.0.8-RC2 Installed
+  ```
+- Run shorecap on the router:
+  
+  ```
+  cd /tmp; /usr/share/shorewall-lite/shorecap > capabilities
+  ```
+  
+  Copy the capabilities file to your working directory on the administrative system.
+- List the ifconfig results &amp; ip routes to prepare the shorewall configuration for the router, e.g.:
+  
+  ```
+  eth0:   		192.168.1.1/24 brd 192.168.1.255 
+  eth1:   		192.168.2.150/24 brd 192.168.2.255 
+  wlan0:   		192.168.3.1/24 brd 192.168.3.255 
+  wlan0-1:   		192.168.4.1/24 brd 192.168.4.255 
+  ```
+- Construct the firewall for your router on the administrative system according to standard Shorewall procedures and instructions in your local configuration directory. See [http://shorewall.net/Documentation\_Index.html](http://shorewall.net/Documentation_Index.html "http://shorewall.net/Documentation_Index.html") for detailed instructions. When ready, use:
+  
+  ```
+  shorewall remote-reload <Router-IP>
+  ```
+  
+  to load the new firewall to Shorewall-lite on the router. Once complete, the Shorewall-lite firewall is loaded and started on the router.
+- This completes the Shorewall-lite installation. The next section is only for those needing to build a custom OpenWrt firmware.
+
+![FIXME](/lib/images/smileys/fixme.svg) Install part is not needed as Shorewall Lite is available as the package now
+
+## Using the OpenWrt build system
+
+The standard OpenWrt releases will work for many users, if you are one of them, skip this section, it is not germane.
+
+Those wanting to install Shorewall-lite on a resource constrained router, or to get both a full ip and tc setup with their Shorewall-lite may need more free space than is immediately available. Such users may be able to use a snapshot firmware ([https://downloads.openwrt.org/snapshots/trunk/](https://downloads.openwrt.org/snapshots/trunk/ "https://downloads.openwrt.org/snapshots/trunk/")) or own routers with USB ports, and those are readily set up to pivot the root to a USB drive at boot (extroot, see the link in the first paragraph, above). Booting from a USB drive eliminates space restrictions that might limit adding tools to the OpenWrt router.
+
+For those without USB ports who need to run the router with constrained file space, the OpenWrt build system ([toolchain](/docs/guide-developer/toolchain/start "docs:guide-developer:toolchain:start")) provides the requisite advantages critical to such users: more free space for routines, and the inclusion of modules and tools in the firmware. The first build takes a long time, however.
+
+In some cases, especially with unfamiliar hardware, the most efficacious setup uses both methods, with two firmware passes: the first skips the Shorewall-lite setup and uses a regular OpenWrt release’s Luci/web to configure the router from your browser. Use the web interface to first construct the interface names and networks, and then to backup those settings. Your settings will be inherited by the second pass firmware, installed by a sysupgrade. The second pass “production” firmware offers the free space to install ip-full, tc, and Shorewall-lite, but without Luci/web management.
+
+Users familiar with OpenWrt configuration files can likely “one step” the task, skip the web based first pass firmware, and copy or compose the requisite router configuration files without Luci/web management.
+
+To do the two steps most easily, use the OpenWrt download site ([https://downloads.openwrt.org/](https://downloads.openwrt.org/ "https://downloads.openwrt.org/")) and first flash with the generic firmware for your target router ([toh](/toh/start "toh:start")). Configure the router using Luci: set the interfaces, wifi, &amp; device name. Note the precise names, and backup the installation for reference (NB: sysupgrade restore fails dangerously, don’t try to use the backup with sysupgrade).
+
+Next, reflash the router using a sysupgrade with the small footprint firmware you built (see below). If not already in the firmware, use opkg to install the tc and ip-full modules. Lastly, use the /tmp router installation method described above to install shorewall-core and shorewall-lite.
+
+\* In this example the working directory /usr/src/openwrt is on the administrative box. The instructions below are Debian-centric, substitute your distribution’s package manager for apt-get. For more information about building OpenWrt, see: [Table of known prerequisites and their corresponding packages](/doc/howto/buildroot.exigence#table_of_known_prerequisites_and_their_corresponding_packages "doc:howto:buildroot.exigence")
+
+#### As root
+
+```
+        apt-get update
+        apt-get install git-core build-essential libssl-dev libncurses5-dev unzip gawk gettext subversion mercurial
+```
+
+\* Create /usr/src/openwrt, set the owner to your userid, not root, set the file privilege to +write.
+
+#### As NOT root
+
+```
+     cd /usr/src 
+
+To get the latest trunk snapshot:
+    git clone git://git.openwrt.org/openwrt.git
+
+To get a regular release visit git.openwrt.org, and select it’s project, and from that project page, find the git URL, and invoke it, e.g.:   
+    git clone git://git.openwrt.org/15.05/openwrt.git  
+
+    cd /usr/src/openwrt;  ./scripts/feeds update -a;  ./scripts/feeds install -a
+```
+
+#### Choose what to build
+
+To make a slimmer production firmware for ip-full, tc, and Shorewall-lite
+
+- You can run make menuconfig and remove unneeded features to save space, or you can make your own .config file, modeled on the ones below. These examples all presume you are in the “working” openwrt directory, /usr/src/openwrt. Most users will use the next option, to use make menuconfig from the working directory to make their slim, Shorewall-lite ready firmware.
+
+#### If you use make menuconfig
+
+- Make a copy of your current.config file if you wish to keep it, the next instruction will erase that file. Run:
+
+rm .config; make menuconfig;./scripts/diffconfig.sh &gt; config.tmp;cp config.tmp .config;cat .config Make your explicit changes in makemenu, then save and exit the routine, your .config will be displayed.
+
+For example, to include tc and ip-full in the firmware, from makemenu first select your target device, then navigate to network/routing and redirection/ and mark the two entries “ip-full” &amp; “tc” with * (use spacebar to mark), then save and exit.
+
+For another example, to tether Atheros wifi radios to the user’s regdomain table and set CONFIG\_ATH\_USER\_REGD=y, from makemenu/kernel modules/wireless drivers/kmod-ath, choose “Force Atheros drivers to respect the user's regdomain settings.” Save and exit makemenu.
+
+The .config from the above will show the differences you've made to default:
+
+```
+CONFIG_TARGET_ar71xx=y
+CONFIG_TARGET_ar71xx_generic=y
+CONFIG_TARGET_ar71xx_generic_DIR601A1=y
+CONFIG_ATH_USER_REGD=y
+CONFIG_PACKAGE_ip-full=y
+CONFIG_PACKAGE_kmod-sched-core=y
+CONFIG_PACKAGE_tc=y
+
+Add these lines to your .config:
+CONFIG_COLLECT_KERNEL_DEBUG=y
+CONFIG_IB=y
+CONFIG_IB_STANDALONE=y
+CONFIG_IMAGEOPT=y
+CONFIG_PACKAGE_libiwinfo-lua=y
+CONFIG_PACKAGE_liblua=y
+CONFIG_PACKAGE_libubus-lua=y
+CONFIG_PACKAGE_libuci-lua=y
+CONFIG_PACKAGE_lua=y
+```
+
+Use the two stanzas above to make a .config file in the openwrt directory (line order doesn’t matter). It will make a production firmware that has tc and ip-full already included, and room for Shorewall-lite. To make the firmware from this .config, run:
+
+```
+make defconfig; make -j 1 V=s
+```
+
+Your production image in the default bin/$TARGET directory.
+
+#### To make a firmware-like a release
+
+- To make the same setup as a release but with slight differences, git the release (as above), then copy and edit the target’s config.diff. The config.diff file can be found in the OpenWrt release target’s description, e.g.:
+
+[http://downloads.openwrt.org/chaos\_calmer/15.05.1/ar71xx/generic/config.diff](http://downloads.openwrt.org/chaos_calmer/15.05.1/ar71xx/generic/config.diff "http://downloads.openwrt.org/chaos_calmer/15.05.1/ar71xx/generic/config.diff")
+
+In this example, Atheros wifi radios are tethered to the user’s regdomain table, but otherwise the same packages and settings used in the standard release are included. First copy the release target’s config.diff to the openwrt directory, backup your current .config file, then to use make menuconfig to select your device and options, run:
+
+```
+rm .config; make menuconfig;./scripts/diffconfig.sh > config.tmp;cp config.tmp .config;cat .config 
+```
+
+The menuconfig takes a moment to come up. Choose your target profile (select your device from the list), save and exit, then run:
+
+```
+echo “CONFIG_ATH_USER_REGD=y” >> config.diff; cp config.diff .config; 
+```
+
+\* Fixup the CONFIG\_TARGET in the config.diff file with the values in .config e.g.:CONFIG\_TARGET\_ar71xx\_generic\_DIR601B1=y. Unless you want to build for all targets (true for published releases, not true for our purposes), delete the CONFIG\_SDK &amp; the CONFIG\_VERSION and related “broad reach” lines from the release's default to make a config.diff that looks something like the below (ymmv).
+
+\* Example release-like .config.diff:
+
+```
+CONFIG_TARGET_ar71xx=y
+CONFIG_TARGET_ar71xx_generic=y
+CONFIG_TARGET_ar71xx_generic_DIR601B1=y
+CONFIG_ATH_USER_REGD=y
+CONFIG_COLLECT_KERNEL_DEBUG=y
+CONFIG_IB=y
+CONFIG_IB_STANDALONE=y
+CONFIG_IMAGEOPT=y
+CONFIG_PACKAGE_libiwinfo-lua=y
+CONFIG_PACKAGE_liblua=y
+CONFIG_PACKAGE_libubus-lua=y
+CONFIG_PACKAGE_libuci-lua=y
+CONFIG_PACKAGE_lua=y
+CONFIG_PACKAGE_luci=y
+CONFIG_PACKAGE_luci-app-firewall=y
+CONFIG_PACKAGE_luci-base=y
+CONFIG_PACKAGE_luci-lib-ip=y
+CONFIG_PACKAGE_luci-lib-jsonc=y
+CONFIG_PACKAGE_luci-lib-nixio=y
+CONFIG_PACKAGE_luci-mod-admin-full=y
+CONFIG_PACKAGE_luci-proto-ipv6=y
+CONFIG_PACKAGE_luci-proto-ppp=y
+CONFIG_PACKAGE_luci-theme-bootstrap=y
+CONFIG_PACKAGE_rpcd=y
+CONFIG_PACKAGE_uhttpd=y
+CONFIG_PACKAGE_uhttpd-mod-ubus=y
+# CONFIG_PER_FEED_REPO_ADD_COMMENTED is not set
+```
+
+\* When the config.diff file is ready, run:
+
+```
+      cp config.diff .config; make defconfig; make  -j 1 V=s 
+```
+
+to build the release-like firmware for your target device, a DIR601B in the above example.
+
+If you make your own .config file * Backup your current .config, then run:
+
+```
+rm .config; make menuconfig;./scripts/diffconfig.sh > config.tmp;cp config.tmp .config 
+```
+
+and while in menuconfig, only select your target profile (device), save and exit. The .config will contain only the TARGET lines. * Write or copy a sane config.diff to .config in the openwrt directory, then:
+
+```
+       make defconfig; make -j 1 V=s
+       
+```
+
+\* A sane file looks something like:
+
+```
+CONFIG_TARGET_ar71xx=y
+CONFIG_TARGET_ar71xx_generic=y
+CONFIG_TARGET_ar71xx_generic_DIR601B1=y
+CONFIG_ATH_USER_REGD=y
+CONFIG_COLLECT_KERNEL_DEBUG=y
+CONFIG_IB=y
+CONFIG_IB_STANDALONE=y
+CONFIG_IMAGEOPT=y
+```
+
+Where the CONFIG\_TARGET lines are specific to the make and model of your router, and the CONFIG\_ATH line is specific to Atheros (QA) radios. Additional PACKAGE lines will add programs to the build.
+
+\* Some .configs can trash the build system and known working configurations will fail. In that instance:
+
+```
+      make clean       
+```
+
+The next build will reconstruct all the dependencies, that may repair the problem. It will take longer than a typical second pass build.
+
+In All Cases * The above willl take a long time on the first pass. Subsequent passes will take less time. Some multi-core CPUs work to speed compilation, but others bomb. If you want to try, substitute the (number of CPU cores + 1) for the 1 in the make above. If this produces random build errors, revert to the 1, as above. * Check that the firmware was built, sometimes make fails only on select versions, e.g.: “error: images are too big by 1001214 bytes”. Usually, leaving tools as modules allows for more free space. * Once the build is complete, copy the /usr/src/openwrt/bin dir from the Administrative box to a working http, to make the new build available to the router via URL. * The Atheros examples above need to use iw to setup the wifi radio, e.g.:
+
+```
+      iw dev wlan0 set txpower fixed 16mBm
+```

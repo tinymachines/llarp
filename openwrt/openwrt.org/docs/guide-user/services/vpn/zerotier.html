@@ -1,0 +1,187 @@
+
+<h1 class="sectionedit1" id="zerotier">Zerotier</h1>
+<div class="level1">
+
+<p>
+Zerotier creates a virtual network between hosts. You may refer to <a href="https://github.com/mwarning/zerotier-openwrt/wiki" class="urlextern" title="https://github.com/mwarning/zerotier-openwrt/wiki" rel="ugc nofollow">zerotier-openwrt&#039;s official Wiki</a> for the latest instructions.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Zerotier&quot;,&quot;hid&quot;:&quot;zerotier&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-208&quot;} -->
+<h2 class="sectionedit2" id="installation">Installation</h2>
+<div class="level2">
+<pre class="code">opkg update
+opkg install zerotier</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation&quot;,&quot;hid&quot;:&quot;installation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;209-283&quot;} -->
+<h2 class="sectionedit3" id="basic_configuration">Basic Configuration</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Create virtual network on <a href="https://my.zerotier.com" class="urlextern" title="https://my.zerotier.com" rel="ugc nofollow">Zerotier Central</a>. Note the 16-digit <em>Network ID</em>.</div>
+</li>
+<li class="level1"><div class="li"> Add virtual network to the OpenWrt Zerotier config (the section name <code>mynet</code> is arbitrary, you can consistently replace it with whatever label you want)</div>
+</li>
+</ul>
+
+<p>
+For ZeroTier version 1.14.0 or older:
+</p>
+<pre class="code">uci delete zerotier.sample_config
+uci add zerotier mynet
+uci add_list zerotier.mynet.join=&lt;network_id&gt;
+uci set zerotier.mynet.enabled=&#039;1&#039;
+uci commit zerotier
+service zerotier restart</pre>
+
+<p>
+For ZeroTier version 1.14.1 or newer: 
+</p>
+<pre class="code">uci set zerotier.global.enabled=&#039;1&#039;
+uci delete zerotier.earth
+uci set zerotier.mynet=network
+uci set zerotier.mynet.id=&lt;network_id&gt;
+uci commit zerotier
+service zerotier restart</pre>
+
+<p>
+The same defined in the configuration file (<code>/etc/config/zerotier</code>):
+</p>
+<pre class="code">config zerotier &#039;global&#039;
+        option enabled &#039;1&#039;
+        option secret &#039;&#039;
+
+config network &#039;mynet&#039;
+        option id &#039;put your network id here&#039;
+        option allow_managed &#039;1&#039;
+        option allow_global &#039;0&#039;
+        option allow_default &#039;0&#039;
+        option allow_dns &#039;0&#039;</pre>
+<ul>
+<li class="level1"><div class="li"> When a new virtual network is joined, a new <em>secret</em> will be generated, which may take a while. When it&#039;s finished, the <em>secret</em> will be saved in <code>/etc/config/zerotier</code>, and router will make an attempt to attach to the virtual network.</div>
+</li>
+<li class="level1"><div class="li"> To use the virtual network, the device must be first authorized on Zerotier Central portal by clicking “Auth?” box next to the device under Members.</div>
+</li>
+<li class="level1"><div class="li"> Communication with other Zerotier nodes is usually done through port 9993/udp (it can be changed), and no additional configuration is needed for an out-of-the-box router configuration.</div>
+</li>
+<li class="level1"><div class="li"> Device connectivity (or online status) can be seen by using the “info” command, it will also show your 10-digit node address:</div>
+</li>
+</ul>
+<pre class="code">root@OpenWrt# zerotier-cli info
+200 info xxxxxxxxxx 1.14.1 ONLINE</pre>
+<ul>
+<li class="level1 node"><div class="li"> Some services (eg dropbear, Luci) may need to be reconfigured to allow access from the new Zerotier virtual interface. The easy way is to un-restrict them from specific networks/interfaces.</div>
+<ul>
+<li class="level2"><div class="li"> For dropbear (allow access from anywhere, potentially unsafe):</div>
+</li>
+</ul>
+</li>
+</ul>
+<pre class="code">root@OpenWrt# cat /etc/config/dropbear
+
+config dropbear
+	option PasswordAuth &#039;on&#039;
+	option Port &#039;22&#039;</pre>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> You must reboot OpenWrt router at this point otherwise <code>ztXXXXXXXX</code> network device won&#039;t be created.
+</p>
+
+<p>
+After reboot get the device name using your 16-digit Network ID:
+</p>
+<pre class="code">root@OpenWrt# zerotier-cli get {network_id} portDeviceName
+ztXXXXXXXX</pre>
+
+<p>
+Alternatively run <code>zerotier-cli listnetworks</code>, that will give you the same name plus more details.
+</p>
+<pre class="code bash"><span class="co0"># Create interface</span>
+uci <span class="re5">-q</span> delete network.ZeroTier
+uci <span class="kw1">set</span> network.ZeroTier=interface
+uci <span class="kw1">set</span> network.ZeroTier.proto=<span class="st_h">'none'</span>
+uci <span class="kw1">set</span> network.ZeroTier.device=<span class="st_h">'ztXXXXXXXX'</span> <span class="co0"># Replace ztXXXXXXXX with your own ZeroTier device name</span>
+&nbsp;
+<span class="co0"># Configure firewall zone</span>
+uci add firewall zone
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>zone<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.name=<span class="st_h">'vpn'</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>zone<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.input=<span class="st_h">'ACCEPT'</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>zone<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.output=<span class="st_h">'ACCEPT'</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>zone<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.forward=<span class="st_h">'ACCEPT'</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>zone<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.masq=<span class="st_h">'1'</span>
+uci add_list firewall.<span class="sy0">@</span>zone<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.network=<span class="st_h">'ZeroTier'</span>
+uci add firewall forwarding
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>forwarding<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.src=<span class="st_h">'vpn'</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>forwarding<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.dest=<span class="st_h">'lan'</span>
+uci add firewall forwarding
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>forwarding<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.src=<span class="st_h">'vpn'</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>forwarding<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.dest=<span class="st_h">'wan'</span>
+uci add firewall forwarding
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>forwarding<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.src=<span class="st_h">'lan'</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>forwarding<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.dest=<span class="st_h">'vpn'</span>
+&nbsp;
+<span class="co0"># Commit changes</span>
+uci commit
+&nbsp;
+<span class="co0"># Reboot</span>
+reboot</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Basic Configuration&quot;,&quot;hid&quot;:&quot;basic_configuration&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;284-3892&quot;} -->
+<h2 class="sectionedit4" id="advanced_configuration">Advanced Configuration</h2>
+<div class="level2">
+
+<p>
+The <a href="https://github.com/openwrt/packages/blob/master/net/zerotier/files/etc/config/zerotier" class="urlextern" title="https://github.com/openwrt/packages/blob/master/net/zerotier/files/etc/config/zerotier" rel="ugc nofollow">sample configuration</a> is helpful to see which uci options are available for configuring the ZeroTier client.
+</p>
+
+<p>
+While basic uci configuration of ZeroTier as shown above is supported, almost no advanced configuration support via uci has yet been added. The ZeroTier documentation requires manipulation of the configuration files for many advanced features. However, ZeroTier configurations are stored by default under /var/lib in Linux-based systems, which is a temporary filesystem in OpenWrt, where changes are not persistent. Instead, ordinarily OpenWrt writes a new configuration folder in that location based on the uci configuration above each time the service is started. These configuration files are lost on reboot or service restart, and rewritten each time the service starts again. For a basic configuration which will suit most users, this is not an issue.
+</p>
+
+<p>
+In order to configure advanced features, two uci directives may be used to configure OpenWrt to load a copy of a persistent configuration folder from another location when starting the service, such as /etc/zerotier, which the user must first create and populate based on the simple copy made upon first joining a network. Once this persistent location is configured, the user may make persistent changes according to the ZeroTier documentation, with support for all current features otherwise enabled.
+</p>
+<ul>
+<li class="level1"><div class="li"> Complete the basic configuration steps above to joint a working network, which will create a temporary copy of the configuration folder with which to start.</div>
+</li>
+<li class="level1"><div class="li"> Create the persistent folder in any permanent location (/etc/zerotier will be used for this example), and copy the contents of the temporary folder to the permanent location:</div>
+</li>
+</ul>
+<pre class="code bash"><span class="kw2">mkdir</span> <span class="sy0">/</span>etc<span class="sy0">/</span>zerotier
+<span class="kw2">cp</span> <span class="re5">-r</span> <span class="sy0">/</span>var<span class="sy0">/</span>lib<span class="sy0">/</span>zerotier-one<span class="sy0">/*</span> <span class="sy0">/</span>etc<span class="sy0">/</span>zerotier<span class="sy0">/</span></pre>
+<ul>
+<li class="level1"><div class="li"> Add the directives to use the new persistent folder. The network name <em>deadbeef00</em> will be used, similar to most ZeroTier documentation examples:</div>
+</li>
+</ul>
+<pre class="code bash">uci <span class="kw1">set</span> zerotier.deadbeef00.config_path=<span class="st_h">'/etc/zerotier'</span>
+uci <span class="kw1">set</span> zerotier.deadbeef00.copy_config_path=<span class="st_h">'1'</span>
+uci commit zerotier
+service zerotier restart</pre>
+
+<p>
+The router will now refer to the configuration in /etc/zerotier for persistent advanced changes. Restarting the service after any configuration changes using the last line above will reset and apply any changes made. Do not attempt to edit the configuration in the /var/lib/zerotier-one location, as this temporary location will still be overwritten on restart by the configuration in the new persistent directory.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Advanced Configuration&quot;,&quot;hid&quot;:&quot;advanced_configuration&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:4,&quot;range&quot;:&quot;3893-6558&quot;} -->
+<h3 class="sectionedit5" id="local_configuration_options">Local Configuration Options</h3>
+<div class="level3">
+
+<p>
+ZeroTier client in OpenWrt also supports the use of “Local Configuration Options” described in the official <a href="https://docs.zerotier.com/config/#local-configuration-options" class="urlextern" title="https://docs.zerotier.com/config/#local-configuration-options" rel="ugc nofollow"> ZeroTier Documentation</a>.
+What is called <code>local.conf</code> in the documentation can be used in OpenWrt by adding a line like this into “global” section of the main configuration file (<code>/etc/config/zerotier</code>):
+</p>
+<pre class="code">option local_conf_path &#039;/etc/zerotier.conf&#039;</pre>
+
+<p>
+The configuration file referenced there should be in JSON format. The following example will instruct the local instance of ZeroTier to not use <abbr title="Local Area Network">LAN</abbr> and WireGuard interfaces to build the connections:
+</p>
+<pre class="code">{
+	&quot;settings&quot;: {
+		&quot;interfacePrefixBlacklist&quot;: [ &quot;br&quot;,&quot;wg&quot; ]
+	}
+}</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Local Configuration Options&quot;,&quot;hid&quot;:&quot;local_configuration_options&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:5,&quot;range&quot;:&quot;6559-&quot;} -->

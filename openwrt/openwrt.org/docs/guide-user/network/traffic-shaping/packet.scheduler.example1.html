@@ -1,0 +1,44 @@
+
+<h1 class="sectionedit1" id="example1traffic_prioritizing_with_prio">Example1: Traffic Prioritizing with PRIO</h1>
+<div class="level1">
+<pre class="code bash"><span class="co0">#!/bin/sh</span>
+<span class="co0"># A single user has 1000kbit upload for themself. But they want prioritizing.</span>
+&nbsp;
+<span class="co0"># Variables</span>
+<span class="re2">TC</span>=$<span class="br0">&#40;</span><span class="kw2">which</span> tc<span class="br0">&#41;</span>
+<span class="re2">IPT</span>=$<span class="br0">&#40;</span><span class="kw2">which</span> iptables<span class="br0">&#41;</span>
+<span class="re2">IPTMO</span>=<span class="st0">&quot;<span class="es2">$IPT</span> -t mangle -A POSTROUTING&quot;</span>
+<span class="re2">DEV</span>=pppoe-dsl
+&nbsp;
+insmod sch_prio
+&nbsp;
+<span class="co0"># The PRIO qdisc is a non-shaping container for a configurable number of classes</span>
+<span class="co0"># which are dequeued in order. This allows for easy prioritization of traffic,</span>
+<span class="co0"># where lower classes are only able to send if higher ones have no packets</span>
+<span class="co0"># available.</span>
+&nbsp;
+<span class="re1">$TC</span> qdisc add dev <span class="re1">$DEV</span> root       handle <span class="nu0">1</span>:    prio default <span class="nu0">30</span>
+<span class="re1">$TC</span> class add dev <span class="re1">$DEV</span> parent <span class="nu0">1</span>:  classid <span class="nu0">1</span>:<span class="nu0">1</span>  prio rate 1000kbit?
+<span class="re1">$TC</span> class add dev <span class="re1">$DEV</span> parent <span class="nu0">1</span>:<span class="nu0">1</span> classid <span class="nu0">1</span>:<span class="nu0">10</span> prio ??? <span class="co0">#-- ssh, ACKs, VoIP, gaming</span>
+<span class="re1">$TC</span> class add dev <span class="re1">$DEV</span> parent <span class="nu0">1</span>:<span class="nu0">1</span> classid <span class="nu0">1</span>:<span class="nu0">20</span> prio ??? <span class="co0">#-- http</span>
+<span class="re1">$TC</span> class add dev <span class="re1">$DEV</span> parent <span class="nu0">1</span>:<span class="nu0">1</span> classid <span class="nu0">1</span>:<span class="nu0">30</span> prio ??? <span class="co0">#-- bulk, default, mails, etc</span>
+&nbsp;
+<span class="co0"># Filter</span>
+<span class="co0"># Since PRIO honors the TOS/QoS-Field by default, we should be concerned with our</span>
+<span class="co0"># applications setting the right QoS for every packet they create. Additionally we</span>
+<span class="co0"># can not blindly trust the set TOS and change it:</span>
+&nbsp;
+<span class="re1">$IPTMO</span> <span class="re5">-N</span> CHKTOS <span class="co0">#-------------------------------create custom chain for this issue</span>
+<span class="re1">$IPTMO</span> <span class="re5">-o</span> <span class="re1">$DEV</span> <span class="re5">-j</span> CHKTOS <span class="co0">#----every packet immediately jumps to custom-chain: CHKTOS</span>
+<span class="re1">$IPTMO</span> <span class="re5">-A</span> CHKTOS <span class="re5">-m</span> tos <span class="sy0">!</span> <span class="re5">--tos</span> Normal-Service <span class="re5">-j</span> RETURN <span class="co0">#---if TOS is set, leave it</span>
+<span class="re1">$IPTMO</span> <span class="re5">-A</span> CHKTOS <span class="re5">-p</span> udp <span class="re5">-j</span> TOS <span class="re5">--set-tos</span> Minimize-Delay <span class="co0">#-----UDP gets high priority</span>
+<span class="re1">$IPTMO</span> <span class="re5">-A</span> CHKTOS <span class="re5">-p</span> udp <span class="re5">-m</span> length <span class="re5">--length</span> :<span class="nu0">160</span> <span class="re5">-j</span> TOS <span class="re5">--set-tos</span> Minimize-Delay
+<span class="co0">#-- small udp packets</span>
+<span class="re1">$IPTMO</span> <span class="re5">-A</span> CHKTOS <span class="re5">-p</span> tcp <span class="re5">-m</span> length <span class="re5">--length</span> :<span class="nu0">128</span> <span class="re5">-j</span> TOS <span class="re5">--set-tos</span> Minimize-Delay
+<span class="co0">#-- small tcp packets get high priority</span>
+<span class="co0"># If bulk traffic gets tunneled through ssh connections, change their TOS </span>
+<span class="co0"># (some programs do this by themselves, but not all):</span>
+<span class="re1">$IPTMO</span> <span class="re5">-o</span> <span class="re1">$DEV</span> <span class="re5">-p</span> tcp <span class="re5">--dport</span> <span class="nu0">22</span> <span class="re5">-m</span> tos <span class="re5">--tos</span> Minimize-Delay <span class="re5">-m</span> connrate \
+<span class="re5">--connrate</span> <span class="nu0">20000</span>:inf <span class="re5">-j</span> TOS <span class="re5">--set-tos</span> Maximize-Throughput</pre>
+
+</div>

@@ -1,0 +1,757 @@
+
+<h1 class="sectionedit1" id="babel_routing_protocol_babeld">Babel routing protocol (babeld)</h1>
+<div class="level1">
+
+<p>
+<code>babeld</code> is the reference implementation of the <a href="http://www.pps.univ-paris-diderot.fr/~jch/software/babel/" class="urlextern" title="http://www.pps.univ-paris-diderot.fr/~jch/software/babel/" rel="ugc nofollow">Babel routing protocol</a>
+</p>
+
+<p>
+This documentation applies to <code>babeld</code> after version 1.5.1.  Older versions used a slightly different syntax and different option names.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Babel routing protocol (babeld)&quot;,&quot;hid&quot;:&quot;babel_routing_protocol_babeld&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-322&quot;} -->
+<h2 class="sectionedit2" id="introduction">Introduction</h2>
+<div class="level2">
+
+<p>
+The UCI configuration aims at being as transparent as possible: option names are the same as the native babeld config (using “_” instead of “-”).  Refer to the commented
+<a href="https://github.com/openwrt-routing/packages/blob/master/babeld/files/babeld.config" class="urlextern" title="https://github.com/openwrt-routing/packages/blob/master/babeld/files/babeld.config" rel="ugc nofollow">default configuration file</a> and to the <a href="https://www.irif.fr/~jch/software/babel/babeld.html" class="urlextern" title="https://www.irif.fr/~jch/software/babel/babeld.html" rel="ugc nofollow">man page for babeld</a> for more details.
+</p>
+
+<p>
+You can configure <code>babeld</code> in three different places:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>/etc/babeld.conf</code>, the native babeld configuration</div>
+</li>
+<li class="level1"><div class="li"> native configuration fragments in <code>/tmp/babeld.d/</code> (starting from <code>babeld</code> 1.6.0-3).  The fragments must end with a <code>.conf</code> extension.</div>
+</li>
+<li class="level1"><div class="li"> <code>/etc/config/babeld</code>, the UCI-style configuration.  This is the preferred way of configuring <code>babeld</code>.</div>
+</li>
+</ul>
+
+<p>
+If the same option is defined in several places, the last one takes precedence.  So, for instance, you can mix native and UCI-style configuration, but the UCI-generated configuration will take precedence over the native configuration for conflicting options.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__meta:infobox:howto_links">
+<div class="level2">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap">
+<p>
+This article may contain network configuration that depends on migration to DSA in OpenWrt 21.02
+</p>
+<ul>
+<li class="level1"><div class="li"> Check if your device uses DSA or swconfig as not all devices have been migrated</div>
+</li>
+<li class="level1"><div class="li"> ifname@interface has been moved to device sections</div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/network/dsa/start" class="wikilink1" title="docs:guide-user:network:dsa:start" data-wiki-id="docs:guide-user:network:dsa:start">DSA Networking</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://forum.openwrt.org/t/mini-tutorial-for-dsa-network-config/96998" class="urlextern" title="https://forum.openwrt.org/t/mini-tutorial-for-dsa-network-config/96998" rel="ugc nofollow">Mini tutorial for DSA network config</a> on the forum</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://openwrt.org/releases/21.02/notes-21.02.0#new_network_configuration_syntax_and_boardjson_change" class="urlextern" title="https://openwrt.org/releases/21.02/notes-21.02.0#new_network_configuration_syntax_and_boardjson_change" rel="ugc nofollow">DSA in the 21.02 release notes</a></div>
+</li>
+</ul>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:6,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Introduction&quot;,&quot;hid&quot;:&quot;introduction&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;323-1459&quot;} -->
+<h2 class="sectionedit7" id="general_configuration">General configuration</h2>
+<div class="level2">
+
+<p>
+General configuration for <code>babeld</code> is done inside a <code>config general</code> section, for instance:
+</p>
+<pre class="code bash"><span class="co0"># /etc/config/babeld</span>
+config general
+	option <span class="st_h">'random_id'</span>     <span class="st_h">'true'</span>
+	option <span class="st_h">'local_port'</span>    <span class="st_h">'33123'</span>
+	option <span class="st_h">'ubus_bindings'</span> <span class="st_h">'true'</span>
+	list   <span class="st_h">'import_table'</span>  <span class="st_h">'42'</span>
+	list   <span class="st_h">'import_table'</span>  <span class="st_h">'100'</span></pre>
+
+<p>
+You can use any global option accepted by <code>babeld</code>, see “Global options” in the <a href="https://www.irif.fr/~jch/software/babel/babeld.html" class="urlextern" title="https://www.irif.fr/~jch/software/babel/babeld.html" rel="ugc nofollow">man page</a>.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Remember, you must replace “<code>-</code>” by “<code>_</code>” in option names on OpenWrt.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;General configuration&quot;,&quot;hid&quot;:&quot;general_configuration&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;1460-2028&quot;} -->
+<h2 class="sectionedit8" id="interface_configuration">Interface configuration</h2>
+<div class="level2">
+
+<p>
+To start using <code>babeld</code> on a network interface, a <code>config interface</code> section must be used.  In its simplest form, this section just needs the name of the interface:
+</p>
+<pre class="code bash"><span class="co0"># /etc/config/babeld</span>
+config interface
+	option <span class="st_h">'ifname'</span> <span class="st_h">'br-lan'</span></pre>
+
+<p>
+You can also specify options:
+</p>
+<pre class="code bash"><span class="co0"># /etc/config/babeld</span>
+config interface
+	option <span class="st_h">'ifname'</span>         <span class="st_h">'tun-fastd'</span>
+	option <span class="st_h">'type'</span>           <span class="st_h">'tunnel'</span>
+	option <span class="st_h">'hello_interval'</span> <span class="st_h">'2'</span>
+	option <span class="st_h">'rxcost'</span>         <span class="st_h">'60'</span></pre>
+
+<p>
+You can use any interface option accepted by <code>babeld</code>, see “Interface configuration” in the <a href="https://www.irif.fr/~jch/software/babel/babeld.html" class="urlextern" title="https://www.irif.fr/~jch/software/babel/babeld.html" rel="ugc nofollow">man page</a>.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Remember, you must replace “<code>-</code>” by “<code>_</code>” in option names on OpenWrt.
+</p>
+
+<p>
+You can also use logical interface name, see the examples below.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Interface configuration&quot;,&quot;hid&quot;:&quot;interface_configuration&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:8,&quot;range&quot;:&quot;2029-2846&quot;} -->
+<h2 class="sectionedit9" id="default_interface_configuration">Default interface configuration</h2>
+<div class="level2">
+
+<p>
+You can also configure options for all interfaces.  To do this, simply omit the <code>ifname</code> option:
+</p>
+<pre class="code bash"><span class="co0"># /etc/config/babeld</span>
+<span class="co0"># Disable split horizon on all interfaces</span>
+config interface
+	option <span class="st_h">'split_horizon'</span> <span class="st_h">'false'</span></pre>
+
+<p>
+Note that interface-specific configuration always overrides default interface configuration.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Default interface configuration&quot;,&quot;hid&quot;:&quot;default_interface_configuration&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:9,&quot;range&quot;:&quot;2847-3217&quot;} -->
+<h2 class="sectionedit10" id="filtering_rules_and_redistribution">Filtering rules and redistribution</h2>
+<div class="level2">
+
+<p>
+<code>babeld</code> has a small language to describe “filters” that acts on routes.
+</p>
+
+<p>
+A filter consists of:
+</p>
+<ul>
+<li class="level1"><div class="li"> a type (<code>in</code>, <code>out</code>, <code>redistribute</code> or <code>install</code>) that specifies when the filter should apply;</div>
+</li>
+<li class="level1"><div class="li"> a set of selectors (<code>ip</code>, <code>eq</code>, <code>le</code> ...) that allow to match routes;</div>
+</li>
+<li class="level1"><div class="li"> a set of actions to perform on the matched routes: <code>allow</code>, <code>deny</code>, <code>metric xxx</code>, <code>src-prefix xxx</code>, <code>table xxx</code>, <code>pref-src xxx</code>.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Filtering rules and redistribution&quot;,&quot;hid&quot;:&quot;filtering_rules_and_redistribution&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:10,&quot;range&quot;:&quot;3218-3697&quot;} -->
+<h3 class="sectionedit11" id="reference_documentation_for_filters">Reference documentation for filters</h3>
+<div class="level3">
+
+<p>
+The reference documentation is the man page: <a href="https://www.irif.fr/~jch/software/babel/babeld.html" class="urlextern" title="https://www.irif.fr/~jch/software/babel/babeld.html" rel="ugc nofollow">https://www.irif.fr/~jch/software/babel/babeld.html</a> (section “Filtering rules”).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Reference documentation for filters&quot;,&quot;hid&quot;:&quot;reference_documentation_for_filters&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:11,&quot;range&quot;:&quot;3698-3875&quot;} -->
+<h3 class="sectionedit12" id="default_filtering_rules">Default filtering rules</h3>
+<div class="level3">
+
+<p>
+By default, <code>babeld</code> accepts any route from its neighbours, relays them to other neighbours, and install them in the kernel routing table. It also redistributes local <abbr title="Internet Protocol">IP</abbr> addresses (configured on any network interface) as host routes: /32 for <abbr title="Internet Protocol version 4">IPv4</abbr>, /128 for <abbr title="Internet Protocol version 6">IPv6</abbr>.
+</p>
+
+<p>
+This default configuration is sufficient for basic needs.  Read below for more complex examples.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Default filtering rules&quot;,&quot;hid&quot;:&quot;default_filtering_rules&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:12,&quot;range&quot;:&quot;3876-4274&quot;} -->
+<h2 class="sectionedit13" id="troubleshooting">Troubleshooting</h2>
+<div class="level2">
+
+<p>
+When starting <code>babeld</code>, <code>/etc/config/babeld</code> is used to generate a configuration in <code>/var/etc/babeld.conf</code>.  If babeld does not start, look for something unusual in this file.  Also look at the logs (using <code>logread</code>).
+</p>
+
+<p>
+Note that, by default, no interface is configured, so babeld will refuse to start.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Troubleshooting&quot;,&quot;hid&quot;:&quot;troubleshooting&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:13,&quot;range&quot;:&quot;4275-4613&quot;} -->
+<h2 class="sectionedit14" id="example_interface_configuration">Example interface configuration</h2>
+<div class="level2">
+
+<p>
+It is recommended to use logical interface names, so that you can also define firewall zones with these interfaces, and use all UCI goodness (automatic interface reloading, <code>ifstatus</code>, persistent interface name, etc).  But you can also use physical interface names if you want to.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Using logical interface names does not seem to work  reliably in all cases, see <a href="https://github.com/openwrt-routing/packages/pull/52#issuecomment-55004440" class="urlextern" title="https://github.com/openwrt-routing/packages/pull/52#issuecomment-55004440" rel="ugc nofollow">this ticket</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Example interface configuration&quot;,&quot;hid&quot;:&quot;example_interface_configuration&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:14,&quot;range&quot;:&quot;4614-5118&quot;} -->
+<h3 class="sectionedit15" id="wireless_setup_with_logical_interface_names">Wireless setup with logical interface names</h3>
+<div class="level3">
+
+<p>
+Here is an example with two radios, one 2.4 <abbr title="Gigahertz">GHz</abbr> (<code>wlan_24</code>) and one 5 <abbr title="Gigahertz">GHz</abbr> (<code>wlan_5</code>).  Note that we don&#039;t bridge anything, as Babel will route between the interfaces.
+</p>
+<pre class="code bash"><span class="co0"># /etc/config/network</span>
+config interface wlan_24
+        option <span class="st_h">'proto'</span>    <span class="st_h">'static'</span>
+        option <span class="st_h">'ipaddr'</span>   <span class="st_h">'10.0.0.42'</span>
+        option <span class="st_h">'netmask'</span>  <span class="st_h">'255.255.255.255'</span>
+&nbsp;
+config interface wlan_5
+        option <span class="st_h">'proto'</span>    <span class="st_h">'static'</span>
+        option <span class="st_h">'ipaddr'</span>   <span class="st_h">'10.0.0.42'</span>
+        option <span class="st_h">'netmask'</span>  <span class="st_h">'255.255.255.255'</span></pre>
+<pre class="code bash"><span class="co0"># /etc/config/wireless</span>
+config wifi-iface
+	option <span class="st_h">'device'</span>     <span class="st_h">'radio0'</span>
+	option <span class="st_h">'network'</span>    <span class="st_h">'wlan_24'</span>
+	option <span class="st_h">'mode'</span>       <span class="st_h">'adhoc'</span>
+	option <span class="st_h">'ssid'</span>       <span class="st_h">'mymesh'</span>
+	option <span class="st_h">'encryption'</span> <span class="st_h">'none'</span>
+&nbsp;
+config wifi-iface
+	option <span class="st_h">'device'</span>     <span class="st_h">'radio1'</span>
+	option <span class="st_h">'network'</span>    <span class="st_h">'wlan_5'</span>
+	option <span class="st_h">'mode'</span>       <span class="st_h">'adhoc'</span>
+	option <span class="st_h">'ssid'</span>       <span class="st_h">'mymesh'</span>
+	option <span class="st_h">'encryption'</span> <span class="st_h">'none'</span></pre>
+<pre class="code bash"><span class="co0"># /etc/config/babeld</span>
+<span class="co0"># Default options</span>
+config interface
+    option <span class="st_h">'hello_interval'</span>  <span class="st_h">'1'</span>
+    option <span class="st_h">'update_interval'</span> <span class="st_h">'16'</span>
+&nbsp;
+config interface
+    option <span class="st_h">'ifname'</span> <span class="st_h">'wlan_24'</span>
+    option <span class="st_h">'type'</span>   <span class="st_h">'wireless'</span>
+&nbsp;
+config interface
+    option <span class="st_h">'ifname'</span> <span class="st_h">'wlan_5'</span>
+    option <span class="st_h">'type'</span>   <span class="st_h">'wireless'</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Wireless setup with logical interface names&quot;,&quot;hid&quot;:&quot;wireless_setup_with_logical_interface_names&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:15,&quot;range&quot;:&quot;5119-6349&quot;} -->
+<h3 class="sectionedit16" id="wireless_setup_with_physical_interface_names">Wireless setup with physical interface names</h3>
+<div class="level3">
+
+<p>
+If you don&#039;t want to bother, or don&#039;t use the firewall, you can just use physical interface names instead:
+</p>
+<pre class="code bash"><span class="co0"># Default options</span>
+config interface
+    option hello_interval <span class="nu0">1</span>
+    option update_interval <span class="nu0">16</span>
+&nbsp;
+config interface
+    option ifname wlan0
+&nbsp;
+config interface
+    option ifname wlan1</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Wireless setup with physical interface names&quot;,&quot;hid&quot;:&quot;wireless_setup_with_physical_interface_names&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:16,&quot;range&quot;:&quot;6350-6711&quot;} -->
+<h3 class="sectionedit17" id="uci-managed_tunnel">UCI-managed tunnel</h3>
+<div class="level3">
+
+<p>
+This example uses a GRE tunnel, defined in UCI, and enables the RTT-based metric on it.
+</p>
+<pre class="code bash"><span class="co0"># /etc/config/network</span>
+config interface mytunnel 
+    option proto    gre
+    <span class="co0"># Firewall zone</span>
+    option zone     myzone
+    option peeraddr 198.51.100.42
+&nbsp;
+config interface mytunnel_static                               
+    option proto    static                              
+    option ifname   <span class="sy0">@</span>mytunnel                              
+    option ipaddr   10.0.0.42                       
+    option netmask  255.255.255.254                     
+    <span class="co0"># Fixes IPv6 multicast (long-standing bug in kernel)</span>
+    option ip6addr  <span class="st_h">'fe80::42:42:42/64'</span></pre>
+<pre class="code bash"><span class="co0"># /etc/config/babeld</span>
+config interface
+    option ifname mytunnel
+    option <span class="kw3">type</span> tunnel
+    option max_rtt_penalty <span class="nu0">100</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;UCI-managed tunnel&quot;,&quot;hid&quot;:&quot;uci-managed_tunnel&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:17,&quot;range&quot;:&quot;6712-7593&quot;} -->
+<h3 class="sectionedit18" id="manually_managed_tunnel">Manually managed tunnel</h3>
+<div class="level3">
+
+<p>
+In some cases, tunnels are managed outside of UCI.
+It&#039;s still a good idea to declare them this way:
+</p>
+<pre class="code bash"><span class="co0"># /etc/config/network</span>
+config interface mytunnel
+    option ifname   tun-openvpn
+    option proto    none</pre>
+
+<p>
+You may actually want to assign addresses on your tunnel interfaces:
+</p>
+<pre class="code bash"><span class="co0"># /etc/config/network</span>
+config interface mytunnel
+    option ifname   tun-openvpn       
+    option proto    static
+    option ipaddr   10.0.0.42
+    option netmask  255.255.255.255
+    <span class="co0"># OpenVPN does not assign a link-local address on tunnels</span>
+    option ip6addr  <span class="st_h">'fe80::42:42:42/64'</span>
+    <span class="co0"># Firewall zone</span>
+    option zone     dn42                              </pre>
+
+<p>
+In both cases, you can then use the logical interface name:
+</p>
+<pre class="code bash"><span class="co0"># /etc/config/babeld</span>
+config interface
+    option ifname mytunnel
+    option <span class="kw3">type</span> tunnel
+    option max_rtt_penalty <span class="nu0">100</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Manually managed tunnel&quot;,&quot;hid&quot;:&quot;manually_managed_tunnel&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:18,&quot;range&quot;:&quot;7594-8505&quot;} -->
+<h2 class="sectionedit19" id="example_filtering_configuration">Example filtering configuration</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Example filtering configuration&quot;,&quot;hid&quot;:&quot;example_filtering_configuration&quot;,&quot;codeblockOffset&quot;:13,&quot;secid&quot;:19,&quot;range&quot;:&quot;8506-8551&quot;} -->
+<h3 class="sectionedit20" id="illustrationdefault_filtering_rules">Illustration: default filtering rules</h3>
+<div class="level3">
+
+<p>
+For illustration, the default filtering rules would be equivalent to the following OpenWrt configuration:
+</p>
+<pre class="code bash"><span class="co0"># /etc/config/babeld</span>
+&nbsp;
+<span class="co0"># Accept all routes from neighbours.</span>
+config filter
+	option <span class="st_h">'type'</span>	<span class="st_h">'in'</span>
+	option <span class="st_h">'action'</span>	<span class="st_h">'allow'</span>
+&nbsp;
+<span class="co0"># Send all known routes to neighbours.</span>
+config filter
+	option <span class="st_h">'type'</span>	<span class="st_h">'out'</span>
+	option <span class="st_h">'action'</span>	<span class="st_h">'allow'</span>
+&nbsp;
+<span class="co0"># Install all routes to the kernel.</span>
+config filter
+	option <span class="st_h">'type'</span>	<span class="st_h">'install'</span>
+	option <span class="st_h">'action'</span>	<span class="st_h">'allow'</span>
+&nbsp;
+<span class="co0"># Redistribute all local IP addresses as host routes.</span>
+config filter
+	option <span class="st_h">'type'</span>	<span class="st_h">'redistribute'</span>
+	option <span class="st_h">'local'</span>	<span class="st_h">'true'</span>
+	option <span class="st_h">'action'</span>	<span class="st_h">'allow'</span>
+&nbsp;
+<span class="co0"># Don't redistribute any other route from the kernel routing table.</span>
+config filter
+	option <span class="st_h">'type'</span>	<span class="st_h">'redistribute'</span>
+	option <span class="st_h">'local'</span>	<span class="st_h">'false'</span>
+	option <span class="st_h">'action'</span>	<span class="st_h">'deny'</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Illustration: default filtering rules&quot;,&quot;hid&quot;:&quot;illustrationdefault_filtering_rules&quot;,&quot;codeblockOffset&quot;:13,&quot;secid&quot;:20,&quot;range&quot;:&quot;8552-9355&quot;} -->
+<h3 class="sectionedit21" id="redistribute_a_default_route">Redistribute a default route</h3>
+<div class="level3">
+
+<p>
+For a border router, it is common to obtain a default route from an external source (<abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> client or static route). This default route then needs to be redistributed inside the Babel network, as shown in the following configuration:
+</p>
+<pre class="code bash"><span class="co0"># /etc/config/babeld</span>
+config filter
+	option <span class="st_h">'type'</span>	<span class="st_h">'redistribute'</span>
+	<span class="co0"># Redistribute any kernel route within 0/0 (that is, any IPv4 route)</span>
+	option <span class="st_h">'ip'</span>	<span class="st_h">'0.0.0.0/0'</span>
+	<span class="co0"># ... but only routes with a prefix length of 0. That is, the default route.</span>
+	option <span class="st_h">'eq'</span>	<span class="st_h">'0'</span>
+	<span class="co0"># ... and only if its &quot;rt proto&quot; is 3 (as shown by &quot;ip route show&quot;), see /etc/iproute2/rt_protos.</span>
+	<span class="co0"># This is only needed because babeld special-cases this rt proto and refuses to</span>
+	<span class="co0"># redistribute it by default. Remove this line if your default route uses another rt proto</span>
+	<span class="co0"># (dhcpcd seems to use 16, &quot;proto static&quot; is 4).</span>
+	option <span class="st_h">'proto'</span>	<span class="st_h">'3'</span>
+	<span class="co0"># Advertise the route in Babel with a metric. If there are several border routers,</span>
+	<span class="co0"># it is possible to choose a different metric on each one to reflect the quality</span>
+	<span class="co0"># of each uplink (capacity, latency, stability...)</span>
+	option <span class="st_h">'action'</span>	<span class="st_h">'metric 128'</span></pre>
+
+<p>
+And similarly for <abbr title="Internet Protocol version 6">IPv6</abbr>:
+</p>
+<pre class="code bash"><span class="co0"># /etc/config/babeld</span>
+config filter
+	option <span class="st_h">'type'</span>	<span class="st_h">'redistribute'</span>
+	option <span class="st_h">'ip'</span>	<span class="st_h">'::/0'</span>
+	option <span class="st_h">'eq'</span>	<span class="st_h">'0'</span>
+	option <span class="st_h">'proto'</span>	<span class="st_h">'3'</span>
+	option <span class="st_h">'action'</span>	<span class="st_h">'metric 128'</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Redistribute a default route&quot;,&quot;hid&quot;:&quot;redistribute_a_default_route&quot;,&quot;codeblockOffset&quot;:14,&quot;secid&quot;:21,&quot;range&quot;:&quot;9356-10692&quot;} -->
+<h3 class="sectionedit22" id="redistribute_a_dynamic_default_route">Redistribute a dynamic default route</h3>
+<div class="level3">
+
+<p>
+Imagine that a border router has two uplinks on which it receives a default route, for instance through BGP. The main uplink has a large capacity, while the second uplink is a backup link with much less capacity.  We would like to redistribute this default route in Babel, but if BGP switches to the backup uplink, we want other Babel routers to know about it.  This way, Babel routers can possibly decide to switch to another border router with a better uplink.
+</p>
+
+<p>
+This is possible through the <code>if</code> selector that allows to change the redistribution metric:
+</p>
+<pre class="code bash"><span class="co0"># /etc/config/babeld</span>
+config filter
+	option <span class="st_h">'type'</span>	<span class="st_h">'redistribute'</span>
+	option <span class="st_h">'ip'</span>	<span class="st_h">'::/0'</span>
+	option <span class="st_h">'eq'</span>	<span class="st_h">'0'</span>
+	option <span class="st_h">'proto'</span>	<span class="st_h">'3'</span>
+	<span class="co0"># Only apply this filter when the default route points to the eth-main network interface.</span>
+	option <span class="st_h">'if'</span>     <span class="st_h">'eth-main'</span>
+	<span class="co0"># Redistribute with a smallish metric in this case.</span>
+	option <span class="st_h">'action'</span>	<span class="st_h">'metric 128'</span>
+&nbsp;
+config filter
+	option <span class="st_h">'type'</span>	<span class="st_h">'redistribute'</span>
+	option <span class="st_h">'ip'</span>	<span class="st_h">'::/0'</span>
+	option <span class="st_h">'eq'</span>	<span class="st_h">'0'</span>
+	option <span class="st_h">'proto'</span>	<span class="st_h">'3'</span>
+	<span class="co0"># Redistribute with a larger metric when the default route points</span>
+	<span class="co0"># to the &quot;eth-backup&quot; network interface.</span>
+	option <span class="st_h">'if'</span>     <span class="st_h">'eth-backup'</span>
+	option <span class="st_h">'action'</span>	<span class="st_h">'metric 512'</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Redistribute a dynamic default route&quot;,&quot;hid&quot;:&quot;redistribute_a_dynamic_default_route&quot;,&quot;codeblockOffset&quot;:16,&quot;secid&quot;:22,&quot;range&quot;:&quot;10693-11915&quot;} -->
+<h3 class="sectionedit23" id="redistribute_only_a_subset_of_local_ip_addresses">Redistribute only a subset of local IP addresses</h3>
+<div class="level3">
+
+<p>
+A router has several interfaces, and some of them may be unrelated to Babel. It is possible to specify which addresses should redistributed and which addresses should not.
+</p>
+
+<p>
+For instance, to redistribute all local <abbr title="Internet Protocol">IP</abbr> addresses except for a given prefix:
+</p>
+<pre class="code bash"><span class="co0"># /etc/config/babeld</span>
+&nbsp;
+<span class="co0"># Don't redistribute local IP addresses within 198.51.100.0/24</span>
+config filter
+	option <span class="st_h">'type'</span>	<span class="st_h">'redistribute'</span>
+	option <span class="st_h">'ip'</span>	<span class="st_h">'198.51.100.0/24'</span>
+	option <span class="st_h">'local'</span>	<span class="st_h">'true'</span>
+	<span class="co0"># Don't redistribute.</span>
+	option <span class="st_h">'action'</span>	<span class="st_h">'deny'</span></pre>
+
+<p>
+The opposite approach is to whitelist local addresses from a given <abbr title="Internet Protocol">IP</abbr> prefix:
+</p>
+<pre class="code bash"><span class="co0"># /etc/config/babeld</span>
+&nbsp;
+<span class="co0"># Only redistribute local IP addresses within 203.0.113.0/24</span>
+config filter
+	option <span class="st_h">'type'</span>	<span class="st_h">'redistribute'</span>
+	option <span class="st_h">'ip'</span>	<span class="st_h">'203.0.113.0/24'</span>
+	option <span class="st_h">'local'</span>	<span class="st_h">'true'</span>
+	option <span class="st_h">'action'</span>	<span class="st_h">'allow'</span>
+&nbsp;
+<span class="co0"># Deny all other addresses from redistribution.</span>
+config filter
+	option <span class="st_h">'type'</span>	<span class="st_h">'redistribute'</span>
+	option <span class="st_h">'local'</span>	<span class="st_h">'true'</span>
+	option <span class="st_h">'action'</span>	<span class="st_h">'deny'</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Redistribute only a subset of local IP addresses&quot;,&quot;hid&quot;:&quot;redistribute_only_a_subset_of_local_ip_addresses&quot;,&quot;codeblockOffset&quot;:17,&quot;secid&quot;:23,&quot;range&quot;:&quot;11916-12924&quot;} -->
+<h3 class="sectionedit24" id="installing_routes_in_the_kernel">Installing routes in the kernel</h3>
+<div class="level3">
+
+<p>
+By default, <code>babeld</code> installs routes in the regular kernel routing table.  It is possible to install routes in another routing table with the general configuration item <code>export-table</code>, but it may not be fine-grained enough.
+</p>
+
+<p>
+Here is a filter that install routes within <code>2001:db8:cafe::/48</code> in a different routing table:
+</p>
+<pre class="code bash"><span class="co0"># /etc/config/babeld</span>
+&nbsp;
+config filter
+	option <span class="st_h">'type'</span>	<span class="st_h">'install'</span>
+	<span class="co0"># Only apply to routes within 2001:db8:cafe::/48</span>
+	option <span class="st_h">'ip'</span>	<span class="st_h">'2001:db8:cafe::/48'</span>
+	<span class="co0"># &quot;Allow&quot; is implicit.</span>
+	option <span class="st_h">'action'</span>	<span class="st_h">'table 200'</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installing routes in the kernel&quot;,&quot;hid&quot;:&quot;installing_routes_in_the_kernel&quot;,&quot;codeblockOffset&quot;:19,&quot;secid&quot;:24,&quot;range&quot;:&quot;12925-13513&quot;} -->
+<h3 class="sectionedit25" id="specifying_a_source_address_for_kernel_routes">Specifying a source address for kernel routes</h3>
+<div class="level3">
+
+<p>
+Since <code>babeld</code> 1.9.0, it is possible to specify a source address to the kernel when installing routes.  This is only used for packets generated by the router itself (possibly including useful <abbr title="Internet Control Message Protocol">ICMP</abbr> messages!), but not for forwarded packets.
+</p>
+
+<p>
+Here, we showcase taking several actions for the same filter:
+</p>
+<pre class="code bash"><span class="co0"># /etc/config/babeld</span>
+&nbsp;
+config filter
+	option <span class="st_h">'type'</span>	<span class="st_h">'install'</span>
+	option <span class="st_h">'ip'</span>	<span class="st_h">'2001:db8:cafe::/48'</span>
+	<span class="co0"># We specify both the kernel routing table and the preferred source address to use for these routes.</span>
+	option <span class="st_h">'action'</span>	<span class="st_h">'table 200  pref-src 2001:db8:ba:be1::42'</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Specifying a source address for kernel routes&quot;,&quot;hid&quot;:&quot;specifying_a_source_address_for_kernel_routes&quot;,&quot;codeblockOffset&quot;:20,&quot;secid&quot;:25,&quot;range&quot;:&quot;13514-14154&quot;} -->
+<h2 class="sectionedit26" id="ubus_bindings">Ubus Bindings</h2>
+<div class="level2">
+
+<p>
+A better integration of babeld with OpenWrt is to connect the daemon to the IPC. So far, we can only communicate via a websocket. With ubus we can send and receive commands in json format.
+</p>
+
+<p>
+Following functions exists:
+</p>
+<ul>
+<li class="level1"><div class="li"> get_info</div>
+</li>
+<li class="level1"><div class="li"> get_neighbours</div>
+</li>
+<li class="level1"><div class="li"> get_xroutes</div>
+</li>
+<li class="level1"><div class="li"> get_routes</div>
+</li>
+</ul>
+
+<p>
+All output is divided into <abbr title="Internet Protocol version 4">IPv4</abbr> and <abbr title="Internet Protocol version 6">IPv6</abbr>.
+</p>
+
+<p>
+Ubus has to be enabled by setting “config general”
+</p>
+<pre class="code bash">  option <span class="st_h">'ubus_bindings'</span> <span class="st_h">'true'</span></pre>
+<pre class="code bash"><span class="co4">root@OpenWrt:~# </span>ubus call babeld get_info
+<span class="br0">&#123;</span>
+	<span class="st0">&quot;babeld_version&quot;</span>: <span class="st0">&quot;babeld-1.9.2&quot;</span>,
+	<span class="st0">&quot;my_id&quot;</span>: <span class="st0">&quot;32:xx:xx:xx:xx:xx:xx:xx&quot;</span>,
+	<span class="st0">&quot;host&quot;</span>: <span class="st0">&quot;OpenWrt&quot;</span>
+<span class="br0">&#125;</span></pre>
+<pre class="code bash"><span class="co4">root@OpenWrt:~# </span>ubus call babeld get_neighbours
+<span class="br0">&#123;</span>
+	<span class="st0">&quot;IPv4&quot;</span>: <span class="br0">&#91;</span>
+&nbsp;
+	<span class="br0">&#93;</span>,
+	<span class="st0">&quot;IPv6&quot;</span>: <span class="br0">&#91;</span>
+		<span class="br0">&#123;</span>
+			<span class="st0">&quot;address&quot;</span>: <span class="st0">&quot;fe80::26a4:3cff:fee3:7ddb&quot;</span>,
+			<span class="st0">&quot;dev&quot;</span>: <span class="st0">&quot;br-lan&quot;</span>,
+			<span class="st0">&quot;hello_reach&quot;</span>: <span class="nu0">65535</span>,
+			<span class="st0">&quot;uhello_reach&quot;</span>: <span class="nu0">0</span>,
+			<span class="st0">&quot;rxcost&quot;</span>: <span class="nu0">96</span>,
+			<span class="st0">&quot;txcost&quot;</span>: <span class="nu0">96</span>,
+			<span class="st0">&quot;rtt&quot;</span>: <span class="st0">&quot;0.000&quot;</span>,
+			<span class="st0">&quot;if_up&quot;</span>: <span class="kw2">true</span>
+		<span class="br0">&#125;</span>,
+		<span class="br0">&#123;</span>
+			<span class="st0">&quot;address&quot;</span>: <span class="st0">&quot;fe80::26a4:3cff:fee4:d6f&quot;</span>,
+			<span class="st0">&quot;dev&quot;</span>: <span class="st0">&quot;phy0-mesh0&quot;</span>,
+			<span class="st0">&quot;hello_reach&quot;</span>: <span class="nu0">65535</span>,
+			<span class="st0">&quot;uhello_reach&quot;</span>: <span class="nu0">0</span>,
+			<span class="st0">&quot;rxcost&quot;</span>: <span class="nu0">256</span>,
+			<span class="st0">&quot;txcost&quot;</span>: <span class="nu0">256</span>,
+			<span class="st0">&quot;rtt&quot;</span>: <span class="st0">&quot;0.000&quot;</span>,
+			<span class="st0">&quot;if_up&quot;</span>: <span class="kw2">true</span>
+		<span class="br0">&#125;</span>
+	<span class="br0">&#93;</span>
+<span class="br0">&#125;</span></pre>
+<pre class="code bash"><span class="co4">root@OpenWrt:~# </span>ubus call babeld get_xroutes
+<span class="br0">&#123;</span>
+	<span class="st0">&quot;IPv4&quot;</span>: <span class="br0">&#91;</span>
+		<span class="br0">&#123;</span>
+			<span class="st0">&quot;address&quot;</span>: <span class="st0">&quot;10.31.27.12/32&quot;</span>,
+			<span class="st0">&quot;src_prefix&quot;</span>: <span class="st0">&quot;0.0.0.0/0&quot;</span>,
+			<span class="st0">&quot;metric&quot;</span>: <span class="nu0">0</span>
+		<span class="br0">&#125;</span>,
+		<span class="br0">&#123;</span>
+			<span class="st0">&quot;address&quot;</span>: <span class="st0">&quot;10.31.27.11/32&quot;</span>,
+			<span class="st0">&quot;src_prefix&quot;</span>: <span class="st0">&quot;0.0.0.0/0&quot;</span>,
+			<span class="st0">&quot;metric&quot;</span>: <span class="nu0">0</span>
+		<span class="br0">&#125;</span>
+	<span class="br0">&#93;</span>,
+	<span class="st0">&quot;IPv6&quot;</span>: <span class="br0">&#91;</span>
+		<span class="br0">&#123;</span>
+			<span class="st0">&quot;address&quot;</span>: <span class="st0">&quot;2001:920:1959:778f::1/128&quot;</span>,
+			<span class="st0">&quot;src_prefix&quot;</span>: <span class="st0">&quot;::/0&quot;</span>,
+			<span class="st0">&quot;metric&quot;</span>: <span class="nu0">0</span>
+		<span class="br0">&#125;</span>,
+		<span class="br0">&#123;</span>
+			<span class="st0">&quot;address&quot;</span>: <span class="st0">&quot;2001:920:1959:778f::/64&quot;</span>,
+			<span class="st0">&quot;src_prefix&quot;</span>: <span class="st0">&quot;::/0&quot;</span>,
+			<span class="st0">&quot;metric&quot;</span>: <span class="nu0">0</span>
+		<span class="br0">&#125;</span>
+	<span class="br0">&#93;</span>
+<span class="br0">&#125;</span></pre>
+<pre class="code bash"><span class="co4">root@OpenWrt:~# </span>ubus call babeld get_routes
+<span class="br0">&#123;</span>
+	<span class="st0">&quot;IPv4&quot;</span>: <span class="br0">&#91;</span>
+		<span class="br0">&#123;</span>
+			<span class="st0">&quot;address&quot;</span>: <span class="st0">&quot;10.36.31.0/25&quot;</span>,
+			<span class="st0">&quot;src_prefix&quot;</span>: <span class="st0">&quot;0.0.0.0/0&quot;</span>,
+			<span class="st0">&quot;route_metric&quot;</span>: <span class="nu0">2015</span>,
+			<span class="st0">&quot;route_smoothed_metric&quot;</span>: <span class="nu0">2020</span>,
+			<span class="st0">&quot;refmetric&quot;</span>: <span class="nu0">1631</span>,
+			<span class="st0">&quot;id&quot;</span>: <span class="st0">&quot;da:58:d7:ff:fe:00:77:47&quot;</span>,
+			<span class="st0">&quot;seqno&quot;</span>: <span class="nu0">40314</span>,
+			<span class="st0">&quot;age&quot;</span>: <span class="nu0">7</span>,
+			<span class="st0">&quot;via&quot;</span>: <span class="st0">&quot;fe80::618:d6ff:fe24:fe5d&quot;</span>,
+			<span class="st0">&quot;nexthop&quot;</span>: <span class="st0">&quot;10.31.27.14&quot;</span>,
+			<span class="st0">&quot;installed&quot;</span>: <span class="kw2">false</span>,
+			<span class="st0">&quot;feasible&quot;</span>: <span class="kw2">false</span>
+		<span class="br0">&#125;</span>,
+		<span class="br0">&#123;</span>
+			<span class="st0">&quot;address&quot;</span>: <span class="st0">&quot;10.36.31.0/25&quot;</span>,
+			<span class="st0">&quot;src_prefix&quot;</span>: <span class="st0">&quot;0.0.0.0/0&quot;</span>,
+			<span class="st0">&quot;route_metric&quot;</span>: <span class="nu0">2239</span>,
+			<span class="st0">&quot;route_smoothed_metric&quot;</span>: <span class="nu0">2244</span>,
+			<span class="st0">&quot;refmetric&quot;</span>: <span class="nu0">1855</span>,
+			<span class="st0">&quot;id&quot;</span>: <span class="st0">&quot;da:58:d7:ff:fe:00:77:47&quot;</span>,
+			<span class="st0">&quot;seqno&quot;</span>: <span class="nu0">40314</span>,
+			<span class="st0">&quot;age&quot;</span>: <span class="nu0">10</span>,
+			<span class="st0">&quot;via&quot;</span>: <span class="st0">&quot;fe80::618:d6ff:fe0c:3680&quot;</span>,
+			<span class="st0">&quot;nexthop&quot;</span>: <span class="st0">&quot;10.31.16.86&quot;</span>,
+			<span class="st0">&quot;installed&quot;</span>: <span class="kw2">false</span>,
+			<span class="st0">&quot;feasible&quot;</span>: <span class="kw2">false</span>
+		<span class="br0">&#125;</span>
+	<span class="br0">&#93;</span>,
+	<span class="st0">&quot;IPv6&quot;</span>: <span class="br0">&#91;</span>
+		<span class="br0">&#123;</span>
+			<span class="st0">&quot;address&quot;</span>: <span class="st0">&quot;2003:a:36d:2410::/60&quot;</span>,
+			<span class="st0">&quot;src_prefix&quot;</span>: <span class="st0">&quot;::/0&quot;</span>,
+			<span class="st0">&quot;route_metric&quot;</span>: <span class="nu0">3210</span>,
+			<span class="st0">&quot;route_smoothed_metric&quot;</span>: <span class="nu0">3189</span>,
+			<span class="st0">&quot;refmetric&quot;</span>: <span class="nu0">2826</span>,
+			<span class="st0">&quot;id&quot;</span>: <span class="st0">&quot;02:1b:21:ff:fe:26:57:05&quot;</span>,
+			<span class="st0">&quot;seqno&quot;</span>: <span class="nu0">22769</span>,
+			<span class="st0">&quot;age&quot;</span>: <span class="nu0">10</span>,
+			<span class="st0">&quot;via&quot;</span>: <span class="st0">&quot;fe80::618:d6ff:fe0c:3680&quot;</span>,
+			<span class="st0">&quot;installed&quot;</span>: <span class="kw2">false</span>,
+			<span class="st0">&quot;feasible&quot;</span>: <span class="kw2">false</span>
+		<span class="br0">&#125;</span>,
+		<span class="br0">&#123;</span>
+			<span class="st0">&quot;address&quot;</span>: <span class="st0">&quot;2003:a:36d:2410::/60&quot;</span>,
+			<span class="st0">&quot;src_prefix&quot;</span>: <span class="st0">&quot;::/0&quot;</span>,
+			<span class="st0">&quot;route_metric&quot;</span>: <span class="nu0">3210</span>,
+			<span class="st0">&quot;route_smoothed_metric&quot;</span>: <span class="nu0">3193</span>,
+			<span class="st0">&quot;refmetric&quot;</span>: <span class="nu0">2826</span>,
+			<span class="st0">&quot;id&quot;</span>: <span class="st0">&quot;02:1b:21:ff:fe:26:57:05&quot;</span>,
+			<span class="st0">&quot;seqno&quot;</span>: <span class="nu0">22769</span>,
+			<span class="st0">&quot;age&quot;</span>: <span class="nu0">11</span>,
+			<span class="st0">&quot;via&quot;</span>: <span class="st0">&quot;fe80::26a4:3cff:fee4:d72&quot;</span>,
+			<span class="st0">&quot;installed&quot;</span>: <span class="kw2">false</span>,
+			<span class="st0">&quot;feasible&quot;</span>: <span class="kw2">false</span>
+		<span class="br0">&#125;</span>
+	<span class="br0">&#93;</span>
+<span class="br0">&#125;</span></pre>
+
+<p>
+Further babeld can sends a notification via the ubus bus if we experience any changes in neighbours, routes or xroutes.
+The format looks like this:
+</p>
+<ul>
+<li class="level1"><div class="li"> {route,xroute,neighbour}.add: Object was added</div>
+</li>
+<li class="level1"><div class="li"> {route,xroute,neighbour}.change: Object was changed</div>
+</li>
+<li class="level1"><div class="li"> {route,xroute,neighbour}.flush: Object was flushed</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Ubus Bindings&quot;,&quot;hid&quot;:&quot;ubus_bindings&quot;,&quot;codeblockOffset&quot;:21,&quot;secid&quot;:26,&quot;range&quot;:&quot;14155-17382&quot;} -->
+<h2 class="sectionedit27" id="historybackward_compatibility">History: backward compatibility</h2>
+<div class="level2">
+
+<p>
+This section is kept for historical interest, since babeld 1.5.1 was released a long time ago (August 2014).
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Starting from babeld 1.8.0-3, the compatibility code has been removed: <a href="https://github.com/openwrt-routing/packages/commit/1aacfea7b3ad97fb8c549a66fa7e7526a6419bd2" class="urlextern" title="https://github.com/openwrt-routing/packages/commit/1aacfea7b3ad97fb8c549a66fa7e7526a6419bd2" rel="ugc nofollow">https://github.com/openwrt-routing/packages/commit/1aacfea7b3ad97fb8c549a66fa7e7526a6419bd2</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;History: backward compatibility&quot;,&quot;hid&quot;:&quot;historybackward_compatibility&quot;,&quot;codeblockOffset&quot;:26,&quot;secid&quot;:27,&quot;range&quot;:&quot;17383-17703&quot;} -->
+<h3 class="sectionedit28" id="global_options">Global options</h3>
+<div class="level3">
+
+<p>
+Compared to pre-1.5.1 versions of <code>babeld</code>, the name of options in the “general” section have changed.  We now use the same names as babeld (which have been introduced only recently, in babeld 1.4.2).
+</p>
+
+<p>
+Most old options are accepted and translated, with a few exceptions:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>hello_interval</code> and <code>wired_hello_interval</code> are ignored.  You must set <code>hello_interval</code> on interfaces instead.</div>
+</li>
+<li class="level1"><div class="li"> <code>conf_file</code> is ignored</div>
+</li>
+<li class="level1"><div class="li"> <code>diversity</code> does no longer accept the old “3,42” syntax.  You must use <code>diversity 3</code> and <code>diversity_factor 42</code> instead</div>
+</li>
+</ul>
+
+<p>
+So, except if you were using <code>diversity</code>, your old configuration file should still work.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Global options&quot;,&quot;hid&quot;:&quot;global_options&quot;,&quot;codeblockOffset&quot;:26,&quot;secid&quot;:28,&quot;range&quot;:&quot;17704-18374&quot;} -->
+<h3 class="sectionedit29" id="interfaces">Interfaces</h3>
+<div class="level3">
+
+<p>
+Pre-1.5.1 versions of <code>babeld</code> used a slightly different syntax for specifying interface options:
+</p>
+<pre class="code bash">config interface wlan
+    option foo bar</pre>
+
+<p>
+instead of the new syntax:
+</p>
+<pre class="code bash">config interface
+    option ifname wlan
+    option foo bar</pre>
+
+<p>
+However, the old syntax is still accepted, so you can keep using your old configuration files.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Interfaces&quot;,&quot;hid&quot;:&quot;interfaces&quot;,&quot;codeblockOffset&quot;:26,&quot;secid&quot;:29,&quot;range&quot;:&quot;18375-&quot;} -->

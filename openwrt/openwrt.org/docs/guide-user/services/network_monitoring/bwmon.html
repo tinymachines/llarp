@@ -1,0 +1,273 @@
+
+<h1 class="sectionedit1" id="bandwidth_monitoring_guide">Bandwidth Monitoring Guide</h1>
+<div class="level1">
+
+<p>
+Let&#039;s divide the available bandwidth monitoring tools into two sections:<br/>
+
+</p>
+<ul>
+<li class="level1"><div class="li"> Tools for current bandwidth usage</div>
+</li>
+<li class="level1"><div class="li"> Tools for historical bandwidth usage</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Bandwidth Monitoring Guide&quot;,&quot;hid&quot;:&quot;bandwidth_monitoring_guide&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-196&quot;} -->
+<h2 class="sectionedit2" id="view_current_bandwidth_usage">View current bandwidth usage</h2>
+<div class="level2">
+
+<p>
+Interactive bandwidth measurement and monitoring can be achieved with the two small tools: bmon and iftop. They require less system resources on your OpenWrt system.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;View current bandwidth usage&quot;,&quot;hid&quot;:&quot;view_current_bandwidth_usage&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;197-405&quot;} -->
+<h3 class="sectionedit3" id="using_bmon">Using bmon</h3>
+<div class="level3">
+
+<p>
+<code>bmon</code> package is available for most platforms and has CLI and <abbr title="HyperText Markup Language">HTML</abbr> interfaces.
+</p>
+
+<p>
+CLI interface: Run bmon from <abbr title="Secure Shell">SSH</abbr> to see the standard CLI interface. Pressing “g” shows a graph with the current bandwidth being used. Pressing “d” shows the details of it.
+</p>
+
+<p>
+<abbr title="HyperText Markup Language">HTML</abbr> interface: you can optionally configure bmon to output in <abbr title="HyperText Markup Language">HTML</abbr>. To do that you need to install the uhttp package and do a little bit of configuration. It is not too hard; here are the steps:
+</p>
+<div class="table sectionedit4"><table class="inline">
+	<tr class="row0">
+		<td class="col0"><pre class="code">opkg install uhttpd bmon
+/etc/init.d/uhttpd start
+mkdir /tmp/bmon
+ln -s /tmp/bmon/ /www/
+bmon -o html:path=/www/bmon/</pre>
+</td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;881-1015&quot;} -->
+<p>
+To only run to <abbr title="HyperText Markup Language">HTML</abbr> output so you can start on boot (can add the following to rc.local):
+</p>
+<div class="table sectionedit5"><table class="inline">
+	<tr class="row0">
+		<td class="col0"><pre class="code">bmon -o null -O html:path=/www/bmon/ 2&gt;&amp;1 &gt;/dev/null &amp;</pre>
+</td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table1&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;1107-1178&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Using bmon&quot;,&quot;hid&quot;:&quot;using_bmon&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;406-1179&quot;} -->
+<h3 class="sectionedit6" id="using_iftop">Using iftop</h3>
+<div class="level3">
+
+<p>
+<code>iftop</code> package allows a deeper insight into data being transferred and active connections. You can run iftop for your bridged <abbr title="Local Area Network">LAN</abbr> interface to show the connections being established, the data being transferred, as well as the bandwidth. From <abbr title="Secure Shell">SSH</abbr> enter the following:
+</p>
+<div class="table sectionedit7"><table class="inline">
+	<tr class="row0">
+		<td class="col0"><pre class="code">opkg install iftop
+iftop -i br-lan</pre>
+</td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table2&quot;,&quot;secid&quot;:7,&quot;range&quot;:&quot;1474-1525&quot;} -->
+<p>
+<a href="/_detail/media/iftop.png?id=docs%3Aguide-user%3Aservices%3Anetwork_monitoring%3Abwmon" class="media" title="media:iftop.png"><img src="/_media/media/iftop.png?w=400&amp;tok=9d4a38" class="media" loading="lazy" title="iftop" alt="iftop" width="400" /></a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Using iftop&quot;,&quot;hid&quot;:&quot;using_iftop&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:6,&quot;range&quot;:&quot;1180-1557&quot;} -->
+<h2 class="sectionedit8" id="view_historical_bandwidth_usage">View historical bandwidth usage</h2>
+<div class="level2">
+
+<p>
+These tools are more feature-rich applications, moreover many of them can collect statistics from multiple sources (eg. CPU, RAM, disk, etc).<br/>
+
+With the caveats that they consume more system resources on your router, and if you are using flow offloading this data might not be recorded accurately. 
+</p>
+
+<p>
+Approximate order from most-basic to most-feature-rich:<br/>
+
+wrtbwmon &lt; vnstat &lt; YAMon &lt; luci-app-nlbwmon &lt; luci-app-statistics &lt; bandwidthd &lt; ntop<br/>
+
+</p>
+
+<p>
+If you simply want easy historical bandwidth monitoring, consider <code>luci-app-vnstat</code> and <code>luci-app-nlbwmon</code>. Both can be installed via LuCI and work without configuration. Both use minimal CPU. Both display charts via LuCI (vstat appears in the Status menu). Vnstat monitors traffic at the interface level and can display usage per hour, per day, and per month. Nlbwmon monitors traffic per MAC address but only displays charts per “accounting period”. The accounting period defaults to monthly, but is reconfigurable.
+</p>
+
+<p>
+<a href="/_detail/media/luci-app-nlbwmon.png?id=docs%3Aguide-user%3Aservices%3Anetwork_monitoring%3Abwmon" class="media" title="media:luci-app-nlbwmon.png"><img src="/_media/media/luci-app-nlbwmon.png?w=400&amp;tok=7b3593" class="media" loading="lazy" title="luci-app-nlbwmon" alt="luci-app-nlbwmon" width="400" /></a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;View historical bandwidth usage&quot;,&quot;hid&quot;:&quot;view_historical_bandwidth_usage&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:8,&quot;range&quot;:&quot;1558-2626&quot;} -->
+<h2 class="sectionedit9" id="available_tools">Available tools</h2>
+<div class="level2">
+
+<p>
+Other OpenWrt Network Monitoring docs here: <a href="/docs/guide-user/services/network_monitoring/start" class="wikilink1" title="docs:guide-user:services:network_monitoring:start" data-wiki-id="docs:guide-user:services:network_monitoring:start">network_monitoring</a>. The semi complete list of options available is below:
+</p>
+<div class="table sectionedit10"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Home </th><th class="col1"> Description </th><th class="col2"> opkg </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> <a href="http://freshmeat.net/projects/bmon/" class="urlextern" title="http://freshmeat.net/projects/bmon/" rel="ugc nofollow">bmon</a> </td><td class="col1"> a portable bandwidth monitor and rate estimator </td><td class="col2"> <span style='color:green; '> yes </span> </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> <a href="http://www.ex-parrot.com/pdw/iftop/" class="urlextern" title="http://www.ex-parrot.com/pdw/iftop/" rel="ugc nofollow">iftop</a> </td><td class="col1"> iftop does for network usage what top(1) does for CPU usage. iftop shows table of highest bandwidth usage paired on <abbr title="Internet Protocol">IP</abbr> source and destination pairs. </td><td class="col2"> <span style='color:green; '> yes </span> </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> <a href="http://humdi.net/vnstat/" class="urlextern" title="http://humdi.net/vnstat/" rel="ugc nofollow">vnstat</a> </td><td class="col1"> a console-based network traffic monitor </td><td class="col2"> <span style='color:green; '> yes </span> </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> luci-app-vnstat </td><td class="col1"> LuCI interface for vnstat </td><td class="col2"> <span style='color:green; '> yes </span> </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0"> <a href="http://collectd.org" class="urlextern" title="http://collectd.org" rel="ugc nofollow">collectd</a> </td><td class="col1"> a daemon which collects different statistics </td><td class="col2"> <span style='color:green; '> yes </span> </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0"> <a href="/docs/guide-user/luci/luci_app_statistics" class="wikilink1" title="docs:guide-user:luci:luci_app_statistics" data-wiki-id="docs:guide-user:luci:luci_app_statistics">luci_app_statistics</a> </td><td class="col1"> collectd and rrd-tool based general statistics tool </td><td class="col2"> <span style='color:green; '> yes </span> </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0 leftalign"> <a href="http://www.ntop.org/" class="urlextern" title="http://www.ntop.org/" rel="ugc nofollow">ntop</a>  </td><td class="col1"> a network traffic probe that shows the network usage </td><td class="col2"> <span style='color:red; '> no </span> </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0"> <a href="http://www.pmacct.net/" class="urlextern" title="http://www.pmacct.net/" rel="ugc nofollow">pmacct</a> </td><td class="col1"> <abbr title="Internet Protocol">IP</abbr> usage accounting suite </td><td class="col2"> <span style='color:red; '> no </span> </td>
+	</tr>
+	<tr class="row9">
+		<td class="col0"> <a href="http://fprobe.sourceforge.net/" class="urlextern" title="http://fprobe.sourceforge.net/" rel="ugc nofollow">fprobe</a> </td><td class="col1"> Forward aggregated traffic data as NetFlows to tools like ntop or pmacct </td><td class="col2"> <span style='color:red; '> no </span> </td>
+	</tr>
+	<tr class="row10">
+		<td class="col0"> <a href="https://unix4lyfe.org/darkstat/" class="urlextern" title="https://unix4lyfe.org/darkstat/" rel="ugc nofollow">darkstat</a> </td><td class="col1"> Captures network traffic, calculates statistics about usage, and serves reports over <abbr title="Hypertext Transfer Protocol">HTTP</abbr> </td><td class="col2"> <span style='color:green; '> yes </span> </td>
+	</tr>
+	<tr class="row11">
+		<td class="col0"> <a href="http://oss.oetiker.ch/mrtg/" class="urlextern" title="http://oss.oetiker.ch/mrtg/" rel="ugc nofollow">MRTG</a> </td><td class="col1"> Tobi Oetiker&#039;s MRTG - The Multi Router Traffic Grapher </td><td class="col2"> <span style='color:red; '> no </span> </td>
+	</tr>
+	<tr class="row12">
+		<td class="col0"> <a href="http://www.gropp.org/?id=projects&amp;sub=bwm-ng" class="urlextern" title="http://www.gropp.org/?id=projects&amp;sub=bwm-ng" rel="ugc nofollow">bwm-ng</a> </td><td class="col1"> small and simple console-based live network and disk io bandwidth monitor </td><td class="col2"> <span style='color:green; '> yes </span> </td>
+	</tr>
+	<tr class="row13">
+		<td class="col0 leftalign"> <a href="https://github.com/iptraf-ng/iptraf-ng/" class="urlextern" title="https://github.com/iptraf-ng/iptraf-ng/" rel="ugc nofollow">IPTraf-ng</a>  </td><td class="col1"> IPTraf-ng is a console-based network monitoring program for Linux that displays information about <abbr title="Internet Protocol">IP</abbr> traffic. </td><td class="col2"> <span style='color:green; '> yes </span> </td>
+	</tr>
+	<tr class="row14">
+		<td class="col0"> <a href="http://bandwidthd.sourceforge.net/" class="urlextern" title="http://bandwidthd.sourceforge.net/" rel="ugc nofollow">bandwidthd</a> </td><td class="col1"> builds <abbr title="HyperText Markup Language">HTML</abbr> files with graphs and charts are built by individual IPs </td><td class="col2"> <span style='color:green; '> yes </span> </td>
+	</tr>
+	<tr class="row15">
+		<td class="col0"> <a href="https://github.com/pyrovski/wrtbwmon" class="urlextern" title="https://github.com/pyrovski/wrtbwmon" rel="ugc nofollow">wrtbwmon</a> </td><td class="col1"> Per-user bandwidth monitoring tool for Linux-based routers </td><td class="col2"> <span style='color:red; '> no </span> </td>
+	</tr>
+	<tr class="row16">
+		<td class="col0"> <a href="https://github.com/jow-/nlbwmon" class="urlextern" title="https://github.com/jow-/nlbwmon" rel="ugc nofollow">nlbwmon</a> </td><td class="col1"> LuCI Traffic Usage Monitor; tracks amount of data sent/received per device, per month </td><td class="col2"> <span style='color:green; '> yes </span> </td>
+	</tr>
+	<tr class="row17">
+		<td class="col0"> <a href="http://usage-monitoring.com" class="urlextern" title="http://usage-monitoring.com" rel="ugc nofollow">YAMon</a> </td><td class="col1"> Per-user bandwidth monitoring (and more) with detailed, extensive graphical reporting capabilities </td><td class="col2"> <span style='color:red; '> no </span> </td>
+	</tr>
+	<tr class="row18">
+		<td class="col0"> <a href="https://enterprise.cloudshark.org/blog/2014-06-30-capturing-smartphone-traffic-with-openwrt-and-cloudshark" class="urlextern" title="https://enterprise.cloudshark.org/blog/2014-06-30-capturing-smartphone-traffic-with-openwrt-and-cloudshark" rel="ugc nofollow">CloudShark</a> </td><td class="col1"> capture filtered traffic, then upload to cloud for analyze </td><td class="col2"> <span style='color:green; '> yes </span> </td>
+	</tr>
+	<tr class="row19">
+		<td class="col0"> <a href="https://www.netify.ai/get-netify/openwrt" class="urlextern" title="https://www.netify.ai/get-netify/openwrt" rel="ugc nofollow">Netify</a> </td><td class="col1"> <abbr title="Deep Packet Inspection">DPI</abbr> engine with cloud-based bandwidth monitoring, device discovery and analysis </td><td class="col2"> <span style='color:green; '> yes </span> </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table3&quot;,&quot;secid&quot;:10,&quot;range&quot;:&quot;2813-5659&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Available tools&quot;,&quot;hid&quot;:&quot;available_tools&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:9,&quot;range&quot;:&quot;2627-5661&quot;} -->
+<h2 class="sectionedit11" id="measuring_maximum_bandwidth">Measuring maximum bandwidth</h2>
+<div class="level2">
+
+<p>
+With higher bandwidth being offered by ISPs it becomes harder both for the end-user and the service provider to provide this bandwidth. That is also why many websites offer speedtests such as <a href="https://www.speed.io" class="urlextern" title="https://www.speed.io" rel="ugc nofollow">speed.io</a> and <a href="https://www.waveform.com/tools/bufferbloat" class="urlextern" title="https://www.waveform.com/tools/bufferbloat" rel="ugc nofollow">waveform</a> bufferbloat test.
+</p>
+
+<p>
+Just because you have gigabit internet does not necessarily mean that each download you do at 100 <abbr title="Megabyte">MB</abbr>/s. There are many factors that affect your download and/or upload speed.
+</p>
+<ul>
+<li class="level1"><div class="li"> The maximum bandwidth the remote server provides you</div>
+</li>
+<li class="level1"><div class="li"> The bandwidth between your provider and the provider of the remote server</div>
+</li>
+<li class="level1"><div class="li"> The total bandwidth behind the access multiplexer DSLAM or DOCSIS modem</div>
+</li>
+<li class="level1"><div class="li"> The bandwidth being used by other clients connected to your OpenWrt router</div>
+</li>
+<li class="level1"><div class="li"> The bandwidth your <abbr title="Local Area Network">LAN</abbr> provides (Ethernet or Wi-Fi)</div>
+</li>
+</ul>
+
+<p>
+To measure your maximum bandwidth, you should start a terminal with iftop and bmon. Next up you should shut down or disconnect all clients except the machine you&#039;re connected to the router with.
+</p>
+
+<p>
+Now you can start an online speed test and check the real bandwidth that is been used by these services. You can then open up an additional terminal and start 3 downloads with wget on your OpenWrt router in parallel. Note: you should always tell wget to store large files in “/dev/null”, because otherwise it might crash your router by writing into the RAM until it&#039;s full.
+</p>
+<div class="table sectionedit12"><table class="inline">
+	<tr class="row0">
+		<td class="col0"><pre class="code">wget http://speedtest.netcologne.de/test_1gb.bin -O /dev/null &amp;&amp;
+wget http://speedtest.qsc.de/1GB.qsc -O /dev/null &amp;&amp;
+wget ftp://ftp.halifax.rwth-aachen.de/opensuse/distribution/11.3/iso/openSUSE-11.3-DVD-i586.iso
+ -O /dev/null</pre>
+</td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table4&quot;,&quot;secid&quot;:12,&quot;range&quot;:&quot;7101-7345&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Measuring maximum bandwidth&quot;,&quot;hid&quot;:&quot;measuring_maximum_bandwidth&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:11,&quot;range&quot;:&quot;5662-7346&quot;} -->
+<h3 class="sectionedit13" id="troubleshooting_bandwidth_problems">Troubleshooting bandwidth problems</h3>
+<div class="level3">
+
+<p>
+If you tested your maximum bandwidth and it is either not reaching the maximum contracted with your <abbr title="Internet Service Provider">ISP</abbr> or only sometimes reaches the maximum there is a short checklist that you should walk through and check.
+</p>
+
+<p>
+Sometimes end-user service contracts with <abbr title="Internet Service Provider">ISP</abbr> state the bandwidth as “up to” which means that they can provide you the maximum bandwidth, but they cannot guarantee that it is available. This is often the case with some ADSL or VDSL providers Germany.
+</p>
+
+</div>
+
+<h4 id="does_your_local_network_provide_enough_bandwidth">Does your local network provide enough bandwidth?</h4>
+<div class="level4">
+
+<p>
+You should make sure that when you do have a 50 Mbit/s line that your <abbr title="Local Area Network">LAN</abbr> has at least 100 Mbit/s. A Gigabit <abbr title="Local Area Network">LAN</abbr> would be recommend for bandwidths greater than 40 Mbit/s, because otherwise your <abbr title="Local Area Network">LAN</abbr> bandwidth might be consumed by local file transfers or other <abbr title="Local Area Network">LAN</abbr> services being used by other clients connected to your router. Try not to make internet bandwidth tests from your wireless network and instead test your wireless network separately by transferring data from cable-connected clients (Ethernet or Fibre) to wireless clients.
+</p>
+
+</div>
+
+<h4 id="is_your_local_network_traffic_clean">Is your local network traffic clean?</h4>
+<div class="level4">
+
+<p>
+Running iftop helps you find all traffic that is currently active in your local network. So if another client transfers gigabytes of data within your local network this can also dramatically slow down your internet transfers. Make sure the only connection that is available in your <abbr title="Local Area Network">LAN</abbr> while testing is the test download traffic. Especially services such as SMB (Samba/Windows Workgroups or Domains) produce lots of overhead and unwanted network traffic. Try to find that unwanted network traffic and eliminate the services on the clients that consume the bandwidth.
+</p>
+
+</div>
+
+<h4 id="is_your_router_hardwaresoftware_fast_enough">Is your router hardware/software fast enough?</h4>
+<div class="level4">
+
+<p>
+Just make sure that your router has sufficient RAM free and the CPU is not fully used while transferring big amounts of data. Usually this is not a problem, but installing too much software and using your router for other services (which is for some people common with OpenWrt) it can slow down the network management of your router. Also make sure that when you have an internet line that has a bandwidth greater than 70 Mbit/s it is highly recommended to use Gigabit Ethernet.
+</p>
+
+</div>
+
+<h4 id="does_your_isp_provide_the_bandwidth_promised">Does your ISP provide the bandwidth promised?</h4>
+<div class="level4">
+
+<p>
+Due to some press reports about <abbr title="Internet Service Provider">ISP</abbr> not providing the proper bandwidth, many people in the first place start to blame the <abbr title="Internet Service Provider">ISP</abbr> when their bandwidth is not as expected. In fact most ISPs do all they can to provide the proper bandwidth; blaming them for not trying to do so is often wrong. If you did check all points above and direct downloads from the website or a website directly located in the network of your <abbr title="Internet Service Provider">ISP</abbr> are still not at the speed expected and that happens around the clock (24hrs/day) you should call your <abbr title="Internet Service Provider">ISP</abbr> to do bandwidth measurement on his side.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Troubleshooting bandwidth problems&quot;,&quot;hid&quot;:&quot;troubleshooting_bandwidth_problems&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:13,&quot;range&quot;:&quot;7347-&quot;} -->

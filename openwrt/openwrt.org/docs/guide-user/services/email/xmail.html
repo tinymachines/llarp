@@ -1,0 +1,150 @@
+
+<h1 class="sectionedit1" id="xmail_mail_server">XMail mail server</h1>
+<div class="level1">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_center wrap_round wrap_alert plugin_wrap" style="width: 80%;">
+<p>
+The XMail package was available only up to 14.07. Since there was no active maintainer for this package, it was dropped in 15.05.<br/>
+If you want to use XMail under OpenWrt/LEDE &gt;/=17.01, you have to compile it yourself.
+There is a fork that may still work <a href="https://github.com/GerHobbelt/xmail" class="urlextern" title="https://github.com/GerHobbelt/xmail" rel="ugc nofollow">https://github.com/GerHobbelt/xmail</a>
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+Installed xmail, it will put executables in /usr/bin and MailRoot in /tmp <br/>
+
+I copied MailRoot to my stick <br/>
+
+cd /tmp <br/>
+
+cp -rp MailRoot /www/ <br/>
+
+I created the start script XMail in /etc/init.d/ with the following - you should edit XMAIL_ROOT variable <br/>
+
+</p>
+<pre class="code bash"><span class="co0">#!/bin/sh</span>
+<span class="co0"># example file to build /etc/init.d/ scripts.</span>
+<span class="co0"># Written by Miquel van Smoorenburg &lt;miquels@cistron.nl&gt;.</span>
+<span class="co0"># Modified by Davide Libenzi &lt;davidel@xmailserver.org&gt;</span>
+<span class="co0">#</span>
+<span class="co0"># Version: 1.8  03-Mar-1998  miquels@cistron.nl</span>
+<span class="co0">#</span>
+&nbsp;
+<span class="re2">XMAIL_ROOT</span>=<span class="sy0">/</span>www<span class="sy0">/</span>MailRoot
+<span class="re2">XMAIL_CMD_LINE</span>=<span class="st0">&quot;-SX 1 -Qn 1 -Yt 1 -Ln 1 -PX 1 -CX 1 -Pl -Sl -Ql -Ll -Yl -Yi 600&quot;</span>
+<span class="re2">DAEMON</span>=<span class="sy0">/</span>usr<span class="sy0">/</span>bin<span class="sy0">/</span>XMail
+<span class="re2">NAME</span>=XMail
+<span class="re2">DESC</span>=<span class="st0">&quot;XMail server&quot;</span>
+<span class="kw3">echo</span> <span class="re1">$DAEMON</span>
+<span class="kw3">test</span> <span class="re5">-f</span> <span class="re1">$DAEMON</span> <span class="sy0">||</span> <span class="kw3">exit</span> <span class="nu0">0</span>
+&nbsp;
+<span class="kw1">set</span> <span class="re5">-e</span>
+<span class="kw3">ulimit</span> <span class="re5">-c</span> <span class="nu0">10000</span>
+&nbsp;
+start_xmail<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+<span class="re2">MAIL_ROOT</span>=<span class="re1">$XMAIL_ROOT</span>
+<span class="kw3">export</span> MAIL_ROOT
+<span class="re2">MAIL_CMD_LINE</span>=<span class="re1">$XMAIL_CMD_LINE</span>
+<span class="kw3">export</span> MAIL_CMD_LINE
+<span class="re1">$DAEMON</span>
+<span class="kw1">while</span> <span class="br0">&#91;</span> <span class="sy0">!</span> <span class="re5">-f</span> <span class="sy0">/</span>var<span class="sy0">/</span>run<span class="sy0">/</span><span class="re1">$NAME</span>.pid <span class="br0">&#93;</span>
+<span class="kw1">do</span>
+  <span class="kw2">sleep</span> <span class="nu0">1</span>
+<span class="kw1">done</span>
+<span class="br0">&#125;</span>
+&nbsp;
+stop_xmail<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-f</span> <span class="sy0">/</span>var<span class="sy0">/</span>run<span class="sy0">/</span><span class="re1">$NAME</span>.pid <span class="br0">&#93;</span>
+<span class="kw1">then</span>
+  <span class="kw3">echo</span> <span class="sy0">`</span><span class="kw2">date</span><span class="sy0">`</span> <span class="sy0">&gt;</span> <span class="re1">$XMAIL_ROOT</span><span class="sy0">/</span>.shutdown
+  <span class="kw3">kill</span> <span class="sy0">`</span><span class="kw2">cat</span> <span class="sy0">/</span>var<span class="sy0">/</span>run<span class="sy0">/</span><span class="re1">$NAME</span>.pid<span class="sy0">`</span>
+  <span class="kw2">sleep</span> <span class="nu0">1</span>
+  <span class="co0">#while [ -f $XMAIL_ROOT/.shutdown ]</span>
+  <span class="co0">#do</span>
+  <span class="co0"># sleep 1</span>
+  <span class="co0">#done</span>
+<span class="kw1">fi</span>
+<span class="br0">&#125;</span>
+&nbsp;
+&nbsp;
+<span class="kw1">case</span> <span class="st0">&quot;$1&quot;</span> <span class="kw1">in</span>
+start<span class="br0">&#41;</span>
+  <span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Starting <span class="es2">$DESC</span>: &quot;</span>
+  start_xmail
+  <span class="kw3">echo</span> <span class="st0">&quot;<span class="es2">$NAME</span>.[&quot;</span> <span class="sy0">`</span><span class="kw2">cat</span> <span class="sy0">/</span>var<span class="sy0">/</span>run<span class="sy0">/</span><span class="re1">$NAME</span>.pid<span class="sy0">`</span> <span class="st0">&quot;]&quot;</span>
+<span class="sy0">;;</span>
+stop<span class="br0">&#41;</span>
+  <span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Stopping <span class="es2">$DESC</span>: &quot;</span>
+  stop_xmail
+  <span class="kw3">echo</span> <span class="st0">&quot;<span class="es2">$NAME</span>.&quot;</span>
+<span class="sy0">;;</span>
+restart<span class="sy0">|</span>force-reload<span class="br0">&#41;</span>
+  <span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Restarting <span class="es2">$DESC</span>: &quot;</span>
+  stop_xmail
+  <span class="kw2">sleep</span> <span class="nu0">1</span>
+  start_xmail
+  <span class="kw3">echo</span> <span class="st0">&quot;<span class="es2">$NAME</span>.[&quot;</span> <span class="sy0">`</span><span class="kw2">cat</span> <span class="sy0">/</span>var<span class="sy0">/</span>run<span class="sy0">/</span><span class="re1">$NAME</span>.pid<span class="sy0">`</span> <span class="st0">&quot;]&quot;</span>
+<span class="sy0">;;</span>
+<span class="sy0">*</span><span class="br0">&#41;</span>
+  <span class="re2">N</span>=<span class="sy0">/</span>opt<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>Xmail
+  <span class="kw3">echo</span> <span class="st0">&quot;Usage: <span class="es2">$N</span> {start|stop|restart|force-reload}&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">&amp;</span><span class="nu0">2</span>
+  <span class="kw3">exit</span> <span class="nu0">1</span>
+<span class="sy0">;;</span>
+<span class="kw1">esac</span>
+<span class="kw3">exit</span> <span class="nu0">0</span></pre>
+
+<p>
+create MailRoot/ctrlaccounts.tab <br/>
+
+cd &lt;MailRoot directory&gt; <br/>
+
+XMCrypt &lt;The password you like for admin account&gt; <br/>
+
+vi ctrlaccounts.tab and insert one line with the username&lt;tab&gt;output from above line <br/>
+
+start Xmail with /etc/init.d/Xmail start - first time will take some time because Xmail will create a spool structure in MailRoot/spool directory <br/>
+
+sendmail there comes with Xmail need MAIL_ROOT variable so i did the following <br/>
+
+mv /usr/bin/sendmail /www/MailRoot/bin/sendmail.org <br/>
+
+</p>
+
+<p>
+created /www/MailRoot/bin/sendmail.xmail.sh with the following: <br/>
+
+</p>
+<pre class="code">#!/bin/sh
+export DEFAULT_DOMAIN=&quot;domain.org&quot;
+if [ -z $MAIL_ROOT ]; then
+      export MAIL_ROOT=/www/MailRoot
+fi
+$PWD/sendmail.org $*</pre>
+
+<p>
+chmod +x /www/MailRoot/bin/sendmail.xmail.sh <br/>
+
+ln -s /www/MailRoot/sendmail.xmail.sh /usr/bin/sendmail <br/>
+
+you should now me able to use sendmail the normal way <br/>
+
+eg. sendmail -s xxx@yyy.zzz <br/>
+
+enter some text and press ctrl D <br/>
+
+I order to configure Xmail with domains and users i advice you to install phpxmail 1.5, find it here <a href="http://phpxmail.sourceforge.net/" class="urlextern" title="http://phpxmail.sourceforge.net/" rel="ugc nofollow">http://phpxmail.sourceforge.net/</a> <br/>
+
+If you want Webmail i recommend <a href="http://www.telaen.org/" class="urlextern" title="http://www.telaen.org/" rel="ugc nofollow">http://www.telaen.org/</a>, but use sendmail when you configure it as smtp access will take a little time if you configure the spam filter, <br/>
+
+If you want outlook skin I have this working on OpenWrt <br/>
+
+<a href="http://tdah.us/index.php?option=com_docman&amp;task=cat_view&amp;gid=13&amp;Itemid=27" class="urlextern" title="http://tdah.us/index.php?option=com_docman&amp;task=cat_view&amp;gid=13&amp;Itemid=27" rel="ugc nofollow">http://tdah.us/index.php?option=com_docman&amp;task=cat_view&amp;gid=13&amp;Itemid=27</a> <br/>
+
+</p>
+
+<p>
+taken from forum
+<a href="https://forum.openwrt.org/viewtopic.php?pid=57808#p57808" class="urlextern" title="https://forum.openwrt.org/viewtopic.php?pid=57808#p57808" rel="ugc nofollow">https://forum.openwrt.org/viewtopic.php?pid=57808#p57808</a> <br/>
+
+credits to Margate
+</p>
+
+</div>

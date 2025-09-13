@@ -1,0 +1,439 @@
+
+<h1 class="sectionedit1" id="upgrading_openwrt_firmware_using_luci_and_cli">Upgrading OpenWrt firmware using LuCI and CLI</h1>
+<div class="level1">
+
+<p>
+See also:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="/docs/techref/flash.layout" class="wikilink1" title="docs:techref:flash.layout" data-wiki-id="docs:techref:flash.layout">OpenWrt flash Layout</a></div>
+</li>
+<li class="level2"><div class="li"> <a href="/docs/guide-user/installation/sysupgrade.cli" class="wikilink1" title="docs:guide-user:installation:sysupgrade.cli" data-wiki-id="docs:guide-user:installation:sysupgrade.cli">Upgrading OpenWrt firmware using CLI</a></div>
+</li>
+<li class="level2"><div class="li"> <a href="/docs/guide-quick-start/sysupgrade.luci" class="wikilink1" title="docs:guide-quick-start:sysupgrade.luci" data-wiki-id="docs:guide-quick-start:sysupgrade.luci">Upgrading OpenWrt firmware using LuCI</a></div>
+</li>
+<li class="level2"><div class="li"> <a href="/docs/guide-quick-start/admingui_sysupgrade_keepsettings#upgrade_compatibility" class="wikilink1" title="docs:guide-quick-start:admingui_sysupgrade_keepsettings" data-wiki-id="docs:guide-quick-start:admingui_sysupgrade_keepsettings">Keep Settings and Upgrade Compatibility</a></div>
+</li>
+<li class="level2"><div class="li"> <a href="/docs/guide-user/installation/sysupgrade.packages" class="wikilink1" title="docs:guide-user:installation:sysupgrade.packages" data-wiki-id="docs:guide-user:installation:sysupgrade.packages">Saving/restoring user-installed packages</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Upgrading OpenWrt firmware using LuCI and CLI&quot;,&quot;hid&quot;:&quot;upgrading_openwrt_firmware_using_luci_and_cli&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-534&quot;} -->
+<h2 class="sectionedit2" id="how_the_openwrt_upgrade_works">How the OpenWrt upgrade works</h2>
+<div class="level2">
+
+<p>
+An OpenWrt <strong>sysupgrade</strong> will replace the entire current OpenWrt installation with a new version.
+This includes the Linux kernel and SquashFS/ext4/ubifs/JFFS2/other <abbr title="Operating System">OS</abbr> partition/s. This is NOT the same as a first time installation (factory).
+</p>
+
+<p>
+Sysupgrade via LuCI or CLI works by optionally saving specified configuration files, <strong>wiping the entire file system</strong>, installing the new version of OpenWrt and then restoring back the saved configuration files.
+<strong>This means that any parts of the file system that are not specifically saved will be lost.</strong>
+</p>
+
+<p>
+In particular, any manually installed software packages you may have installed after the initial OpenWrt installation have to be reinstalled after an OpenWrt upgrade.
+That way everything will match, e.g. the updated Linux kernel and any installed kernel modules.
+</p>
+
+<p>
+Any configuration files or data files placed in locations not specifically listed as being preserved below will also be lost in an OpenWrt upgrade.
+Be sure to check any files you have added or customized from a default OpenWrt install to back up these items before an upgrade.
+</p>
+
+<p>
+<strong>IMPORTANT:</strong> Most of the upgrade procedure can be automated by using the <a href="/docs/guide-user/installation/attended.sysupgrade" class="wikilink1" title="docs:guide-user:installation:attended.sysupgrade" data-wiki-id="docs:guide-user:installation:attended.sysupgrade">attended.sysupgrade</a> service. Attended sysupgrade will request the build of custom image including all your currently installed packages from a central server, download it when ready, and install it keeping your settings. The service can be accessed from LuCI by installing the `luci-app-attendedsysupgrade` package, or from the shell with the `auc` package. Note that you can upgrade systems using attended sysupgrade via LuCI even if they are not connected to the internet, as long as your browser has internet access.
+</p>
+
+<p>
+See <a href="https://web.archive.org/web/20220919082336/https://blog.mbirth.de/archives/2014/05/26/openwrt-sysupgrade-with-extroot.html" class="urlextern" title="https://web.archive.org/web/20220919082336/https://blog.mbirth.de/archives/2014/05/26/openwrt-sysupgrade-with-extroot.html" rel="ugc nofollow">this howto</a> about extroot procedure.
+</p>
+
+<p>
+For <a href="/tag/dual_firmware" class="wikilink1" title="tag:dual_firmware" data-wiki-id="tag:dual_firmware">Dual Firmware Devices</a> please consult your device page for additional information.
+</p>
+
+<p>
+By compiling your own custom image with an OpenWrt buildroot or generating with the imagebuilder, it is possible to remove the need to perform many of the steps above.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;How the OpenWrt upgrade works&quot;,&quot;hid&quot;:&quot;how_the_openwrt_upgrade_works&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;535-2747&quot;} -->
+<h2 class="sectionedit3" id="upgrade_steps">Upgrade steps</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Upgrade steps&quot;,&quot;hid&quot;:&quot;upgrade_steps&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;2748-2773&quot;} -->
+<h3 class="sectionedit4" id="prepare">1. Prepare</h3>
+<div class="level3">
+
+<p>
+The first part of the upgrade process is to prepare for the upgrade.
+</p>
+<ol>
+<li class="level1"><div class="li"> Setup for data migration ( keep settings ) and additional sysupgrade.conf entries</div>
+</li>
+<li class="level1"><div class="li"> Export / save installed package list / manifest</div>
+</li>
+<li class="level1"><div class="li"> Obtain / verify new installation sysupgrade image (and current / known good one to revert to)</div>
+</li>
+</ol>
+
+<p>
+This includes documenting programs and settings that will need to be re-installed or restored after the upgrade, locating and downloading the correct OpenWrt upgrade image for your hardware.
+</p>
+
+<p>
+When it is possible to &#039;keep settings&#039; sysupgrade will automatically preserve much of the OpenWrt <abbr title="Operating System">OS</abbr> configuration by saving and then restoring configuration files in specific common locations (including <code>/etc/config</code>). This will preserve things like OpenWrt network settings, Wi-Fi settings, the device hostname, and so on. Some data files and directories for additional services will need to be configured manually.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;1. Prepare&quot;,&quot;hid&quot;:&quot;prepare&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;2774-3713&quot;} -->
+<h3 class="sectionedit5" id="upgrade">2. Upgrade</h3>
+<div class="level3">
+
+<p>
+Next is the actual upgrade. The two common upgrade methods to perform the upgrade are:
+</p>
+<ul>
+<li class="level1"><div class="li"> LuCI web interface System → Backup / Flash Firmware → “Flash new firmware image”</div>
+</li>
+<li class="level1"><div class="li"> Command-line using <code>sysupgrade</code> command over console or ssh</div>
+</li>
+</ul>
+
+<p>
+Both use the same <code>...sysupgrade.bin/img.gz</code> file (more below).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;2. Upgrade&quot;,&quot;hid&quot;:&quot;upgrade&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;3714-4042&quot;} -->
+<h3 class="sectionedit6" id="post_install_configuration_setup_or_restore">3. Post Install Configuration, Setup or Restore</h3>
+<div class="level3">
+
+<p>
+After the <abbr title="Operating System">OS</abbr> upgrade, there are usually some additional configuration steps required to;
+</p>
+<ul>
+<li class="level1"><div class="li"> Re-install additional packages not part of the base OpenWrt install</div>
+</li>
+<li class="level1"><div class="li"> Configure new OpenWrt functionality or to</div>
+</li>
+<li class="level1"><div class="li"> Update configuration files to reflect new settings or updated packages</div>
+</li>
+</ul>
+
+<p>
+Please see the section below with more details.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;3. Post Install Configuration, Setup or Restore&quot;,&quot;hid&quot;:&quot;post_install_configuration_setup_or_restore&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;4043-4432&quot;} -->
+<h2 class="sectionedit7" id="preparing_for_upgrade">Preparing for upgrade</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Preparing for upgrade&quot;,&quot;hid&quot;:&quot;preparing_for_upgrade&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;4433-4466&quot;} -->
+<h3 class="sectionedit8" id="can_you_keep_settings">Can you keep settings?</h3>
+<div class="level3">
+
+<p>
+See also:
+<a href="/docs/guide-quick-start/admingui_sysupgrade_keepsettings#upgrade_compatibility" class="wikilink1" title="docs:guide-quick-start:admingui_sysupgrade_keepsettings" data-wiki-id="docs:guide-quick-start:admingui_sysupgrade_keepsettings">Upgrade compatibility</a>
+</p>
+
+<p>
+Most of the time you can, jumping several versions, downgrading, if the release notes or upgrade message informs you it&#039;s not possible, then you will need to plan ahead of time and factor in the time and information required to re-apply some or most of your previous configuration manually.
+</p>
+<ol>
+<li class="level1"><div class="li"> It is worthwhile not keeping settings once every 12-16 months</div>
+</li>
+<li class="level1"><div class="li"> Trying to get around the advice to start with new settings when needed can result in odd issues that can be difficult to troubleshoot</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Can you keep settings?&quot;,&quot;hid&quot;:&quot;can_you_keep_settings&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:8,&quot;range&quot;:&quot;4467-5111&quot;} -->
+<h3 class="sectionedit9" id="will_you_need_to_revert">Will you need to revert?</h3>
+<div class="level3">
+
+<p>
+A time may come when you attempt an upgrade and for whatever reason it is unsuccessful. Contingency planning is a good skill for anything in IT.
+</p>
+<ol>
+<li class="level1"><div class="li"> Have you made a backup of your current settings? (for restoration to same or earlier <abbr title="Operating System">OS</abbr> versions)</div>
+</li>
+<li class="level1"><div class="li"> Do you have a copy of your current (pre-upgrade) <abbr title="Operating System">OS</abbr> version if you need to re-install? (both factory and sysupgrade or even vendor firmware may be required)</div>
+</li>
+<li class="level1"><div class="li"> Do you have a spare device in case things go pear shaped or you need much more time than expected?</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Will you need to revert?&quot;,&quot;hid&quot;:&quot;will_you_need_to_revert&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:9,&quot;range&quot;:&quot;5112-5659&quot;} -->
+<h3 class="sectionedit10" id="configure_your_backup">Configure your backup</h3>
+<div class="level3">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;docs:guide-user:installation:sysupgrade.cli&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:11,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__docs:guide-user:installation:sysupgrade.cli">
+<div class="level3">
+
+<p>
+Follow <a href="/docs/guide-user/troubleshooting/backup_restore" class="wikilink1" title="docs:guide-user:troubleshooting:backup_restore" data-wiki-id="docs:guide-user:troubleshooting:backup_restore">Backup and restore</a>, or skip this section if you do not want to preserve existing configuration.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;docs:guide-user:installation:sysupgrade.cli&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:12,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level3">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configure your backup&quot;,&quot;hid&quot;:&quot;configure_your_backup&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:10,&quot;range&quot;:&quot;5660-5809&quot;} -->
+<h3 class="sectionedit13" id="downloading_the_openwrt_upgrade_image">Downloading the OpenWrt upgrade image</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="getting_the_right_image">Getting the right image</h4>
+<div class="level4">
+
+<p>
+In most cases, platforms that support sysupgrade, have a downloadable image labelled <strong><code>...-sysupgrade.bin</code></strong> ...
+</p>
+<ul>
+<li class="level1 node"><div class="li"> Images labelled “factory” or otherwise are generally not intended to be installed via an existing OpenWrt web interface.</div>
+<ul>
+<li class="level2"><div class="li"> FIRMWARE SELECTOR <a href="https://firmware-selector.openwrt.org/" class="urlextern" title="https://firmware-selector.openwrt.org/" rel="ugc nofollow">https://firmware-selector.openwrt.org/</a></div>
+</li>
+<li class="level2"><div class="li"> SEARCH USING MODEL: <a href="/toh/views/toh_fwdownload" class="wikilink1" title="toh:views:toh_fwdownload" data-wiki-id="toh:views:toh_fwdownload">Table of Hardware: Firmware downloads</a></div>
+</li>
+<li class="level2"><div class="li"> OFFICIAL DOWNLOAD PAGE: <a href="https://downloads.openwrt.org/releases/" class="urlextern" title="https://downloads.openwrt.org/releases/" rel="ugc nofollow">https://downloads.openwrt.org/releases/</a></div>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+
+<h4 id="openwrt_on_x86">OpenWrt on x86</h4>
+<div class="level4">
+
+<p>
+For x86, use the same image you used for your initial installation of OpenWrt as the sysupgrade image as well (that is, there is no “factory” versus “sysupgrade” variant in contrast to most embedded devices). So, if you installed OpenWrt x86-64 <code>openwrt-version-number-x86-64-combined-ext4.img.gz</code>, you need to choose same image to do a sysupgrade; if you installed Openwrt with <code>openwrt-version-number-x86-64-combined-squashfs.img.gz</code>, you need that image to do a firmware upgrade.
+</p>
+
+</div>
+
+<h4 id="notes">Notes</h4>
+<div class="level4">
+
+<p>
+WARNING: Double check you have the exact model number and in some cases country...
+If in any doubt about compatibility, read instructions on your device page thoroughly.
+If your are still unsure ask on the Forum.
+</p>
+
+<p>
+NOTE: Keep a copy of images you use, you never know if you may need them again and that may be difficult if your internet is down! If you do not have current version of your system image download it from <a href="https://firmware-selector.openwrt.org/" class="urlextern" title="https://firmware-selector.openwrt.org/" rel="ugc nofollow">https://firmware-selector.openwrt.org/</a> prior to performing upgrade. You can check which version you use using luci main page or command line:
+</p>
+<pre class="code bash">ubus call system board</pre>
+
+</div>
+
+<h4 id="finding_out_which_x86_image_was_used_during_installation">Finding out which x86 image was used during installation</h4>
+<div class="level4">
+
+<p>
+If system images used during initial instalation were deleted or lost and you forgot which image you used during installation, here is how you can check it.
+</p>
+
+<p>
+Generic x86 system images come either in squashfs (RO) or ext4 (RW) flavour, first check file system type which you have on your device.
+</p>
+<pre class="code bash"><span class="co4">root@OpenWRT:~# </span><span class="kw2">df</span> <span class="re5">-T</span></pre>
+
+<p>
+sample output from x86 OpenWRT installation using squashfs file system:
+</p>
+<pre class="code bash">Filesystem           Type       1K-blocks      Used Available Use<span class="sy0">%</span> Mounted on
+<span class="sy0">/</span>dev<span class="sy0">/</span>root            squashfs        <span class="nu0">4352</span>      <span class="nu0">4352</span>         <span class="nu0">0</span> <span class="nu0">100</span><span class="sy0">%</span> <span class="sy0">/</span>rom
+tmpfs                tmpfs        <span class="nu0">1928268</span>        <span class="nu0">84</span>   <span class="nu0">1928184</span>   <span class="nu0">0</span><span class="sy0">%</span> <span class="sy0">/</span>tmp
+<span class="sy0">/</span>dev<span class="sy0">/</span>loop0           ext4       <span class="nu0">117464126</span>     <span class="nu0">13802</span> <span class="nu0">112445660</span>   <span class="nu0">0</span><span class="sy0">%</span> <span class="sy0">/</span>overlay
+overlayfs:<span class="sy0">/</span>overlay   overlay    <span class="nu0">117464126</span>     <span class="nu0">13802</span> <span class="nu0">112445660</span>   <span class="nu0">0</span><span class="sy0">%</span> <span class="sy0">/</span>
+<span class="sy0">/</span>dev<span class="sy0">/</span>sda1            vfat           <span class="nu0">16334</span>      <span class="nu0">6274</span>     <span class="nu0">10060</span>  <span class="nu0">38</span><span class="sy0">%</span> <span class="sy0">/</span>boot
+<span class="sy0">/</span>dev<span class="sy0">/</span>sda1            vfat           <span class="nu0">16334</span>      <span class="nu0">6274</span>     <span class="nu0">10060</span>  <span class="nu0">38</span><span class="sy0">%</span> <span class="sy0">/</span>boot
+tmpfs                tmpfs            <span class="nu0">512</span>         <span class="nu0">0</span>       <span class="nu0">512</span>   <span class="nu0">0</span><span class="sy0">%</span> <span class="sy0">/</span>dev</pre>
+
+<p>
+sample output from x86 OpenWRT installation using ext4 file system:
+</p>
+<pre class="code bash">Filesystem           Type       1K-blocks      Used Available Use<span class="sy0">%</span> Mounted on
+<span class="sy0">/</span>dev<span class="sy0">/</span>root            ext4        <span class="nu0">30845052</span>    <span class="nu0">321868</span>  <span class="nu0">30506800</span>   <span class="nu0">1</span><span class="sy0">%</span> <span class="sy0">/</span>
+tmpfs                tmpfs        <span class="nu0">3912440</span>      <span class="nu0">1596</span>   <span class="nu0">3910844</span>   <span class="nu0">0</span><span class="sy0">%</span> <span class="sy0">/</span>tmp
+<span class="sy0">/</span>dev<span class="sy0">/</span>sda1            vfat           <span class="nu0">16334</span>      <span class="nu0">6274</span>     <span class="nu0">10060</span>  <span class="nu0">38</span><span class="sy0">%</span> <span class="sy0">/</span>boot
+<span class="sy0">/</span>dev<span class="sy0">/</span>sda1            vfat           <span class="nu0">16334</span>      <span class="nu0">6274</span>     <span class="nu0">10060</span>  <span class="nu0">38</span><span class="sy0">%</span> <span class="sy0">/</span>boot
+tmpfs                tmpfs            <span class="nu0">512</span>         <span class="nu0">0</span>       <span class="nu0">512</span>   <span class="nu0">0</span><span class="sy0">%</span> <span class="sy0">/</span>dev</pre>
+
+<p>
+Now check if you used -efi system image.
+If the output of the command below is <em>no such file or directory</em> you used a openwrt-XX.XX.X-x86-64-generic-ext4-<strong>combined</strong>.img.gz system image.
+If the folder existst and is populated you used a openwrt-XX.XX.X-x86-64-generic-ext4-<strong>combined-efi</strong>.img.gz system image.
+</p>
+<pre class="code bash"><span class="co4">root@OpenWRT:~# </span><span class="kw2">ls</span> <span class="sy0">/</span>sys<span class="sy0">/</span>firmware<span class="sy0">/</span>efi
+ls: <span class="sy0">/</span>sys<span class="sy0">/</span>firmware<span class="sy0">/</span>efi: No such <span class="kw2">file</span> or directory</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Downloading the OpenWrt upgrade image&quot;,&quot;hid&quot;:&quot;downloading_the_openwrt_upgrade_image&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:13,&quot;range&quot;:&quot;5810-9528&quot;} -->
+<h2 class="sectionedit14" id="upgrade_procedure">Upgrade procedure</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Upgrade procedure&quot;,&quot;hid&quot;:&quot;upgrade_procedure&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:14,&quot;range&quot;:&quot;9529-9558&quot;} -->
+<h3 class="sectionedit15" id="for_luci-based_upgrades">For LuCI-based upgrades</h3>
+<div class="level3">
+
+<p>
+See also:
+<a href="/docs/guide-quick-start/sysupgrade.luci" class="wikilink1" title="docs:guide-quick-start:sysupgrade.luci" data-wiki-id="docs:guide-quick-start:sysupgrade.luci">Upgrading OpenWrt firmware using LuCI</a>
+</p>
+<ul>
+<li class="level1"><div class="li"> Download the desired upgrade file to your PC using a web browser</div>
+</li>
+<li class="level1"><div class="li"> Proceed to the LuCI upgrade procedure, below</div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="web_interface_instructions">Web interface instructions</h4>
+<div class="level4">
+<ol>
+<li class="level1"><div class="li"> Navigate to <strong>LuCI → System → Backup / Flash Firmware → Actions: Flash new firmware image</strong>.</div>
+</li>
+<li class="level1"><div class="li"> Click <strong>Choose File</strong> button to select firmware image.</div>
+</li>
+<li class="level1"><div class="li"> Click <strong>Flash image...</strong> to upload firmware image.</div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-quick-start/verify_firmware_checksum" class="wikilink1" title="docs:guide-quick-start:verify_firmware_checksum" data-wiki-id="docs:guide-quick-start:verify_firmware_checksum">Verify</a> firmware image checksum and proceed.</div>
+</li>
+<li class="level1"><div class="li"> Wait until the router comes back online.</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;For LuCI-based upgrades&quot;,&quot;hid&quot;:&quot;for_luci-based_upgrades&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:15,&quot;range&quot;:&quot;9559-10198&quot;} -->
+<h3 class="sectionedit16" id="command-line_instructions">Command-line instructions</h3>
+<div class="level3">
+
+<p>
+OpenWrt provides <a href="/docs/techref/sysupgrade" class="wikilink1" title="docs:techref:sysupgrade" data-wiki-id="docs:techref:sysupgrade">sysupgrade</a> utility for firmware upgrade procedure.
+</p>
+<ul>
+<li class="level1 node"><div class="li"> See CLI instructions page below:</div>
+<ul>
+<li class="level2"><div class="li"> <a href="/docs/guide-user/installation/sysupgrade.cli" class="wikilink1" title="docs:guide-user:installation:sysupgrade.cli" data-wiki-id="docs:guide-user:installation:sysupgrade.cli">Upgrading OpenWrt firmware using CLI</a></div>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+
+<h4 id="for_sysupgrade_cli_based_upgrades">For sysupgrade cli based upgrades</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> Download the desired upgrade file to the local /tmp RAM drive on your OpenWrt system. The <code>/tmp</code> directory is stored in RAM (using <a href="https://en.wikipedia.org/wiki/tmpfs" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/tmpfs">tmpfs</a>), not in the permanent flash storage.</div>
+</li>
+</ul>
+<pre class="code bash"><span class="co0"># example downloading the OpenWrt 15.05 upgrade image for a TP-LINK TL-WR1043ND ver. 1.x router</span>
+<span class="kw3">cd</span> <span class="sy0">/</span>tmp
+<span class="kw2">wget</span> http:<span class="sy0">//</span>downloads.openwrt.org<span class="sy0">/</span>chaos_calmer<span class="sy0">/</span><span class="nu0">15.05</span><span class="sy0">/</span>ar71xx<span class="sy0">/</span>generic<span class="sy0">/</span>openwrt-<span class="nu0">15.05</span>-ar71xx-generic-tl-wr1043nd-v1-squashfs-sysupgrade.bin
+&nbsp;
+<span class="co0"># check the integrity of the image file via md5sums (older images)</span>
+<span class="kw2">wget</span> http:<span class="sy0">//</span>downloads.openwrt.org<span class="sy0">/</span>chaos_calmer<span class="sy0">/</span><span class="nu0">15.05</span><span class="sy0">/</span>ar71xx<span class="sy0">/</span>generic<span class="sy0">/</span>md5sums
+md5sum <span class="re5">-c</span> md5sums <span class="nu0">2</span><span class="sy0">&gt;</span> <span class="sy0">/</span>dev<span class="sy0">/</span>null <span class="sy0">|</span> <span class="kw2">grep</span> OK
+&nbsp;
+<span class="co0"># check the integrity of the image file via sha256sums</span>
+<span class="kw2">wget</span> http:<span class="sy0">//</span>downloads.openwrt.org<span class="sy0">/</span>chaos_calmer<span class="sy0">/</span><span class="nu0">15.05</span><span class="sy0">/</span>ar71xx<span class="sy0">/</span>generic<span class="sy0">/</span>sha256sums
+sha256sum <span class="re5">-c</span> sha256sums <span class="nu0">2</span><span class="sy0">&gt;</span> <span class="sy0">/</span>dev<span class="sy0">/</span>null <span class="sy0">|</span> <span class="kw2">grep</span> OK
+&nbsp;
+<span class="co0"># the desired result is that the downloaded firmware filename is listed with &quot;OK&quot; afterwards</span>
+&nbsp;
+<span class="co0">####################################################</span>
+<span class="co0"># Initiate sysupgrade with your desired options</span>
+<span class="co0"># by default ( no -n ) settings are kept</span>
+<span class="co0">####################################################</span>
+sysupgrade <span class="re5">-v</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>openwrt-<span class="nu0">15.05</span>-ar71xx-generic-tl-wr1043nd-v1-squashfs-sysupgrade.bin</pre>
+
+<p>
+NOTE: see extras at end of page for low memory device workarounds
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Command-line instructions&quot;,&quot;hid&quot;:&quot;command-line_instructions&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:16,&quot;range&quot;:&quot;10199-11763&quot;} -->
+<h2 class="sectionedit17" id="extras">Extras</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Extras&quot;,&quot;hid&quot;:&quot;extras&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:17,&quot;range&quot;:&quot;11764-11782&quot;} -->
+<h3 class="sectionedit18" id="verify_the_new_os_version">Verify the new OS version</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> In LuCI, go to Status &gt; Overview to verify you are running the new OpenWrt release</div>
+</li>
+<li class="level1"><div class="li"> In <abbr title="Secure Shell">SSH</abbr>, the login banner has the release information</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Verify the new OS version&quot;,&quot;hid&quot;:&quot;verify_the_new_os_version&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:18,&quot;range&quot;:&quot;11783-11963&quot;} -->
+<h3 class="sectionedit19" id="upgrade_installed_packages">Upgrade installed packages</h3>
+<div class="level3">
+
+<p>
+Follow:
+<a href="/docs/guide-user/additional-software/opkg#upgrading_packages" class="wikilink1" title="docs:guide-user:additional-software:opkg" data-wiki-id="docs:guide-user:additional-software:opkg">Upgrading packages</a>
+</p>
+
+<p>
+After the initial update, it is good to check for any updated packages released after the base <abbr title="Operating System">OS</abbr> firmware image was built.
+Note that on a device with only 4MB of NVRAM, these updates may not fit – check free space first with <code>df -h /</code> and ensure there is at least 600KB or so free.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Upgrade installed packages&quot;,&quot;hid&quot;:&quot;upgrade_installed_packages&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:19,&quot;range&quot;:&quot;11964-12380&quot;} -->
+<h3 class="sectionedit20" id="reinstall_user-installed_packages">Reinstall user-installed packages</h3>
+<div class="level3">
+
+<p>
+See also:
+<a href="/docs/guide-user/installation/sysupgrade.packages" class="wikilink1" title="docs:guide-user:installation:sysupgrade.packages" data-wiki-id="docs:guide-user:installation:sysupgrade.packages">Preserving packages</a>
+</p>
+
+<p>
+After a successful upgrade, you will need to reinstall all previously installed and saved packages.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Reinstall user-installed packages&quot;,&quot;hid&quot;:&quot;reinstall_user-installed_packages&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:20,&quot;range&quot;:&quot;12381-12609&quot;} -->
+<h3 class="sectionedit21" id="configure_user-installed_packages">Configure user-installed packages</h3>
+<div class="level3">
+
+<p>
+See also:
+<a href="/docs/guide-user/installation/sysupgrade.cli#comparing_new_package_config_options" class="wikilink1" title="docs:guide-user:installation:sysupgrade.cli" data-wiki-id="docs:guide-user:installation:sysupgrade.cli">Comparing configurations</a>
+</p>
+
+<p>
+The new package installations will have installed new, default versions of package configuration files.
+If existing configuration files are in place, opkg displays a warning about this and saves the new configuration file versions under <code>/etc/config/*-opkg</code> filenames.
+</p>
+
+<p>
+The new package-provided config files should be compared with your older customized files to merge in any new options or changes of syntax.
+The <code>diff</code> tool is helpful for this.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configure user-installed packages&quot;,&quot;hid&quot;:&quot;configure_user-installed_packages&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:21,&quot;range&quot;:&quot;12610-&quot;} -->

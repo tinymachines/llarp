@@ -1,0 +1,211 @@
+
+<h1 class="sectionedit1" id="dual_vpn_with_mwan3">Dual VPN with mwan3</h1>
+<div class="level1">
+
+<p>
+Objective: Open two <abbr title="Virtual Private Network">VPN</abbr> tunnels, one through main <abbr title="Wide Area Network">WAN</abbr> and one through LTE backup, automatic failover to LTE when <abbr title="Wide Area Network">WAN</abbr> fails.
+</p>
+
+<p>
+See also: <a href="https://forum.openwrt.org/t/openvpn-dual-wan-failover/65504" class="urlextern" title="https://forum.openwrt.org/t/openvpn-dual-wan-failover/65504" rel="ugc nofollow">Forum post</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Dual VPN with mwan3&quot;,&quot;hid&quot;:&quot;dual_vpn_with_mwan3&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-245&quot;} -->
+<h2 class="sectionedit2" id="wan">WAN</h2>
+<div class="level2">
+
+<p>
+Navigate to <strong>LuCI → Network → Switch</strong> to create second <abbr title="Virtual Local Area Network">VLAN</abbr>.
+</p>
+
+<p>
+<a href="/_detail/media/docs/howto/dual-vpn-switch.png?id=docs%3Aguide-user%3Arouting%3Aexamples%3Adual-wan" class="media" title="media:docs:howto:dual-vpn-switch.png"><img src="/_media/media/docs/howto/dual-vpn-switch.png?w=400&amp;tok=5da520" class="media" loading="lazy" alt="" width="400" /></a>
+</p>
+
+<p>
+Navigate to <strong>LuCI → Network → Interfaces</strong> to create WAN2 interface.
+Assign WAN2 to the <abbr title="Virtual Local Area Network">VLAN</abbr> and to firewall <abbr title="Wide Area Network">WAN</abbr> zone.
+</p>
+
+<p>
+If you disable <abbr title="Wide Area Network">WAN</abbr> you should now be able to use WAN2 to reach the internet from <abbr title="Local Area Network">LAN</abbr>.
+If both are enabled the <abbr title="Wide Area Network">WAN</abbr> with the lower gateway metric wins.
+Through ssh you can use ping to check whether both <abbr title="Wide Area Network">WAN</abbr> ports work.
+</p>
+<pre class="code bash"><span class="kw2">ping</span> <span class="re5">-I</span> eth1.2 openwrt.org
+<span class="kw2">ping</span> <span class="re5">-I</span> eth1.3 openwrt.org</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;WAN&quot;,&quot;hid&quot;:&quot;wan&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;246-790&quot;} -->
+<h2 class="sectionedit3" id="vpn">VPN</h2>
+<div class="level2">
+
+<p>
+Create unmanaged <abbr title="Virtual Private Network">VPN</abbr> interfaces, bring up on boot, firewall wan zone
+</p>
+
+<p>
+<a href="/_detail/media/docs/howto/dual-vpn-interfaces.png?id=docs%3Aguide-user%3Arouting%3Aexamples%3Adual-wan" class="media" title="media:docs:howto:dual-vpn-interfaces.png"><img src="/_media/media/docs/howto/dual-vpn-interfaces.png?w=400&amp;tok=1fe15c" class="media" loading="lazy" alt="" width="400" /></a>
+</p>
+
+<p>
+Create two <abbr title="Virtual Private Network">VPN</abbr> connections for your <abbr title="Virtual Private Network">VPN</abbr> provider.
+Be sure to explicitly utilize the <abbr title="Virtual Private Network">VPN</abbr> interfaces created beforehand.
+Bind each <abbr title="Virtual Private Network">VPN</abbr> profile to the respective <abbr title="Wide Area Network">WAN</abbr> interface.
+Prevent routes from getting pushed.
+</p>
+<pre class="code bash"><span class="co0"># /etc/openvpn/vpn1.ovpn</span>
+client
+dev tun0
+proto udp
+<span class="kw3">local</span> <span class="re1">$WAN_IP</span>
+pull-filter ignore redirect-gateway
+remote <span class="re1">$VPN1_IP1</span> <span class="re1">$PORT</span>
+remote <span class="re1">$VPN1_IP2</span> <span class="re1">$PORT</span>
+remote <span class="re1">$VPN1_IP3</span> <span class="re1">$PORT</span>
+...
+&nbsp;
+<span class="co0"># /etc/openvpn/vpn2.ovpn</span>
+dev tun1
+proto udp
+<span class="kw3">local</span> <span class="re1">$WAN2_IP</span>
+pull-filter ignore redirect-gateway
+remote <span class="re1">$VPN2_IP1</span> <span class="re1">$PORT</span>
+remote <span class="re1">$VPN2_IP2</span> <span class="re1">$PORT</span>
+remote <span class="re1">$VPN2_IP3</span> <span class="re1">$PORT</span>
+...</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;VPN&quot;,&quot;hid&quot;:&quot;vpn&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;791-1502&quot;} -->
+<h2 class="sectionedit4" id="routing">Routing</h2>
+<div class="level2">
+
+<p>
+You should now be able to use both VPNs.
+You can start both and check whether it works.
+</p>
+<pre class="code bash"><span class="kw2">ping</span> <span class="re5">-I</span> tun0 openwrt.org
+<span class="kw2">ping</span> <span class="re5">-I</span> tun1 openwrt.org</pre>
+
+<p>
+But all traffic for tun1 gets routed through <abbr title="Wide Area Network">WAN</abbr> not WAN2, therefore we need static routes to make traffic destined for VPN2 go through WAN2.
+</p>
+
+<p>
+Take the remotes VPNX_IPX from the <abbr title="Virtual Private Network">VPN</abbr> config and route them through the appropriate interface in <strong>LuCI → Network → Static Routes</strong>.
+</p>
+
+<p>
+<a href="/_detail/media/docs/howto/dual-vpn-routes.jpg?id=docs%3Aguide-user%3Arouting%3Aexamples%3Adual-wan" class="media" title="media:docs:howto:dual-vpn-routes.jpg"><img src="/_media/media/docs/howto/dual-vpn-routes.jpg?w=400&amp;tok=da799f" class="media" loading="lazy" title="dual-vpn-routes.jpg" alt="dual-vpn-routes.jpg" width="400" /></a>
+</p>
+
+<p>
+Now start both VPNs and unplug <abbr title="Wide Area Network">WAN</abbr> and check:
+</p>
+<pre class="code bash"><span class="co0"># Should not work</span>
+<span class="kw2">ping</span> <span class="re5">-I</span> tun0 openwrt.org
+&nbsp;
+<span class="co0"># Should work</span>
+<span class="kw2">ping</span> <span class="re5">-I</span> tun1 openwrt.org</pre>
+
+<p>
+If you unplug WAN2 and plug in <abbr title="Wide Area Network">WAN</abbr> it is the other way around.
+Congratulations both VPNs work and traffic for the VPN1 remote gets routed through <abbr title="Wide Area Network">WAN</abbr> and VPN2 through WAN2
+</p>
+
+<p>
+If both VPNs are running the routes should look like this:
+</p>
+<pre class="code bash"><span class="co0"># route</span>
+Kernel IP routing table
+Destination    Gateway    Genmask         Flags Metric Ref    Use Iface
+default        <span class="re1">$WAN_GW</span>    0.0.0.0         UG    <span class="nu0">10</span>     <span class="nu0">0</span>        <span class="nu0">0</span> eth1.2
+default        <span class="re1">$WAN2_GW</span>   0.0.0.0         UG    <span class="nu0">20</span>     <span class="nu0">0</span>        <span class="nu0">0</span> eth1.3
+10.50.0.0      <span class="sy0">*</span>          255.255.0.0     U     <span class="nu0">0</span>      <span class="nu0">0</span>        <span class="nu0">0</span> tun1
+10.52.0.0      <span class="sy0">*</span>          255.255.0.0     U     <span class="nu0">0</span>      <span class="nu0">0</span>        <span class="nu0">0</span> tun0
+<span class="re1">$VPN1_IP1</span>      <span class="re1">$WAN_GW</span>    255.255.255.255 UGH   <span class="nu0">10</span>     <span class="nu0">0</span>        <span class="nu0">0</span> eth1.2
+<span class="re1">$VPN1_IP2</span>      <span class="re1">$WAN_GW</span>    255.255.255.255 UGH   <span class="nu0">10</span>     <span class="nu0">0</span>        <span class="nu0">0</span> eth1.2
+<span class="re1">$VPN1_IP3</span>      <span class="re1">$WAN_GW</span>    255.255.255.255 UGH   <span class="nu0">10</span>     <span class="nu0">0</span>        <span class="nu0">0</span> eth1.2
+<span class="re1">$VPN2_IP1</span>      <span class="re1">$WAN2_GW</span>   255.255.255.255 UGH   <span class="nu0">20</span>     <span class="nu0">0</span>        <span class="nu0">0</span> eth1.3
+<span class="re1">$VPN2_IP2</span>      <span class="re1">$WAN2_GW</span>   255.255.255.255 UGH   <span class="nu0">20</span>     <span class="nu0">0</span>        <span class="nu0">0</span> eth1.3
+<span class="re1">$VPN2_IP3</span>      <span class="re1">$WAN2_GW</span>   255.255.255.255 UGH   <span class="nu0">20</span>     <span class="nu0">0</span>        <span class="nu0">0</span> eth1.3
+<span class="re1">$WAN</span>           <span class="sy0">*</span>          255.255.255.0   U     <span class="nu0">10</span>     <span class="nu0">0</span>        <span class="nu0">0</span> eth1.2
+<span class="re1">$WAN2</span>          <span class="sy0">*</span>          255.255.255.0   U     <span class="nu0">20</span>     <span class="nu0">0</span>        <span class="nu0">0</span> eth1.3
+<span class="re1">$LAN</span>           <span class="sy0">*</span>          255.255.255.0   U     <span class="nu0">0</span>      <span class="nu0">0</span>        <span class="nu0">0</span> br-lan</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Routing&quot;,&quot;hid&quot;:&quot;routing&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:4,&quot;range&quot;:&quot;1503-3463&quot;} -->
+<h2 class="sectionedit5" id="mwan3">MWAN3</h2>
+<div class="level2">
+
+<p>
+Now install and configure MWAN3.
+</p>
+<pre class="code bash"><span class="co0"># /etc/config/mwan3</span>
+&nbsp;
+config globals <span class="st_h">'globals'</span>
+	option mmx_mask <span class="st_h">'0x3F00'</span>
+	option rtmon_interval <span class="st_h">'5'</span>
+&nbsp;
+config rule <span class="st_h">'default_rule'</span>
+	option dest_ip <span class="st_h">'0.0.0.0/0'</span>
+	option proto <span class="st_h">'all'</span>
+	option sticky <span class="st_h">'0'</span>
+	option use_policy <span class="st_h">'vpn_failover'</span>
+&nbsp;
+config interface <span class="st_h">'tun0'</span>
+	option enabled <span class="st_h">'1'</span>
+	option initial_state <span class="st_h">'online'</span>
+	option family <span class="st_h">'ipv4'</span>
+	list track_ip <span class="st_h">'8.8.8.8'</span>
+	list track_ip <span class="st_h">'8.8.4.4'</span>
+	option track_method <span class="st_h">'ping'</span>
+	option reliability <span class="st_h">'1'</span>
+	option count <span class="st_h">'1'</span>
+	option <span class="kw2">size</span> <span class="st_h">'56'</span>
+	option max_ttl <span class="st_h">'60'</span>
+	option check_quality <span class="st_h">'0'</span>
+	option timeout <span class="st_h">'2'</span>
+	option down <span class="st_h">'3'</span>
+	option up <span class="st_h">'3'</span>
+	option interval <span class="st_h">'3'</span>
+	option recovery_interval <span class="st_h">'3'</span>
+	option failure_interval <span class="st_h">'3'</span>
+&nbsp;
+config interface <span class="st_h">'tun1'</span>
+	option enabled <span class="st_h">'1'</span>
+	option initial_state <span class="st_h">'online'</span>
+	option family <span class="st_h">'ipv4'</span>
+	list track_ip <span class="st_h">'8.8.8.8'</span>
+	list track_ip <span class="st_h">'8.8.4.4'</span>
+	option track_method <span class="st_h">'ping'</span>
+	option reliability <span class="st_h">'1'</span>
+	option count <span class="st_h">'1'</span>
+	option <span class="kw2">size</span> <span class="st_h">'56'</span>
+	option max_ttl <span class="st_h">'60'</span>
+	option check_quality <span class="st_h">'0'</span>
+	option timeout <span class="st_h">'2'</span>
+	option down <span class="st_h">'3'</span>
+	option up <span class="st_h">'3'</span>
+	option interval <span class="st_h">'3'</span>
+	option failure_interval <span class="st_h">'3'</span>
+	option recovery_interval <span class="st_h">'3'</span>
+&nbsp;
+config member <span class="st_h">'tun0_m3_w3'</span>
+	option interface <span class="st_h">'tun0'</span>
+	option metric <span class="st_h">'3'</span>
+	option weight <span class="st_h">'3'</span>
+&nbsp;
+config member <span class="st_h">'tun1_m5_w10'</span>
+	option interface <span class="st_h">'tun1'</span>
+	option metric <span class="st_h">'5'</span>
+	option weight <span class="st_h">'10'</span>
+&nbsp;
+config policy <span class="st_h">'vpn_failover'</span>
+	list use_member <span class="st_h">'tun0_m3_w3'</span>
+	list use_member <span class="st_h">'tun1_m5_w10'</span>
+	option last_resort <span class="st_h">'unreachable'</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;MWAN3&quot;,&quot;hid&quot;:&quot;mwan3&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:5,&quot;range&quot;:&quot;3464-&quot;} -->

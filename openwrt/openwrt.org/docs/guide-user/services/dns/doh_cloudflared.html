@@ -1,0 +1,125 @@
+
+<h1 class="sectionedit1" id="doh_with_dnsmasq_and_cloudflared">DoH with Dnsmasq and Cloudflared</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__meta:infobox:howto_links">
+<div class="level1">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_info plugin_wrap">
+<p>
+This article relies on the following:
+</p>
+<ul>
+<li class="level1"><div class="li"> Accessing <a href="/docs/guide-quick-start/walkthrough_login" class="wikilink1" title="docs:guide-quick-start:walkthrough_login" data-wiki-id="docs:guide-quick-start:walkthrough_login">web interface</a> / <a href="/docs/guide-quick-start/sshadministration" class="wikilink1" title="docs:guide-quick-start:sshadministration" data-wiki-id="docs:guide-quick-start:sshadministration">command-line interface</a></div>
+</li>
+<li class="level1"><div class="li"> Managing <a href="/docs/guide-user/base-system/uci" class="wikilink1" title="docs:guide-user:base-system:uci" data-wiki-id="docs:guide-user:base-system:uci">configs</a> / <a href="/docs/guide-user/additional-software/managing_packages" class="wikilink1" title="docs:guide-user:additional-software:managing_packages" data-wiki-id="docs:guide-user:additional-software:managing_packages">packages</a> / <a href="/docs/guide-user/base-system/managing_services" class="wikilink1" title="docs:guide-user:base-system:managing_services" data-wiki-id="docs:guide-user:base-system:managing_services">services</a> / <a href="/docs/guide-user/base-system/log.essentials" class="wikilink1" title="docs:guide-user:base-system:log.essentials" data-wiki-id="docs:guide-user:base-system:log.essentials">logs</a></div>
+</li>
+</ul>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;DoH with Dnsmasq and Cloudflared&quot;,&quot;hid&quot;:&quot;doh_with_dnsmasq_and_cloudflared&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-129&quot;} -->
+<h2 class="sectionedit6" id="introduction">Introduction</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> This how-to describes the method for setting up <a href="https://en.wikipedia.org/wiki/DNS_over_HTTPS" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/DNS_over_HTTPS">DNS over HTTPS</a> on OpenWrt.</div>
+</li>
+<li class="level1"><div class="li"> It relies on <a href="/docs/guide-user/base-system/dhcp.dnsmasq" class="wikilink1" title="docs:guide-user:base-system:dhcp.dnsmasq" data-wiki-id="docs:guide-user:base-system:dhcp.dnsmasq">Dnsmasq</a> and <a href="/packages/pkgdata/cloudflared" class="wikilink1" title="packages:pkgdata:cloudflared" data-wiki-id="packages:pkgdata:cloudflared">cloudflared</a> for masking <abbr title="Domain Name System">DNS</abbr> traffic as <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> traffic. The Cloudflared agent natively supports <abbr title="DNS over HTTPS">DoH</abbr> so, if you are already using it for its tunneling functionalities, you don&#039;t need additional packages (<abbr title="DNS over HTTPS">DoH</abbr> proxies).</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Introduction&quot;,&quot;hid&quot;:&quot;introduction&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;130-578&quot;} -->
+<h2 class="sectionedit7" id="goals">Goals</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;docs:guide-user:services:dns:dnscrypt_dnsmasq_dnscrypt-proxy&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:8,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__docs:guide-user:services:dns:dnscrypt_dnsmasq_dnscrypt-proxy">
+<div class="level2">
+<ul>
+<li class="level1 node"><div class="li"> Encrypt your <abbr title="Domain Name System">DNS</abbr> traffic improving security and privacy.</div>
+<ul>
+<li class="level2"><div class="li"> Prevent <abbr title="Domain Name System">DNS</abbr> leaks and <abbr title="Domain Name System">DNS</abbr> hijacking.</div>
+</li>
+</ul>
+</li>
+<li class="level1 node"><div class="li"> Bypass regional restrictions using public <abbr title="Domain Name System">DNS</abbr> providers.</div>
+<ul>
+<li class="level2"><div class="li"> Escape <abbr title="Domain Name System">DNS</abbr>-based content filters and internet censorship.</div>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;docs:guide-user:services:dns:dnscrypt_dnsmasq_dnscrypt-proxy&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:9,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Goals&quot;,&quot;hid&quot;:&quot;goals&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;579-707&quot;} -->
+<h2 class="sectionedit10" id="instructions">Instructions</h2>
+<div class="level2">
+
+<p>
+As first step, configure the tunnel part of <a href="/packages/pkgdata/cloudflared" class="wikilink1" title="packages:pkgdata:cloudflared" data-wiki-id="packages:pkgdata:cloudflared">cloudflared</a> normally.
+</p>
+
+<p>
+In Cloudflare Zero Trust, create a <em><abbr title="Domain Name System">DNS</abbr> Location</em>. Enable just the <abbr title="Domain Name System">DNS</abbr> over <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> (<abbr title="DNS over HTTPS">DoH</abbr>) endpoint. An endpoint such as <a href="https://xxxxxxxxxx.cloudflare-gateway.com/dns-query" class="urlextern" title="https://xxxxxxxxxx.cloudflare-gateway.com/dns-query" rel="ugc nofollow">https://xxxxxxxxxx.cloudflare-gateway.com/dns-query</a> will be generated; take note of it
+</p>
+
+<p>
+(optional) in Cloudflare Zero Trust, create your desired <abbr title="Domain Name System">DNS</abbr> Policy, inside <em>Firewall policies</em>, in order to block web site categories (malware, phishing, etc.) based on their <abbr title="Domain Name System">DNS</abbr> names
+</p>
+
+<p>
+Verify that the endpoint is actually reachable and allowing queries: this example sends a <abbr title="DNS over HTTPS">DoH</abbr> query for the &#039;A&#039; record for &#039;<a href="http://www.microsoft.com" class="urlextern" title="http://www.microsoft.com" rel="ugc nofollow">www.microsoft.com</a>&#039;:
+</p>
+<pre class="code bash">curl <span class="re5">-H</span> <span class="st_h">'accept: application/dns-json'</span> <span class="st_h">'https://xxxxxxxxxx.cloudflare-gateway.com/dns-query?name=www.microsoft.com&amp;type=A'</span></pre>
+
+<p>
+We now need to tell the cloudflared agent to activate also the <abbr title="DNS over HTTPS">DoH</abbr> feature. In <code>/etc/cloudflared/config.yml</code>, add the following:
+</p>
+<pre class="code yaml"><span class="co3">    proxy-dns</span><span class="sy2">: </span>true<span class="co3">
+    proxy-dns-port</span><span class="sy2">: </span>5053  <span class="co1"># or any unused local port</span><span class="co4">
+    proxy-dns-upstream</span><span class="sy2">:
+</span>      - https://xxxxxxxxxx.cloudflare-gateway.com/dns-query    <span class="co1"># the endpoint noted before</span><span class="co3">
+    bootstrap</span><span class="sy2">: </span>1.1.1.1</pre>
+
+<p>
+Restart cloudflared and check that cloudflared is now listening on port 5053 specified in the <code>config.yml</code> file:
+</p>
+<pre class="code bash">	<span class="kw2">netstat</span> <span class="re5">-tulnp</span> <span class="sy0">|</span> <span class="kw2">grep</span> <span class="nu0">5053</span>
+	tcp        <span class="nu0">0</span>      <span class="nu0">0</span> 127.0.0.1:<span class="nu0">5053</span>          0.0.0.0:<span class="sy0">*</span>               LISTEN      <span class="nu0">12564</span><span class="sy0">/</span>cloudflared
+        udp        <span class="nu0">0</span>      <span class="nu0">0</span> 127.0.0.1:<span class="nu0">5053</span>          0.0.0.0:<span class="sy0">*</span>                           <span class="nu0">12564</span><span class="sy0">/</span>cloudflared</pre>
+
+<p>
+Now we need to tell dnsmasq to use the endpoint on 5053 as forwarder, and the general Cloudflare <abbr title="Domain Name System">DNS</abbr> address (1.1.1.1) as fallback. Edit the <code>dnsmasq</code> section of <code>/etc/config/dhcp</code>, making sure to include the following:
+</p>
+<pre class="code">...
+option allservers &#039;0&#039;
+...
+# Primary DoH proxy (via cloudflared)
+list server &#039;127.0.0.1#5053&#039;
+
+# Fallback if DoH proxy is not available
+list server &#039;1.1.1.1&#039;</pre>
+
+<p>
+Note the <em>allservers</em> line: we need to ensure that queries go first to 127.0.0.1#5053, and to 1.1.1.1 only as fallback; not in parallel to both upstreams. See the <code>allservers</code> option in <a href="/docs/guide-user/base-system/dhcp#all_options" class="wikilink1" title="docs:guide-user:base-system:dhcp" data-wiki-id="docs:guide-user:base-system:dhcp">all_options</a> for details.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Instructions&quot;,&quot;hid&quot;:&quot;instructions&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:10,&quot;range&quot;:&quot;708-2908&quot;} -->
+<h2 class="sectionedit11" id="testing">Testing</h2>
+<div class="level2">
+
+<p>
+Check that <abbr title="DNS over HTTPS">DoH</abbr> is actually enforced, by using Cloudflare&#039;s test page (<a href="https://1.1.1.1/help" class="urlextern" title="https://1.1.1.1/help" rel="ugc nofollow">https://1.1.1.1/help</a>)
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Testing&quot;,&quot;hid&quot;:&quot;testing&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:11,&quot;range&quot;:&quot;2909-&quot;} -->

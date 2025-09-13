@@ -1,0 +1,268 @@
+
+<h1 class="sectionedit1" id="openssh_multi_factor_authentication">OpenSSH Multi Factor Authentication</h1>
+<div class="level1">
+
+<p>
+The following tutorial will set up two-factor authentication for OpenSSH on my OpenWrt x86 router (v19.07.06). It comes from a <a href="https://forum.openwrt.org/t/howto-openssh-with-mfa-on-openwrt-19-07-x-using-google-authenticator/88025" class="urlextern" title="https://forum.openwrt.org/t/howto-openssh-with-mfa-on-openwrt-19-07-x-using-google-authenticator/88025" rel="ugc nofollow"> post in the OpenWrt forums</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;OpenSSH Multi Factor Authentication&quot;,&quot;hid&quot;:&quot;openssh_multi_factor_authentication&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-313&quot;} -->
+<h2 class="sectionedit2" id="start">Start</h2>
+<div class="level2">
+
+<p>
+In this tutorial the router <abbr title="Internet Protocol">IP</abbr> is the default 192.168.1.1.
+</p>
+
+<p>
+Configure OpenWrt&#039;s built-in Dropbear <abbr title="Secure Shell">SSH</abbr> to work on <abbr title="Local Area Network">LAN</abbr> only and away from port 22 (e.g., 20022). This can be done in Luci at <a href="http://192.168.1.1/cgi-bin/luci/admin/system/admin/dropbear" class="urlextern" title="http://192.168.1.1/cgi-bin/luci/admin/system/admin/dropbear" rel="ugc nofollow">http://192.168.1.1/cgi-bin/luci/admin/system/admin/dropbear</a>. If anything goes wrong with OpenSSH, you still should be able to log in from your local network using Dropbear: <a href="/_media/docs/guide-user/services/ssh/openssh_mfa_auth_1_luci_dropbear.jpeg" class="media" title="docs:guide-user:services:ssh:openssh_mfa_auth_1_luci_dropbear.jpeg"><img src="/_media/docs/guide-user/services/ssh/openssh_mfa_auth_1_luci_dropbear.jpeg?w=700&amp;tok=14dd67" class="media" loading="lazy" title="Luci Dropbear" alt="Luci Dropbear" width="700" /></a>
+</p>
+
+<p>
+Log into the router using Dropbear and install the openssh-server-pam and google-authenticator-libpam packages:
+</p>
+<pre class="code">ssh -p 20022 root@192.168.1.1
+opkg update
+opkg install google-authenticator-libpam openssh-server-pam</pre>
+
+<p>
+Set up OpenSSH public/private key authentication. This is no different from a typical non-MFA scenario, I&#039;ve just followed <a href="https://www.digitalocean.com/community/tutorials/how-to-set-up-ssh-keys-2" class="urlextern" title="https://www.digitalocean.com/community/tutorials/how-to-set-up-ssh-keys-2" rel="ugc nofollow">this excellent guide</a>.
+</p>
+
+<p>
+Restart the OpenSSH service (service sshd restart from the stil-open Dropbear session of step 2) and test that you can connect to OpenSSH as root on port 22, from some other host:
+</p>
+<pre class="code">ssh root@192.168.1.1</pre>
+
+<p>
+Run google-authenticator (in the open Dropbear session) and enroll in MFA. Follow <a href="https://www.digitalocean.com/community/tutorials/how-to-set-up-multi-factor-authentication-for-ssh-on-ubuntu-16-04" class="urlextern" title="https://www.digitalocean.com/community/tutorials/how-to-set-up-multi-factor-authentication-for-ssh-on-ubuntu-16-04" rel="ugc nofollow">this guide</a> precisely, starting from “<strong>Run the initialization app</strong>” and stopping at “<strong>Step 2 — Configuring OpenSSH</strong>”.<br/>
+You can use Google Authenticator, Microsoft Authenticator or any other MFA app that implements the standard Time-based One-time Password Algorithm <a href="https://tools.ietf.org/html/rfc6238" class="urlextern" title="https://tools.ietf.org/html/rfc6238" rel="ugc nofollow">(TOTP - RFC 6238)</a>.
+</p>
+
+<p>
+Edit /etc/ssh/sshd_config (with nano /etc/ssh/sshd_config) to make these scattered changes:
+</p>
+<pre class="code">PermitRootLogin yes
+PubkeyAuthentication yes
+ChallengeResponseAuthentication yes
+UsePAM yes
+AuthenticationMethods publickey,keyboard-interactive</pre>
+
+<p>
+Here is a working version of /etc/ssh/sshd_config:
+</p>
+<pre class="code">    #       $OpenBSD: sshd_config,v 1.103 2018/04/09 20:41:22 tj Exp $
+
+    # This is the sshd server system-wide configuration file.  See
+    # sshd_config(5) for more information.
+
+    # This sshd was compiled with PATH=/usr/bin:/bin:/usr/sbin:/sbin
+
+    # The strategy used for options in the default sshd_config shipped with
+    # OpenSSH is to specify options with their default value where
+    # possible, but leave them commented.  Uncommented options override the
+    # default value.
+
+    Port 22
+    #AddressFamily any
+    #ListenAddress 0.0.0.0
+    #ListenAddress ::
+
+    HostKey /etc/ssh/ssh_host_rsa_key
+    HostKey /etc/ssh/ssh_host_ecdsa_key
+    HostKey /etc/ssh/ssh_host_ed25519_key
+
+    # Ciphers and keying
+    #RekeyLimit default none
+
+    # Logging
+    #SyslogFacility AUTH
+    #LogLevel INFO
+
+    # Authentication:
+
+    #LoginGraceTime 2m
+    PermitRootLogin yes
+    #StrictModes yes
+    #MaxAuthTries 6
+    #MaxSessions 10
+
+    PubkeyAuthentication yes
+
+    # The default is to check both .ssh/authorized_keys and .ssh/authorized_keys2
+    # but this is overridden so installations will only check .ssh/authorized_keys
+    AuthorizedKeysFile      .ssh/authorized_keys
+
+    #AuthorizedPrincipalsFile none
+
+    #AuthorizedKeysCommand none
+    #AuthorizedKeysCommandUser nobody
+
+    # For this to work you will also need host keys in /etc/ssh/ssh_known_hosts
+    #HostbasedAuthentication no
+    # Change to yes if you don&#039;t trust ~/.ssh/known_hosts for
+    # HostbasedAuthentication
+    #IgnoreUserKnownHosts no
+    # Don&#039;t read the user&#039;s ~/.rhosts and ~/.shosts files
+    #IgnoreRhosts yes
+
+    # To disable tunneled clear text passwords, change to no here!
+    #PasswordAuthentication yes
+    #PermitEmptyPasswords no
+
+    # Change to no to disable s/key passwords
+    ChallengeResponseAuthentication yes
+
+    # Kerberos options
+    #KerberosAuthentication no
+    #KerberosOrLocalPasswd yes
+    #KerberosTicketCleanup yes
+    #KerberosGetAFSToken no
+
+    # GSSAPI options
+    #GSSAPIAuthentication no
+    #GSSAPICleanupCredentials yes
+
+    # Set this to &#039;yes&#039; to enable PAM authentication, account processing,
+    # and session processing. If this is enabled, PAM authentication will
+    # be allowed through the ChallengeResponseAuthentication and
+    # PasswordAuthentication.  Depending on your PAM configuration,
+    # PAM authentication via ChallengeResponseAuthentication may bypass
+    # the setting of &quot;PermitRootLogin without-password&quot;.
+    # If you just want the PAM account and session checks to run without
+    # PAM authentication, then enable this but set PasswordAuthentication
+    # and ChallengeResponseAuthentication to &#039;no&#039;.
+    UsePAM yes
+
+    AuthenticationMethods publickey,keyboard-interactive
+
+    #AllowAgentForwarding yes
+    #AllowTcpForwarding yes
+    #GatewayPorts no
+    #X11Forwarding no
+    #X11DisplayOffset 10
+    #X11UseLocalhost yes
+    #PermitTTY yes
+    #PrintMotd yes
+    #PrintLastLog yes
+    #TCPKeepAlive yes
+    #PermitUserEnvironment no
+    #Compression delayed
+    #ClientAliveInterval 0
+    #ClientAliveCountMax 3
+    #UseDNS no
+    #PidFile /var/run/sshd.pid
+    #MaxStartups 10:30:100
+    #PermitTunnel no
+    #ChrootDirectory none
+    #VersionAddendum none
+
+    # no default banner path
+    #Banner none
+
+    # override default of no subsystems
+    Subsystem       sftp    /usr/lib/sftp-server
+
+    # Example of overriding settings on a per-user basis
+    #Match User anoncvs
+    #       X11Forwarding no
+    #       AllowTcpForwarding no
+    #       PermitTTY no
+    #       ForceCommand cvs server</pre>
+
+<p>
+Edit <strong>/etc/pam.d/sshd</strong> (with <strong>nano /etc/pam.d/sshd</strong>) to make these changes:<br/>
+
+<strong> #auth include common-auth</strong> (must be commented out)<br/>
+
+<strong>auth required /usr/lib/security/pam_google_authenticator.so</strong> (append at the very end of the file)<br/>
+
+</p>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_center wrap_round wrap_tip plugin_wrap" style="width: 80%;">
+<p>
+<strong>NOTE:</strong> The above two lines are very important and a difference from all the guides I&#039;ve linked above. They were suggested using “auth required pam_google_authenticator.so”. However, at least in OpenWrt 19.07, pam.d tries to load this plugin from /lib/security and that fails, because the current google-authenticator-libpam package installs pam_google_authenticator.so into /usr/lib/security.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+Here is a working version of /etc/pam.d/sshd:
+</p>
+<pre class="code">    # PAM configuration for the Secure Shell service
+
+    # Read environment variables from /etc/environment and
+    # /etc/security/pam_env.conf.
+    auth       required     pam_env.so
+
+    # Skip Google Authenticator if logging in from the local network.
+    # auth [success=1 default=ignore] pam_access.so accessfile=/etc/security/access-sshd-local.conf
+    # Google Authenticator 2-step verification.
+    #auth       requisite    pam_google_authenticator.so
+
+    # Standard Un*x authentication.
+    #auth       include      common-auth
+
+    # Disallow non-root logins when /etc/nologin exists.
+    account    required     pam_nologin.so
+
+    # Uncomment and edit /etc/security/access.conf if you need to set complex
+    # access limits that are hard to express in sshd_config.
+    # account    required     pam_access.so
+
+    # Standard Un*x authorization.
+    account    include      common-account
+
+    # Standard Un*x session setup and teardown.
+    session    include      common-session
+
+    # Print the message of the day upon successful login.
+    session    optional     pam_motd.so
+
+    # Print the status of the user&#039;s mailbox upon successful login.
+    session    optional     pam_mail.so standard noenv
+
+    # Set up user limits from /etc/security/limits.conf.
+    session    required     pam_limits.so
+
+    # Set up SELinux capabilities (need modified pam)
+    # session    required     pam_selinux.so multiple
+
+    # Standard Un*x password updating.
+    password   include      common-password
+
+    auth       required     /usr/lib/security/pam_google_authenticator.so</pre>
+
+<p>
+Restart sshd (<strong>service sshd restart</strong>) and try to connect to it from another machine. You should be prompted for a one-time MFA password.
+</p>
+
+<p>
+Configure your Firewall trafic rules (<a href="http://192.168.1.1/cgi-bin/luci/admin/network/firewall/rules" class="urlextern" title="http://192.168.1.1/cgi-bin/luci/admin/network/firewall/rules" rel="ugc nofollow">http://192.168.1.1/cgi-bin/luci/admin/network/firewall/rules</a>) if you want to be able to connect to OpenSSH from the Internet.
+</p>
+
+<p>
+Congrats, you&#039;ve hardened your OpenWrt OpenSSH root access with two-factor authentication.
+</p>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_center wrap_round wrap_tip plugin_wrap" style="width: 80%;">
+<p>
+<strong>NOTE:</strong> The OTP codes are time-based. My x86 router has an RTC clock, so the MFA should work even if the router is offline.
+OpenWrt automatically syncs time using <abbr title="Network Time Protocol">NTP</abbr>, so as long as the router is online, the MFA still should work.
+Otherwise, if the router is offline and there&#039;s no RTC, you should still have an option to connect from the <abbr title="Local Area Network">LAN</abbr> using Dropbear on port 20022.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:6,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Start&quot;,&quot;hid&quot;:&quot;start&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;314-9026&quot;} -->
+<h3 class="sectionedit7" id="some_helpful_resources">Some helpful resources</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li">     <a href="https://forum.openwrt.org/t/installing-google-authenticator-for-ssh-openconnect-openvpn/31439" class="urlextern" title="https://forum.openwrt.org/t/installing-google-authenticator-for-ssh-openconnect-openvpn/31439" rel="ugc nofollow">Installing Google Authenticator for SSH, OpenConnect, OpenVPN? 6</a></div>
+</li>
+<li class="level1"><div class="li">     <a href="https://forum.archive.openwrt.org/viewtopic.php?id=38905" class="urlextern" title="https://forum.archive.openwrt.org/viewtopic.php?id=38905" rel="ugc nofollow">https://forum.archive.openwrt.org/viewtopic.php?id=38905</a></div>
+</li>
+<li class="level1"><div class="li">     <a href="https://www.digitalocean.com/community/tutorials/how-to-set-up-multi-factor-authentication-for-ssh-on-ubuntu-16-04" class="urlextern" title="https://www.digitalocean.com/community/tutorials/how-to-set-up-multi-factor-authentication-for-ssh-on-ubuntu-16-04" rel="ugc nofollow">https://www.digitalocean.com/community/tutorials/how-to-set-up-multi-factor-authentication-for-ssh-on-ubuntu-16-04</a> 2</div>
+</li>
+<li class="level1"><div class="li">     <a href="https://www.vultr.com/docs/how-to-use-twofactor-authentication-with-ubuntu-20-04" class="urlextern" title="https://www.vultr.com/docs/how-to-use-twofactor-authentication-with-ubuntu-20-04" rel="ugc nofollow">https://www.vultr.com/docs/how-to-use-twofactor-authentication-with-ubuntu-20-04</a> 1</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Some helpful resources&quot;,&quot;hid&quot;:&quot;some_helpful_resources&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:7,&quot;range&quot;:&quot;9027-&quot;} -->

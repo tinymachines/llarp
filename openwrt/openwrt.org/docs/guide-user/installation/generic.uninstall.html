@@ -1,0 +1,107 @@
+
+<h1 class="sectionedit1" id="back_to_original_firmware">Back to original firmware</h1>
+<div class="level1">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_center wrap_round wrap_important plugin_wrap" style="width: 60%;">
+<p>
+This page is <em>very</em> old and seems specific to “ancient” devices.
+</p>
+
+<p>
+Consult the device page for more up-to-date and device-specific information.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+There is little point in merely <span style='color:grey; '><em>uninstalling</em></span> OpenWrt, what you actually want to do, is to <span style='color:red; '><em>replace</em></span> OpenWrt with the original firmware. You are probably here because the wiki-page for your device does not help you with that. So, first have a look at the <a href="/docs/techref/flash.layout" class="wikilink1" title="docs:techref:flash.layout" data-wiki-id="docs:techref:flash.layout">flash.layout</a>.
+</p>
+
+<p>
+To replace OpenWrt with the original firmware, you <em>most probably</em> do not have to change the boot partition, or the partition containing specific information like <code>NVRAM</code> or <code>ART</code>, even if you overwrote the bootloader when you installed OpenWrt on your device.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Back to original firmware&quot;,&quot;hid&quot;:&quot;back_to_original_firmware&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-829&quot;} -->
+<h2 class="sectionedit4" id="via_openwrt_cli">via OpenWrt CLI</h2>
+<div class="level2">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_center wrap_round wrap_alert plugin_wrap" style="width: 60%;">
+<p>
+Only experts with a full and detailed knowledge of their device and tools should <strong><em>ever</em></strong> write to low-level devices.
+</p>
+
+<p>
+Tools such as `dd` and the various `mtd` and `nand` tools can quickly and irrecoverably brick a device permanently.
+</p>
+
+<p>
+Non-developers should always use OpenWrt LuCI-based approaches when available.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:6,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+You can use the program <code><a href="/docs/techref/mtd" class="wikilink1" title="docs:techref:mtd" data-wiki-id="docs:techref:mtd">mtd</a></code> for this:
+</p>
+<pre class="code">cd /tmp
+wget http://www.example.org/original_firmware_STRIPPED.bin
+mtd -r write /tmp/original_firmware.bin firmware</pre>
+<blockquote><div class="no">
+ IMPORTANT: you MUST STRIP the original OEM firmware before using it with mtd, otherwise YOU MAY BRICK YOUR DEVICE</div></blockquote>
+<blockquote><div class="no">
+ If you want to remove DD-WRT, you should write to the device “linux” instead of “firmware”. (Tested on TP-Link TL-WR841ND V7):<br/>
+ <pre class="code">mtd -r write /tmp/original_firmware.bin linux</pre>
+</div></blockquote>
+<blockquote><div class="no">
+ If you are flashing a <a href="/toh/linksys/wrt_ac_series" class="wikilink1" title="toh:linksys:wrt_ac_series" data-wiki-id="toh:linksys:wrt_ac_series">Linksys WRT-ACS series</a>, you should write to the device “kernel1” instead of “firmware”. It is not necessary to convert the vendor-provided .img firmware file (Tested on WRT1900ACSv2):<br/>
+ <pre class="code">mtd -e kernel1 -r write /tmp/original_firmware.bin linux</pre>
+</div></blockquote>
+
+<p>
+OpenWrt has no built-in “pleasantries” to prevent you from going back to original firmware. But sometimes you need to be careful, see e.g. <a href="/toh/tp-link/tl-wr1043nd#back_to_original_firmware" class="wikilink1" title="toh:tp-link:tl-wr1043nd" data-wiki-id="toh:tp-link:tl-wr1043nd">Back to original firmware</a>.
+</p>
+
+<p>
+If you get a error message on the above mtd command like “no valid command given” you are using an old version of mtd which doesn&#039;t support the -r or -e parameters. 
+</p>
+
+<p>
+Download a newer statically compiled version 
+</p>
+<pre class="code">cd /tmp
+wget http://www.freewrt.org/downloads/tools/mtd-static
+chmod a+x mtd.static
+wget http://www.example.org/original.trx
+./mtd.static -e linux -r write original.trx linux</pre>
+
+<p>
+<strong>TIP:</strong> <a href="http://forum.openwrt.org/viewtopic.php?id=3474" class="urlextern" title="http://forum.openwrt.org/viewtopic.php?id=3474" rel="ugc nofollow">PLEASE READ - Common mistakes</a> thread section 2 also. It describes when you should use the <code>openwrt-brcm-2.4-squashfs.trx</code> image.
+</p>
+
+<p>
+<strong>Only flash a trx, never flash a bin file?</strong><br/>
+
+Note: It is no more necessary to cut off the vendor-provided firmware file on <a href="/toh/linksys/wrt_ac_series" class="wikilink1" title="toh:linksys:wrt_ac_series" data-wiki-id="toh:linksys:wrt_ac_series">Linksys WRT-ACS series</a>. 
+If you only have a Linksys <code>.bin</code> firmware file, this is not a problem, simply cut off 32 bytes of the header by using the commands below:
+</p>
+<pre class="code">dd bs=32 skip=1 if=original.bin of=original.trx</pre>
+
+<p>
+See also <a href="/docs/techref/hardware/soc/soc.broadcom.bcm47xx/image.conversion" class="wikilink1" title="docs:techref:hardware:soc:soc.broadcom.bcm47xx:image.conversion" data-wiki-id="docs:techref:hardware:soc:soc.broadcom.bcm47xx:image.conversion">image.conversion</a> for more info about .bin to .trx.
+</p>
+
+<p>
+<strong>TIP:</strong> If your replacement firmware has a web interface, remember to flush your browser cache, sessions etc. This will avoid misleading 404 errors.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;via OpenWrt CLI&quot;,&quot;hid&quot;:&quot;via_openwrt_cli&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;830-3468&quot;} -->
+<h2 class="sectionedit7" id="via_openwrt_webui">via OpenWrt WebUI</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;via OpenWrt WebUI&quot;,&quot;hid&quot;:&quot;via_openwrt_webui&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:7,&quot;range&quot;:&quot;3469-3499&quot;} -->
+<h2 class="sectionedit8" id="via_bootloader">via Bootloader</h2>
+<div class="level2">
+
+<p>
+To flash the original firmware back again via the bootloader, please follow the procedures already described in <a href="/docs/guide-user/installation/generic.flashing" class="wikilink1" title="docs:guide-user:installation:generic.flashing" data-wiki-id="docs:guide-user:installation:generic.flashing">Installing OpenWrt</a>. They are basically the same.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;via Bootloader&quot;,&quot;hid&quot;:&quot;via_bootloader&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:8,&quot;range&quot;:&quot;3500-&quot;} -->

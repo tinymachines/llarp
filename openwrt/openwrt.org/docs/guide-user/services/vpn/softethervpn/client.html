@@ -1,0 +1,291 @@
+
+<h1 class="sectionedit1" id="softether_vpn_client">SoftEther VPN Client</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;SoftEther VPN Client&quot;,&quot;hid&quot;:&quot;softether_vpn_client&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-36&quot;} -->
+<h2 class="sectionedit2" id="introduction">Introduction</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> The guide was written for version 21.02 (current at time of writing). I experienced severe issues in 22.03, so your mileage on current-as-of-update might vary.</div>
+</li>
+<li class="level1"><div class="li"> This how-to describes the method for setting up the <a href="https://en.wikipedia.org/wiki/SoftEther VPN" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/SoftEther VPN">SoftEther VPN</a> <strong>client</strong> on OpenWrt.</div>
+</li>
+<li class="level1"><div class="li"> Follow <a href="/inbox/softether_vpn/server" class="wikilink2" title="inbox:softether_vpn:server" rel="nofollow" data-wiki-id="inbox:softether_vpn:server">SoftEther VPN server</a> for server setup and <a href="/inbox/softether_vpn/extras" class="wikilink2" title="inbox:softether_vpn:extras" rel="nofollow" data-wiki-id="inbox:softether_vpn:extras">SoftEther VPN extras</a> for additional tuning.</div>
+</li>
+<li class="level1"><div class="li"> This guide was in part adapted from kyson-lok at the <a href="https://forum.gl-inet.com/t/installing-soft-ether-client/1956/12" class="urlextern" title="https://forum.gl-inet.com/t/installing-soft-ether-client/1956/12" rel="ugc nofollow">GL.iNnet forums</a> and from <a href="https://anuradha-15.medium.com/installation-guide-of-softether-vpn-client-on-linux-54a405a0ae2c" class="urlextern" title="https://anuradha-15.medium.com/installation-guide-of-softether-vpn-client-on-linux-54a405a0ae2c" rel="ugc nofollow">Anuradha Karunarathna </a>.</div>
+</li>
+<li class="level1"><div class="li"> The <a href="https://www.softether.org/4-docs/1-manual" class="urlextern" title="https://www.softether.org/4-docs/1-manual" rel="ugc nofollow">SoftEther VPN Manual</a> is also a highly useful resource.</div>
+</li>
+<li class="level1"><div class="li"> The guide will use both LuCI and CLI; feel free to use LuCI-equivalent CLI commands where appropriate. CLI can alternatively be almost entirely avoided with access to a Windows PC and SoftEther&#039;s remote management tool.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Introduction&quot;,&quot;hid&quot;:&quot;introduction&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;37-1107&quot;} -->
+<h2 class="sectionedit3" id="goals">Goals</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Goals&quot;,&quot;hid&quot;:&quot;goals&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;1108-1126&quot;} -->
+<h2 class="sectionedit4" id="instructions">Instructions</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Instructions&quot;,&quot;hid&quot;:&quot;instructions&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;1127-1151&quot;} -->
+<h3 class="sectionedit5" id="install_packages">1. Install Packages</h3>
+<div class="level3">
+<ol>
+<li class="level1"><div class="li"> Log into LuCI</div>
+</li>
+<li class="level1"><div class="li"> Go to “System” → “Software”</div>
+</li>
+<li class="level1"><div class="li"> Click “Update lists...”</div>
+</li>
+<li class="level1"><div class="li"> Filter the list for “softether”</div>
+</li>
+<li class="level1"><div class="li"> Install “softethervpn5-libs”</div>
+</li>
+<li class="level1"><div class="li"> Install “softethervpn5-client”</div>
+</li>
+<li class="level1"><div class="li"> Install “luci-app-softether” (somewhat optional - very limited LuCI interface at this point)</div>
+</li>
+<li class="level1"><div class="li"> Reboot the router</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;1. Install Packages&quot;,&quot;hid&quot;:&quot;install_packages&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;1152-1485&quot;} -->
+<h3 class="sectionedit6" id="configure_softether_vpn_client">2. Configure SoftEther VPN Client</h3>
+<div class="level3">
+
+<p>
+<em>Note: If you have a Windows PC, you can use the remote client manager (“Manage Remote Computer&#039;s SoftEther <abbr title="Virtual Private Network">VPN</abbr> Client” in Start) to set everything up via <abbr title="Graphical User Interface">GUI</abbr> after issuing the command “RemoteEnable” in command line client management. It is also possible to drop an existing configuration file into place via SCP.</em>
+</p>
+
+<p>
+The guide here will show configuration with CLI/<abbr title="Secure Shell">SSH</abbr>, for which you issue the following command:
+</p>
+<pre class="code bash">vpncmd</pre>
+<ul>
+<li class="level1"><div class="li"> The following prompt will appear:</div>
+</li>
+</ul>
+<pre class="code bash">By using vpncmd program, the following can be achieved. 
+<span class="nu0">1</span>. Management of VPN Server or VPN Bridge 
+<span class="nu0">2</span>. Management of VPN Client
+<span class="nu0">3</span>. Use of VPN Tools <span class="br0">&#40;</span>certificate creation and Network Traffic Speed Test Tool<span class="br0">&#41;</span>
+Select <span class="nu0">1</span>, <span class="nu0">2</span> or <span class="nu0">3</span>:</pre>
+<ul>
+<li class="level1"><div class="li"> Type “2” and confirm with “Enter”</div>
+</li>
+<li class="level1"><div class="li"> The following prompt will appear:</div>
+</li>
+</ul>
+<pre class="code bash">Specify the host name or IP address of the computer that the destination VPN Client is operating on. 
+If nothing is input and Enter is pressed, connection will be made to localhost <span class="br0">&#40;</span>this computer<span class="br0">&#41;</span>.
+Hostname of IP Address of Destination: </pre>
+<ul>
+<li class="level1"><div class="li"> Simply press “Enter” (since you want to manage localhost)</div>
+</li>
+<li class="level1"><div class="li"> The following prompt will appear:</div>
+</li>
+</ul>
+<pre class="code bash">Connected to VPN Client <span class="st0">&quot;localhost&quot;</span>.
+VPN Client<span class="sy0">&gt;</span></pre>
+<ul>
+<li class="level1"><div class="li"> Create a <abbr title="Virtual Private Network">VPN</abbr> network device by issuing the following command (replacing &lt;devName&gt; with your name of choice)<sup><a href="#fn__1" id="fnt__1" class="fn_top">1)</a></sup></div>
+</li>
+</ul>
+<pre class="code bash">NicCreate <span class="sy0">&lt;</span>devName<span class="sy0">&gt;</span></pre>
+<ul>
+<li class="level1"><div class="li"> Configure the <abbr title="Virtual Private Network">VPN</abbr> connection by issuing the following command (replacing &lt;accountName&gt; with your name of choice)</div>
+</li>
+</ul>
+<pre class="code bash">AccountCreate <span class="sy0">&lt;</span>accountName<span class="sy0">&gt;</span></pre>
+<ul>
+<li class="level1"><div class="li"> You will now be prompted for a number of connection parameters. Fill in the &lt;placeholders&gt; with the relevant information - these will depend on how you&#039;ve configured your server, except for &lt;devName&gt; which you chose above.</div>
+</li>
+</ul>
+<pre class="code bash">Destination VPN Server Host Name and Port Number: <span class="sy0">&lt;</span>server address or IP<span class="sy0">&gt;</span>:<span class="sy0">&lt;</span>server port<span class="sy0">&gt;</span>
+Destination Virtual Hub Name: <span class="sy0">&lt;</span>server virtual hub<span class="sy0">&gt;</span>
+Connecting User Name: <span class="sy0">&lt;</span>user name<span class="sy0">&gt;</span>
+Used Virtual Network Adapter Name: <span class="sy0">&lt;</span>devName<span class="sy0">&gt;</span></pre>
+<ul>
+<li class="level1"><div class="li"> Issue the following command to finish configuration:</div>
+</li>
+</ul>
+<pre class="code bash">AccountPasswordSet <span class="sy0">&lt;</span>accountName<span class="sy0">&gt;</span></pre>
+<ul>
+<li class="level1"><div class="li"> Follow the prompts to configure the user password for the <abbr title="Virtual Private Network">VPN</abbr> connection (again depending on how you configured your server; for standard configurations you want to choose “standard” at the last prompt)</div>
+</li>
+<li class="level1"><div class="li"> Exit the VPNcmd environment with Ctrl+C</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;2. Configure SoftEther VPN Client&quot;,&quot;hid&quot;:&quot;configure_softether_vpn_client&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;1486-4006&quot;} -->
+<h3 class="sectionedit7" id="configure_openwrt_networking">3. Configure OpenWRT networking</h3>
+<div class="level3">
+<ol>
+<li class="level1"><div class="li"> Log into LuCI</div>
+</li>
+<li class="level1 node"><div class="li"> <em>First, you need to set up a suitable interface:</em></div>
+<ol>
+<li class="level2"><div class="li"> Go to “Network” → “Interfaces”</div>
+</li>
+<li class="level2"><div class="li"> Click “Add new interface...”</div>
+</li>
+<li class="level2"><div class="li"> For “Name”, choose and enter an &lt;ifName&gt; (e.g. “<abbr title="Virtual Private Network">VPN</abbr>”)</div>
+</li>
+<li class="level2"><div class="li"> For “Protocol”, select “<abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> client”</div>
+</li>
+<li class="level2"><div class="li"> For “Device”, select the Ethernet adapter “vpn_&lt;devName&gt;” (name chosen in part 2)</div>
+</li>
+<li class="level2"><div class="li"> Click “Create interface”</div>
+</li>
+<li class="level2"><div class="li"> Go to “Advanced Settings” tab</div>
+</li>
+<li class="level2"><div class="li"> Disable “Use default gateway”</div>
+</li>
+<li class="level2"><div class="li"> Disable “Delegate <abbr title="Internet Protocol version 6">IPv6</abbr> prefixes”<sup><a href="#fn__2" id="fnt__2" class="fn_top">2)</a></sup></div>
+</li>
+<li class="level2"><div class="li"> Go to “Firewall Settings” tab</div>
+</li>
+<li class="level2"><div class="li"> Select “wan” from the drop-down<sup><a href="#fn__3" id="fnt__3" class="fn_top">3)</a></sup></div>
+</li>
+<li class="level2"><div class="li"> Click “Save”</div>
+</li>
+<li class="level2"><div class="li"> Click “Save &amp; Apply”</div>
+</li>
+</ol>
+</li>
+<li class="level1 node"><div class="li"> <em>The following block of steps were necessary on my setup to make things work, but that might be due to server-side issues</em> </div>
+<ol>
+<li class="level2"><div class="li"> Go to “Devices” tab</div>
+</li>
+<li class="level2"><div class="li"> For “vpn_&lt;devName&gt;”, click “Configure”</div>
+</li>
+<li class="level2"><div class="li"> Disable “Enable <abbr title="Internet Protocol version 6">IPv6</abbr>” checkbox</div>
+</li>
+<li class="level2"><div class="li"> Click “Save”</div>
+</li>
+<li class="level2"><div class="li"> Click “Save &amp; Apply”</div>
+</li>
+</ol>
+</li>
+<li class="level1 node"><div class="li"> <em>Lastly you just need to set up routing. My setup works well with specific static routes as shown here (i.e., <abbr title="Virtual Private Network">VPN</abbr> use only for specific connections); I haven&#039;t gotten it to work with <abbr title="Virtual Private Network">VPN</abbr>-as-default routing however.</em> </div>
+<ol>
+<li class="level2"><div class="li"> Go to “Network” → “Static Routes”</div>
+</li>
+<li class="level2"><div class="li"> Click “Add...”</div>
+</li>
+<li class="level2"><div class="li"> For “Interface”, select &lt;ifName&gt; (created earlier)</div>
+</li>
+<li class="level2"><div class="li"> For “Target”, specify the remote <abbr title="Internet Protocol">IP</abbr> you want <abbr title="Virtual Private Network">VPN</abbr> traffic routing for</div>
+</li>
+<li class="level2"><div class="li"> For “Netmask”, specify the remote <abbr title="Internet Protocol">IP</abbr> range for the above address</div>
+</li>
+<li class="level2"><div class="li"> For “Gateway”, specify the <abbr title="Virtual Private Network">VPN</abbr> server gateway <abbr title="Internet Protocol">IP</abbr>. This will depend on how you have set up the <abbr title="Virtual Private Network">VPN</abbr>-server-side <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> (e.g. via Softether <abbr title="Virtual Private Network">VPN</abbr> server SecureNAT, in which case the default I believe is 192.168.30.1).</div>
+</li>
+<li class="level2"><div class="li"> Click “Save”</div>
+</li>
+<li class="level2"><div class="li"> Click “Save &amp; Apply”</div>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> Reboot the router</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;3. Configure OpenWRT networking&quot;,&quot;hid&quot;:&quot;configure_openwrt_networking&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:7,&quot;range&quot;:&quot;4007-5893&quot;} -->
+<h3 class="sectionedit8" id="startingstopping_the_vpn">4. Starting/Stopping the VPN</h3>
+<div class="level3">
+
+<p>
+<em>Note: If you have a Windows PC, you can again use the remote client manager (“Manage Remote Computer&#039;s SoftEther <abbr title="Virtual Private Network">VPN</abbr> Client” in Start) for these parts.</em>
+</p>
+
+<p>
+The guide will again use CLI/<abbr title="Secure Shell">SSH</abbr>, for which you issue the following command:
+</p>
+<pre class="code bash">vpncmd</pre>
+<ul>
+<li class="level1"><div class="li"> The following prompt will appear:</div>
+</li>
+</ul>
+<pre class="code bash">By using vpncmd program, the following can be achieved. 
+<span class="nu0">1</span>. Management of VPN Server or VPN Bridge 
+<span class="nu0">2</span>. Management of VPN Client
+<span class="nu0">3</span>. Use of VPN Tools <span class="br0">&#40;</span>certificate creation and Network Traffic Speed Test Tool<span class="br0">&#41;</span>
+Select <span class="nu0">1</span>, <span class="nu0">2</span> or <span class="nu0">3</span>:</pre>
+<ul>
+<li class="level1"><div class="li"> Type “2” and confirm with “Enter”</div>
+</li>
+<li class="level1"><div class="li"> The following prompt will appear:</div>
+</li>
+</ul>
+<pre class="code bash">Specify the host name or IP address of the computer that the destination VPN Client is operating on. 
+If nothing is input and Enter is pressed, connection will be made to localhost <span class="br0">&#40;</span>this computer<span class="br0">&#41;</span>.
+Hostname of IP Address of Destination: </pre>
+<ul>
+<li class="level1"><div class="li"> Simply press “Enter” (since you want to manage localhost)</div>
+</li>
+<li class="level1"><div class="li"> The following prompt will appear:</div>
+</li>
+</ul>
+<pre class="code bash">Connected to VPN Client <span class="st0">&quot;localhost&quot;</span>.
+VPN Client<span class="sy0">&gt;</span></pre>
+<ul>
+<li class="level1"><div class="li"> <strong>To start the <abbr title="Virtual Private Network">VPN</abbr></strong>, issue the following command (replacing &lt;accountName&gt; with your chosen one from step 2)</div>
+</li>
+</ul>
+<pre class="code bash">AccountConnect <span class="sy0">&lt;</span>accountName<span class="sy0">&gt;</span></pre>
+<ul>
+<li class="level1"><div class="li"> <strong>To stop the <abbr title="Virtual Private Network">VPN</abbr></strong>, issue the following command (replacing &lt;accountName&gt; with your chosen one from step 2)</div>
+</li>
+</ul>
+<pre class="code bash">AccountConnect <span class="sy0">&lt;</span>accountName<span class="sy0">&gt;</span></pre>
+<ul>
+<li class="level1"><div class="li"> <strong>To auto-start the <abbr title="Virtual Private Network">VPN</abbr> on boot</strong>, issue the following command (replacing &lt;accountName&gt; with your chosen one from step 2)</div>
+</li>
+</ul>
+<pre class="code bash">AccountStartupSet <span class="sy0">&lt;</span>accountName<span class="sy0">&gt;</span></pre>
+<ul>
+<li class="level1"><div class="li"> To later disable auto-start, issue the following command (replacing &lt;accountName&gt; with your chosen one from step 2)</div>
+</li>
+</ul>
+<pre class="code bash">AccountStartupRemove <span class="sy0">&lt;</span>accountName<span class="sy0">&gt;</span></pre>
+<ul>
+<li class="level1"><div class="li"> Exit the VPNcmd environment with Ctrl+C</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;4. Starting\/Stopping the VPN&quot;,&quot;hid&quot;:&quot;startingstopping_the_vpn&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:8,&quot;range&quot;:&quot;5894-7686&quot;} -->
+<h2 class="sectionedit9" id="testing">Testing</h2>
+<div class="level2">
+
+<p>
+<em>Note: traceroute doesn&#039;t work properly for me with the <abbr title="Virtual Private Network">VPN</abbr> running, unfortunately. However, you can confirm routing e.g. by setting up static routes for an <abbr title="Internet Protocol">IP</abbr> geolocation server or similar and checking that way.</em>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Testing&quot;,&quot;hid&quot;:&quot;testing&quot;,&quot;codeblockOffset&quot;:16,&quot;secid&quot;:9,&quot;range&quot;:&quot;7687-7924&quot;} -->
+<h2 class="sectionedit10" id="troubleshooting">Troubleshooting</h2>
+<div class="level2">
+
+<p>
+If you&#039;ve installed the “luci-app-softether” package, you can check the connection status in LuCI under System → Softether. If you have a Windows PC, you can use the remote client manager for this. Or you can again use vpncmd (refer to the official documentation).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Troubleshooting&quot;,&quot;hid&quot;:&quot;troubleshooting&quot;,&quot;codeblockOffset&quot;:16,&quot;secid&quot;:10,&quot;range&quot;:&quot;7925-&quot;} --><div class="footnotes">
+<div class="fn"><sup><a href="#fnt__1" id="fn__1" class="fn_bot">1)</a></sup> 
+<div class="content">note that this is a SoftEther-level name; at system-level, the device name will automatically be prefixed with “vpn_”</div></div>
+<div class="fn"><sup><a href="#fnt__2" id="fn__2" class="fn_bot">2)</a></sup> 
+<div class="content">might be optional; unconfirmed</div></div>
+<div class="fn"><sup><a href="#fnt__3" id="fn__3" class="fn_bot">3)</a></sup> 
+<div class="content">this will treat the <abbr title="Virtual Private Network">VPN</abbr> as part of the <abbr title="Wide Area Network">WAN</abbr> zone to simplify firewall setup; if you need fine-tuned control, you can create a new zone with new rules</div></div>
+</div>

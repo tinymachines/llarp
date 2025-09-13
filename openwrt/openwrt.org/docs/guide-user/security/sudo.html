@@ -1,0 +1,181 @@
+
+<h1 class="sectionedit1" id="elevating_privileges_with_sudo">Elevating privileges with sudo</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__meta:infobox:howto_links">
+<div class="level1">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_info plugin_wrap">
+<p>
+This article relies on the following:
+</p>
+<ul>
+<li class="level1"><div class="li"> Accessing <a href="/docs/guide-quick-start/walkthrough_login" class="wikilink1" title="docs:guide-quick-start:walkthrough_login" data-wiki-id="docs:guide-quick-start:walkthrough_login">web interface</a> / <a href="/docs/guide-quick-start/sshadministration" class="wikilink1" title="docs:guide-quick-start:sshadministration" data-wiki-id="docs:guide-quick-start:sshadministration">command-line interface</a></div>
+</li>
+<li class="level1"><div class="li"> Managing <a href="/docs/guide-user/base-system/uci" class="wikilink1" title="docs:guide-user:base-system:uci" data-wiki-id="docs:guide-user:base-system:uci">configs</a> / <a href="/docs/guide-user/additional-software/managing_packages" class="wikilink1" title="docs:guide-user:additional-software:managing_packages" data-wiki-id="docs:guide-user:additional-software:managing_packages">packages</a> / <a href="/docs/guide-user/base-system/managing_services" class="wikilink1" title="docs:guide-user:base-system:managing_services" data-wiki-id="docs:guide-user:base-system:managing_services">services</a> / <a href="/docs/guide-user/base-system/log.essentials" class="wikilink1" title="docs:guide-user:base-system:log.essentials" data-wiki-id="docs:guide-user:base-system:log.essentials">logs</a></div>
+</li>
+</ul>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Elevating privileges with sudo&quot;,&quot;hid&quot;:&quot;elevating_privileges_with_sudo&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-127&quot;} -->
+<h2 class="sectionedit6" id="introduction">Introduction</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> This how-to helps improve security with <a href="https://en.wikipedia.org/wiki/Sudo" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Sudo">sudo</a> when using command-line interface.</div>
+</li>
+<li class="level1"><div class="li"> Log in as an unprivileged user and use sudo to run commands with elevated privileges.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Introduction&quot;,&quot;hid&quot;:&quot;introduction&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;128-339&quot;} -->
+<h2 class="sectionedit7" id="goals">Goals</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Drop user privileges by default.</div>
+</li>
+<li class="level1"><div class="li"> Elevate user privileges on demand.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Goals&quot;,&quot;hid&quot;:&quot;goals&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;340-434&quot;} -->
+<h2 class="sectionedit8" id="command-line_instructions">Command-line instructions</h2>
+<div class="level2">
+
+<p>
+Install the required packages.
+</p>
+<pre class="code bash"><span class="co0"># Install packages</span>
+opkg update
+opkg <span class="kw2">install</span> shadow-useradd shadow-usermod shadow-groupadd <span class="kw2">sudo</span></pre>
+
+<p>
+Create an unprivileged test user and set a password.
+</p>
+<pre class="code bash"><span class="co0"># Create a user</span>
+useradd <span class="re5">-m</span> <span class="re5">-s</span> <span class="sy0">/</span>bin<span class="sy0">/</span><span class="kw2">ash</span> <span class="kw3">test</span>
+&nbsp;
+<span class="co0"># Set user password</span>
+<span class="kw2">passwd</span> <span class="kw3">test</span></pre>
+
+<p>
+Create a privileged group and make the test user its member.
+</p>
+<pre class="code bash"><span class="co0"># Create system group</span>
+groupadd <span class="re5">-r</span> <span class="kw2">sudo</span>
+&nbsp;
+<span class="co0"># Add user to group</span>
+usermod <span class="re5">-a</span> <span class="re5">-G</span> <span class="kw2">sudo</span> <span class="kw3">test</span></pre>
+
+<p>
+Grant root privileges to the group when using sudo.
+</p>
+<pre class="code bash"><span class="co0"># Configure sudoers</span>
+<span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> EOF <span class="sy0">&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>sudoers.d<span class="sy0">/</span>00-custom
+<span class="sy0">%</span><span class="kw2">sudo</span> <span class="re2">ALL</span>=<span class="br0">&#40;</span>ALL<span class="br0">&#41;</span> ALL
+EOF</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Command-line instructions&quot;,&quot;hid&quot;:&quot;command-line_instructions&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:8,&quot;range&quot;:&quot;435-1095&quot;} -->
+<h2 class="sectionedit9" id="testing">Testing</h2>
+<div class="level2">
+
+<p>
+Log in as an unprivileged user.
+Elevate privileges for a specific command.
+</p>
+<pre class="code bash"><span class="kw2">sudo</span> <span class="re5">-i</span> <span class="re5">-u</span> <span class="kw3">test</span>
+<span class="kw2">id</span>
+<span class="kw2">sudo</span> <span class="kw2">id</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Testing&quot;,&quot;hid&quot;:&quot;testing&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:9,&quot;range&quot;:&quot;1096-1239&quot;} -->
+<h2 class="sectionedit10" id="troubleshooting">Troubleshooting</h2>
+<div class="level2">
+
+<p>
+Collect and analyze the following information.
+</p>
+<pre class="code bash"><span class="kw2">id</span> <span class="kw3">test</span>
+<span class="kw2">ls</span> <span class="re5">-l</span> <span class="sy0">/</span>etc<span class="sy0">/</span>sudoers <span class="sy0">/</span>etc<span class="sy0">/</span>sudoers.d<span class="sy0">/*</span>
+<span class="kw2">grep</span> <span class="re5">-v</span> <span class="re5">-e</span> <span class="st0">&quot;^#&quot;</span> <span class="re5">-e</span> <span class="st0">&quot;^$&quot;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>sudoers <span class="sy0">/</span>etc<span class="sy0">/</span>sudoers.d<span class="sy0">/*</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Troubleshooting&quot;,&quot;hid&quot;:&quot;troubleshooting&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:10,&quot;range&quot;:&quot;1240-1434&quot;} -->
+<h2 class="sectionedit11" id="extras">Extras</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Extras&quot;,&quot;hid&quot;:&quot;extras&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:11,&quot;range&quot;:&quot;1435-1453&quot;} -->
+<h3 class="sectionedit12" id="references">References</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> <a href="http://man.cx/useradd%288%29" class="interwiki iw_man" title="http://man.cx/useradd%288%29">useradd</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://man.cx/usermod%288%29" class="interwiki iw_man" title="http://man.cx/usermod%288%29">usermod</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://man.cx/groupadd%288%29" class="interwiki iw_man" title="http://man.cx/groupadd%288%29">groupadd</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://man.cx/passwd%288%29" class="interwiki iw_man" title="http://man.cx/passwd%288%29">passwd</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://man.cx/sudo%288%29" class="interwiki iw_man" title="http://man.cx/sudo%288%29">sudo</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://man.cx/visudo%288%29" class="interwiki iw_man" title="http://man.cx/visudo%288%29">visudo</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;References&quot;,&quot;hid&quot;:&quot;references&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:12,&quot;range&quot;:&quot;1454-1653&quot;} -->
+<h3 class="sectionedit13" id="manual_setup">Manual setup</h3>
+<div class="level3">
+
+<p>
+Add the user by hand using a unique UID and GID.
+</p>
+<pre class="code bash"><span class="co0"># Edit configs</span>
+<span class="kw2">vi</span> <span class="sy0">/</span>etc<span class="sy0">/</span><span class="kw2">passwd</span>
+<span class="kw2">vi</span> <span class="sy0">/</span>etc<span class="sy0">/</span>group
+<span class="kw2">vi</span> <span class="sy0">/</span>etc<span class="sy0">/</span>shadow
+&nbsp;
+<span class="co0"># Create home directory</span>
+<span class="kw2">mkdir</span> <span class="re5">-p</span> <span class="sy0">/</span>home<span class="sy0">/</span><span class="kw3">test</span>
+&nbsp;
+<span class="co0"># Set permissions</span>
+<span class="kw2">chown</span> test:test <span class="sy0">/</span>home<span class="sy0">/</span><span class="kw3">test</span>
+&nbsp;
+<span class="co0"># Set user password</span>
+<span class="kw2">passwd</span> <span class="kw3">test</span></pre>
+
+<p>
+Check the resulting configs.
+</p>
+<pre class="code bash"><span class="co0"># Check configs</span>
+<span class="sy0">&gt;</span> <span class="kw2">grep</span> <span class="re5">-e</span> <span class="kw3">test</span> <span class="sy0">/</span>etc<span class="sy0">/</span><span class="kw2">passwd</span> <span class="sy0">/</span>etc<span class="sy0">/</span>group <span class="sy0">/</span>etc<span class="sy0">/</span>shadow
+<span class="sy0">/</span>etc<span class="sy0">/</span>passwd:test:x:<span class="nu0">1000</span>:<span class="nu0">1000</span>::<span class="sy0">/</span>home<span class="sy0">/</span>test:<span class="sy0">/</span>bin<span class="sy0">/</span><span class="kw2">ash</span>
+<span class="sy0">/</span>etc<span class="sy0">/</span>group:test:<span class="sy0">!</span>:<span class="nu0">1000</span>:
+<span class="sy0">/</span>etc<span class="sy0">/</span>shadow:test:<span class="re4">$1</span><span class="re1">$uPzGJ3jI</span><span class="re1">$n7ld4E73SPsIx0QTXPMfu1</span>:<span class="nu0">19615</span>:<span class="nu0">0</span>:<span class="nu0">99999</span>:<span class="nu0">7</span>:::</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Manual setup&quot;,&quot;hid&quot;:&quot;manual_setup&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:13,&quot;range&quot;:&quot;1654-2192&quot;} -->
+<h3 class="sectionedit14" id="removing_user_and_group">Removing user and group</h3>
+<div class="level3">
+
+<p>
+Install the required packages.
+Remove the user and group.
+</p>
+<pre class="code bash"><span class="co0"># Install packages</span>
+opkg update
+opkg <span class="kw2">install</span> shadow-userdel shadow-groupdel
+&nbsp;
+<span class="co0"># Remove user and group</span>
+userdel <span class="kw3">test</span>
+groupdel <span class="kw2">sudo</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Removing user and group&quot;,&quot;hid&quot;:&quot;removing_user_and_group&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:14,&quot;range&quot;:&quot;2193-&quot;} -->

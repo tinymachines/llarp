@@ -1,0 +1,402 @@
+
+<h1 class="sectionedit1" id="router_vs_switch_vs_gateway_and_nat">Router vs switch vs gateway and NAT</h1>
+<div class="level1">
+
+<p>
+See also:
+<a href="/docs/guide-user/network/openwrt_as_clientdevice" class="wikilink1" title="docs:guide-user:network:openwrt_as_clientdevice" data-wiki-id="docs:guide-user:network:openwrt_as_clientdevice">OpenWrt as client device</a>,
+<a href="/docs/guide-user/network/openwrt_as_routerdevice" class="wikilink1" title="docs:guide-user:network:openwrt_as_routerdevice" data-wiki-id="docs:guide-user:network:openwrt_as_routerdevice">OpenWrt as router device</a>
+</p>
+
+<p>
+The following is meant as roundup:
+</p>
+<ul>
+<li class="level1"><div class="li"> such that you can decide if you want to configure your device as either switch, as router or as gateway</div>
+</li>
+<li class="level1"><div class="li"> such that you can decide how you want to deal with the <abbr title="Internet Protocol version 4">IPv4</abbr> double <abbr title="Network Address Translation">NAT</abbr> problem in your individual home network situation.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Router vs switch vs gateway and NAT&quot;,&quot;hid&quot;:&quot;router_vs_switch_vs_gateway_and_nat&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-486&quot;} -->
+<h2 class="sectionedit2" id="openwrt_roles">OpenWrt roles</h2>
+<div class="level2">
+
+<p>
+Network devices can operate in 3 different modes:
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong>Client</strong>: If you want to connect your device to an existing network to provide additional functions (for example, you just want to use the Wi-Fi network it provides, the additional ethernet ports, or the device is a NAS serving files over the network, or a mini-server offering some other service).</div>
+</li>
+<li class="level1"><div class="li"> <strong>Router</strong>: If you want to run OpenWrt in its default router configuration, where the device routes traffic between several <abbr title="Local Area Network">LAN</abbr> devices connected to the <abbr title="Local Area Network">LAN</abbr> ports and another network on the <abbr title="Wide Area Network">WAN</abbr> port (commonly to an “ethernet modem” that is in fact acting as a gateway).</div>
+</li>
+<li class="level1"><div class="li"> <strong>Gateway</strong>: Your device also behaves as router. But in contrast to the &#039;as router device&#039; mode, in this mode your device either uses an integrated modem to connect to the Internet or has an external modem attached on its <abbr title="Wide Area Network">WAN</abbr> port that needs one of the following protocols for proper operation: <a href="/docs/guide-user/network/wan/wan_interface_protocols" class="wikilink1" title="docs:guide-user:network:wan:wan_interface_protocols" data-wiki-id="docs:guide-user:network:wan:wan_interface_protocols">WAN interface protocols</a>.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;OpenWrt roles&quot;,&quot;hid&quot;:&quot;openwrt_roles&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;487-1522&quot;} -->
+<h2 class="sectionedit3" id="routergateway_and_double_nat_problem_with_ipv4_or_mixed_ipv4ipv6">Router/gateway and double NAT problem with IPv4 or mixed IPv4/IPv6</h2>
+<div class="level2">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_todo plugin_wrap">
+<p>
+Are you an OpenWrt newcomer? Does this page with lots of technical network information seem scary? Are you worried that you don&#039;t know enough to make these decisions now?<br/>
+
+→ Just stop reading and use the default configuration for now. Your device will act as a router in a cascaded double <abbr title="Network Address Translation">NAT</abbr> scenario which will work just fine for normal internet access, so you don&#039;t have to do anything.<br/>
+
+→ Alternatively, <a href="/docs/guide-quick-start/start" class="wikilink1" title="docs:guide-quick-start:start" data-wiki-id="docs:guide-quick-start:start">get familiar with OpenWrt</a> first, then come back later and decide how to proceed.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+<a href="/docs/guide-user/network/integrating-openwrt-introduction" class="wikilink1" title="docs:guide-user:network:integrating-openwrt-introduction" data-wiki-id="docs:guide-user:network:integrating-openwrt-introduction">Double NAT</a> is an issue that exists solely with <abbr title="Internet Protocol version 4">IPv4</abbr>. In a few decades, when the whole world is fully <abbr title="Internet Protocol version 6">IPv6</abbr> enabled devices, this won&#039;t be a problem anymore, as <abbr title="Internet Protocol version 6">IPv6</abbr> strictly forbids <abbr title="Network Address Translation">NAT</abbr>. In the meantime for <abbr title="Internet Protocol version 4">IPv4</abbr>, act according to this how-to.
+</p>
+
+<p>
+The problem of <abbr title="Internet Protocol version 4">IPv4</abbr> is that if you simply add an additional <abbr title="Internet Protocol version 4">IPv4</abbr> router to an existing router of your <abbr title="Internet Service Provider">ISP</abbr> (internet service provider), you will face a problem called <strong>double <abbr title="Network Address Translation">NAT</abbr></strong> - both the newly added router and the existing <abbr title="Internet Service Provider">ISP</abbr>-supplied router do <abbr title="Network Address Translation">NAT</abbr>, resulting in your client data traffic being “NATed” twice before it reaches the internet.
+</p>
+
+<p>
+This double <abbr title="Network Address Translation">NAT</abbr> scenario won&#039;t cause problems for basic tasks like browsing the internet, but it can cause problems when you are trying to host servers at home that you want to be reachable from the internet, or when doing peer-to-peer online gaming (which often uses the <abbr title="User Datagram Protocol">UDP</abbr> protocol and does some funny firewall stuff called “<abbr title="User Datagram Protocol">UDP</abbr> hole-punching”).
+</p>
+
+<p>
+To deal with this double <abbr title="Network Address Translation">NAT</abbr> problem and use <abbr title="Internet Protocol version 4">IPv4</abbr> as flawlessly as possible, you need to choose how OpenWrt gets connected on its upstream side from several options. Note that in all these examples, the OpenWrt device is assumed to be on the “inside” of the network, i.e. clients ↔ OpenWrt device ↔ <abbr title="Internet Service Provider">ISP</abbr> device ↔ Internet. Since the OpenWrt device is our main concern, we&#039;ll refer to <em>upstream</em> and <em>downstream</em> connections relative to it:
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong>Upstream</strong>: the connection from the OpenWrt device to your network infrastructure</div>
+</li>
+<li class="level1"><div class="li"> <strong>Downstream</strong>: your home client devices connecting to your OpenWrt device</div>
+</li>
+</ul>
+
+<p>
+There is a range of options to connect the upstream side of OpenWrt to your existing home network. Each option tries to work around the double <abbr title="Network Address Translation">NAT</abbr> problem with different technical tricks or configuration:
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Router\/gateway and double NAT problem with IPv4 or mixed IPv4\/IPv6&quot;,&quot;hid&quot;:&quot;routergateway_and_double_nat_problem_with_ipv4_or_mixed_ipv4ipv6&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;1523-3974&quot;} -->
+<h1 class="sectionedit6" id="routersgateways">Routers / gateways</h1>
+<div class="level1">
+<div class="table sectionedit7"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"><abbr title="Network Address Translation">NAT</abbr> </th><th class="col1"> Usage variant </th><th class="col2"> Visualization </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> single </td><td class="col1"> <a href="#device_as_router_internet_isp_device_as_modem-bridge" title="docs:guide-user:network:switch_router_gateway_and_nat ↵" class="wikilink1">OpenWrt as router and having an internet ISP device configured as modem-bridge</a> </td><td class="col2"> clients ↔ OpenWrt router with <abbr title="Network Address Translation">NAT</abbr> ↔ <abbr title="Internet Service Provider">ISP</abbr> bridge (no <abbr title="Network Address Translation">NAT</abbr>) ↔ Internet </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> single </td><td class="col1"> <a href="#device_as_router_as_exposed_host_in_the_isp_router" title="docs:guide-user:network:switch_router_gateway_and_nat ↵" class="wikilink1">OpenWrt as router, OpenWrt router being &quot;exposed host&quot; in the ISP router</a> </td><td class="col2"> clients ↔ OpenWrt router with <abbr title="Network Address Translation">NAT</abbr> ↔ <abbr title="Internet Service Provider">ISP</abbr> router with <abbr title="Network Address Translation">NAT</abbr> + “exposed host” feature ↔ Internet </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> double </td><td class="col1"> <a href="#openwrt_as_cascaded_router_behind_another_router_double_nat" title="docs:guide-user:network:switch_router_gateway_and_nat ↵" class="wikilink1">OpenWrt as router acting in default cascaded router double-NAT configuration</a> </td><td class="col2"> clients ↔ OpenWrt router with <abbr title="Network Address Translation">NAT</abbr> ↔ <abbr title="Internet Service Provider">ISP</abbr> router with <abbr title="Network Address Translation">NAT</abbr> ↔ Internet </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> double </td><td class="col1"> <a href="#device_as_double-nat_router_with_dual-stack_lite" title="docs:guide-user:network:switch_router_gateway_and_nat ↵" class="wikilink1">OpenWrt as router in double-NAT configuration with Dualstack Lite on ISP side</a> </td><td class="col2"> clients ↔ OpenWrt router with <abbr title="Network Address Translation">NAT</abbr> ↔ <abbr title="Internet Service Provider">ISP</abbr> router with DS-Lite <abbr title="Network Address Translation">NAT</abbr> ↔ Internet </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0"> single </td><td class="col1"> <a href="#device_as_router_with_disabled_nat_additional_routing_rules" title="docs:guide-user:network:switch_router_gateway_and_nat ↵" class="wikilink1">OpenWrt as router with disabled NAT, additional routing rules in both routers</a> </td><td class="col2"> clients ↔ OpenWrt router (no <abbr title="Network Address Translation">NAT</abbr>) ↔ routing rules ↔ <abbr title="Internet Service Provider">ISP</abbr> router with <abbr title="Network Address Translation">NAT</abbr> ↔ Internet </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0"> 0 </td><td class="col1"> <a href="#device_as_router_in_an_ideal_ipv6-only_configuration" title="docs:guide-user:network:switch_router_gateway_and_nat ↵" class="wikilink1">look-out: OpenWrt as router in IPv6 only configuration + ISP router</a> </td><td class="col2"> clients ↔ OpenWrt router (no <abbr title="Network Address Translation">NAT</abbr>) ↔ <abbr title="Internet Service Provider">ISP</abbr> router (no <abbr title="Network Address Translation">NAT</abbr>) ↔ Internet </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0"> single </td><td class="col1"> <a href="#device_as_a_gateway_with_a_true_modem_between_it_and_the_internet" title="docs:guide-user:network:switch_router_gateway_and_nat ↵" class="wikilink1">OpenWrt as gateway using either OpenWrt-device-built-in or external modem</a> </td><td class="col2"> clients ↔ OpenWrt as gateway with <abbr title="Network Address Translation">NAT</abbr> ↔ built-in/external modem (no <abbr title="Network Address Translation">NAT</abbr>) ↔ Internet </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:7,&quot;range&quot;:&quot;4008-5679&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Routers \/ gateways&quot;,&quot;hid&quot;:&quot;routersgateways&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;3975-5680&quot;} -->
+<h1 class="sectionedit8" id="switches_and_client_aps">Switches and client APs</h1>
+<div class="level1">
+<div class="table sectionedit9"><table class="inline">
+	<tr class="row0">
+		<td class="col0"> single </td><td class="col1"> Three usage Variants: <br/>
+<a href="#openwrt_as_wireless_repeater_wifi_wifi_switch" title="docs:guide-user:network:switch_router_gateway_and_nat ↵" class="wikilink1">OpenWrt as wireless repeater (Wi-Fi &lt;-&gt; Wi-Fi switch)</a> <br/>
+<a href="#openwrt_as_wireless_access_point_wifi_wired_switch" title="docs:guide-user:network:switch_router_gateway_and_nat ↵" class="wikilink1">OpenWrt as wireless access point (Wi-Fi &lt;-&gt; wired switch)</a> <br/>
+<a href="#openwrt_as_a_wire_wire_switch" title="docs:guide-user:network:switch_router_gateway_and_nat ↵" class="wikilink1">OpenWrt as wire (wire &lt;-&gt; wire switch)</a> </td><td class="col2"> clients ↔ OpenWrt as switch (no <abbr title="Network Address Translation">NAT</abbr>) ↔ <abbr title="Internet Service Provider">ISP</abbr> router (with <abbr title="Network Address Translation">NAT</abbr>) ↔ Internet </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table1&quot;,&quot;secid&quot;:9,&quot;range&quot;:&quot;5719-6217&quot;} -->
+<p>
+  * all variants can handle both wireless and wired clients on the downstream side (i.e. client devices connected to your <abbr title="Local Area Network">LAN</abbr>)
+</p>
+<ul>
+<li class="level1"><div class="li"> all variants can host software services for both downstream and upstream sides (like NAS shares)</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Switches and client APs&quot;,&quot;hid&quot;:&quot;switches_and_client_aps&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:8,&quot;range&quot;:&quot;5681-6446&quot;} -->
+<h3 class="sectionedit10" id="openwrt_as_cascaded_router_behind_another_router_double_nat">OpenWrt as cascaded router behind another router (double NAT)</h3>
+<div class="level3">
+
+<p>
+This is the default (and easiest) option for your OpenWrt device. For this scenario you simply connect the OpenWrt <abbr title="Wide Area Network">WAN</abbr> port to an unused <abbr title="Local Area Network">LAN</abbr> port of your existing <abbr title="Internet Service Provider">ISP</abbr> router.
+</p>
+<ul>
+<li class="level1"><div class="li"> usually the <abbr title="Internet Service Provider">ISP</abbr> router has its firewall and <abbr title="Network Address Translation">NAT</abbr> on, and provides <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> on the downstream side (which is the upstream side of your OpenWrt)</div>
+</li>
+<li class="level1"><div class="li"> OpenWrt also has its firewall and <abbr title="Network Address Translation">NAT</abbr> on, and it provides <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> as well on its downstream (which is the upstream side of your connecting clients)</div>
+</li>
+</ul>
+
+<p>
+So what&#039;s the problem? Some traffic scenarios do not work through double <abbr title="Network Address Translation">NAT</abbr>, such as hosting servers or playing online games.
+</p>
+
+<p>
+The problem isn&#039;t so much <abbr title="Internet Protocol version 4">IPv4</abbr> <abbr title="Network Address Translation">NAT</abbr>, it&#039;s a combination of:
+</p>
+<ol>
+<li class="level1"><div class="li"> <abbr title="Network Address Translation">NAT</abbr> usage</div>
+</li>
+<li class="level1"><div class="li"> how firewalls in consumer routers treat <abbr title="User Datagram Protocol">UDP</abbr> traffic.\\The firewall treats <abbr title="User Datagram Protocol">UDP</abbr> traffic as <strong>stateful</strong>. This means that if a sourceIP:sourcePort → targetIP:targetPort package goes out, it will lower the firewall in the reverse direction for a short time, such that the target can answer with the same combination of address and ports (sourceIP:sourcePort ← targetIP:targetPort).</div>
+</li>
+<li class="level1"><div class="li"> many online games use tricks to get peer-to-peer data traffic of other players through your firewall(s) to your game client</div>
+</li>
+</ol>
+
+<p>
+Unfortunately the firewall details aren&#039;t a fully standardized behavior. And the <abbr title="Network Address Translation">NAT</abbr> behavior that happens in parallel isn&#039;t predictable either - every router has a slightly different method of deciding how to map addresses to ports on outgoing traffic. Most games and game consoles report this as the “<abbr title="Network Address Translation">NAT</abbr> status” of your router, using four broad categories of <em>open</em>, <em>moderate</em>, <em>strict</em>, and <em>blocked</em>, which aren&#039;t standardized either - each game vendor may use them for slightly different technical details.
+</p>
+
+<p>
+So should you use this double <abbr title="Network Address Translation">NAT</abbr> scenario and be happy with it? It highly depends on your equipment and your usage scenario. Double <abbr title="Network Address Translation">NAT</abbr> is not automatically bad.
+- if you just do browsing and email, you don&#039;t have to care (your internet browsing will not even be slowed down by double <abbr title="Network Address Translation">NAT</abbr>)
+- check if you want to run servers at home that you want to expose to the internet (e.g. a <abbr title="Virtual Private Network">VPN</abbr> or web server) - such hosting will definitely not work over double <abbr title="Network Address Translation">NAT</abbr>
+- check if your usual online games work flawlessly
+</p>
+
+<p>
+Most online games use weird <abbr title="User Datagram Protocol">UDP</abbr> tricks to temporarily bypass your router firewall (without opening your firewall to the whole world), to get less-laggy <abbr title="User Datagram Protocol">UDP</abbr> packets to your game client. Usually those tricks can only bypass a single NATed home router, not two as in double <abbr title="Network Address Translation">NAT</abbr>. You will find out, if you either cannot connect at all to online sessions or if there is noticeably more game lag than usual (more lag happens because most games will first try to fallback from <abbr title="User Datagram Protocol">UDP</abbr> to <abbr title="Transmission Control Protocol">TCP</abbr>, before giving up, if the so called “<abbr title="User Datagram Protocol">UDP</abbr> hole punching” through your 2 firewalls/NATs won&#039;t work - this <abbr title="Transmission Control Protocol">TCP</abbr>-fallback will sometimes be noticeable). Most online games report this as “<abbr title="Network Address Translation">NAT</abbr> status” in the game settings. Your aim usually will be to either have this status “open” or “moderate”. If your game engine reports anything else, it is usually failing on your two firewalls and double <abbr title="Network Address Translation">NAT</abbr>, and it will then fallback to the slower <abbr title="Transmission Control Protocol">TCP</abbr> and can even fail completely to connect to a game session (and you should be able to notice that, if you are left alone in an online game session).
+</p>
+
+<p>
+The next few sections explain what you can do to bypass these problems, while keeping both routers and firewalls enabled. Just keep in mind: don&#039;t try to fix problems that you do not have.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;OpenWrt as cascaded router behind another router (double NAT)&quot;,&quot;hid&quot;:&quot;openwrt_as_cascaded_router_behind_another_router_double_nat&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:10,&quot;range&quot;:&quot;6447-9990&quot;} -->
+<h3 class="sectionedit11" id="device_as_router_internet_isp_device_as_modem-bridge">Device as router, internet ISP device as modem-bridge</h3>
+<div class="level3">
+
+<p>
+Follow: <a href="/docs/guide-user/network/wan/bridge-mode" class="wikilink1" title="docs:guide-user:network:wan:bridge-mode" data-wiki-id="docs:guide-user:network:wan:bridge-mode">Bridge mode</a>
+</p>
+
+<p>
+Mostly for cable internet, you can often choose to reconfigure your <abbr title="Internet Service Provider">ISP</abbr> cable router into either <strong>router mode</strong> or <strong>bridge mode</strong>. Sometimes you have to configure this in nested online portal menus of your <abbr title="Internet Service Provider">ISP</abbr> (and not on your <abbr title="Internet Service Provider">ISP</abbr> router web <abbr title="Graphical User Interface">GUI</abbr>).
+</p>
+
+<p>
+When set to bridge mode, the <abbr title="Internet Service Provider">ISP</abbr> router starts behaving like a pass through device: it will superficially act as a modem and will authenticate you as a legitimate customer, but will otherwise just pass through the <abbr title="Internet Protocol version 4">IPv4</abbr> traffic unchanged to your OpenWrt router. The firewall and <abbr title="Network Address Translation">NAT</abbr> and <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> and all the normal “router” services of the <abbr title="Internet Service Provider">ISP</abbr> device will simply be disabled when set to bridge mode.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Device as router, internet ISP device as modem-bridge&quot;,&quot;hid&quot;:&quot;device_as_router_internet_isp_device_as_modem-bridge&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:11,&quot;range&quot;:&quot;9991-10766&quot;} -->
+<h3 class="sectionedit12" id="device_as_double-nat_router_with_ds-lite">Device as double-NAT router with DS-Lite</h3>
+<div class="level3">
+
+<p>
+Often you do not have a choice whether your <abbr title="Internet Service Provider">ISP</abbr> gives you a real <abbr title="Internet Protocol version 4">IPv4</abbr> address or a discredited <a href="https://en.wikipedia.org/wiki/IPv6_transition_mechanism#Dual-Stack_Lite_%28DS-Lite%29" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/IPv6_transition_mechanism#Dual-Stack_Lite_%28DS-Lite%29">DS-Lite</a> <abbr title="Internet Protocol version 4">IPv4</abbr> address. If you want to understand DS-Lite in contrast to regular dual stack, please research the <a href="https://tools.ietf.org/html/rfc6333" class="urlextern" title="https://tools.ietf.org/html/rfc6333" rel="ugc nofollow">RFC 6333</a>.
+</p>
+
+<p>
+Very often DS-Lite is offered as a default package by cable TV- or fiber-based ISPs. A key feature of DS-Lite is that it has so called <em>carrier-grade <abbr title="Network Address Translation">NAT</abbr></em> happening in some network equipment several blocks away from your home at your <abbr title="Internet Service Provider">ISP</abbr>&#039;s site, not in your <abbr title="Internet Service Provider">ISP</abbr> router at home. 
+</p>
+
+<p>
+It is important to mention that DS-Lite and this carrier-grade <abbr title="Network Address Translation">NAT</abbr> isn&#039;t really implemented in a standardized way. It can have slightly different implementation behaviour, depending on the actual equipment that the <abbr title="Internet Service Provider">ISP</abbr> has bought and how this equipment is configured.
+</p>
+
+<p>
+Sadly this technique won&#039;t help you to expose any home services over <abbr title="Internet Protocol version 4">IPv4</abbr> on the internet - this won&#039;t be possible with DS-Lite in any case. But if online gaming over DS-Lite is your only concern, you might want to check if your double <abbr title="Network Address Translation">NAT</abbr> on <abbr title="Internet Protocol version 4">IPv4</abbr> is a problem at all in your favorite online games. Nowadays, often the carrier-grade <abbr title="Network Address Translation">NAT</abbr> of DS-Lite is configured in a manner very friendly to online games, resulting in a “moderate” <abbr title="Network Address Translation">NAT</abbr> rating in the game engine even when having the additional OpenWrt <abbr title="Network Address Translation">NAT</abbr> cascaded in front of it and even when running with default firewall rules.
+</p>
+
+<p>
+So if gaming (and game-related <abbr title="User Datagram Protocol">UDP</abbr> peer-to-peer traffic handling) is your only concern regarding the double-<abbr title="Network Address Translation">NAT</abbr> problem, you may just want to check your online games first and their reported <abbr title="Network Address Translation">NAT</abbr> status, before investing extensive time in solving a double <abbr title="Network Address Translation">NAT</abbr> problem that might not even cause a problem in everyday use.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Device as double-NAT router with DS-Lite&quot;,&quot;hid&quot;:&quot;device_as_double-nat_router_with_ds-lite&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:12,&quot;range&quot;:&quot;10767-12586&quot;} -->
+<h2 class="sectionedit13" id="device_as_router_with_disabled_nat_additional_routing_rules">Device as router with disabled NAT, additional routing rules</h2>
+<div class="level2">
+
+<p>
+Using this scenario depends on whether your <abbr title="Internet Service Provider">ISP</abbr> router supports custom routing rules. This requires that your <abbr title="Internet Service Provider">ISP</abbr> router allows you to define forward routing rules (often <abbr title="Internet Service Provider">ISP</abbr> routers are restricted in function and do not allow this).
+</p>
+
+<p>
+The idea of this solution is
+</p>
+<ul>
+<li class="level1"><div class="li"> to disable <abbr title="Network Address Translation">NAT</abbr> on the OpenWrt router, but keep its routing (and firewall) on</div>
+</li>
+<li class="level1"><div class="li"> routing on the <abbr title="Internet Service Provider">ISP</abbr> router is also enabled</div>
+</li>
+<li class="level1"><div class="li"> you have to define non-overlapping <abbr title="Internet Protocol">IP</abbr> ranges and static <abbr title="Internet Protocol">IP</abbr> addresses for the two routers</div>
+</li>
+<li class="level1"><div class="li"> as OpenWrt&#039;s <abbr title="Network Address Translation">NAT</abbr> is disabled, you need to manually set static routes, such that clients on both routers can send traffic to the other router</div>
+</li>
+<li class="level1"><div class="li"> you need to add a static route on the OpenWrt router to forward all Internet-address ranges to the <abbr title="Internet Service Provider">ISP</abbr> router</div>
+</li>
+<li class="level1"><div class="li"> you need to add a static route on the <abbr title="Internet Service Provider">ISP</abbr> router to forward the local address range managed by OpenWrt to the OpenWrt router</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Device as router with disabled NAT, additional routing rules&quot;,&quot;hid&quot;:&quot;device_as_router_with_disabled_nat_additional_routing_rules&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:13,&quot;range&quot;:&quot;12587-13532&quot;} -->
+<h2 class="sectionedit14" id="device_as_router_as_exposed_host_in_the_isp_router">Device as router as &quot;exposed host&quot; in the ISP router</h2>
+<div class="level2">
+
+<p>
+Follow: <a href="/docs/guide-user/network/wan/dmz-based-bridge-mode" class="wikilink1" title="docs:guide-user:network:wan:dmz-based-bridge-mode" data-wiki-id="docs:guide-user:network:wan:dmz-based-bridge-mode">Poor man&#039;s bridge</a>
+</p>
+
+<p>
+Only some <abbr title="Internet Service Provider">ISP</abbr> routers have this feature, sometimes called a <em><abbr title="Demilitarized Zone">DMZ</abbr></em> (demilitarized zone), <em><abbr title="Demilitarized Zone">DMZ</abbr> for single server</em>, <em>exposed host</em>, <em><abbr title="Internet Protocol">IP</abbr> passthrough</em>, or <em>poor man&#039;s bridge mode</em> (there is no standardized name). This feature enables your <abbr title="Internet Service Provider">ISP</abbr> router to define a single one of its downstream clients to be a so called “exposed host”. The <abbr title="Internet Service Provider">ISP</abbr> router will then forward all incoming Internet traffic from its upstream side to this “exposed host”.
+</p>
+
+<p>
+This effectively disables <abbr title="Network Address Translation">NAT</abbr> on the <abbr title="Internet Service Provider">ISP</abbr> router only for a single connected device on the <abbr title="Internet Service Provider">ISP</abbr> router downstream side: for obvious reasons, we will be connecting our OpenWrt router as this exposed host. So in the end, we have achieved single <abbr title="Network Address Translation">NAT</abbr> solely in the network chain towards the OpenWrt router.
+</p>
+
+<p>
+Remember you still need to define the usual port forwarding rules in your OpenWrt router if you want to expose OpenWrt-connected servers to the Internet, since we haven&#039;t set up an exposed host on the internal network.
+</p>
+
+<p>
+Drawbacks of this method are:
+- the feature may not be supported by your <abbr title="Internet Service Provider">ISP</abbr> router, you&#039;ll have to find out if it does
+- the OpenWrt upstream port is exposed to the Internet, so be sure that you have not added any careless or extraneous rules to the ruleset
+- one of your <abbr title="Internet Service Provider">ISP</abbr> router ports is now without firewall protection, so be careful with this one downstream <abbr title="Internet Service Provider">ISP</abbr> router port in case you ever connect something else to it
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Device as router as \&quot;exposed host\&quot; in the ISP router&quot;,&quot;hid&quot;:&quot;device_as_router_as_exposed_host_in_the_isp_router&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:14,&quot;range&quot;:&quot;13533-15077&quot;} -->
+<h2 class="sectionedit15" id="device_as_router_in_an_ideal_ipv6-only_configuration">Device as router in an ideal IPv6-only configuration</h2>
+<div class="level2">
+
+<p>
+Obviously this ideal world does not yet exist, it&#039;s just a prospect for much later. Once this happens, the previous chapters of this page can be ignored. This will then be the default and only router option required for your <abbr title="Internet Protocol version 6">IPv6</abbr> OpenWrt device, as you it will just work out of the box for all business cases. There will be no <abbr title="Network Address Translation">NAT</abbr> issues, there is no longer a discussion whether to switch the <abbr title="Internet Service Provider">ISP</abbr> router to bridged or routed, and no more discussion whether an “exposed host” configuration is needed. You will be able to choose three ways of running OpenWrt:
+</p>
+<ul>
+<li class="level1"><div class="li"> as a router (without variants), if you want to have an extra firewall active inside your home network (in addition to the firewall of your <abbr title="Internet Service Provider">ISP</abbr> router)</div>
+</li>
+<li class="level1"><div class="li"> as a switch instead (see below), if you don&#039;t want the extra bit of routing and firewall inside your home network</div>
+</li>
+<li class="level1"><div class="li"> as a gateway instead (see below), if you need to connect to Internet via a special modem protocol</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Device as router in an ideal IPv6-only configuration&quot;,&quot;hid&quot;:&quot;device_as_router_in_an_ideal_ipv6-only_configuration&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:15,&quot;range&quot;:&quot;15078-16076&quot;} -->
+<h2 class="sectionedit16" id="device_as_a_gateway_with_a_true_modem_between_it_and_the_internet">Device as a gateway, with a true modem between it and the Internet</h2>
+<div class="level2">
+
+<p>
+Follow: <a href="/docs/guide-user/network/wan/internet.connection" class="wikilink1" title="docs:guide-user:network:wan:internet.connection" data-wiki-id="docs:guide-user:network:wan:internet.connection">Internet connection</a>
+</p>
+
+<p>
+If your OpenWrt device has no <abbr title="Wide Area Network">WAN</abbr> port at all out of the box and has a built-in modem with something like a VDSL-phone port, or if it has a <abbr title="Wide Area Network">WAN</abbr> port and you have an external modem that can be put in “bridge mode” (either full bridge or half bridge), this is for you.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Device as a gateway, with a true modem between it and the Internet&quot;,&quot;hid&quot;:&quot;device_as_a_gateway_with_a_true_modem_between_it_and_the_internet&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:16,&quot;range&quot;:&quot;16077-16504&quot;} -->
+<h2 class="sectionedit17" id="openwrt_as_wireless_repeater_wireless-to-wireless_switch">OpenWrt as wireless repeater (wireless-to-wireless switch)</h2>
+<div class="level2">
+
+<p>
+Follow: <a href="/docs/guide-user/network/wifi/relay_configuration" class="wikilink1" title="docs:guide-user:network:wifi:relay_configuration" data-wiki-id="docs:guide-user:network:wifi:relay_configuration">Wi-Fi extender or repeater or bridge configuration</a>
+</p>
+
+<p>
+If your OpenWrt device does not have <abbr title="Local Area Network">LAN</abbr> ports or if you don&#039;t want to connect any other devices using RJ45 <abbr title="Local Area Network">LAN</abbr> cables, then most probably you want to use the OpenWrt device as a WiFi repeater in your existing network.
+</p>
+
+<p>
+OpenWrt as a wireless repeater (also called wireless range extender) takes an existing signal from a wireless router or wireless access point and rebroadcasts it to create a second network.
+</p>
+<ul>
+<li class="level1"><div class="li"> the other wifi network provides Internet access</div>
+</li>
+<li class="level1"><div class="li"> OpenWrts upstream side (the other wifi network it will connect to) will be a wireless connection to another access point. OpenWrt acts as a client of this existing other network.</div>
+</li>
+<li class="level1"><div class="li"> OpenWrts downstream side (the wifi network that OpenWrt will provide) will be an access point for your wireless clients.</div>
+</li>
+<li class="level1"><div class="li"> the existing network on the wireless upstream side provides the <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> service (OpenWrt&#039;s own <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> will be off)</div>
+</li>
+<li class="level1"><div class="li"> usually some other network device of the connected wifi has a firewall and <abbr title="Network Address Translation">NAT</abbr> on and provides <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr></div>
+</li>
+<li class="level1"><div class="li"> OpenWrts firewall and <abbr title="Network Address Translation">NAT</abbr> will be off (As OpenWrt will operate in switch mode which cannot use <abbr title="Network Address Translation">NAT</abbr>)</div>
+</li>
+<li class="level1"><div class="li"> as long as you do not purposely disable the <abbr title="Local Area Network">LAN</abbr> downstram ports, OpenWrt will also act as a wire-to-wifi switch  </div>
+</li>
+<li class="level1"><div class="li"> summed up, OpenWrt acts as a wifi-to-wifi switch</div>
+</li>
+<li class="level1"><div class="li"> Note that OpenWrt will no longer listen on the typical default router address of your subnet (e.g. ip-address 192.168.1.1), but will get a custom address (either by <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> from your other router or you have manually set a static address of the subnet of the other wifi)</div>
+</li>
+</ul>
+
+<p>
+Note: In case you are interested in creating a so called “wireless mesh” instead of a wireless repeater, you will have to refer to other projects, e.g. <a href="https://libremesh.org/" class="urlextern" title="https://libremesh.org/" rel="ugc nofollow">https://libremesh.org/</a> or <a href="https://open-mesh.org/" class="urlextern" title="https://open-mesh.org/" rel="ugc nofollow">https://open-mesh.org/</a> at this time.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;OpenWrt as wireless repeater (wireless-to-wireless switch)&quot;,&quot;hid&quot;:&quot;openwrt_as_wireless_repeater_wireless-to-wireless_switch&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:17,&quot;range&quot;:&quot;16505-18450&quot;} -->
+<h2 class="sectionedit18" id="openwrt_as_wireless_access_point_wireless-to-wired_switch">OpenWrt as wireless access point (wireless-to-wired switch)</h2>
+<div class="level2">
+
+<p>
+Follow: <a href="/docs/guide-user/network/wifi/dumbap" class="wikilink1" title="docs:guide-user:network:wifi:dumbap" data-wiki-id="docs:guide-user:network:wifi:dumbap">Wi-Fi access point</a>
+</p>
+
+<p>
+As a wireless access point, OpenWrt connects to the existing network by wire. OpenWrt then acts as a networking device that allows your Wi-Fi devices to connect to the wired network over OpenWrt.
+</p>
+<ul>
+<li class="level1"><div class="li"> the wired network provides Internet access</div>
+</li>
+<li class="level1"><div class="li"> OpenWrts upstream side (the other wired network it will connect to) will be a wired connection to the existing router. So OpenWrt acts as a client of this existing other network.</div>
+</li>
+<li class="level1"><div class="li"> OpenWrts downstream side (the Wi-Fi network that OpenWrt will provide) will be an access point for your wireless clients</div>
+</li>
+<li class="level1"><div class="li"> the existing router on the wired upstream side provides the <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> service (OpenWrt&#039;s own <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> will be off)</div>
+</li>
+<li class="level1"><div class="li"> some other network device on your network will have a firewall and <abbr title="Network Address Translation">NAT</abbr> on and provides <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr></div>
+</li>
+<li class="level1"><div class="li"> OpenWrts firewall and <abbr title="Network Address Translation">NAT</abbr> will be off (As OpenWrt will operate in switch mode which cannot use <abbr title="Network Address Translation">NAT</abbr>)</div>
+</li>
+<li class="level1"><div class="li"> summed up, OpenWrt acts as a wireless-wired switch</div>
+</li>
+<li class="level1"><div class="li"> as long as you do not purposely disable the <abbr title="Local Area Network">LAN</abbr> downstream ports, OpenWrt will also act as a wire-to-wire switch</div>
+</li>
+<li class="level1"><div class="li"> Note that OpenWrt will no longer listen on the typical default router address of your subnet (e.g. ip-address 192.168.1.1), but will get a custom address (either by <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> from your other router or you have manually set a static address of the subnet of the other Wi-Fi)</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;OpenWrt as wireless access point (wireless-to-wired switch)&quot;,&quot;hid&quot;:&quot;openwrt_as_wireless_access_point_wireless-to-wired_switch&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:18,&quot;range&quot;:&quot;18451-19897&quot;} -->
+<h2 class="sectionedit19" id="openwrt_as_a_wire-to-wire_switch">OpenWrt as a wire-to-wire switch</h2>
+<div class="level2">
+
+<p>
+This scenario has already been covered in the previous described access point scenario, as the downstream <abbr title="Local Area Network">LAN</abbr> ports in OpenWrt are active by default, providing switching: All your wired and wireless clients connected to either OpenWrt or your other network switches can talk to each other without restrictions, as no firewall is active on the OpenWrt device.
+</p>
+<ul>
+<li class="level1"><div class="li"> so just follow the wireless access point description - just with the difference: if you only need a wire-to-wire switch, then just do not enable the downstream Wi-Fi</div>
+</li>
+<li class="level1"><div class="li"> OpenWrt will then act as a wire-to-wire switch between the different OpenWrt-attached downstream devices and between the downstream ↔ upstream ports</div>
+</li>
+<li class="level1"><div class="li"> in switch mode, OpenWrt cannot use <abbr title="Network Address Translation">NAT</abbr></div>
+</li>
+<li class="level1"><div class="li"> Note that OpenWrt will no longer listen on the typical default router address of your subnet (e.g. ip-address 192.168.1.1), but will get a custom address (either by <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> from your other router or you have manually set a static address of the subnet of the other Wi-Fi)</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;OpenWrt as a wire-to-wire switch&quot;,&quot;hid&quot;:&quot;openwrt_as_a_wire-to-wire_switch&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:19,&quot;range&quot;:&quot;19898-&quot;} -->

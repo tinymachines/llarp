@@ -1,0 +1,462 @@
+
+<h1 class="sectionedit1" id="samba">Samba</h1>
+<div class="level1">
+
+<p>
+<a href="https://www.samba.org/" class="urlextern" title="https://www.samba.org/" rel="ugc nofollow">Samba</a> is a free open-source implementation of <a href="https://en.wikipedia.org/wiki/Server Message Block" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Server Message Block">SMB</a> that provides network file and print services for clients running Windows, Linux, and macOS. The version included in the OpenWrt <a href="/docs/guide-developer/feeds" class="wikilink1" title="docs:guide-developer:feeds" data-wiki-id="docs:guide-developer:feeds">feeds</a> is <code>samba4</code>. <a href="/docs/guide-user/services/nas/ksmbd" class="wikilink1" title="docs:guide-user:services:nas:ksmbd" data-wiki-id="docs:guide-user:services:nas:ksmbd">Ksmbd</a> is a kernel server alternative for SMBv3 protocol which has less features but may offer more performance.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Samba&quot;,&quot;hid&quot;:&quot;samba&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-453&quot;} -->
+<h2 class="sectionedit2" id="prerequisites">Prerequisites</h2>
+<div class="level2">
+
+<p>
+To share a connected USB or eSATA drive (HDD, SSD, Flash) on your network first install the <a href="/docs/guide-user/storage/usb-drives-quickstart" class="wikilink1" title="docs:guide-user:storage:usb-drives-quickstart" data-wiki-id="docs:guide-user:storage:usb-drives-quickstart">USB</a> drivers and filesystem your drive is formattted to. For NTFS also see <a href="/docs/guide-user/storage/writable_ntfs" class="wikilink1" title="docs:guide-user:storage:writable_ntfs" data-wiki-id="docs:guide-user:storage:writable_ntfs">writable_ntfs</a>. If yours is not listed below there are many available, in LuCI filter System → Software for “kmod-fs”. Some common examples:
+</p>
+
+<p>
+USB: <code>kmod-usb3 kmod-usb-storage-uas usbutils block-mount mount-utils</code>
+</p>
+
+<p>
+Filesystems: <code>kmod-fs-ext4 kmod-fs-exfat kmod-fs-ntfs3</code>
+</p>
+
+<p>
+Drive idle: <code>luci-app-hd-idle</code> and enable in LuCI → Services → HDD Idle for your mounted drives to idle in low power state. <code>hdparm</code> may also be used instead as per <a href="/docs/guide-user/storage/usb-drives#optionalidle_spindown_timeout_on_disks_for_nas_usage" class="wikilink1" title="docs:guide-user:storage:usb-drives" data-wiki-id="docs:guide-user:storage:usb-drives">usb-drives page</a>.
+</p>
+
+<p>
+Note that at least 128MB RAM is recommended. Less RAM would have issues, although adding 128-256MB swap might help.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Prerequisites&quot;,&quot;hid&quot;:&quot;prerequisites&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;454-1400&quot;} -->
+<h2 class="sectionedit3" id="installation">Installation</h2>
+<div class="level2">
+
+<p>
+1. Install <code>luci-app-samba4</code>. Any dependencies, such as samba4-server, are installed automatically.
+</p>
+<ul>
+<li class="level1"><div class="li"><em>Alternatively</em> install via <abbr title="Secure Shell">SSH</abbr>: <code>opkg update &amp;&amp; opkg install luci-app-samba4</code></div>
+</li>
+<li class="level1"><div class="li"><em>Optional</em> check available version using <code>opkg list | grep -i samba</code></div>
+</li>
+</ul>
+
+<p>
+2. Configure Samba in LuCI on the Services → Network Shares page. It is recommended that you use LuCI for the initial configuration and only edit <code>/etc/samba/smb.conf.template</code> if needed via LuCI Edit Template tab, or from the shell. Basic LuCI configuration example is provided below:
+</p>
+<ul>
+<li class="level1"><div class="li"> Interface: lan</div>
+</li>
+<li class="level1"><div class="li"> Workgroup: WORKGROUP</div>
+</li>
+<li class="level1"><div class="li"> Enable Extra Tuning: checked (uncheck if using Apple Time Machine)</div>
+</li>
+<li class="level1"><div class="li"> Shared Directories: click Add</div>
+</li>
+<li class="level1"><div class="li"> Name: name the shared folder</div>
+</li>
+<li class="level1"><div class="li"> Path: /mnt/sda1 (enter mount point for your external drive, click Path→ if you need to mount it)</div>
+</li>
+<li class="level1"><div class="li"> Browseable: checked</div>
+</li>
+<li class="level1"><div class="li"> Read-only: unchecked</div>
+</li>
+<li class="level1"><div class="li"> Force Root: checked (caution: use if your <abbr title="Local Area Network">LAN</abbr> is secure, otherwise set user accounts described in sections below and enter under &#039;Allowed users&#039;)</div>
+</li>
+<li class="level1"><div class="li"> Allow guests: checked (unless using a user account as described above)</div>
+</li>
+<li class="level1"><div class="li"> Create Mask: 0666</div>
+</li>
+<li class="level1"><div class="li"> Directory Mask: 0777</div>
+</li>
+<li class="level1"><div class="li"> Save and Apply</div>
+</li>
+</ul>
+
+<p>
+3. Basic installation is complete. You can now read/write shares on your <abbr title="Local Area Network">LAN</abbr>. For example, access a share named &#039;storage&#039; hosted on your router default <abbr title="Internet Protocol">IP</abbr> in Windows File Explorer via: <code>\\192.168.1.1\storage\</code>.
+</p>
+
+<p>
+4. For automatic network discovery on Windows: <code>opkg install wsdd2</code>. Note this may need separate configuration.
+</p>
+
+<p>
+Windows, Linux, and macOS include SMB support in their file browsers. Android (like OpenWrt is also Linux-based) can browse shares with apps like X-plore, or for media playback with VLC or Kodi. If your <abbr title="Operating System">OS</abbr> is missing support, simply install an app.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation&quot;,&quot;hid&quot;:&quot;installation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;1401-3186&quot;} -->
+<h2 class="sectionedit4" id="advanced_usage">Advanced usage</h2>
+<div class="level2">
+
+<p>
+The basic configuration from the LuCI page described above should work well for most users. For further configuration keep reading and see <code><a href="/docs/guide-user/services/nas/samba" class="wikilink1" title="docs:guide-user:services:nas:samba" data-wiki-id="docs:guide-user:services:nas:samba">samba</a></code>.
+</p>
+
+<p>
+After modifying any of the config files, restart the Samba server so that your changes take effect:
+</p>
+<pre class="code bash">service samba4 restart</pre>
+
+<p>
+When Samba is restarted this way, the file <code>/etc/samba/smb.conf</code> is (re)created from to the uci configuration file and <code>/etc/samba/smb.conf.template</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Advanced usage&quot;,&quot;hid&quot;:&quot;advanced_usage&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;3187-3699&quot;} -->
+<h3 class="sectionedit5" id="per_user_security">Per user security</h3>
+<div class="level3">
+<ol>
+<li class="level1"><div class="li"> Create Samba user(s) by first manually adding entries to <code>/etc/passwd</code> and <code>/etc/group</code></div>
+</li>
+<li class="level1"><div class="li"> Use <code>smbpasswd -a username</code> to create and assign a password for samba for that user (note that command write them to <code>/etc/samba/smbpasswd</code>)</div>
+</li>
+</ol>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Select a value for the uid/gid that is &gt;=1000 to avoid possible collisions with system reserved values of &lt;1000.
+</p>
+
+<p>
+Example entry for <code>/etc/passwd</code>:
+</p>
+<pre class="code">foo:x:1001:1001:smb user:/dev/null:/bin/false</pre>
+
+<p>
+Example entry for <code>/etc/group</code>:
+</p>
+<pre class="code">foo:x:1001:foo</pre>
+
+<p>
+Set up shared directories permissions according to your needs using <code>chown</code> and <code>chmod</code>.
+Any unknown usernames used for authentication against Samba are mapped to a guest login silently by default.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Per user security&quot;,&quot;hid&quot;:&quot;per_user_security&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:5,&quot;range&quot;:&quot;3700-4452&quot;} -->
+<h3 class="sectionedit6" id="custom_configuration_surpassing_the_uci_configuration">Custom configuration surpassing the UCI configuration</h3>
+<div class="level3">
+
+<p>
+SMB is the built-in way to share network resources between computers running Windows, even in a professional environment. Thus Samba can be <em>very</em> complicated to configure, especially if using Active Directory! It is also not the protocol of choice to accomplish this task in a Linux or Mac environment.
+So, if for whatever reasons above configuration does not give you desired access to your shares, you can of course circumvent the uci system and hack the original Samba configuration files instead or in addition.
+There may be entries which do not have a counterpart in UCI and thus can only be configured that way.
+Just bear in mind, that the uci config will overwrite the values configured with it (but not the whole configuration) at every boot up! If you want configure Samba directly with <code>/etc/samba/smb.conf</code> instead of <code>/etc/config/samba</code>, it is possible to make changes to the smb.conf survive a reboot using the procedure below.
+</p>
+
+<p>
+First, prevent OpenWrt from starting Samba at boot time, thus overwriting <code>/etc/samba/smb.conf</code> with the settings in the uci file <code>/etc/config/samba</code>:
+</p>
+<pre class="code bash">service samba4 disable</pre>
+
+<p>
+Then add the following lines to /etc/rc.local to allow smbd and nmbd to start at boot time, using <code>/etc/samba/smb.conf</code> as the configuration file
+</p>
+<pre class="code bash">smbd <span class="re5">-D</span>
+nmbd <span class="re5">-D</span></pre>
+
+<p>
+Now edit your <code>/etc/samba/smb.conf</code> all you like without worrying they will be lost the next time you reboot!
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Custom configuration surpassing the UCI configuration&quot;,&quot;hid&quot;:&quot;custom_configuration_surpassing_the_uci_configuration&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:6,&quot;range&quot;:&quot;4453-5966&quot;} -->
+<h2 class="sectionedit7" id="configuration_as_an_apple_time_machine_disk">Configuration as an Apple Time Machine Disk</h2>
+<div class="level2">
+
+<p>
+The LuCI interface can be used to easily setup a share intended to be used as an Apple Time Machine Disk.
+</p>
+<ul>
+<li class="level1"><div class="li"> Interface: lan (or whatever interface is to be used)</div>
+</li>
+<li class="level1"><div class="li"> Workgroup: WORKGROUP (or whatever name you wish)</div>
+</li>
+<li class="level1"><div class="li"> Enable Extra Tuning: unchecked (this as it introduces features that are incompatible with current versions of MacOSX).</div>
+</li>
+<li class="level1"><div class="li"> Force synchronous I/o: unchecked</div>
+</li>
+<li class="level1"><div class="li"> Enable macOS compatible shares: checked</div>
+</li>
+<li class="level1"><div class="li"> Allow legacy (insecure) protocols/authentication: unchecked</div>
+</li>
+<li class="level1"><div class="li"> Disable netbios: unchecked</div>
+</li>
+<li class="level1"><div class="li"> Shared Directories: click Add</div>
+</li>
+<li class="level1"><div class="li"> Name: enter a name for the shared folder (e.g. router name)</div>
+</li>
+<li class="level1"><div class="li"> Path: /mnt/sda1 (enter mount point for your drive, click Path→ if you still need to mount a drive)</div>
+</li>
+<li class="level1"><div class="li"> Browseable: checked</div>
+</li>
+<li class="level1"><div class="li"> Read-only: unchecked</div>
+</li>
+<li class="level1"><div class="li"> Force Root: checked (caution: use if your <abbr title="Local Area Network">LAN</abbr> is secure, otherwise set user accounts described in sections below and enter under &#039;Allowed users&#039;)</div>
+</li>
+<li class="level1"><div class="li"> Allow users: define a user, see <a href="/docs/guide-user/services/nas/cifs.server#per_user_security" class="wikilink1" title="docs:guide-user:services:nas:cifs.server" data-wiki-id="docs:guide-user:services:nas:cifs.server">per_user_security</a></div>
+</li>
+<li class="level1"><div class="li"> Allow guests: unchecked</div>
+</li>
+<li class="level1"><div class="li"> Inherit owner: unchecked</div>
+</li>
+<li class="level1"><div class="li"> Create Mask: 0600</div>
+</li>
+<li class="level1"><div class="li"> Directory Mask: 0700</div>
+</li>
+<li class="level1"><div class="li"> Vfs objects: unchecked</div>
+</li>
+<li class="level1"><div class="li"> Apple Time-machine share: checked</div>
+</li>
+<li class="level1"><div class="li"> Time-machine size in <abbr title="Gigabyte">GB</abbr>: can be left blank or max size can be defined</div>
+</li>
+<li class="level1"><div class="li"> Save and Apply</div>
+</li>
+</ul>
+
+<p>
+Some guides suggest the need to create a service file for avahi.  This is not needed on OpenWrt.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration as an Apple Time Machine Disk&quot;,&quot;hid&quot;:&quot;configuration_as_an_apple_time_machine_disk&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:7,&quot;range&quot;:&quot;5967-7398&quot;} -->
+<h2 class="sectionedit8" id="troubleshooting">Troubleshooting</h2>
+<div class="level2">
+<ol>
+<li class="level1"><div class="li"> Is Samba running? <code>ps aux</code> should show <code>smbd -D</code> and <code>nmbd -D</code>.</div>
+</li>
+<li class="level1"><div class="li"> Is the partition you want to share mounted? In LuCI check System → Mount Points or <code><a href="/docs/guide-user/storage/fstab" class="wikilink1" title="docs:guide-user:storage:fstab" data-wiki-id="docs:guide-user:storage:fstab">/etc/config/fstab</a></code>.</div>
+</li>
+<li class="level1"><div class="li"> Does Samba have read/write access to the partition?</div>
+</li>
+<li class="level1"><div class="li"> Is your Samba configuration complete?</div>
+</li>
+<li class="level1"><div class="li"> Do you have the filesystem installed the mounted drive is using?</div>
+</li>
+<li class="level1"><div class="li"> Does your firewall allow clients to access the service on your router?</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Troubleshooting&quot;,&quot;hid&quot;:&quot;troubleshooting&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:8,&quot;range&quot;:&quot;7399-7890&quot;} -->
+<h3 class="sectionedit9" id="check_access_to_shares">Check access to shares</h3>
+<div class="level3">
+
+<p>
+Some hints in advance:
+</p>
+<ul>
+<li class="level1"><div class="li"> If you installed all needed packages, configured Samba per UCI and it still does not work, have a look at the file /etc/samba/smb.conf.template.</div>
+</li>
+<li class="level1"><div class="li"> Change the entry <em>security</em> from <code>user</code> to <code>share</code>, restart the daemons and try accessing: In <em>windows explorer</em> type <code>\\router_ip</code> in the address bar.</div>
+</li>
+<li class="level1"><div class="li"> In <em>nautilus</em> or <em>dolphin</em> press &lt;CTRL&gt;+&lt;L&gt; and type <code>smb://router_ip/</code> into the address bar.</div>
+</li>
+</ul>
+
+<p>
+Instead of looking up the whole configuration step by step, you maybe want to have a look at <a href="http://samba.org/samba/docs/man/Samba-Guide/ExNetworks.html" class="urlextern" title="http://samba.org/samba/docs/man/Samba-Guide/ExNetworks.html" rel="ugc nofollow">Samba.org: Example Network Configurations</a>. Chapter 1: No-Frills Samba Servers. Notice that you can already achieve a great deal of security by neatly setting up the <a href="/docs/guide-user/firewall/start" class="wikilink1" title="docs:guide-user:firewall:start" data-wiki-id="docs:guide-user:firewall:start">Firewall Documentation</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Check access to shares&quot;,&quot;hid&quot;:&quot;check_access_to_shares&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:9,&quot;range&quot;:&quot;7891-8753&quot;} -->
+<h3 class="sectionedit10" id="start_on_boot">Start on boot</h3>
+<div class="level3">
+
+<p>
+After installing the packages described in Installation, Samba will start on boot. This can be confirmed in the LuCI System → Startup page. If there is an issue, follow the same procedure as with most OpenWrt packages: The first command will create a symlink <code>/etc/rc.d/S60samba</code>, the second will only start samba right now.
+</p>
+<pre class="code bash">service samba4 <span class="kw3">enable</span>
+service samba4 start</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Start on boot&quot;,&quot;hid&quot;:&quot;start_on_boot&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:10,&quot;range&quot;:&quot;8754-9171&quot;} -->
+<h3 class="sectionedit11" id="browsing_shares_fails">Browsing shares fails</h3>
+<div class="level3">
+
+<p>
+When Samba is configured, the shares are set browse-able, but they still don&#039;t appear when browsing the network, then it may be that <code>local master = yes</code> is missing from <code>/etc/samba/smb.conf.template</code>.
+Also check if <code>preferred master = yes</code> is in <code>/etc/samba/smb.conf.template</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Browsing shares fails&quot;,&quot;hid&quot;:&quot;browsing_shares_fails&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:11,&quot;range&quot;:&quot;9172-9492&quot;} -->
+<h3 class="sectionedit12" id="cannot_write_to_a_samba_share">Cannot write to a Samba share</h3>
+<div class="level3">
+
+<p>
+If you cannot write to the share, Samba may not have the proper permissions to write to the shared folder.
+</p>
+
+<p>
+Some have reported success by modifying the permissions and owner of the folder:
+</p>
+<pre class="code bash"><span class="kw2">chmod</span> <span class="re5">-R</span> <span class="nu0">777</span> <span class="sy0">/</span>mnt<span class="sy0">/</span>sda1
+<span class="kw2">chown</span> <span class="re5">-R</span> nobody <span class="sy0">/</span>mnt<span class="sy0">/</span>sda1</pre>
+
+<p>
+If you are sharing a drive mounted wish fstab, you may need to modify <strong>/etc/config/fstab</strong> to include &#039;umask=000&#039; in the options section.
+</p>
+<pre class="code bash">config <span class="st_h">'mount'</span>
+        option <span class="st_h">'options'</span> <span class="st_h">'rw,umask=000'</span>
+        option <span class="st_h">'enabled_fsck'</span> <span class="st_h">'0'</span>
+        option <span class="st_h">'enabled'</span> <span class="st_h">'1'</span>
+        option <span class="st_h">'device'</span> <span class="st_h">'/dev/scsi/host0/bus0/target0/lun0/part1'</span>
+        option <span class="st_h">'target'</span> <span class="st_h">'/mnt/usbdisk'</span>
+        option <span class="st_h">'fstype'</span> <span class="st_h">'vfat'</span></pre>
+
+<p>
+More info here:
+<a href="https://forum.openwrt.org/viewtopic.php?id=26625" class="urlextern" title="https://forum.openwrt.org/viewtopic.php?id=26625" rel="ugc nofollow">https://forum.openwrt.org/viewtopic.php?id=26625</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Cannot write to a Samba share&quot;,&quot;hid&quot;:&quot;cannot_write_to_a_samba_share&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:12,&quot;range&quot;:&quot;9493-10273&quot;} -->
+<h3 class="sectionedit13" id="international_characters_support">International characters support</h3>
+<div class="level3">
+
+<p>
+If you need to read/write files and folders with accented characters.
+</p>
+<pre class="code bash"><span class="kw2">sed</span> <span class="re5">-i</span> <span class="re5">-e</span> <span class="st0">&quot;/unix charset/s/ISO-8859-1/UTF-8/&quot;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>samba<span class="sy0">/</span>smb.conf.template</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;International characters support&quot;,&quot;hid&quot;:&quot;international_characters_support&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:13,&quot;range&quot;:&quot;10274-10484&quot;} -->
+<h3 class="sectionedit14" id="performance">Performance</h3>
+<div class="level3">
+
+<p>
+Test results - many devices released over the late 2010s became fast enough to saturate gigabit <abbr title="Local Area Network">LAN</abbr> connections for Samba shares, thus testing on 2.5Gbps links are now a better check on device capability. Many things will affect performance including CPU and RAM speed, USB/eSATA bus implementation, drive type and filesystem, Samba/Ksmbd version, irqbalance settings, other running tasks, etc. A short list below is pulled from various <a href="https://forum.openwrt.org/" class="urlextern" title="https://forum.openwrt.org/" rel="ugc nofollow">Forum</a> posts:
+</p>
+<ol>
+<li class="level1"><div class="li"> WRT3200ACM (2016 device) - USB3 external drive, formatted NTFS, 1Gb <abbr title="Local Area Network">LAN</abbr> port, OpenWrt 23.05. Read: 100 <abbr title="Megabyte">MB</abbr>/s, write: 105 <abbr title="Megabyte">MB</abbr>/s.</div>
+</li>
+<li class="level1"><div class="li"> GL-MT6000 (2023 device) - USB3 external drive, formatted exFAT, 1Gb <abbr title="Local Area Network">LAN</abbr> port, OpenWrt 24.10-snapshot. Read: 90 <abbr title="Megabyte">MB</abbr>/s, write: 115 <abbr title="Megabyte">MB</abbr>/s.</div>
+</li>
+<li class="level1"><div class="li"> N100 (2023 device) - USB3 external drive, formatted exFAT, 1Gb <abbr title="Local Area Network">LAN</abbr> port, OpenWrt 24.10-snapshot. Read: 120 <abbr title="Megabyte">MB</abbr>/s, write: 115 <abbr title="Megabyte">MB</abbr>/s.</div>
+</li>
+</ol>
+
+<p>
+Firewall configuration - for slower devices throughput may improve by disabling netfilter conntrack for Samba if you use <abbr title="Network Address Translation">NAT</abbr>:
+</p>
+<pre class="code bash">uci <span class="re5">-q</span> delete firewall.samba_nsds_nt
+uci <span class="kw1">set</span> firewall.samba_nsds_nt=<span class="st0">&quot;rule&quot;</span>
+uci <span class="kw1">set</span> firewall.samba_nsds_nt.name=<span class="st0">&quot;NoTrack-Samba/NS/DS&quot;</span>
+uci <span class="kw1">set</span> firewall.samba_nsds_nt.src=<span class="st0">&quot;lan&quot;</span>
+uci <span class="kw1">set</span> firewall.samba_nsds_nt.dest=<span class="st0">&quot;lan&quot;</span>
+uci <span class="kw1">set</span> firewall.samba_nsds_nt.dest_port=<span class="st0">&quot;137-138&quot;</span>
+uci <span class="kw1">set</span> firewall.samba_nsds_nt.proto=<span class="st0">&quot;udp&quot;</span>
+uci <span class="kw1">set</span> firewall.samba_nsds_nt.target=<span class="st0">&quot;NOTRACK&quot;</span>
+uci <span class="re5">-q</span> delete firewall.samba_ss_nt
+uci <span class="kw1">set</span> firewall.samba_ss_nt=<span class="st0">&quot;rule&quot;</span>
+uci <span class="kw1">set</span> firewall.samba_ss_nt.name=<span class="st0">&quot;NoTrack-Samba/SS&quot;</span>
+uci <span class="kw1">set</span> firewall.samba_ss_nt.src=<span class="st0">&quot;lan&quot;</span>
+uci <span class="kw1">set</span> firewall.samba_ss_nt.dest=<span class="st0">&quot;lan&quot;</span>
+uci <span class="kw1">set</span> firewall.samba_ss_nt.dest_port=<span class="st0">&quot;139&quot;</span>
+uci <span class="kw1">set</span> firewall.samba_ss_nt.proto=<span class="st0">&quot;tcp&quot;</span>
+uci <span class="kw1">set</span> firewall.samba_ss_nt.target=<span class="st0">&quot;NOTRACK&quot;</span>
+uci <span class="re5">-q</span> delete firewall.samba_smb_nt
+uci <span class="kw1">set</span> firewall.samba_smb_nt=<span class="st0">&quot;rule&quot;</span>
+uci <span class="kw1">set</span> firewall.samba_smb_nt.name=<span class="st0">&quot;NoTrack-Samba/SMB&quot;</span>
+uci <span class="kw1">set</span> firewall.samba_smb_nt.src=<span class="st0">&quot;lan&quot;</span>
+uci <span class="kw1">set</span> firewall.samba_smb_nt.dest=<span class="st0">&quot;lan&quot;</span>
+uci <span class="kw1">set</span> firewall.samba_smb_nt.dest_port=<span class="st0">&quot;445&quot;</span>
+uci <span class="kw1">set</span> firewall.samba_smb_nt.proto=<span class="st0">&quot;tcp&quot;</span>
+uci <span class="kw1">set</span> firewall.samba_smb_nt.target=<span class="st0">&quot;NOTRACK&quot;</span>
+uci commit firewall
+service firewall restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Performance&quot;,&quot;hid&quot;:&quot;performance&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:14,&quot;range&quot;:&quot;10485-12622&quot;} -->
+<h3 class="sectionedit15" id="remote_access">Remote Access</h3>
+<div class="level3">
+
+<p>
+For remote access configure your firewall as per below. See <a href="https://en.wikipedia.org/wiki/List_of_TCP_and_UDP_port_numbers" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/List_of_TCP_and_UDP_port_numbers">port explanation</a>. Use caution here, as you may eventually expose your network to security concerns. Samba and many other packages are not always updated to the latest <a href="https://en.wikipedia.org/wiki/Common_Vulnerabilities_and_Exposures" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Common_Vulnerabilities_and_Exposures">CVEs</a> between releases. This is not needed for <abbr title="Local Area Network">LAN</abbr> access to your shares, file sharing such as SMB and NAS are typically best used for <abbr title="Local Area Network">LAN</abbr> access for this reason.
+</p>
+<pre class="code bash">uci <span class="re5">-q</span> delete firewall.samba_nsds
+uci <span class="kw1">set</span> firewall.samba_nsds=<span class="st0">&quot;rule&quot;</span>
+uci <span class="kw1">set</span> firewall.samba_nsds.name=<span class="st0">&quot;Allow-Samba/NS/DS&quot;</span>
+uci <span class="kw1">set</span> firewall.samba_nsds.src=<span class="st0">&quot;lan&quot;</span>
+uci <span class="kw1">set</span> firewall.samba_nsds.dest_port=<span class="st0">&quot;137-138&quot;</span>
+uci <span class="kw1">set</span> firewall.samba_nsds.proto=<span class="st0">&quot;udp&quot;</span>
+uci <span class="kw1">set</span> firewall.samba_nsds.target=<span class="st0">&quot;ACCEPT&quot;</span>
+uci <span class="re5">-q</span> delete firewall.samba_ss
+uci <span class="kw1">set</span> firewall.samba_ss=<span class="st0">&quot;rule&quot;</span>
+uci <span class="kw1">set</span> firewall.samba_ss.name=<span class="st0">&quot;Allow-Samba/SS&quot;</span>
+uci <span class="kw1">set</span> firewall.samba_ss.src=<span class="st0">&quot;lan&quot;</span>
+uci <span class="kw1">set</span> firewall.samba_ss.dest_port=<span class="st0">&quot;139&quot;</span>
+uci <span class="kw1">set</span> firewall.samba_ss.proto=<span class="st0">&quot;tcp&quot;</span>
+uci <span class="kw1">set</span> firewall.samba_ss.target=<span class="st0">&quot;ACCEPT&quot;</span>
+uci <span class="re5">-q</span> delete firewall.samba_smb
+uci <span class="kw1">set</span> firewall.samba_smb=<span class="st0">&quot;rule&quot;</span>
+uci <span class="kw1">set</span> firewall.samba_smb.name=<span class="st0">&quot;Allow-Samba/SMB&quot;</span>
+uci <span class="kw1">set</span> firewall.samba_smb.src=<span class="st0">&quot;lan&quot;</span>
+uci <span class="kw1">set</span> firewall.samba_smb.dest_port=<span class="st0">&quot;445&quot;</span>
+uci <span class="kw1">set</span> firewall.samba_smb.proto=<span class="st0">&quot;tcp&quot;</span>
+uci <span class="kw1">set</span> firewall.samba_smb.target=<span class="st0">&quot;ACCEPT&quot;</span>
+uci commit firewall
+service firewall restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Remote Access&quot;,&quot;hid&quot;:&quot;remote_access&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:15,&quot;range&quot;:&quot;12623-14029&quot;} -->
+<h3 class="sectionedit16" id="network_discovery_with_windows">Network discovery with Windows</h3>
+<div class="level3">
+
+<p>
+Install <a href="/packages/pkgdata/wsdd2" class="wikilink1" title="packages:pkgdata:wsdd2" data-wiki-id="packages:pkgdata:wsdd2">wsdd2</a>:
+</p>
+<pre class="code bash">opkg update <span class="sy0">&amp;&amp;</span> opkg <span class="kw2">install</span> wsdd2</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Network discovery with Windows&quot;,&quot;hid&quot;:&quot;network_discovery_with_windows&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:16,&quot;range&quot;:&quot;14030-14161&quot;} -->
+<h3 class="sectionedit17" id="network_discovery_with_apple">Network discovery with Apple</h3>
+<div class="level3">
+
+<p>
+Apple Spotlight connections was resolved in 2023 versions of Samba4. Some older versions of macOS (e.g. Yosemite) have problems discovering SMB network shares broadcasted by each client over the <abbr title="Local Area Network">LAN</abbr>, you can set up a WINS server on your router which will help them out.
+</p>
+
+<p>
+A WINS server is a central name server analogous to <abbr title="Domain Name System">DNS</abbr> but for a local network. This service will discover SMB shares then make them available over WINS. Macs will connect to WINS to receive the list of network shares, hopefully with more success than discovering network shares themselves.
+</p>
+
+<p>
+Edit the UCI template (<code>/etc/samba/smb.conf.template</code>) instead of directly changing <code>/etc/samba/smb.conf</code> so as to maintain compatibility with UCI and LuCI.
+</p>
+
+<p>
+Log into LuCI, go to Services &gt; Network Shares, go to the Edit Template tab, and add or change the following entries in the “[global]” section in the template.
+</p>
+<pre class="code bash"><span class="br0">&#91;</span>global<span class="br0">&#93;</span>
+	domain master = <span class="kw2">yes</span>
+	<span class="kw3">local</span> master = <span class="kw2">yes</span>
+	name resolve order = wins lmhosts hosts bcast
+	os level = <span class="nu0">99</span>
+	preferred master = <span class="kw2">yes</span>
+	wins support = <span class="kw2">yes</span></pre>
+
+<p>
+Save &amp; Apply the changes.
+</p>
+
+<p>
+You can also configure dnsmasq to broadcast the WINS server address via <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr>:
+</p>
+<pre class="code bash">uci add_list dhcp.lan.dhcp_option=<span class="st0">&quot;44,<span class="es4">$(uci get network.lan.ipaddr)</span>&quot;</span>
+uci commit dhcp
+service dnsmasq restart</pre>
+
+<p>
+SMB network shares should appear in Network home a few minutes after rebooting the Mac.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Network discovery with Apple&quot;,&quot;hid&quot;:&quot;network_discovery_with_apple&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:17,&quot;range&quot;:&quot;14162-&quot;} -->

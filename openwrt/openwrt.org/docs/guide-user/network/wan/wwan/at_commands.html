@@ -1,0 +1,251 @@
+
+<h1 class="sectionedit1" id="how_to_send_at_commands_to_device">How to send AT commands to device</h1>
+<div class="level1">
+
+<p>
+AT commands (“attention commands” formally, the Hayes command set), are used to communicate directly with a modem device and configure it.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;How to send AT commands to device&quot;,&quot;hid&quot;:&quot;how_to_send_at_commands_to_device&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-189&quot;} -->
+<h2 class="sectionedit2" id="from_openwrt">From OpenWrt</h2>
+<div class="level2">
+
+<p>
+To send AT commands directly from OpenWrt, you can simply use <code>echo</code> to send them to the right device. However, you will not get any errors, confirmation or any other answer from the modem.
+</p>
+
+<p>
+A better solution is using a proper terminal application like <code>picocom</code>, which can both send commands and print the modem&#039;s answers. There are other alternatives available like <code>socat</code>.
+</p>
+
+<p>
+Once the appropriate <em>serial</em> driver is loaded (typically - <code>kmod-usb-serial-option</code>), the modem will expose a number of <code>/dev/ttyUSBx</code> interfaces. Usually only one or two of them will respond to AT commands.
+</p>
+
+<p>
+As an example, popular Quectel EP06 LTE modem will create 4 serial devices, <code>/dev/ttyUSB0</code> through to <code>/dev/ttyUSB3</code>.
+</p>
+
+<p>
+To find the serial devices added to the system, try looking through <code>logread</code> and/or <code>dmesg</code> output. Something like the following may help:
+</p>
+<pre class="code">root@OpenWrt:~# dmesg | grep -A 1 -B 12 ttyUSB</pre>
+
+<p>
+For some modems <code>ttyACM</code> devices will be created instead of <code>ttyUSB</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;From OpenWrt&quot;,&quot;hid&quot;:&quot;from_openwrt&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;190-1219&quot;} -->
+<h3 class="sectionedit3" id="picocom">picocom</h3>
+<div class="level3">
+
+<p>
+<code>picocom</code> is a simple terminal program that is installed in a standard way with <code>opkg install picocom</code> or through the web interface.
+</p>
+
+<p>
+Sample command line:
+</p>
+<pre class="code">root@OpenWrt:~# picocom /dev/ttyUSB2</pre>
+
+<p>
+Adding <code>--q</code> on the command line will suppress extra output with some help and other information.
+</p>
+<pre class="code">root@OpenWrt:~# picocom --q /dev/ttyUSB2
+at
+OK</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;picocom&quot;,&quot;hid&quot;:&quot;picocom&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;1220-1612&quot;} -->
+<h3 class="sectionedit4" id="socat">socat</h3>
+<div class="level3">
+
+<p>
+<code>socat</code> will open a prompt where you can enter AT commands (see examples in the <a href="/docs/guide-user/network/wan/wwan/at_commands#examples_of_at_commands" class="wikilink1" title="docs:guide-user:network:wan:wwan:at_commands" data-wiki-id="docs:guide-user:network:wan:wwan:at_commands">section below</a>).
+</p>
+
+<p>
+Here is a command line example:
+</p>
+<pre class="code">root@OpenWrt:~# socat - /dev/ttyUSB2,crnl</pre>
+
+<p>
+In this example <code>socat</code> will send a <em>carriage return</em> (cr) and a <em>new line</em> (nl) after each command.
+</p>
+
+<p>
+To quit <code>socat</code>, use <code>ctrl+C</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;socat&quot;,&quot;hid&quot;:&quot;socat&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:4,&quot;range&quot;:&quot;1613-2035&quot;} -->
+<h3 class="sectionedit5" id="echo">echo</h3>
+<div class="level3">
+
+<p>
+See examples below. <code>echo -e</code> is used to send <em>escaped</em> characters such as quotation marks.
+</p>
+
+<p>
+Alternative solution - use <code>echo</code> with <code>socat</code>: <code>echo -e ATI | socat - /dev/ttyUSB2,crnl</code>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;echo&quot;,&quot;hid&quot;:&quot;echo&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:5,&quot;range&quot;:&quot;2036-2245&quot;} -->
+<h2 class="sectionedit6" id="from_a_computer">From a computer</h2>
+<div class="level2">
+
+<p>
+To send AT commands to a LTE modem, you need to first connect the device/modem to the computer, most likely using an adapter (built-in modem slots are very rare these days) and access it with a COM terminal.
+</p>
+
+<p>
+If you are not familiar with using COM terminals, you might want to use a graphical tool like: <code>CuteCom</code> or <code>minicom</code>. Installation of these are beyond the scope of this page.
+</p>
+
+<p>
+These settings should work fine:
+</p>
+<pre class="code">Device: /dev/ttyUSB0
+Connection: 115200 @ 8-N-1
+Line end: CR</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;From a computer&quot;,&quot;hid&quot;:&quot;from_a_computer&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:6,&quot;range&quot;:&quot;2246-2774&quot;} -->
+<h2 class="sectionedit7" id="examples_of_at_commands">Examples of AT commands</h2>
+<div class="level2">
+
+<p>
+To test things are working, you can issue a standard <code>ATI</code> command which should return basic information such as brand, model and firmware revision.
+</p>
+
+<p>
+<code>AT+CSQ</code> can be used to get signal strength. The values returned are the RSSI (received signal strength indication, higher is better) and BER (bit error rate, lower is better)
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Examples of AT commands&quot;,&quot;hid&quot;:&quot;examples_of_at_commands&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:7,&quot;range&quot;:&quot;2775-3143&quot;} -->
+<h2 class="sectionedit8" id="huawei_e392">Huawei E392</h2>
+<div class="level2">
+<pre class="code">Send: AT
+OK
+
+Send: AT^SETPORT=?
+Recieve: 1:MODEM
+Recieve: 2:PCUI 
+Recieve: 3:DIAG
+Recieve: 4:PCSC
+Recieve: 5:GPS
+Recieve: 6:GPS CONTROL
+Recieve: 7:NDIS
+Recieve: A:BLUE TOOTH
+Recieve: B:FINGER PRINT
+Recieve: D:MMS
+Recieve: E:PC VOICE
+Recieve: A1:CDROM
+Recieve: A2:SD
+Recieve: OK
+
+Send: AT^SETPORT?
+Recieve: A1,A2;1,2,3,A1,A2
+Recieve: OK
+
+Send: AT^SETPORT=&quot;A1;2,7,A2&quot;
+Recieve: OK
+
+Send: AT^SETPORT?
+Recieve: A1;2,7,A2
+Recieve: OK</pre>
+
+<p>
+Explanations:
+</p>
+<pre class="code">AT^SETPORT=?        - Lists the Available interfaces and their numbers  
+AT^SETPORT?         - Show current configuration  
+AT^SETPORT=&quot;A1;2,7  - Sets configuration.</pre>
+
+<p>
+Modem configuration is split into 2 parts: before <code>;</code> and after.
+</p>
+
+<p>
+Once a modem is plugged-in, it should declare itself in first configuration (normally with at least: A1 - virtual CD drive with Drivers and application). 
+If the drivers are installed, they will see the modem and issue a special command to switch to a “working” configuration - this is 2,7 interfaces in this example.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> <strong>Warning: Never turn Off the AT Command interface! (“PCUI” in Huawei terms)</strong> You will lose the ability to access modem with terminal and change the configuration.
+</p>
+
+<p>
+You can add more interfaces to be active i.e. SD card:
+</p>
+<pre class="code">AT^SETPORT=&quot;A1,A2;2,7,A2&quot;</pre>
+
+<p>
+If you get an <strong>ERROR</strong>, maybe the numerical mode is not sorted (16,2,7)→(2,7,16). If your device answers to set command with <strong>OK</strong> but <code>AT^SETPORT?</code> doesn&#039;t show your desired settings, you can try using space in between numerical modes(2,7) and alphabetical modes(A2) like so:
+</p>
+<pre class="code">AT^SETPORT=&quot;A1,A2;2,7,A2&quot;</pre>
+
+<p>
+Or with multiple modes:
+</p>
+<pre class="code">AT^SETPORT=&quot;A1,A2;2,7,A1,A2&quot;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Huawei E392&quot;,&quot;hid&quot;:&quot;huawei_e392&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:8,&quot;range&quot;:&quot;3144-4854&quot;} -->
+<h2 class="sectionedit9" id="quectel_modems">Quectel modems</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Quectel modems&quot;,&quot;hid&quot;:&quot;quectel_modems&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:9,&quot;range&quot;:&quot;4855-4882&quot;} -->
+<h3 class="sectionedit10" id="how_to_force_lte_connection">How to force LTE connection</h3>
+<div class="level3">
+
+<p>
+<strong>Format:</strong>
+</p>
+<pre class="code">AT+QCFG=&quot;nwscanmode&quot;[,&lt;scanmode&gt;[,&lt;effect&gt;]]</pre>
+
+<p>
+<strong>Parameters</strong>：
+</p>
+<pre class="code">&lt;scanmode&gt; Number format, network search mode
+0 AUTO
+1 GSM only
+2 UMTS only
+3 LTE only
+
+&lt;effect&gt; Number format, when to take effect
+0 Take effect after UE reboots
+1 Take effect immediately</pre>
+
+<p>
+<strong>Examples:</strong>
+</p>
+
+<p>
+Set modem to LTE only:
+</p>
+<pre class="code">echo -e &quot;AT+QCFG=\&quot;nwscanmode\&quot;,3,1&quot; &gt; /dev/ttyUSB2</pre>
+
+<p>
+Set it back to “auto”:
+</p>
+<pre class="code">echo -e &quot;AT+QCFG=\&quot;nwscanmode\&quot;,0,1&quot; &gt; /dev/ttyUSB2</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;How to force LTE connection&quot;,&quot;hid&quot;:&quot;how_to_force_lte_connection&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:10,&quot;range&quot;:&quot;4883-5414&quot;} -->
+<h2 class="sectionedit11" id="further_references">Further references</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <a href="https://www.chromium.org/chromium-os/how-tos-and-troubleshooting/debugging-3g" class="urlextern" title="https://www.chromium.org/chromium-os/how-tos-and-troubleshooting/debugging-3g" rel="ugc nofollow">Chromium project page</a> on debugging cellular modems</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://en.wikipedia.org/wiki/Hayes_command_set" class="urlextern" title="https://en.wikipedia.org/wiki/Hayes_command_set" rel="ugc nofollow">Wikipedia article</a> on AT commands and their history</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Further references&quot;,&quot;hid&quot;:&quot;further_references&quot;,&quot;codeblockOffset&quot;:14,&quot;secid&quot;:11,&quot;range&quot;:&quot;5415-&quot;} -->

@@ -1,0 +1,552 @@
+
+<h1 class="sectionedit1" id="openwrt_on_virtualbox_howto">OpenWrt on VirtualBox HowTo</h1>
+<div class="level1">
+
+<p>
+This document describes how to run the x86-64 OpenWrt images in <abbr title="Virtual Machine">VM</abbr> <a href="https://www.virtualbox.org" class="urlextern" title="https://www.virtualbox.org" rel="ugc nofollow">VirtualBox</a>, or VBox for short.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;OpenWrt on VirtualBox HowTo&quot;,&quot;hid&quot;:&quot;openwrt_on_virtualbox_howto&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-203&quot;} -->
+<h2 class="sectionedit2" id="prerequisites">Prerequisites</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Download and install <a href="https://www.virtualbox.org/wiki/Downloads" class="urlextern" title="https://www.virtualbox.org/wiki/Downloads" rel="ugc nofollow">VirtualBox</a></div>
+</li>
+<li class="level1"><div class="li"> Download and install the VirtualBox Guest Additions (needed for USB connectivity among others)</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Prerequisites&quot;,&quot;hid&quot;:&quot;prerequisites&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;204-411&quot;} -->
+<h3 class="sectionedit3" id="select_an_openwrt_image">Select an OpenWrt image</h3>
+<div class="level3">
+
+<p>
+You need a <a href="/docs/guide-user/installation/openwrt_x86" class="wikilink1" title="docs:guide-user:installation:openwrt_x86" data-wiki-id="docs:guide-user:installation:openwrt_x86">x86 64 bit version of OpenWrt</a>.
+There is two versions of them:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>combined-squashfs.img.gz</code> This disk image uses the traditional OpenWrt layout, a squashfs read-only root filesystem and a read-write partition where settings and packages you install are stored. Due to how this image is assembled, you will have only 230-ish <abbr title="Megabyte">MB</abbr> of space to store additional packages and configuration, and Extroot does not work.</div>
+</li>
+<li class="level1"><div class="li"> <code>combined-ext4.img.gz</code> This disk image uses a single read-write ext4 partition with no read-only squashfs root filesystem, which allows to enlarge the partition. Features like Failsafe Mode or Factory Reset won&#039;t be available as they need a read-only squashfs partition to function.</div>
+</li>
+</ul>
+
+<p>
+In the guide we&#039;ll use <em>openwrt-x86-64-combined-ext4.img.gz</em> because it has fewer limitations.
+</p>
+<ul>
+<li class="level1"><div class="li"> Download a stable release of the <em>openwrt-x86-64-combined-ext4.img.gz</em> image from <a href="https://archive.openwrt.org/releases/" class="urlextern" title="https://archive.openwrt.org/releases/" rel="ugc nofollow">targets/x86/64/ folder</a> e.g. <a href="https://archive.openwrt.org/releases/22.03.5/targets/x86/64/openwrt-22.03.5-x86-64-generic-ext4-combined.img.gz" class="urlextern" title="https://archive.openwrt.org/releases/22.03.5/targets/x86/64/openwrt-22.03.5-x86-64-generic-ext4-combined.img.gz" rel="ugc nofollow">22.03.5</a>. Or you can try the fresher but unstable <a href="https://downloads.openwrt.org/snapshots/targets/x86/64/openwrt-x86-64-generic-ext4-combined.img.gz" class="urlextern" title="https://downloads.openwrt.org/snapshots/targets/x86/64/openwrt-x86-64-generic-ext4-combined.img.gz" rel="ugc nofollow">snapshot</a> image</div>
+</li>
+<li class="level1"><div class="li"> Uncompress the gziped img file. On Linux use the command <code>gzip -d openwrt-*.img.gz</code>. As a result you should get the raw <code>openwrt-x86-64-combined-ext4.img</code> image  file.</div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="custom_images">Custom Images</h4>
+<div class="level4">
+
+<p>
+You can compile your own image (<em>Target System → x86-64</em> and <em>Target Images → Build VirtualBox image files</em>). <code>ext4</code> needs to be enabled first.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Select an OpenWrt image&quot;,&quot;hid&quot;:&quot;select_an_openwrt_image&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;412-2097&quot;} -->
+<h3 class="sectionedit4" id="convert_openwrtimg_to_vbox_drive">Convert openwrt.img to VBox drive</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> Open a terminal and go in the folder where you have downloaded the file (sorry, the tool has only a command line interface). On Windows, the <code>VBoxManage.exe</code> is available in the installation path <code>C:\Program Files\Oracle\VirtualBox</code>.</div>
+</li>
+<li class="level1"><div class="li"> Convert it to native VBox format by writing this in command line (the same for Windows, macOS and Linux. Sadly this tool does not have graphical user interface): <code>VBoxManage convertfromraw --format VDI openwrt-*.img openwrt.vdi</code>. This will create the <code>openwrt.vdi</code> file which a virtual drive for VBox virtual machine. </div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="error">Error</h4>
+<div class="level4">
+
+<p>
+If you receive an error similar to:
+</p>
+<pre class="code">VBoxManage: error: VD: The given disk size 19444018 is not aligned on a sector boundary (512 bytes)
+VBoxManage: error: Error code VERR_VD_INVALID_SIZE at /Users/vbox/tinderbox/5.1-mac-rel/src/VBox/Storage/VD.cpp(7002) in function int VDCreateBase(PVBOXHDD, const char *, const char *, uint64_t, unsigned int, const char *, PCVDGEOMETRY, PCVDGEOMETRY, PCRTUUID, unsigned int, PVDINTERFACE, PVDINTERFACE)
+VBoxManage: error: Cannot create the disk image &quot;openwrt.vdi&quot;: VERR_VD_INVALID_SIZE</pre>
+
+<p>
+or:
+</p>
+<pre class="code">VBoxManage.exe: error: VDI: cannot create image &#039;openwrt.vdi&#039;
+VBoxManage.exe: error: Error code VERR_ACCESS_DENIED at D:\tinderboxb\win-6.1\src\VBox\Storage\VDI.cpp(691) in function int __cdecl vdiImageCreateFile(struct VDIIMAGEDESC *,unsigned int,struct VDINTERFACEPROGRESS *,unsigned int,unsigned int)
+VBoxManage.exe: error: Cannot create the disk image &quot;openwrt.vdi&quot;: VERR_ACCESS_DENIED</pre>
+
+<p>
+you may need to pad the image with <code>dd if=openwrt-x86-64-combined-ext4.img of=openwrt.img bs=128000 conv=sync</code> and use the padded image as input to VBoxManage convertfromraw or try another with this command line: <code>VBoxManage convertdd openwrt-*.img openwrt.vdi</code>.
+</p>
+<ul>
+<li class="level1"><div class="li"> Enlarge the image to a useful size (size is in <abbr title="Megabyte">MB</abbr>)</div>
+</li>
+</ul>
+<pre class="code">$ VBoxManage modifymedium openwrt.vdi --resize 128
+0%...10%...20%...30%...40%...50%...60%...70%...80%...90%...100%</pre>
+<ul>
+<li class="level1"><div class="li"> Resize /dev/sda2 partition to new size, or create new partition and copy all files from root partition there and amend /boot/grub/grub.cfg</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Convert openwrt.img to VBox drive&quot;,&quot;hid&quot;:&quot;convert_openwrtimg_to_vbox_drive&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;2098-4261&quot;} -->
+<h2 class="sectionedit5" id="vm_setup_in_virtualbox">VM Setup in VirtualBox</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;VM Setup in VirtualBox&quot;,&quot;hid&quot;:&quot;vm_setup_in_virtualbox&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:5,&quot;range&quot;:&quot;4262-4296&quot;} -->
+<h3 class="sectionedit6" id="vm_creation">VM creation</h3>
+<div class="level3">
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Tutorial and screenshots from VirtualBox 5.1.8 on Linux host, on Windows or macOS hosts there will be some cosmetic differences (a different top bar) but the VirtualBox panels and buttons will be exactly the same
+</p>
+
+<p>
+<a href="/_media/docs/guide-user/vboxstart.png" class="media" title="docs:guide-user:vboxstart.png"><img src="/_media/docs/guide-user/vboxstart.png?w=70&amp;tok=fba14e" class="medialeft" loading="lazy" alt="" width="70" /></a> Start VirtualBox and click <em>New</em> to add a virtual machine (VM)<br/>
+
+</p>
+<hr />
+
+<p>
+<a href="/_media/docs/guide-user/vboxaddvm1.png" class="media" title="docs:guide-user:vboxaddvm1.png"><img src="/_media/docs/guide-user/vboxaddvm1.png?w=70&amp;tok=4eb4af" class="medialeft" loading="lazy" alt="" width="70" /></a> Choose a <em>Name</em> for your virtual machine, choose <code>Linux</code> for <em>Type</em>, and <code>Linux 2.6 / 3.x / 4.x (64-bit)</code> for <em>Version</em>, then click <em>Next</em>.<br/>
+
+</p>
+<hr />
+
+<p>
+<a href="/_media/docs/guide-user/vboxaddvm2.png" class="media" title="docs:guide-user:vboxaddvm2.png"><img src="/_media/docs/guide-user/vboxaddvm2.png?w=70&amp;tok=4b1841" class="medialeft" loading="lazy" alt="" width="70" /></a> OpenWrt will work fine with much less RAM than the recommended amount, 128 MiB will be enough. 
+</p>
+<hr />
+
+<p>
+<a href="/_media/docs/guide-user/vboxaddvm3.png" class="media" title="docs:guide-user:vboxaddvm3.png"><img src="/_media/docs/guide-user/vboxaddvm3.png?w=70&amp;tok=0bad2c" class="medialeft" loading="lazy" alt="" width="70" /></a> Choose <em>Use an existing hard disk file</em>, click the <em>file</em> icon to open <em>Virtual Media Manager</em>, click <em>Add</em> and choose your <code>openwrt.vdi</code> file using the file chooser window. Click <em>Create</em> to end this guided procedure.<br/>
+
+</p>
+<hr />
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> It&#039;s recommended to place the disk image in a permanent place <em>before</em> linking it with VBox. If you move it <em>afterwards</em>, VBox will not find it anymore and will complain about this issue on next start (or when you try to start the VM). It will offer a guided procedure to link the disk image again, so don&#039;t worry.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> If the Virtual machine keeps restarting with <code>Kernel Panic - not syncing: Attempted to kill the idle task!</code> message, try changing the number of CPUs to 2 and then start the VM. Reference: <a href="https://forums.virtualbox.org/viewtopic.php?t=106196" class="urlextern" title="https://forums.virtualbox.org/viewtopic.php?t=106196" rel="ugc nofollow">https://forums.virtualbox.org/viewtopic.php?t=106196</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;VM creation&quot;,&quot;hid&quot;:&quot;vm_creation&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:6,&quot;range&quot;:&quot;4297-5866&quot;} -->
+<h3 class="sectionedit7" id="vm_setup">VM setup</h3>
+<div class="level3">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:8,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__meta:infobox:howto_links">
+<div class="level3">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:10,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap">
+<p>
+This article may contain network configuration that depends on migration to DSA in OpenWrt 21.02
+</p>
+<ul>
+<li class="level1"><div class="li"> Check if your device uses DSA or swconfig as not all devices have been migrated</div>
+</li>
+<li class="level1"><div class="li"> ifname@interface has been moved to device sections</div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/network/dsa/start" class="wikilink1" title="docs:guide-user:network:dsa:start" data-wiki-id="docs:guide-user:network:dsa:start">DSA Networking</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://forum.openwrt.org/t/mini-tutorial-for-dsa-network-config/96998" class="urlextern" title="https://forum.openwrt.org/t/mini-tutorial-for-dsa-network-config/96998" rel="ugc nofollow">Mini tutorial for DSA network config</a> on the forum</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://openwrt.org/releases/21.02/notes-21.02.0#new_network_configuration_syntax_and_boardjson_change" class="urlextern" title="https://openwrt.org/releases/21.02/notes-21.02.0#new_network_configuration_syntax_and_boardjson_change" rel="ugc nofollow">DSA in the 21.02 release notes</a></div>
+</li>
+</ul>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:11,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:9,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level3">
+
+<p>
+This part of the configuration will deal with setting up networking manually.<br/>
+
+The configuration you will set up by following this tutorial is:
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong>eth0</strong> of the VM on <strong>mng</strong> (management) interface, fixed address 192.168.56.2, set in VirtualBox as <strong>Host-only Adapter</strong> on adapter <strong>vboxnet0</strong>. This interface will be <em class="u">always</em> available to the host even if host or VM are disconnected from any network.</div>
+</li>
+<li class="level1"><div class="li"> <strong>eth1</strong> of the VM on <strong>wan</strong> interface, dynamic address, set in VirtualBox as <strong><abbr title="Network Address Translation">NAT</abbr></strong>. This interface will be used to access the Internet through whatever setup the host also uses.</div>
+</li>
+<li class="level1"><div class="li"> <em>(optional) <strong>eth2</strong> of the VM on <strong>lan</strong> interface, configured depending on your local network, set in VirtualBox as <strong>Bridged Adapter</strong>. This interface allows other devices (host included) to connect to the VM as if it was a physical device in the local network. Will only work if there is already a local network of some kind.</em></div>
+</li>
+<li class="level1"><div class="li"> <em>For a setup with 2 bridged physical network cards <abbr title="Wide Area Network">WAN</abbr>/<abbr title="Local Area Network">LAN</abbr> Setup see <a href="#troubleshooting" title="docs:guide-user:virtualization:virtualbox-vm ↵" class="wikilink1">troubleshooting</a>. The rest of this guide applies to a setup with 2 physical cards as well. </em></div>
+</li>
+</ul>
+
+<p>
+Note that the <em>order</em> of the “Host-only Adapter” as “Adapter 1” and “<abbr title="Network Address Translation">NAT</abbr>” as “Adapter 2” is important for turn-key operation of OpenWrt in the VM. While it can be configured using the console, configuration in this way simplifies getting to a running configuration.
+</p>
+
+</div>
+
+<h4 id="virtualbox_settings">Virtualbox settings</h4>
+<div class="level4">
+
+</div>
+
+<h5 id="host-only_network_adapter">Host-only network adapter</h5>
+<div class="level5">
+
+<p>
+we first need to make sure there is a Host-only network adapter and that it has the right settings<br/>
+
+Note: this is found in VBox 6.0 (at least for Windows) under Tools, and is pre-configured.
+</p>
+<hr />
+
+<p>
+<a href="/_media/docs/guide-user/vboxvmhost-only-network1.png" class="media" title="docs:guide-user:vboxvmhost-only-network1.png"><img src="/_media/docs/guide-user/vboxvmhost-only-network1.png?w=70&amp;tok=540e3e" class="medialeft" loading="lazy" alt="" width="70" /></a> Click on <strong>File</strong> → <strong>Preferences</strong> → <strong>Network</strong><br/>
+
+On macOS, this setting may be found through File &gt; Host Network Manager...
+</p>
+<hr />
+
+<p>
+<a href="/_media/docs/guide-user/vboxvmhost-only-network2.png" class="media" title="docs:guide-user:vboxvmhost-only-network2.png"><img src="/_media/docs/guide-user/vboxvmhost-only-network2.png?w=70&amp;tok=d63a36" class="medialeft" loading="lazy" alt="" width="70" /></a> Click on Host-only Networks tab and then if you don&#039;t see a <strong>vboxnet0</strong> entry click on the  <strong>+</strong> icon on the right of the window to add a new one.<br/>
+
+Now select the <strong>vboxnet0</strong> entry, and click on the screwdriver icon on the right to open its settings.<br/>
+
+</p>
+<hr />
+
+<p>
+<a href="/_media/docs/guide-user/vboxvmhost-only-network3.png" class="media" title="docs:guide-user:vboxvmhost-only-network3.png"><img src="/_media/docs/guide-user/vboxvmhost-only-network3.png?w=70&amp;tok=2f8737" class="medialeft" loading="lazy" alt="" width="70" /></a> <strong><abbr title="Internet Protocol version 4">IPv4</abbr> Address</strong> should be <strong>192.168.56.1</strong>, <strong><abbr title="Internet Protocol version 4">IPv4</abbr> Network Mask</strong> should be <strong>255.255.255.0</strong>, <strong><abbr title="Internet Protocol version 6">IPv6</abbr> Address</strong> should be empty and <strong><abbr title="Internet Protocol version 6">IPv6</abbr> Network Mask</strong> should be <strong>0</strong><br/>
+
+</p>
+<hr />
+
+<p>
+<a href="/_media/docs/guide-user/vboxvmhost-only-network4.png" class="media" title="docs:guide-user:vboxvmhost-only-network4.png"><img src="/_media/docs/guide-user/vboxvmhost-only-network4.png?w=70&amp;tok=ee9315" class="medialeft" loading="lazy" alt="" width="70" /></a> <em>(optional) you can also set the <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> server as shown in the screenshot if you want to have dynamic addresses to the VM, but for this tutorial it is not required as we set a static address in the VM itself</em>
+</p>
+<hr />
+
+<p>
+Press OK to save and close until you are back to VirtualBox Manager interface again.
+</p>
+
+</div>
+
+<h5 id="network_settings">Network Settings</h5>
+<div class="level5">
+
+<p>
+<a href="/_media/docs/guide-user/vboxvmsettings1.png" class="media" title="docs:guide-user:vboxvmsettings1.png"><img src="/_media/docs/guide-user/vboxvmsettings1.png?w=70&amp;tok=5e53e8" class="medialeft" loading="lazy" alt="" width="70" /></a> Open the VM&#039;s settings
+</p>
+<hr />
+
+<p>
+<a href="/_media/docs/guide-user/vboxvmsettings2.png" class="media" title="docs:guide-user:vboxvmsettings2.png"><img src="/_media/docs/guide-user/vboxvmsettings2.png?w=70&amp;tok=427688" class="medialeft" loading="lazy" alt="" width="70" /></a> Go in the <strong>Network</strong> tab 
+</p>
+<hr />
+
+<p>
+<a href="/_media/docs/guide-user/vboxvmsettings3.png" class="media" title="docs:guide-user:vboxvmsettings3.png"><img src="/_media/docs/guide-user/vboxvmsettings3.png?w=70&amp;tok=acb156" class="medialeft" loading="lazy" alt="" width="70" /></a>configure <strong>Adapter 1</strong>:<br/>
+
+</p>
+<ol>
+<li class="level1"><div class="li"> with <strong>Host-only Adapter</strong></div>
+</li>
+<li class="level2"><div class="li"> select vboxnet0 as (adapter) <strong>Name</strong></div>
+</li>
+<li class="level2"><div class="li"> click on <strong>Advanced</strong> and in <strong>Adapter Type</strong> select <strong>Intel PRO/1000 MT Desktop</strong></div>
+</li>
+<li class="level2"><div class="li"> <strong>Promiscuous mode</strong> should be set to <strong>Deny</strong> unless you have good reasons to enable it.<br/>
+</div>
+</li>
+</ol>
+<ul>
+<li class="level1 node"><div class="li"> Configure <strong>Adapter 2</strong> </div>
+<ol>
+<li class="level2"><div class="li"> with <strong><abbr title="Network Address Translation">NAT</abbr></strong></div>
+</li>
+</ol>
+</li>
+<li class="level1 node"><div class="li"> <em>(optional) Configure <strong>Adapter 3</strong></em></div>
+<ol>
+<li class="level2"><div class="li"> <em>with <strong>Bridged Adapter</strong></em></div>
+</li>
+<li class="level2"><div class="li"> <em>in the Name field select the name of the network card (ethernet or wifi) of your PC that connected to a local network. On Windows it has a full device name, on Linux it will have codenames like <strong>eth0</strong>, <strong>eth1</strong> for ethernet or <strong>wlp2s0</strong> for wifi.</em></div>
+</li>
+<li class="level2"><div class="li"> <em>Click on <strong>Advanced</strong> and do the same you did for <strong>Adapter 1</strong>&#039;s advanced options</em></div>
+</li>
+</ol>
+</li>
+</ul>
+
+</div>
+
+<h4 id="virtual_machine_settings">Virtual Machine Settings</h4>
+<div class="level4">
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Due to limitations, the keyboard in the virtual machine&#039;s terminal is set to US, so some (or most) of your keys may not print the symbols as indicated by the keycaps.<br/>
+
+Also, due to the fact that what you see there is a bare machine terminal and not a smart thing like a <abbr title="Secure Shell">SSH</abbr> program (Putty/Kitty/whatever) or a terminal emulator program, you cannot copy-paste text into it.<br/>
+
+Don&#039;t worry, most of the setup will be done after you are connected with <abbr title="Secure Shell">SSH</abbr> (remote terminal) that does not have any of these issues.<br/>
+
+<a href="/_media/docs/guide-user/1280px-qwerty.png" class="media" title="docs:guide-user:1280px-qwerty.png"><img src="/_media/docs/guide-user/1280px-qwerty.png?w=50&amp;tok=fa3e88" class="medialeft" loading="lazy" alt="" width="50" /></a> Look at this US keyboard layout to find what button you need to press on your keyboard to generate the right symbol. 
+</p>
+<hr />
+<ol>
+<li class="level1"><div class="li"> Boot into your Virtual Machine</div>
+</li>
+<li class="level1"><div class="li"> Wait 4 seconds for GRUB to boot automatically</div>
+</li>
+<li class="level1"><div class="li"> Press Enter to activate the console when the boot messages have finished scrolling by. It may take two or three minutes for “entropy” to be generated (<code>random: crng init done</code> with OpenWrt 17.01.4). Until there is sufficient entropy, <abbr title="Secure Shell">SSH</abbr> and other cryptographic functions may fail.</div>
+</li>
+<li class="level1"><div class="li"> Display the current network configuration<br/>
+<pre class="code">root@openwrt:~# uci show network
+network.loopback=interface
+network.loopback.ifname=&#039;lo&#039;
+network.loopback.proto=&#039;static&#039;
+network.loopback.ipaddr=&#039;127.0.0.1&#039;
+network.loopback.netmask=&#039;255.0.0.0&#039;
+network.globals=globals
+network.globals.ula_prefix=&#039;fd1b:e541:8f1a::/48&#039;
+network.lan=interface
+network.lan.type=&#039;bridge&#039;
+network.lan.ifname=&#039;eth0&#039;
+network.lan.proto=&#039;static&#039;
+network.lan.netmask=&#039;255.255.255.0&#039;
+network.lan.ip6assign=&#039;60&#039;
+network.lan.ipaddr=&#039;192.168.1.1&#039;
+network.wan=interface
+network.wan.ifname=&#039;eth1&#039;
+network.wan.proto=&#039;dhcp&#039;
+network.wan6=interface
+network.wan6.ifname=&#039;eth1&#039;
+network.wan6.proto=&#039;dhcpv6&#039;</pre>
+</div>
+</li>
+</ol>
+
+<p>
+Note that the default <abbr title="Local Area Network">LAN</abbr> address of 192.168.1.1 is present on first boot.
+</p>
+<ol>
+<li class="level1 node"><div class="li"> Edit the network configuration to allow <abbr title="Secure Shell">SSH</abbr> access by writing these commands and pressing enter: </div>
+<ol>
+<li class="level2"><div class="li"> <strong>uci set network.lan.ipaddr=&#039;192.168.56.2&#039;</strong></div>
+</li>
+<li class="level2"><div class="li"> <strong>uci commit</strong></div>
+</li>
+<li class="level2"><div class="li"> <strong>reboot</strong></div>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> Now your VM should be accessible from <abbr title="Secure Shell">SSH</abbr>, user <strong>root</strong> (no password) address <strong>192.168.56.2</strong></div>
+</li>
+<li class="level1"><div class="li"> After you have logged in successfully, we can actually do the true configuration. For 22.03 and earlier, copy-paste the following block of code and press enter:<br/>
+<pre class="code">uci batch &lt;&lt;EOF 
+set network.mng=interface 
+set network.mng.type=&#039;bridge&#039; 
+set network.mng.proto=&#039;static&#039;
+set network.mng.netmask=&#039;255.255.255.0&#039;
+set network.mng.ifname=&#039;eth0&#039;
+set network.mng.ipaddr=&#039;192.168.56.2&#039;
+delete network.lan
+delete network.wan6
+set network.wan=interface
+set network.wan.ifname=&#039;eth1&#039;
+set network.wan.proto=&#039;dhcp&#039;
+EOF</pre>
+
+<p>
+  For 23.05 and later, copy-paste the following:<br/>
+
+</p>
+<pre class="code">uci batch &lt;&lt;EOF 
+set network.mng=interface 
+set network.mng.device=&#039;br-lan&#039;  
+set network.mng.proto=&#039;static&#039;
+set network.mng.ipaddr=&#039;192.168.56.2&#039;  
+set network.mng.netmask=&#039;255.255.255.0&#039;
+set firewall.@zone[0].network=&#039;mng&#039;
+set firewall.@zone[0].name=&#039;mng&#039;
+delete network.lan
+delete network.wan6
+set network.wan=interface
+set network.wan.device=&#039;eth1&#039;
+set network.wan.proto=&#039;dhcp&#039;
+EOF</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> now write <strong>uci changes</strong> to check if the setting configuration was loaded correctly. If you see the following on 22.03 and earlier (the <strong>network.mng</strong> entries MUST be the same as the ones shown here, the <strong>network.wan</strong> might be slightly different), everything went well<br/>
+<pre class="code">root@openwrt:~# uci changes
+network.mng=&#039;interface&#039;
+network.mng.type=&#039;bridge&#039;
+network.mng.proto=&#039;static&#039;
+network.mng.netmask=&#039;255.255.255.0&#039;
+network.mng.ifname=&#039;eth0&#039;
+network.mng.ipaddr=&#039;192.168.56.2&#039;
+-network.lan
+-network.wan6
+network.wan=&#039;interface&#039;</pre>
+
+<p>
+ For 23.03 and later, you should see<br/>
+
+</p>
+<pre class="code">root@OpenWrt:~# uci changes
+firewall.cfg02dc81.network=&#039;mng&#039;
+firewall.cfg02dc81.name=&#039;mng&#039;
+network.mng=&#039;interface&#039;
+network.mng.device=&#039;br-lan&#039;
+network.mng.proto=&#039;static&#039;
+network.mng.ipaddr=&#039;192.168.56.2&#039;
+network.mng.netmask=&#039;255.255.255.0&#039;
+-network.lan
+-network.wan6</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> if all is well, save config with <strong>uci commit &amp;&amp; reboot</strong>, if all is NOT well, write <strong>reboot</strong> to erase the temporary changes and find a way to set the above configuration manually.</div>
+</li>
+<li class="level1"><div class="li"> close and open again the <abbr title="Secure Shell">SSH</abbr> terminal when the VM has restarted, with same connection parameters (user <strong>root</strong> and <strong>192.168.56.2</strong>)</div>
+</li>
+<li class="level1"><div class="li"> now you should have both internet access (try a <strong>opkg update</strong>) AND a management interface with a static address you can connect your <abbr title="Secure Shell">SSH</abbr> client program to even if your PC is disconnected from a local network.</div>
+</li>
+<li class="level1"><div class="li"> the optional <strong>Bridged Adapter</strong> on <strong>Adapter 3</strong> isn&#039;t crucial for basic functionality and is also specific for your own local network parameters. In my own network (and in most home networks) it will work fine for 22.03 and earlier if you write <pre class="code">uci batch &lt;&lt;EOF 
+set network.lan=interface
+set network.lan.ifname=&#039;eth2&#039;
+set network.lan.proto=&#039;dhcp&#039;
+EOF
+uci commit</pre>
+
+<p>
+and for 23.05 and later 
+</p>
+<pre class="code">uci batch &lt;&lt;EOF 
+set network.lan=interface
+set network.lan.device=&#039;eth2&#039;
+set network.lan.proto=&#039;dhcp&#039;
+EOF
+uci commit
+service network restart</pre>
+
+<p>
+<br/>
+If you have more complex requirements you will have to set that up on your own by reading the documentation, or through luci.
+</p>
+</div>
+</li>
+<li class="level1"><div class="li"> you can now install packages to this images as normal, you will probably want to install luci, write <strong>opkg update &amp;&amp; opkg install luci</strong>, then you can connect to the VM&#039;s luci by typing 192.168.56.2 in your browser address bar or <a href="http://192.168.56.2" class="urlextern" title="http://192.168.56.2" rel="ugc nofollow">click on this link</a> to get there.</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;VM setup&quot;,&quot;hid&quot;:&quot;vm_setup&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:7,&quot;range&quot;:&quot;5867-15231&quot;} -->
+<h2 class="sectionedit12" id="troubleshooting">Troubleshooting</h2>
+<div class="level2">
+<ul>
+<li class="level1 node"><div class="li"> If you rebuild the disk image, and VirtualBox complains about invalid UUIDs for the disk</div>
+<ul>
+<li class="level2"><div class="li"> You need to remove the disk from <strong>both</strong> the <em>VM</em> <strong>and</strong> from the <em>Virtual Media Manager</em></div>
+</li>
+<li class="level2"><div class="li"> Then add the disk image to the VM again</div>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="level1 node"><div class="li"> If you want to use a bridged <abbr title="Virtual Private Network">VPN</abbr> on your device to bridge it to your local network you need to set the</div>
+<ul>
+<li class="level2"><div class="li"> <strong>Promiscuous Mode</strong> of the corresponding <strong>Bridged Network Adapter</strong> to “Allow All” or else your local network won&#039;t be bridged properly to your vpn bridged network</div>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="level1 node"><div class="li"> You can also have 2 physical network interfaces on your main operating system that is hosting the virtual machine. In this case</div>
+<ul>
+<li class="level2"><div class="li"> Use one Network Adapter as <strong><abbr title="Wide Area Network">WAN</abbr></strong> and in VirtualBox you select <strong>Bridged Adapter</strong> with <strong>Promiscuous Mode</strong> to <strong>Deny</strong></div>
+</li>
+<li class="level2 node"><div class="li"> Use the other Network Adapter as <strong><abbr title="Local Area Network">LAN</abbr></strong> and in VirtualBox you select <strong>Bridged Adapter</strong> with <strong>Promiscuous Mode</strong> to</div>
+<ul>
+<li class="level3"><div class="li"> <strong>Deny</strong> if you don&#039;t want to expose bridged virtual networks to your physical network</div>
+</li>
+<li class="level3"><div class="li"> <strong>Allow All</strong> if you want to connect your bridged virtual network to your physical network</div>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Troubleshooting&quot;,&quot;hid&quot;:&quot;troubleshooting&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:12,&quot;range&quot;:&quot;15232-16361&quot;} -->
+<h2 class="sectionedit13" id="run_with_virtualbox_automatically_on_start_of_windows_os">Run with VirtualBox automatically on Start of Windows OS</h2>
+<div class="level2">
+<ul>
+<li class="level1 node"><div class="li"> Ordered List ItemImport the following entry to your registry or add it manually:</div>
+<ol>
+<li class="level2"><div class="li"> [HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Run]</div>
+</li>
+<li class="level2"><div class="li"> “VB-MYDEVICE”=“\”C:\\Program Files\\Oracle\\VirtualBox\\VBoxManage.exe\“ startvm \”NAMEOFVBINSTANCE\“ --type headless”</div>
+</li>
+</ol>
+</li>
+</ul>
+<ul>
+<li class="level1 node"><div class="li"> Alternatively create 2 shortcuts and use the Windows Task scheduler</div>
+<ol>
+<li class="level2 node"><div class="li"> “C:\Program Files\Oracle\VirtualBox\VBoxManage.exe” startvm MYDEVICE --type headless</div>
+<ol>
+<li class="level3"><div class="li"> Create a task in the Scheduler triggered by logon of any user as action the shortcut</div>
+</li>
+</ol>
+</li>
+<li class="level2 node"><div class="li"> “C:\Program Files\Oracle\VirtualBox\VBoxManage.exe” controlvm MYDEVICE acpipowerbutton</div>
+<ol>
+<li class="level3 node"><div class="li"> Create a task in the Scheduler triggered by an event and as action the shortcut</div>
+<ol>
+<li class="level4"><div class="li"> Begin the task: On an event</div>
+</li>
+<li class="level4"><div class="li"> Basic Log: System</div>
+</li>
+<li class="level4"><div class="li"> Source: User32</div>
+</li>
+<li class="level4"><div class="li"> Event ID: 1074</div>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+</ul>
+<ul>
+<li class="level1 node"><div class="li"> Or use following:</div>
+<ol>
+<li class="level3"><div class="li"> <a href="https://github.com/onlyfang/VBoxVmService" class="urlextern" title="https://github.com/onlyfang/VBoxVmService" rel="ugc nofollow">VBoxVmService</a> Windows Service to run VirtualBox VMs automatically</div>
+</li>
+</ol>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Run with VirtualBox automatically on Start of Windows OS&quot;,&quot;hid&quot;:&quot;run_with_virtualbox_automatically_on_start_of_windows_os&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:13,&quot;range&quot;:&quot;16362-17414&quot;} -->
+<h2 class="sectionedit14" id="see_also">See also</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/virtualization/virtualbox-advanced" class="wikilink1" title="docs:guide-user:virtualization:virtualbox-advanced" data-wiki-id="docs:guide-user:virtualization:virtualbox-advanced">VirtualBox Advanced</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/virtualization/start" class="wikilink1" title="docs:guide-user:virtualization:start" data-wiki-id="docs:guide-user:virtualization:start">Other virtualization options</a>: Docker, VMware etc.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;See also&quot;,&quot;hid&quot;:&quot;see_also&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:14,&quot;range&quot;:&quot;17415-&quot;} -->

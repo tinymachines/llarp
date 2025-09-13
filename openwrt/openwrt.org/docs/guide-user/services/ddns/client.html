@@ -1,0 +1,1548 @@
+
+<h1 class="sectionedit1" id="ddns_client">DDNS client</h1>
+<div class="level1">
+
+<p>
+See also: <a href="/docs/guide-user/base-system/ddns" class="wikilink1" title="docs:guide-user:base-system:ddns" data-wiki-id="docs:guide-user:base-system:ddns">DDNS client configuration</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;DDNS client&quot;,&quot;hid&quot;:&quot;ddns_client&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-100&quot;} -->
+<h2 class="sectionedit2" id="introduction">Introduction</h2>
+<div class="level2">
+
+<p>
+DDNS stands for <a href="https://en.wikipedia.org/wiki/Dynamic_DNS" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Dynamic_DNS">Dynamic DNS</a>.
+Simply put, using this service gives a name to your <abbr title="Internet Protocol">IP</abbr>.
+So if you&#039;re hosting something on your line, people would not have to bother typing your <abbr title="Internet Protocol">IP</abbr>.
+They can just type in your domain name! It also helps when your <abbr title="Internet Protocol">IP</abbr> changes.
+Users won&#039;t need to discover what your new <abbr title="Internet Protocol">IP</abbr> is, they can simply type your domain name.
+</p>
+
+<p>
+This guide will help you configure your DDNS service, so that your router auto-updates your <abbr title="Internet Protocol">IP</abbr> to your DDNS provider.
+The simplest method possible would be through <a href="/docs/guide-user/luci/luci.essentials" class="wikilink1" title="docs:guide-user:luci:luci.essentials" data-wiki-id="docs:guide-user:luci:luci.essentials">LuCI</a>.
+</p>
+
+<p>
+OpenWrt uses <a href="/packages/pkgdata/ddns-scripts" class="wikilink1" title="packages:pkgdata:ddns-scripts" data-wiki-id="packages:pkgdata:ddns-scripts">ddns-scripts</a> which are shell scripts.
+There are other scripts and programs available in the web, also some DDNS providers offer their own programs.
+All of them are currently not ported and tested on OpenWrt.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Introduction&quot;,&quot;hid&quot;:&quot;introduction&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;101-943&quot;} -->
+<h2 class="sectionedit3" id="features">Features</h2>
+<div class="level2">
+
+<p>
+ddns-scripts support other special communication functions:
+</p>
+<ul>
+<li class="level1"><div class="li"> Run once, useful for usage with <a href="/docs/guide-user/base-system/cron" class="wikilink1" title="docs:guide-user:base-system:cron" data-wiki-id="docs:guide-user:base-system:cron">cron</a>.</div>
+</li>
+<li class="level1"><div class="li"> Set proxy with/without authentication for <abbr title="Hypertext Transfer Protocol">HTTP</abbr>/<abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> requests.</div>
+</li>
+<li class="level1"><div class="li"> Set <abbr title="Domain Name System">DNS</abbr> server to use other than system default.</div>
+</li>
+<li class="level1"><div class="li"> Binding to specific network if <code>wget</code> or to specific interface if <code>curl</code> installed.</div>
+</li>
+<li class="level1"><div class="li"> Force the usage of either <abbr title="Internet Protocol version 4">IPv4</abbr> or <abbr title="Internet Protocol version 6">IPv6</abbr> communication only. Require either <code>wget</code> or <code>curl</code> AND <code>bind-host</code></div>
+</li>
+<li class="level1"><div class="li"> <abbr title="Domain Name System">DNS</abbr> requests via <abbr title="Transmission Control Protocol">TCP</abbr>, require either <code>wget</code> or <code>curl</code> AND <code>bind-host</code>.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Features&quot;,&quot;hid&quot;:&quot;features&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;944-1514&quot;} -->
+<h2 class="sectionedit4" id="requirements">Requirements</h2>
+<div class="level2">
+
+<p>
+First of all, you&#039;ll need to pick and register a <abbr title="Domain Name System">DNS</abbr> name with a compatible DDNS service provider.
+For a list of DDNS providers, see:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="https://www.google.com/search?q=dynamic+dns+provider+list" class="urlextern" title="https://www.google.com/search?q=dynamic+dns+provider+list" rel="ugc nofollow">https://www.google.com/search?q=dynamic+dns+provider+list</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://www.opendirectoryproject.org/Computers/Internet/Protocols/DNS/Service_Providers/Dynamic_DNS" class="urlextern" title="http://www.opendirectoryproject.org/Computers/Internet/Protocols/DNS/Service_Providers/Dynamic_DNS" rel="ugc nofollow">http://www.opendirectoryproject.org/Computers/Internet/Protocols/DNS/Service_Providers/Dynamic_DNS</a></div>
+</li>
+<li class="level1"><div class="li"> Pick one from the list <a href="https://github.com/openwrt/packages/blob/master/net/ddns-scripts/files/usr/share/ddns/list" class="urlextern" title="https://github.com/openwrt/packages/blob/master/net/ddns-scripts/files/usr/share/ddns/list" rel="ugc nofollow">https://github.com/openwrt/packages/blob/master/net/ddns-scripts/files/usr/share/ddns/list</a></div>
+</li>
+</ul>
+<div class="table sectionedit5"><table class="inline">
+	<tr class="row0">
+		<th class="col0 leftalign" colspan="4"> <em>ddns-scripts</em> support the following Dynamic <abbr title="Domain Name System">DNS</abbr> service providers out of the box:                                                                                                                                                                                                                  </th><td class="col4 leftalign">                                                         </td>
+	</tr>
+	<tr class="row1">
+		<td class="col0 leftalign"> <a href="http://3322.org/" class="urlextern" title="http://3322.org/" rel="ugc nofollow">3322.org</a>                                                         </td><td class="col1 leftalign"> <a href="http://dnspark.com/" class="urlextern" title="http://dnspark.com/" rel="ugc nofollow">dnspark.com</a>                        </td><td class="col2 leftalign"> <a href="http://easydns.com/" class="urlextern" title="http://easydns.com/" rel="ugc nofollow">easydns.com</a>                                                </td><td class="col3 leftalign"> <a href="http://mythic-beasts.com/" class="urlextern" title="http://mythic-beasts.com/" rel="ugc nofollow">mythic-beasts.com</a> <sup>6)</sup>  </td><td class="col4 leftalign"> servercow.de                                            </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> <a href="http://afraid.org/" class="urlextern" title="http://afraid.org/" rel="ugc nofollow">afraid.org</a> <sup>6)</sup>                                       </td><td class="col1 leftalign"> dnsever.com                                                </td><td class="col2 leftalign"> <a href="http://editdns.net/" class="urlextern" title="http://editdns.net/" rel="ugc nofollow">editdns.net</a>                                                </td><td class="col3 leftalign"> <a href="http://namecheap.com/" class="urlextern" title="http://namecheap.com/" rel="ugc nofollow">namecheap.com</a>                        </td><td class="col4 leftalign"> simply.com                                              </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> all-inkl.com                                                                          </td><td class="col1 leftalign"> <a href="http://do.de/" class="urlextern" title="http://do.de/" rel="ugc nofollow">do.de</a> <sup>6)</sup>                      </td><td class="col2 leftalign"> <a href="http://goip.de/" class="urlextern" title="http://goip.de/" rel="ugc nofollow">goip.de</a> <sup>6)</sup>                                          </td><td class="col3 leftalign"> <a href="http://nettica.com/" class="urlextern" title="http://nettica.com/" rel="ugc nofollow">nettica.com</a>                            </td><td class="col4 leftalign"> <a href="http://sitelutions.com/" class="urlextern" title="http://sitelutions.com/" rel="ugc nofollow">sitelutions.com</a>             </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"> <a href="http://changeip.com/" class="urlextern" title="http://changeip.com/" rel="ugc nofollow">changeip.com</a>                                                 </td><td class="col1 leftalign"> domopoli.de                                                </td><td class="col2 leftalign"> <a href="http://domains.google.com/" class="urlextern" title="http://domains.google.com/" rel="ugc nofollow">google.com</a> <sup>5) 6)</sup>                         </td><td class="col3 leftalign"> njal.la                                                        </td><td class="col4 leftalign"> <a href="http://spdyn.de/" class="urlextern" title="http://spdyn.de/" rel="ugc nofollow">spdyn.de</a> <sup>6)</sup> (spdns.de)  </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 leftalign"> <a href="http://cloudflare.com/" class="urlextern" title="http://cloudflare.com/" rel="ugc nofollow">cloudflare.com</a> <sup>2) 5) 6)</sup>                         </td><td class="col1 leftalign"> <a href="http://dtdns.com/" class="urlextern" title="http://dtdns.com/" rel="ugc nofollow">dtdns.com</a>                            </td><td class="col2 leftalign"> <a href="http://dns.he.net/" class="urlextern" title="http://dns.he.net/" rel="ugc nofollow">dns.he.net</a> <sup>6)</sup>                                    </td><td class="col3 leftalign"> now-dns.com                                                    </td><td class="col4 leftalign"> <a href="http://strato.com/" class="urlextern" title="http://strato.com/" rel="ugc nofollow">strato.com</a>                       </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0 leftalign"> <a href="http://core-networks.de/" class="urlextern" title="http://core-networks.de/" rel="ugc nofollow">core-networks.de</a> <sup>6)</sup>                           </td><td class="col1 leftalign"> <a href="http://duckdns.org/" class="urlextern" title="http://duckdns.org/" rel="ugc nofollow">duckdns.org</a> <sup>6)</sup>          </td><td class="col2 leftalign"> <a href="https://he.net" class="urlextern" title="https://he.net" rel="ugc nofollow">he.net</a>                                                          </td><td class="col3 leftalign"> <a href="http://no-ip.com/" class="urlextern" title="http://no-ip.com/" rel="ugc nofollow">no-ip.com</a> <sup>1)</sup> (noip.com)       </td><td class="col4 leftalign"> <a href="http://system-ns.com/" class="urlextern" title="http://system-ns.com/" rel="ugc nofollow">system-ns.com</a>                 </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0 leftalign"> <a href="http://ddnss.de/" class="urlextern" title="http://ddnss.de/" rel="ugc nofollow">ddnss.de</a> <sup>6)</sup>                                           </td><td class="col1 leftalign"> <a href="http://duiadns.net/" class="urlextern" title="http://duiadns.net/" rel="ugc nofollow">duiadns.net</a> <sup>6)</sup>          </td><td class="col2 leftalign"> <a href="https://hosting.de" class="urlextern" title="https://hosting.de" rel="ugc nofollow">hosting.de</a>                                                  </td><td class="col3 leftalign"> <a href="http://no-ip.pl/" class="urlextern" title="http://no-ip.pl/" rel="ugc nofollow">no-ip.pl</a> <sup>6)</sup>                    </td><td class="col4 leftalign"> <a href="http://thatip.com/" class="urlextern" title="http://thatip.com/" rel="ugc nofollow">thatip.com</a>                       </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0 leftalign"> ddo.jp                                                                                </td><td class="col1 leftalign"> <a href="http://dy.fi/" class="urlextern" title="http://dy.fi/" rel="ugc nofollow">dy.fi</a>                                    </td><td class="col2 leftalign"> infomaniak.com                                                                     </td><td class="col3 leftalign"> <a href="http://nsupdate.info/" class="urlextern" title="http://nsupdate.info/" rel="ugc nofollow">nsupdate.info</a> <sup>6)</sup>          </td><td class="col4 leftalign"> transip.nl                                              </td>
+	</tr>
+	<tr class="row9">
+		<td class="col0 leftalign"> desec.io                                                                              </td><td class="col1 leftalign"> dyndns.it                                                  </td><td class="col2 leftalign"> ipnodns.ru                                                                         </td><td class="col3 leftalign"> <a href="http://nubem.com/" class="urlextern" title="http://nubem.com/" rel="ugc nofollow">nubem.com</a>                                </td><td class="col4 leftalign"> <a href="http://twodns.de/" class="urlextern" title="http://twodns.de/" rel="ugc nofollow">twodns.de</a>                         </td>
+	</tr>
+	<tr class="row10">
+		<td class="col0 leftalign"> <a href="http://dhis.org/" class="urlextern" title="http://dhis.org/" rel="ugc nofollow">dhis.org</a> <sup>6)</sup>                                           </td><td class="col1 leftalign"> <a href="http://dyndns.org/" class="urlextern" title="http://dyndns.org/" rel="ugc nofollow">dyndns.org</a> <sup>6)</sup> (dyn.com)  </td><td class="col2 leftalign"> <a href="https://inwx.de" class="urlextern" title="https://inwx.de" rel="ugc nofollow">inwx.de</a>                                                        </td><td class="col3 leftalign"> <a href="http://ovh.com/" class="urlextern" title="http://ovh.com/" rel="ugc nofollow">ovh.com</a>                                    </td><td class="col4 leftalign"> udmedia.de                                              </td>
+	</tr>
+	<tr class="row11">
+		<td class="col0 leftalign"> <a href="http://dnsdynamic.org/" class="urlextern" title="http://dnsdynamic.org/" rel="ugc nofollow">dnsdynamic.org</a>                                             </td><td class="col1 leftalign"> <a href="http://dyndnss.net/" class="urlextern" title="http://dyndnss.net/" rel="ugc nofollow">dyndnss.net</a>                        </td><td class="col2 leftalign"> <a href="http://joker.com/" class="urlextern" title="http://joker.com/" rel="ugc nofollow">joker.com</a>                                                    </td><td class="col3 leftalign"> opendns.com                                                    </td><td class="col4 leftalign"> <a href="http://variomedia.de/" class="urlextern" title="http://variomedia.de/" rel="ugc nofollow">variomedia.de</a> <sup>6)</sup>   </td>
+	</tr>
+	<tr class="row12">
+		<td class="col0 leftalign"> <a href="http://dnsexit.com/" class="urlextern" title="http://dnsexit.com/" rel="ugc nofollow">dnsexit.com</a>                                                   </td><td class="col1 leftalign"> dyns.net                                                   </td><td class="col2 leftalign"> <a href="http://loopia.se/" class="urlextern" title="http://loopia.se/" rel="ugc nofollow">loopia.se</a> <sup>6)</sup> (<a href="http://loopia.com/" class="urlextern" title="http://loopia.com/" rel="ugc nofollow">loopia.com</a>)  </td><td class="col3 leftalign"> oray.com                                                       </td><td class="col4 leftalign"> xlhost.de                                               </td>
+	</tr>
+	<tr class="row13">
+		<td class="col0 leftalign"> <a href="http://dnshome.de/" class="urlextern" title="http://dnshome.de/" rel="ugc nofollow">dnshome.de</a> <sup>6)</sup>                                       </td><td class="col1 leftalign"> dynsip.org                                                 </td><td class="col2 leftalign"> moniker.com                                                                        </td><td class="col3 leftalign"> <a href="http://regfish.de/" class="urlextern" title="http://regfish.de/" rel="ugc nofollow">regfish.de</a> <sup>6)</sup>                </td><td class="col4 leftalign"> <a href="http://zoneedit.com/" class="urlextern" title="http://zoneedit.com/" rel="ugc nofollow">zoneedit.com</a> <sup>5)</sup>     </td>
+	</tr>
+	<tr class="row14">
+		<td class="col0 leftalign"> <a href="http://dnsmax.com/" class="urlextern" title="http://dnsmax.com/" rel="ugc nofollow">dnsmax.com</a>                                                     </td><td class="col1 leftalign"> <a href="http://dynu.com/" class="urlextern" title="http://dynu.com/" rel="ugc nofollow">dynu.com</a>                              </td><td class="col2 leftalign"> <a href="http://mydns.jp/" class="urlextern" title="http://mydns.jp/" rel="ugc nofollow">mydns.jp</a> <sup>6)</sup>                                        </td><td class="col3 leftalign"> <a href="http://schokokeks.org/" class="urlextern" title="http://schokokeks.org/" rel="ugc nofollow">schokokeks.org</a>                      </td><td class="col4 leftalign"> BIND nsupdate <sup>3) 4) 6)</sup>                       </td>
+	</tr>
+	<tr class="row15">
+		<td class="col0 leftalign"> <a href="http://dnsomatic.com/" class="urlextern" title="http://dnsomatic.com/" rel="ugc nofollow">dnsomatic.com</a>                                               </td><td class="col1 leftalign"> <a href="http://dynv6.com/" class="urlextern" title="http://dynv6.com/" rel="ugc nofollow">dynv6.com</a> <sup>6)</sup>              </td><td class="col2 leftalign"> <a href="http://myonlineportal.net/" class="urlextern" title="http://myonlineportal.net/" rel="ugc nofollow">myonlineportal.net</a> <sup>6)</sup>                    </td><td class="col3 leftalign"> <a href="http://selfhost.de/" class="urlextern" title="http://selfhost.de/" rel="ugc nofollow">selfhost.de</a>                            </td><td class="col4 leftalign">                                                         </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;1966-7709&quot;} --><ol>
+<li class="level1"><div class="li"> Requires additional package <a href="/packages/pkgdata/ddns-scripts-noip" class="wikilink1" title="packages:pkgdata:ddns-scripts-noip" data-wiki-id="packages:pkgdata:ddns-scripts-noip">ddns-scripts-noip</a> to be installed.</div>
+</li>
+<li class="level1"><div class="li"> Needs additional package <a href="/packages/pkgdata/ddns-scripts-cloudflare" class="wikilink1" title="packages:pkgdata:ddns-scripts-cloudflare" data-wiki-id="packages:pkgdata:ddns-scripts-cloudflare">ddns-scripts-cloudflare</a> to be installed.</div>
+</li>
+<li class="level1"><div class="li"> Directly updates a <abbr title="Domain Name System">DNS</abbr> server (Bind, PowerDNS, Knot) via nsupdate (<abbr title="Request for Comments">RFC</abbr> 2136).</div>
+</li>
+<li class="level1"><div class="li"> Needs additional package <a href="/packages/pkgdata/ddns-scripts-nsupdate" class="wikilink1" title="packages:pkgdata:ddns-scripts-nsupdate" data-wiki-id="packages:pkgdata:ddns-scripts-nsupdate">ddns-scripts-nsupdate</a> and <a href="/packages/pkgdata/bind-client" class="wikilink1" title="packages:pkgdata:bind-client" data-wiki-id="packages:pkgdata:bind-client">bind-client</a> to be installed.</div>
+</li>
+<li class="level1"><div class="li"> Requires <abbr title="Secure Socket Layer">SSL</abbr> support.</div>
+</li>
+<li class="level1"><div class="li"> Supports <abbr title="Internet Protocol version 6">IPv6</abbr>.</div>
+</li>
+</ol>
+
+<p>
+If you have picked a DDNS service provider and create your host/domain name you need to note additional your username and password.
+Now you need to decide if you want to use secure communication with your DDNS provider or not.
+Some provider require secure <a href="https://en.wikipedia.org/wiki/HTTPS" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/HTTPS">HTTPS</a> communication.
+Read their help pages for details and also read provider specific information below.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Requirements&quot;,&quot;hid&quot;:&quot;requirements&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;1515-8519&quot;} -->
+<h2 class="sectionedit6" id="web_interface_instructions">Web interface instructions</h2>
+<div class="level2">
+
+<p>
+Set up DDNS client service using web interface.
+</p>
+<ol>
+<li class="level1"><div class="li"> Navigate to <strong>LuCI → System → Software</strong></div>
+</li>
+<li class="level1"><div class="li"> Press the button <strong>Update Lists</strong> to update internal lists of available packages.</div>
+</li>
+<li class="level1"><div class="li"> Install the packages <a href="/packages/pkgdata/ddns-scripts" class="wikilink1" title="packages:pkgdata:ddns-scripts" data-wiki-id="packages:pkgdata:ddns-scripts">ddns-scripts</a> and <a href="/packages/pkgdata/luci-app-ddns" class="wikilink1" title="packages:pkgdata:luci-app-ddns" data-wiki-id="packages:pkgdata:luci-app-ddns">luci-app-ddns</a> to provide DDNS client service and web interface.</div>
+</li>
+<li class="level1"><div class="li"> Install the packages <a href="/packages/pkgdata/wget-ssl" class="wikilink1" title="packages:pkgdata:wget-ssl" data-wiki-id="packages:pkgdata:wget-ssl">wget-ssl</a> and <a href="/packages/pkgdata/ca-certificates" class="wikilink1" title="packages:pkgdata:ca-certificates" data-wiki-id="packages:pkgdata:ca-certificates">ca-certificates</a>, or <a href="/packages/pkgdata/curl" class="wikilink1" title="packages:pkgdata:curl" data-wiki-id="packages:pkgdata:curl">curl</a> and <a href="/packages/pkgdata/ca-bundle" class="wikilink1" title="packages:pkgdata:ca-bundle" data-wiki-id="packages:pkgdata:ca-bundle">ca-bundle</a> for <abbr title="Secure Socket Layer">SSL</abbr> support.</div>
+</li>
+<li class="level1"><div class="li"> Install the provider specific packages <code>ddns-scripts_*</code> and LuCI language packages <code>luci-i18n-ddns-*</code>.</div>
+</li>
+<li class="level1"><div class="li"> Refresh the page and navigate to <strong>LuCI → Services → Dynamic <abbr title="Domain Name System">DNS</abbr></strong>.</div>
+</li>
+<li class="level1"><div class="li"> Use the instances <code>myddns_ipv4</code> and <code>myddns_ipv6</code> or delete them and define your own.</div>
+</li>
+<li class="level1"><div class="li"> Modify the fields you need to change and check the <strong>Enabled</strong> option.</div>
+</li>
+<li class="level1"><div class="li"> Click <strong>Save &amp; Apply</strong> button to save changes.</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Web interface instructions&quot;,&quot;hid&quot;:&quot;web_interface_instructions&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;8520-9471&quot;} -->
+<h2 class="sectionedit7" id="command-line_instructions">Command-line instructions</h2>
+<div class="level2">
+
+<p>
+Install <code>ddns-scripts</code> and the provider-specific packages <code>ddns-scripts_xxxxx</code>.
+Also provide <abbr title="Secure Socket Layer">SSL</abbr> support with <code>wget</code> and <code>ca-certificates</code>, or <code>curl</code> and <code>ca-bundle</code>.
+</p>
+<pre class="code bash">opkg update
+opkg <span class="kw2">install</span> ddns-scripts
+opkg <span class="kw2">install</span> ddns-scripts_xxxxx
+opkg <span class="kw2">install</span> <span class="kw2">wget</span> ca-certificates
+opkg <span class="kw2">install</span> curl ca-bundle</pre>
+
+<p>
+Proceed with setting up the service using the UCI commands.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Command-line instructions&quot;,&quot;hid&quot;:&quot;command-line_instructions&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;9472-9903&quot;} -->
+<h2 class="sectionedit8" id="configuration">Configuration</h2>
+<div class="level2">
+
+<p>
+ddns-scripts are designed to update one host per configuration/section.
+To update multiple hosts or providers or <abbr title="Internet Protocol version 4">IPv4</abbr> and <abbr title="Internet Protocol version 6">IPv6</abbr> for the same host you need to define separate configurations/sections.
+Some providers offer to update multiple host within one update request.
+A possible solution for this option is to use <code>--custom--</code> service name settings.
+Have a look at <a href="#provider_specifics" title="docs:guide-user:services:ddns:client ↵" class="wikilink1">provider specifics</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:8,&quot;range&quot;:&quot;9904-10347&quot;} -->
+<h3 class="sectionedit9" id="web_interface_instructions1">Web interface instructions</h3>
+<div class="level3">
+
+<p>
+The main settings you need to set:
+</p>
+<div class="table sectionedit10"><table class="inline">
+	<tr class="row0">
+		<td class="col0 rightalign">  DDNS Service provider </td><td class="col1 leftalign"> Service provider name as it is known to OpenWrt                                                                                                                                                           </td>
+	</tr>
+	<tr class="row1">
+		<td class="col0 rightalign">        Lookup Hostname </td><td class="col1 leftalign"> The <a href="https://en.wikipedia.org/wiki/Fully_qualified_domain_name" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Fully_qualified_domain_name">FQDNs</a> you want to update, script will make <abbr title="Domain Name System">DNS</abbr> queries against it to check if <abbr title="Internet Protocol">IP</abbr> address update is needed                                                          </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 rightalign">                 Domain </td><td class="col1 leftalign"> Usually the same as Lookup Hostname, script will include this name into the update request sent to provider                                                                                               </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 rightalign">               Username </td><td class="col1 leftalign"> Username or other parameter used for authentication in update request (will be sent <abbr title="Uniform Resource Locator">URL</abbr>-encoded)                                                                                                          </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 rightalign">               Password </td><td class="col1 leftalign"> Password or other parameter (like token) used for authentication in update request (will be sent <abbr title="Uniform Resource Locator">URL</abbr>-encoded)<br/>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Ensure this password does not have have <code>$</code> characters, as this breaks the script.  </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 rightalign">              Interface </td><td class="col1 leftalign"> Network name used by OpenWrt hotplug event system to start <em>ddns-scripts</em>, e.g. <code>wan</code>, <code>wan6</code>                                                                                                       </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table1&quot;,&quot;secid&quot;:10,&quot;range&quot;:&quot;10420-11805&quot;} --><ul>
+<li class="level1"><div class="li"> It is not allowed to use <code>dash</code>-sign “-” inside configuration/section names.</div>
+</li>
+<li class="level1"><div class="li"> A full list of supported settings (some not supported by LuCI) you will find in <a href="/docs/guide-user/base-system/ddns" class="wikilink1" title="docs:guide-user:base-system:ddns" data-wiki-id="docs:guide-user:base-system:ddns">UCI documentation</a>.</div>
+</li>
+<li class="level1"><div class="li"> Always keep in mind the <a href="#provider_specifics" title="docs:guide-user:services:ddns:client ↵" class="wikilink1">Provider specific</a> settings if there are any.</div>
+</li>
+<li class="level1"><div class="li"> Don&#039;t forget to enable your configuration/section.</div>
+</li>
+<li class="level1"><div class="li"> You need minimum one enabled configuration/section for <em>ddns</em> service to start.</div>
+</li>
+<li class="level1"><div class="li"> You need to enable <em>ddns</em> service to enable updates being sent on reboot and hotplug events.</div>
+</li>
+<li class="level1"><div class="li"> Do not change the files <code>/usr/lib/ddns/services</code> or <code>/usr/lib/ddns/services_ipv6</code> as they can be overwritten by system and package updates.</div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="ssl_support">SSL support</h4>
+<div class="level4">
+
+<p>
+Options to configure <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> communication are only available if <code>wget</code> or <code>curl</code> package is installed.
+</p>
+<ul>
+<li class="level1 node"><div class="li"> Check <strong>Use <abbr title="Hypertext Transfer Protocol">HTTP</abbr> Secure</strong> option. Additional field <strong>Path to CA-Certificate</strong> is shown with it&#039;s default setting.</div>
+<ul>
+<li class="level2"><div class="li"> If you have installed <code>ca-certificates</code> package leave the shown default <code>/etc/ssl/certs</code>.</div>
+</li>
+<li class="level2"><div class="li"> If you have installed CA certificates in one file from <a href="#ssl_support" title="docs:guide-user:services:ddns:client ↵" class="wikilink1">above</a> set the value to <code>/etc/ssl/certs/ca-certificates.crt</code>.</div>
+</li>
+<li class="level2"><div class="li"> If you like to use other certificate you need to set here the full path to the certificate including file name, e.g. <code>/path/to/file.crt</code>.</div>
+</li>
+<li class="level2"><div class="li"> If your certificates are stored in a different path, set here the path where your certificates are located, e.g. <code>/path/to/files</code>.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Click <strong>Save &amp; Apply</strong> button to save changes.</div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="custom_service">Custom service</h4>
+<div class="level4">
+
+<p>
+If you want to use a DDNS provider currently not listed or you want to update multiple hosts within one configuration/section then you should do the following:
+</p>
+<ul>
+<li class="level1"><div class="li"> Choose <code>--custom--</code> as service. Additional field <strong>Custom update-<abbr title="Uniform Resource Locator">URL</abbr></strong> is shown.</div>
+</li>
+<li class="level1"><div class="li"> Fill in the <abbr title="Uniform Resource Locator">URL</abbr> you like to use. <img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Please read <abbr title="Uniform Resource Locator">URL</abbr> syntax description <a href="#custom_service1" title="docs:guide-user:services:ddns:client ↵" class="wikilink1">below</a>. Also have a look at <a href="#provider_specifics" title="docs:guide-user:services:ddns:client ↵" class="wikilink1">provider specifics</a>.</div>
+</li>
+<li class="level1"><div class="li"> Click <strong>Save &amp; Apply</strong> button to save changes.</div>
+</li>
+</ul>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> <strong>If you found a DDNS provider not listed or with additional <abbr title="Internet Protocol version 6">IPv6</abbr> support or with changed update <abbr title="Uniform Resource Locator">URL</abbr> please open an issue at <a href="https://github.com/openwrt/packages" class="urlextern" title="https://github.com/openwrt/packages" rel="ugc nofollow">Github-OpenWrt-Packages</a> so it can be included with the next release.</strong>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Web interface instructions&quot;,&quot;hid&quot;:&quot;web_interface_instructions1&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:9,&quot;range&quot;:&quot;10348-14073&quot;} -->
+<h3 class="sectionedit11" id="command-line_instructions1">Command-line instructions</h3>
+<div class="level3">
+
+<p>
+The easiest way to configure <em>ddns-scripts</em> via console is to edit the file <code>/etc/config/ddns</code> directly using build-in <a href="https://en.wikipedia.org/wiki/Vi" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Vi">vi editor</a> or any other editor you prefer.
+Other editors as <code>vi</code> needs to be installed separately.
+</p>
+
+<p>
+A configuration/section looks like:
+</p>
+<pre class="code bash"><span class="co0"># /etc/config/ddns</span>
+config <span class="st_h">'service'</span> <span class="st_h">'myddns'</span>
+	option <span class="st_h">'service_name'</span>	<span class="st_h">'example.org'</span>
+	option <span class="st_h">'enabled'</span>	<span class="st_h">'1'</span>
+	option <span class="st_h">'domain'</span>		<span class="st_h">'yourhost.example.org'</span>
+	option <span class="st_h">'username'</span>	<span class="st_h">'your_username'</span>
+	option <span class="st_h">'password'</span>	<span class="st_h">'your_password'</span>
+	option <span class="st_h">'interface'</span>	<span class="st_h">'wan'</span>
+	option <span class="st_h">'ip_source'</span>	<span class="st_h">'network'</span>
+	option <span class="st_h">'ip_network'</span>	<span class="st_h">'wan'</span></pre>
+
+<p>
+Alternatively you can use <a href="/docs/guide-user/base-system/uci#command_line_utility" class="wikilink1" title="docs:guide-user:base-system:uci" data-wiki-id="docs:guide-user:base-system:uci">UCI command line interface</a>.
+Example input:
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> ddns.myddns.service_name=<span class="st0">&quot;ddnsprovider.com&quot;</span>	<span class="co0"># only use names listed in /usr/lib/ddns/services</span>
+							<span class="co0"># or /usr/lib/ddns/services_ipv6 (since CC 15.05)</span>
+uci <span class="kw1">set</span> ddns.myddns.domain=<span class="st0">&quot;host.yourdomain.net&quot;</span>
+uci <span class="kw1">set</span> ddns.myddns.username=<span class="st0">&quot;your_user_name&quot;</span>
+uci <span class="kw1">set</span> ddns.myddns.password=<span class="st0">&quot;p@ssw0rd&quot;</span>
+uci <span class="kw1">set</span> ddns.myddns.interface=<span class="st0">&quot;wan&quot;</span>	<span class="co0"># network interface that should start this configuration/section</span>
+uci <span class="kw1">set</span> ddns.myddns.enabled=<span class="st0">&quot;1&quot;</span>
+uci commit ddns				<span class="co0"># don't forget this, otherwise data not written to configuration file</span></pre>
+
+<p>
+<code>ddns.myddns.enabled=“1”</code> means:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>ddns</code> is the configuration file to change (here <code>/etc/config/ddns</code>)</div>
+</li>
+<li class="level1"><div class="li"> <code>myddns</code> is the configuration/section to change</div>
+</li>
+<li class="level1"><div class="li"> <code>enabled</code> is the option to set/change</div>
+</li>
+<li class="level1"><div class="li"> behind the <code>equal</code>-sign is the value to set. <img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Set <code>single</code>- or <code>double</code>-quotes around the value and no space or whitespace around the <code>equal</code>-sign.</div>
+</li>
+</ul>
+
+<p>
+Example to create/add a new configuration/section “newddns”:
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> ddns.newddns=<span class="st0">&quot;service&quot;</span>
+uci <span class="kw1">set</span> ddns.newddns.service_name=<span class="st0">&quot;ddnsprovider.com&quot;</span>	<span class="co0"># only use names listed in /usr/lib/ddns/services</span>
+							<span class="co0"># or /usr/lib/ddns/services_ipv6 (since CC 15.05)</span>
+uci <span class="kw1">set</span> ddns.newddns.domain=<span class="st0">&quot;host.yourdomain.net&quot;</span>
+uci <span class="kw1">set</span> ddns.newddns.username=<span class="st0">&quot;your_user_name&quot;</span>
+uci <span class="kw1">set</span> ddns.newddns.password=<span class="st0">&quot;p@ssw0rd&quot;</span>
+uci <span class="kw1">set</span> ddns.newddns.interface=<span class="st0">&quot;wan&quot;</span>	<span class="co0"># network interface that should start this configuration/section</span>
+uci <span class="kw1">set</span> ddns.newddns.enabled=<span class="st0">&quot;1&quot;</span>
+uci commit ddns				<span class="co0"># don't forget this, otherwise data not written to configuration file</span>
+<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>ddns restart</pre>
+
+</div>
+
+<h4 id="ssl_support1">SSL support</h4>
+<div class="level4">
+
+<p>
+You need to add the following entries to the desired section in <code>/etc/config/ddns</code> file using <code>ca-certificates</code> package:
+</p>
+<pre class="code bash"><span class="co0"># /etc/config/ddns</span>
+config <span class="st_h">'service'</span> <span class="st_h">'myddns'</span>
+	...
+	option <span class="st_h">'use_https'</span>	<span class="st_h">'1'</span>
+	option <span class="st_h">'cacert'</span>		<span class="st_h">'/etc/ssl/certs'</span></pre>
+
+<p>
+using single file (ie. as descriped <a href="#ssl_support" title="docs:guide-user:services:ddns:client ↵" class="wikilink1">above</a>):
+</p>
+<pre class="code bash"><span class="co0"># /etc/config/ddns</span>
+config <span class="st_h">'service'</span> <span class="st_h">'myddns'</span>
+	...
+	option <span class="st_h">'use_https'</span>	<span class="st_h">'1'</span>
+	option <span class="st_h">'cacert'</span>		<span class="st_h">'/etc/ssl/certs/ca-certificates.crt'</span>
+<span class="co0">#	option 'cacert'		'/full/path/to/file.crt'</span></pre>
+
+<p>
+Above options can also be set via LuCI.
+The options are only shown if <code>wget</code> or <code>curl</code> package is installed!
+</p>
+
+</div>
+
+<h4 id="custom_service1">Custom service</h4>
+<div class="level4">
+
+<p>
+Following changes need to be done if you use a DDNS provider currently not listed or to update multiple hosts within one configuration/section.
+Edit <code>/etc/config/ddns</code>.
+</p>
+<pre class="code bash"><span class="co0"># /etc/config/ddns</span>
+config <span class="st_h">'service'</span> <span class="st_h">'myddns'</span>
+	...
+<span class="co0">#	option 'service_name'	'example.org'		# comment out &quot;#&quot; or delete</span>
+	option <span class="st_h">'update_url'</span>	<span class="st_h">'http://your.update.url...[USERNAME]...[PASSWORD]...[DOMAIN]...[IP]'</span></pre>
+
+<p>
+or use UCI command line interface
+</p>
+<pre class="code bash">uci delete ddns.myddns.service_name
+uci <span class="kw1">set</span> ddns.myddns.update_url=<span class="st0">&quot;http://your.update.url...[USERNAME]...[PASSWORD]...[DOMAIN]...[IP]&quot;</span>
+uci commit ddns		<span class="co0"># don't forget this, otherwise data not written to configuration file</span></pre>
+
+</div>
+
+<h5 id="url_syntax">URL Syntax</h5>
+<div class="level5">
+<ul>
+<li class="level1"><div class="li"> No need to set <code>https://</code>, it is replaced automatically if <abbr title="Secure Socket Layer">SSL</abbr> support is activated.</div>
+</li>
+<li class="level1"><div class="li"> The entries [USERNAME] [PASSWORD] [DOMAIN] [<abbr title="Internet Protocol">IP</abbr>] are replaced by <em>ddns-scripts</em> just before update.</div>
+</li>
+<li class="level1"><div class="li"> [USERNAME] is replaced by content of <code>option username</code> from configuration file.</div>
+</li>
+<li class="level1"><div class="li"> [PASSWORD] is replaced by content of <code>option password</code> from configuration file.</div>
+</li>
+<li class="level1"><div class="li"> [DOMAIN] is replaced by content of <code>option domain</code> from configuration file.</div>
+</li>
+<li class="level1"><div class="li"> [<abbr title="Internet Protocol">IP</abbr>] is replaced by the current <abbr title="Internet Protocol">IP</abbr> address of your OpenWrt system.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> Carefully set <code>option domain</code> in your configuration, also used to detect if the update was successfully done.</div>
+</li>
+<li class="level1"><div class="li"> This entry is the <abbr title="Domain Name System">DNS</abbr> name your OpenWrt system will be reachable from the internet.</div>
+</li>
+<li class="level1"><div class="li"> Have a look at <a href="#provider_specifics" title="docs:guide-user:services:ddns:client ↵" class="wikilink1">Provider specifics</a> for samples.</div>
+</li>
+</ul>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> <strong>If you found a DDNS provider not listed or with additional <abbr title="Internet Protocol version 6">IPv6</abbr> support or with changed update <abbr title="Uniform Resource Locator">URL</abbr> please open an issue at <a href="https://github.com/openwrt/packages" class="urlextern" title="https://github.com/openwrt/packages" rel="ugc nofollow">Github-OpenWrt-Packages</a> so it can be included with the next release.</strong>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Command-line instructions&quot;,&quot;hid&quot;:&quot;command-line_instructions1&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:11,&quot;range&quot;:&quot;14074-18810&quot;} -->
+<h3 class="sectionedit12" id="detecting_wan_ip">Detecting WAN IP</h3>
+<div class="level3">
+
+<p>
+Here a list (without preferences) of URLs to detect your current public ip used by your system:
+</p>
+<div class="table sectionedit13"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Dual-Stack </th><th class="col1"> <abbr title="Internet Protocol version 4">IPv4</abbr>-only </th><th class="col2"> <abbr title="Internet Protocol version 6">IPv6</abbr>-only </th><th class="col3"> Server Location </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> <a href="http://checkip.dns.he.net/" class="urlextern" title="http://checkip.dns.he.net/" rel="ugc nofollow">http://checkip.dns.he.net/</a> </td><td class="col1"> - </td><td class="col2"> - </td><td class="col3"> US </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> <a href="http://checkip.freedyn.org/" class="urlextern" title="http://checkip.freedyn.org/" rel="ugc nofollow">http://checkip.freedyn.org/</a> </td><td class="col1"> - </td><td class="col2"> - </td><td class="col3"> DE </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> <a href="http://bot.whatismyipaddress.com/" class="urlextern" title="http://bot.whatismyipaddress.com/" rel="ugc nofollow">http://bot.whatismyipaddress.com/</a> </td><td class="col1"> - </td><td class="col2"> - </td><td class="col3"> US </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> <a href="http://whatismyip.org/" class="urlextern" title="http://whatismyip.org/" rel="ugc nofollow">http://whatismyip.org/</a> </td><td class="col1"> - </td><td class="col2"> - </td><td class="col3"> US </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0"> <a href="http://myexternalip.com/raw" class="urlextern" title="http://myexternalip.com/raw" rel="ugc nofollow">http://myexternalip.com/raw</a> </td><td class="col1"> - </td><td class="col2"> - </td><td class="col3"> DE </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0"> <a href="http://wtfismyip.com/text" class="urlextern" title="http://wtfismyip.com/text" rel="ugc nofollow">http://wtfismyip.com/text</a> </td><td class="col1"> <a href="http://ipv4.wtfismyip.com/text" class="urlextern" title="http://ipv4.wtfismyip.com/text" rel="ugc nofollow">http://ipv4.wtfismyip.com/text</a> </td><td class="col2"> <a href="http://ipv6.wtfismyip.com/text" class="urlextern" title="http://ipv6.wtfismyip.com/text" rel="ugc nofollow">http://ipv6.wtfismyip.com/text</a> </td><td class="col3"> US </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0"> <a href="http://domains.google.com/checkip" class="urlextern" title="http://domains.google.com/checkip" rel="ugc nofollow">http://domains.google.com/checkip</a> </td><td class="col1"> - </td><td class="col2"> - </td><td class="col3"> part of Google </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0"> <a href="http://icanhazip.com/" class="urlextern" title="http://icanhazip.com/" rel="ugc nofollow">http://icanhazip.com/</a> </td><td class="col1"> <a href="http://ipv4.icanhazip.com/" class="urlextern" title="http://ipv4.icanhazip.com/" rel="ugc nofollow">http://ipv4.icanhazip.com/</a> </td><td class="col2"> <a href="http://ipv6.icanhazip.com/" class="urlextern" title="http://ipv6.icanhazip.com/" rel="ugc nofollow">http://ipv6.icanhazip.com/</a> </td><td class="col3"> US </td>
+	</tr>
+	<tr class="row9">
+		<td class="col0"> <a href="http://checkip.feste-ip.net/" class="urlextern" title="http://checkip.feste-ip.net/" rel="ugc nofollow">http://checkip.feste-ip.net/</a> </td><td class="col1"> <a href="http://v4.checkip.feste-ip.net/" class="urlextern" title="http://v4.checkip.feste-ip.net/" rel="ugc nofollow">http://v4.checkip.feste-ip.net/</a> </td><td class="col2"> <a href="http://v6.checkip.feste-ip.net/" class="urlextern" title="http://v6.checkip.feste-ip.net/" rel="ugc nofollow">http://v6.checkip.feste-ip.net/</a> </td><td class="col3"> DE </td>
+	</tr>
+	<tr class="row10">
+		<td class="col0"> <a href="http://ident.me/" class="urlextern" title="http://ident.me/" rel="ugc nofollow">http://ident.me/</a> </td><td class="col1"> <a href="http://ipv4.ident.me/" class="urlextern" title="http://ipv4.ident.me/" rel="ugc nofollow">http://ipv4.ident.me/</a> </td><td class="col2"> <a href="http://ipv6.ident.me/" class="urlextern" title="http://ipv6.ident.me/" rel="ugc nofollow">http://ipv6.ident.me/</a> </td><td class="col3"> UK </td>
+	</tr>
+	<tr class="row11">
+		<td class="col0"> <a href="http://ddnss.de/meineip.php" class="urlextern" title="http://ddnss.de/meineip.php" rel="ugc nofollow">http://ddnss.de/meineip.php</a> </td><td class="col1"> <a href="http://ip4.ddnss.de/meineip.php" class="urlextern" title="http://ip4.ddnss.de/meineip.php" rel="ugc nofollow">http://ip4.ddnss.de/meineip.php</a> </td><td class="col2"> <a href="http://ip6.ddnss.de/meineip.php" class="urlextern" title="http://ip6.ddnss.de/meineip.php" rel="ugc nofollow">http://ip6.ddnss.de/meineip.php</a> </td><td class="col3"> DE </td>
+	</tr>
+	<tr class="row12">
+		<td class="col0"> <a href="http://checkip.spdyn.de/" class="urlextern" title="http://checkip.spdyn.de/" rel="ugc nofollow">http://checkip.spdyn.de/</a> </td><td class="col1"> <a href="http://checkip4.spdyn.de/" class="urlextern" title="http://checkip4.spdyn.de/" rel="ugc nofollow">http://checkip4.spdyn.de/</a> </td><td class="col2"> <a href="http://checkip6.spdyn.de/" class="urlextern" title="http://checkip6.spdyn.de/" rel="ugc nofollow">http://checkip6.spdyn.de/</a> </td><td class="col3"> DE </td>
+	</tr>
+	<tr class="row13">
+		<td class="col0"> <a href="http://ifcfg.me/ip" class="urlextern" title="http://ifcfg.me/ip" rel="ugc nofollow">http://ifcfg.me/ip</a> </td><td class="col1"> <a href="http://4.ifcfg.me/ip" class="urlextern" title="http://4.ifcfg.me/ip" rel="ugc nofollow">http://4.ifcfg.me/ip</a> </td><td class="col2"> <a href="http://6.ifcfg.me/ip" class="urlextern" title="http://6.ifcfg.me/ip" rel="ugc nofollow">http://6.ifcfg.me/ip</a> </td><td class="col3"> FR </td>
+	</tr>
+	<tr class="row14">
+		<td class="col0"> <a href="http://nsupdate.info/myip" class="urlextern" title="http://nsupdate.info/myip" rel="ugc nofollow">http://nsupdate.info/myip</a> </td><td class="col1"> <a href="http://ipv4.nsupdate.info/myip" class="urlextern" title="http://ipv4.nsupdate.info/myip" rel="ugc nofollow">http://ipv4.nsupdate.info/myip</a> </td><td class="col2"> <a href="http://ipv6.nsupdate.info/myip" class="urlextern" title="http://ipv6.nsupdate.info/myip" rel="ugc nofollow">http://ipv6.nsupdate.info/myip</a> </td><td class="col3"> DE </td>
+	</tr>
+	<tr class="row15">
+		<td class="col0"> <a href="http://checkip.zerigo.com" class="urlextern" title="http://checkip.zerigo.com" rel="ugc nofollow">http://checkip.zerigo.com</a> </td><td class="col1"> <a href="http://checkip4.zerigo.com/" class="urlextern" title="http://checkip4.zerigo.com/" rel="ugc nofollow">http://checkip4.zerigo.com/</a> </td><td class="col2"> <a href="http://checkip6.zerigo.com/" class="urlextern" title="http://checkip6.zerigo.com/" rel="ugc nofollow">http://checkip6.zerigo.com/</a> </td><td class="col3"> US </td>
+	</tr>
+	<tr class="row16">
+		<td class="col0"> - </td><td class="col1"> <a href="http://checkip.dyndns.com/" class="urlextern" title="http://checkip.dyndns.com/" rel="ugc nofollow">http://checkip.dyndns.com/</a> <sup>1)</sup> </td><td class="col2"> <a href="http://checkipv6.dyndns.com/" class="urlextern" title="http://checkipv6.dyndns.com/" rel="ugc nofollow">http://checkipv6.dyndns.com/</a> <sup>1)</sup> </td><td class="col3"> US + UK </td>
+	</tr>
+	<tr class="row17">
+		<td class="col0"> - </td><td class="col1"> <a href="http://checkip.dyndns.com:8245/" class="urlextern" title="http://checkip.dyndns.com:8245/" rel="ugc nofollow">http://checkip.dyndns.com:8245/</a> </td><td class="col2"> <a href="http://checkipv6.dyndns.com:8245/" class="urlextern" title="http://checkipv6.dyndns.com:8245/" rel="ugc nofollow">http://checkipv6.dyndns.com:8245/</a> </td><td class="col3"> US + UK </td>
+	</tr>
+	<tr class="row18">
+		<td class="col0"> - </td><td class="col1"> <a href="http://checkip.dyn.com/" class="urlextern" title="http://checkip.dyn.com/" rel="ugc nofollow">http://checkip.dyn.com/</a> <sup>1) 2)</sup> </td><td class="col2"> <a href="http://checkipv6.dyn.com/" class="urlextern" title="http://checkipv6.dyn.com/" rel="ugc nofollow">http://checkipv6.dyn.com/</a> <sup>1) 2)</sup> </td><td class="col3"> US + UK </td>
+	</tr>
+	<tr class="row19">
+		<td class="col0"> - </td><td class="col1"> <a href="http://ipv4.myip.dk/api/info/IPv4Address" class="urlextern" title="http://ipv4.myip.dk/api/info/IPv4Address" rel="ugc nofollow">http://ipv4.myip.dk/api/info/IPv4Address</a> </td><td class="col2"> <a href="http://ipv6.myip.dk/api/info/IPv6Address" class="urlextern" title="http://ipv6.myip.dk/api/info/IPv6Address" rel="ugc nofollow">http://ipv6.myip.dk/api/info/IPv6Address</a> </td><td class="col3"> US </td>
+	</tr>
+	<tr class="row20">
+		<td class="col0"> - </td><td class="col1"> <a href="http://ipv4.ipogre.com/linux.php" class="urlextern" title="http://ipv4.ipogre.com/linux.php" rel="ugc nofollow">http://ipv4.ipogre.com/linux.php</a> </td><td class="col2"> <a href="http://ipv6.ipogre.com/linux.php" class="urlextern" title="http://ipv6.ipogre.com/linux.php" rel="ugc nofollow">http://ipv6.ipogre.com/linux.php</a> </td><td class="col3"> US </td>
+	</tr>
+	<tr class="row21">
+		<td class="col0"> - </td><td class="col1"> <a href="http://v4.ipv6-test.com/api/myip.php" class="urlextern" title="http://v4.ipv6-test.com/api/myip.php" rel="ugc nofollow">http://v4.ipv6-test.com/api/myip.php</a> </td><td class="col2"> <a href="http://v6.ipv6-test.com/api/myip.php" class="urlextern" title="http://v6.ipv6-test.com/api/myip.php" rel="ugc nofollow">http://v6.ipv6-test.com/api/myip.php</a> </td><td class="col3"> FR </td>
+	</tr>
+	<tr class="row22">
+		<td class="col0"> - </td><td class="col1"> <a href="http://ipecho.net/plain" class="urlextern" title="http://ipecho.net/plain" rel="ugc nofollow">http://ipecho.net/plain</a> </td><td class="col2"> - </td><td class="col3"> NL </td>
+	</tr>
+	<tr class="row23">
+		<td class="col0"> - </td><td class="col1"> <a href="http://ipinfo.io/ip" class="urlextern" title="http://ipinfo.io/ip" rel="ugc nofollow">http://ipinfo.io/ip</a> </td><td class="col2"> - </td><td class="col3"> part of Amazon AWS </td>
+	</tr>
+	<tr class="row24">
+		<td class="col0"> - </td><td class="col1"> <a href="http://ifconfig.me/ip" class="urlextern" title="http://ifconfig.me/ip" rel="ugc nofollow">http://ifconfig.me/ip</a> </td><td class="col2"> - </td><td class="col3"> JP </td>
+	</tr>
+	<tr class="row25">
+		<td class="col0"> - </td><td class="col1"> <a href="http://checkip.amazonaws.com" class="urlextern" title="http://checkip.amazonaws.com" rel="ugc nofollow">http://checkip.amazonaws.com</a> </td><td class="col2"> - </td><td class="col3"> part of Amazon AWS </td>
+	</tr>
+	<tr class="row26">
+		<td class="col0"> - </td><td class="col1"> <a href="http://myip.dtdns.com" class="urlextern" title="http://myip.dtdns.com" rel="ugc nofollow">http://myip.dtdns.com</a> </td><td class="col2"> - </td><td class="col3"> US </td>
+	</tr>
+	<tr class="row27">
+		<td class="col0"> - </td><td class="col1"> <a href="http://ip.changeip.com" class="urlextern" title="http://ip.changeip.com" rel="ugc nofollow">http://ip.changeip.com</a> </td><td class="col2"> - </td><td class="col3"> US </td>
+	</tr>
+	<tr class="row28">
+		<td class="col0"> - </td><td class="col1"> <a href="http://freedns.afraid.org/dynamic/check.php" class="urlextern" title="http://freedns.afraid.org/dynamic/check.php" rel="ugc nofollow">http://freedns.afraid.org/dynamic/check.php</a> </td><td class="col2"> - </td><td class="col3"> ? </td>
+	</tr>
+	<tr class="row29">
+		<td class="col0"> - </td><td class="col1"> <a href="http://freedns.afraid.org:8080/dynamic/check.php" class="urlextern" title="http://freedns.afraid.org:8080/dynamic/check.php" rel="ugc nofollow">http://freedns.afraid.org:8080/dynamic/check.php</a> </td><td class="col2"> - </td><td class="col3"> ? </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table2&quot;,&quot;secid&quot;:13,&quot;range&quot;:&quot;18934-21076&quot;} -->
+<p>
+ - Users reported timeout problems, use links in the line below (...:8245).
+ - Alias of *.dyndns.com.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Detecting WAN IP&quot;,&quot;hid&quot;:&quot;detecting_wan_ip&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:12,&quot;range&quot;:&quot;18811-21180&quot;} -->
+<h3 class="sectionedit14" id="wan_ip_via_own_php_script">WAN IP via own PHP script</h3>
+<div class="level3">
+
+<p>
+If you don&#039;t like to use one of the above you can write your own. Here is a sample script in PHP which can easily be deployed on any web hosting:
+</p>
+<pre class="code">&lt;!DOCTYPE html&gt;
+&lt;body&gt;
+&lt;?php
+  echo $_SERVER[&#039;REMOTE_ADDR&#039;];
+?&gt;
+&lt;/body&gt;
+&lt;/html&gt;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;WAN IP via own PHP script&quot;,&quot;hid&quot;:&quot;wan_ip_via_own_php_script&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:14,&quot;range&quot;:&quot;21181-21459&quot;} -->
+<h3 class="sectionedit15" id="detecting_wan_ip_with_script">Detecting WAN IP with script</h3>
+<div class="level3">
+
+<p>
+If your <abbr title="Wide Area Network">WAN</abbr> interface has the <abbr title="Internet Protocol">IP</abbr> you want to propagate, this approach has the advantage of not depending on external services or even a working <abbr title="Domain Name System">DNS</abbr> resolution.
+</p>
+
+<p>
+Create the script:
+</p>
+<pre class="code bash"><span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>ddns<span class="sy0">/</span>getwanip
+<span class="co0">#!/bin/sh</span>
+. <span class="sy0">/</span>lib<span class="sy0">/</span>functions<span class="sy0">/</span>network.sh
+network_flush_cache
+<span class="kw1">for</span> IPV <span class="kw1">in</span> <span class="nu0">4</span> <span class="nu0">6</span>
+<span class="kw1">do</span>
+<span class="kw3">eval</span> network_find_wan<span class="co1">${IPV%4}</span> NET_IF
+<span class="kw3">eval</span> network_get_ipaddr<span class="co1">${IPV%4}</span> NET_ADDR <span class="st0">&quot;<span class="es3">${NET_IF}</span>&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;<span class="es3">${NET_ADDR}</span>&quot;</span>
+<span class="kw1">done</span>
+EOF
+<span class="kw2">chmod</span> +x <span class="sy0">/</span>etc<span class="sy0">/</span>ddns<span class="sy0">/</span>getwanip</pre>
+
+<p>
+Use it in the DDNS configuration by issuing these UCI commands:
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> ddns.NAMEOFYOURSERVICE.ip_source=<span class="st0">&quot;script&quot;</span>                 <span class="co0">#Change NAMEOFYOURSERVICE to yours</span>
+uci <span class="kw1">set</span> ddns.NAMEOFYOURSERVICE.ip_script=<span class="st0">&quot;/etc/ddns/getwanip&quot;</span>     <span class="co0">#Change NAMEOFYOURSERVICE to yours</span></pre>
+
+<p>
+Or by editing these lines in /etc/config/ddns:
+</p>
+<pre class="code bash">config service <span class="st_h">'NAMEOFYOURSERVICE'</span>                 <span class="co0">#Change NAMEOFYOURSERVICE to yours</span>
+        option ip_source <span class="st_h">'script'</span>
+        option ip_script <span class="st_h">'/etc/ddns/getwanip'</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Detecting WAN IP with script&quot;,&quot;hid&quot;:&quot;detecting_wan_ip_with_script&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:15,&quot;range&quot;:&quot;21460-22479&quot;} -->
+<h2 class="sectionedit16" id="operation">Operation</h2>
+<div class="level2">
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Enable minimum one configuration/section and ddns service!
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Operation&quot;,&quot;hid&quot;:&quot;operation&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:16,&quot;range&quot;:&quot;22480-22565&quot;} -->
+<h3 class="sectionedit17" id="basics">Basics</h3>
+<div class="level3">
+
+<p>
+Normally no user actions are required because <em>ddns-scripts</em> starts when hotplug <code>ifup</code> event happens.
+This will happen automatically at system startup when the named interface comes up.
+Event <code>ifup</code> also happens when a dialup network comes up.
+<em>ddns-scripts</em> regularly check if there is a difference between your <abbr title="Internet Protocol">IP</abbr> address at <abbr title="Domain Name System">DNS</abbr> and your interface.
+If different an update request is sent to DDNS provider.
+</p>
+<ul>
+<li class="level1"><div class="li"> Whenever you <strong>Save &amp; Apply</strong> an <code>Enabled</code> configuration/section from LuCI the corresponding script is automatically restarted.</div>
+</li>
+<li class="level1"><div class="li"> If you modify <code>/etc/config/ddns</code> configuration file from CLI, you need to restart <em>ddns-scripts</em> (see below) to apply changes.</div>
+</li>
+</ul>
+
+<p>
+To check if <em>ddns-scripts</em> are running you could check with <strong>LuCI → Status → Processes</strong> or via console running
+</p>
+<pre class="code bash">pgrep <span class="re5">-f</span> <span class="re5">-a</span> dynamic</pre>
+
+<p>
+You should find something like <code>... /bin/sh /usr/lib/ddns/dynamic_dns_updater.sh <strong>myddns</strong> 0</code> for every configuration/section you configured and enabled, where <strong>myddns</strong> shows your configuration/section name.
+</p>
+
+<p>
+Inside LuCI also exists a section <strong>Dynamic <abbr title="Domain Name System">DNS</abbr> → Status → Overview</strong> page showing the current status of your DDNS configurations.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Basics&quot;,&quot;hid&quot;:&quot;basics&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:17,&quot;range&quot;:&quot;22566-23777&quot;} -->
+<h3 class="sectionedit18" id="run_manually">Run manually</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="web_interface_instructions2">Web interface instructions</h4>
+<div class="level4">
+
+<p>
+To <strong>check</strong> running <em>ddns-scripts</em> processes from the menu go to <strong>Status → Processes</strong>.
+Look for something like <code>/bin/sh /usr/lib/ddns/dynamic_dns_updater.sh -v 0 -S <strong>myddns</strong> -- start</code>.
+</p>
+
+<p>
+To <strong>stop</strong> a desired process press the <strong>Terminate</strong> or <strong>Kill</strong> button.
+The process should remove from the list.
+</p>
+
+<p>
+You can enable/disable and start/stop <em>ddns-scripts</em> from <strong>System → Startup</strong> menu.
+Look for service <code>ddns</code> and press the button for the desired action.
+</p>
+
+<p>
+You can additionally enable/disable and start/stop individual configuration/section from <strong>Overview → Services → Dynamic <abbr title="Domain Name System">DNS</abbr></strong>.
+</p>
+
+</div>
+
+<h4 id="command-line_instructions2">Command-line instructions</h4>
+<div class="level4">
+
+<p>
+From console command line you could create an <code>ifup</code> hotplug event for the desired network interface.
+This will start all enabled ddns configurations/sections monitoring this interface.
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Keep in mind that also other service processes (i.e. firewall) might be (re-)started via <code>ifup</code> hotplug event!
+For INTERFACE, type the specified <em>ddns-scripts</em> interface name (the interface name from /etc/config/network, usually &#039;wan&#039;)
+</p>
+<pre class="code bash"><span class="re2">ACTION</span>=<span class="kw2">ifup</span> <span class="re2">INTERFACE</span>=wan <span class="sy0">/</span>sbin<span class="sy0">/</span>hotplug-call iface</pre>
+
+<p>
+To <strong>start</strong> only one <em>ddns-scripts</em> configuration/section (here <code>myddns</code>):
+</p>
+<pre class="code bash"><span class="sy0">/</span>usr<span class="sy0">/</span>lib<span class="sy0">/</span>ddns<span class="sy0">/</span>dynamic_dns_updater.sh <span class="re5">-S</span> myddns start <span class="sy0">&amp;</span></pre>
+
+<p>
+Note that verbosity can also be increased, which is very useful for debugging when creating your own ddns client scripts. e.g.
+</p>
+<pre class="code bash"><span class="sy0">/</span>usr<span class="sy0">/</span>lib<span class="sy0">/</span>ddns<span class="sy0">/</span>dynamic_dns_updater.sh <span class="re5">-S</span> myddns <span class="re5">-v1</span> start</pre>
+
+<p>
+see <code>/usr/lib/ddns/dynamic_dns_updater.sh -h</code> for more details
+</p>
+
+<p>
+To <strong>stop</strong> one configuration/section you need to find it&#039;s PID and kill it manually e.g.
+</p>
+<pre class="code bash">pgrep <span class="re5">-f</span> <span class="re5">-a</span> dynamic
+<span class="kw3">kill</span> <span class="sy0">&lt;</span>pid of matching dynamic_dns_updater.sh process<span class="sy0">&gt;</span></pre>
+
+<p>
+To <strong>start</strong> all <em>ddns-scripts</em> configurations configured for a given interface e.g. <code>wan</code>
+</p>
+<pre class="code bash"><span class="sy0">/</span>usr<span class="sy0">/</span>lib<span class="sy0">/</span>ddns<span class="sy0">/</span>dynamic_dns_updater.sh <span class="re5">-n</span> wan start</pre>
+
+<p>
+<strong>All</strong> configured ddns services in <code>/etc/config/ddns</code> can of can be stopped,started,restarted and reloaded accordingly with the service command e.g.
+</p>
+<pre class="code">service ddns restart</pre>
+
+</div>
+
+<h4 id="using_scheduler">Using scheduler</h4>
+<div class="level4">
+
+<p>
+Each configuration/section of <em>ddns-scripts</em> can be configured to run once including retry on error so it is guaranteed that the update is sent to the provider.
+</p>
+
+<p>
+To configure your configuration/section to run once you need to set <code>option force_interval 0</code>.
+Setting of <code>option force_unit</code> is ignored.
+Inside LuCI set <strong>Force Interval</strong> in <strong>Timer Settings</strong> tab of your desired configuration or edit <code>/etc/config/ddns</code> on console.
+</p>
+<pre class="code bash"><span class="co0"># /etc/config/ddns</span>
+config <span class="st_h">'service'</span> <span class="st_h">'myddns'</span>
+	...
+	option <span class="st_h">'force_interval'</span>	<span class="st_h">'0'</span></pre>
+
+<p>
+If you set <em>ddns</em> service to <code>enable</code> then all configurations/sections are started during interface <code>ifup</code>.
+The configuration/section configured to run once will stop after successful update.
+To guarantee that your configurations only run once not looking for an interface event you need to disable <em>ddns</em> service.
+To start your configuration via <a href="/docs/guide-user/base-system/notuci.config#etccrontabsroot_cronjob_aka_crontab" class="wikilink1" title="docs:guide-user:base-system:notuci.config" data-wiki-id="docs:guide-user:base-system:notuci.config">build in crond</a> use the following entry as <code>command</code> inside crontab configuration (replace <code>myddns</code> with the name of your configuration/section):
+</p>
+<pre class="code bash"><span class="sy0">/</span>usr<span class="sy0">/</span>lib<span class="sy0">/</span>ddns<span class="sy0">/</span>dynamic_dns_updater.sh myddns <span class="nu0">0</span> <span class="sy0">&amp;</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Run manually&quot;,&quot;hid&quot;:&quot;run_manually&quot;,&quot;codeblockOffset&quot;:13,&quot;secid&quot;:18,&quot;range&quot;:&quot;23778-27167&quot;} -->
+<h3 class="sectionedit19" id="monitoring">Monitoring</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="syslog">Syslog</h4>
+<div class="level4">
+
+<p>
+The <code>option use_syslog</code> (also in LuCI) allows to define the level of events logged to syslog:
+</p>
+<div class="table sectionedit20"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Value </th><th class="col1"> Reporting </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> 0 </td><td class="col1"> disable </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> 1 </td><td class="col1"> info, notice, warning, errors </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> 2 </td><td class="col1"> notice, warning, errors </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> 3 </td><td class="col1"> warning, errors </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0"> 4 </td><td class="col1"> errors </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0" colspan="2"> <img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Critical errors forcing <em>ddns-scripts</em> to break (stop) are always logged to syslog </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table3&quot;,&quot;secid&quot;:20,&quot;range&quot;:&quot;27301-27541&quot;} -->
+</div>
+
+<h4 id="logfile">Logfile</h4>
+<div class="level4">
+
+<p>
+<em>ddns-scripts</em> have built-in logfile support.
+Logfiles are automatically truncated to a settable number of lines (default 250 lines).
+</p>
+
+<p>
+Inside LuCI you could enable logfile in <strong>Advanced Settings</strong> tab of desired configuration/section.
+From console you need to edit the config file:
+</p>
+<pre class="code bash"><span class="co0"># /etc/config/ddns</span>
+config <span class="st_h">'service'</span> <span class="st_h">'myddns'</span>
+	...
+	option <span class="st_h">'use_logfile'</span>	<span class="st_h">'1'</span></pre>
+
+<p>
+In case your device has enough built in memory or if you are using Extroot, you might want to store the ddns logs persistently.
+To achieve this, you need to change the log file location by adding the following line in the <code>global</code> section of <code>/etc/config/ddns</code>:
+</p>
+<pre class="code bash"><span class="co0"># /etc/config/ddns</span>
+config <span class="st_h">'ddns'</span> <span class="st_h">'global'</span>
+	...
+	option <span class="st_h">'ddns_logdir'</span>	<span class="st_h">'&lt;your_custom_log_dir&gt;'</span></pre>
+
+<p>
+This option must be defined in the global section of the <code>/etc/config/ddns</code> file.
+If the option is defined at config service level, it will be ignored by the <code>/usr/lib/ddns/dynamic_dns_functions.sh</code> script and the log location will be defaulted to <code>/var/log/ddns</code>.
+</p>
+
+<p>
+To view logfile content from LuCI select the <strong>Log File Viewer</strong> tab of desired configuration/section and press the <strong>Read / Reread log file</strong> button.
+From console you should change to the ddns log directory, default <code>/var/log/ddns</code>.
+You will find a logfile for every configuration/section.
+</p>
+<pre class="code bash"><span class="kw2">cat</span> <span class="sy0">/</span>var<span class="sy0">/</span>log<span class="sy0">/</span>ddns<span class="sy0">/</span>myddns_ipv4.log
+<span class="kw2">cat</span> <span class="sy0">/</span>var<span class="sy0">/</span>log<span class="sy0">/</span>ddns<span class="sy0">/</span>myddns_ipv6.log</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Monitoring&quot;,&quot;hid&quot;:&quot;monitoring&quot;,&quot;codeblockOffset&quot;:21,&quot;secid&quot;:19,&quot;range&quot;:&quot;27168-28977&quot;} -->
+<h3 class="sectionedit21" id="debugging">Debugging</h3>
+<div class="level3">
+
+<p>
+To debug what&#039;s going on, you can run <em>ddns-scripts</em> in verbose mode.
+Following verbose level are defined:
+</p>
+<div class="table sectionedit22"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Level </th><th class="col1"> Description </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> 0 </td><td class="col1"> Non verbose, no output </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> 1 </td><td class="col1"> Output to console (default) </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> 2 </td><td class="col1"> Output to console and logfile, run once WITHOUT retry on error </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> 3 </td><td class="col1"> Output to console and logfile, run once WITHOUT retry on error, sending NO update to DDNS service </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table4&quot;,&quot;secid&quot;:22,&quot;range&quot;:&quot;29108-29375&quot;} -->
+<p>
+Before starting debugging stop all running <em>ddns-scripts</em> processes:
+</p>
+<pre class="code bash"><span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>ddns stop
+<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>ddns disable</pre>
+
+<p>
+validate that no <em>ddns-scripts</em> processes running:
+</p>
+<pre class="code bash">pgrep <span class="re5">-f</span> <span class="re5">-a</span> dynamic</pre>
+
+<p>
+Now you can start one configuration/section for debugging.
+To stop/break running script press [CTRL]+C.
+Replace <code>myddns</code> with your desired configuration/section name and <code>level</code> with the desired verbose level.
+</p>
+<pre class="code bash"><span class="sy0">/</span>usr<span class="sy0">/</span>lib<span class="sy0">/</span>ddns<span class="sy0">/</span>dynamic_dns_updater.sh myddns level</pre>
+
+<p>
+You will get full description of errors and the output of programs like wget, nslookup etc. used by <em>ddns-scripts</em>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Debugging&quot;,&quot;hid&quot;:&quot;debugging&quot;,&quot;codeblockOffset&quot;:24,&quot;secid&quot;:21,&quot;range&quot;:&quot;28978-30016&quot;} -->
+<h3 class="sectionedit23" id="common_errors">Common errors</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="network_and_name_resolution_problems">Network and name resolution problems</h4>
+<div class="level4">
+
+<p>
+Check your communication settings with the following commands:
+</p>
+<pre class="code bash">nslookup google-public-dns-a.google.com
+&nbsp;
+<span class="kw2">ping</span> <span class="re5">-c</span> <span class="nu0">5</span> google-public-dns-a.google.com
+<span class="kw2">ping</span> <span class="re5">-c</span> <span class="nu0">5</span> <span class="re5">-4</span> google-public-dns-a.google.com	<span class="co0"># (-4) force IPv4 communication</span>
+<span class="kw2">ping</span> <span class="re5">-c</span> <span class="nu0">5</span> <span class="re5">-6</span> google-public-dns-a.google.com	<span class="co0"># (-6) force IPv6 communication if installed</span>
+&nbsp;
+<span class="kw2">wget</span> <span class="re5">-O-</span> http:<span class="sy0">//</span>checkip.dyndns.com		<span class="co0"># for IPv4</span>
+<span class="kw2">wget</span> <span class="re5">-d</span> <span class="re5">-O-</span> http:<span class="sy0">//</span>checkipv6.dyndns.com		<span class="co0"># for IPv6 needs wget package and IPv6 to be installed</span>
+curl <span class="re5">-v</span> http:<span class="sy0">//</span>checkipv6.dyndns.com		<span class="co0"># for IPv6 needs curl package and IPv6 to be installed</span></pre>
+
+</div>
+
+<h4 id="httpsssl_problems">HTTPS/SSL problems</h4>
+<div class="level4">
+
+<p>
+Check if your DDNS provider ONLY supports secure requests and enable <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> <code>option use_https</code> in your configuration.
+Packages <code>wget</code> or <code>curl</code> not installed to support secure communication.
+<code>wget/curl</code> could not access/validate <abbr title="Secure Socket Layer">SSL</abbr> certificates.
+Check certificate installation and run <code>wget</code> or <code>curl</code> in verbose/debug mode:
+</p>
+<pre class="code bash"><span class="kw2">ls</span> <span class="re5">-a</span> <span class="re5">-R</span> <span class="re5">-l</span> <span class="sy0">/</span>etc<span class="sy0">/</span>ssl
+&nbsp;
+<span class="kw2">wget</span> <span class="re5">-d</span> <span class="re5">-O</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>wget.out https:<span class="sy0">//</span>www.google.com <span class="re5">--ca-certificate</span>=<span class="sy0">/</span>etc<span class="sy0">/</span>ssl<span class="sy0">/</span>certs<span class="sy0">/</span>ca-certificates.crt	<span class="co0"># single certificate file</span>
+<span class="kw2">wget</span> <span class="re5">-d</span> <span class="re5">-O</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>wget.out https:<span class="sy0">//</span>www.google.com <span class="re5">--ca-directory</span>=<span class="sy0">/</span>etc<span class="sy0">/</span>ssl<span class="sy0">/</span>certs		<span class="co0"># certificate directory</span>
+<span class="kw2">wget</span> <span class="re5">-d</span> <span class="re5">-O</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>wget.out https:<span class="sy0">//</span>www.google.com <span class="re5">--no-check-certificate</span>			<span class="co0"># ignore certificate !!! INSECURE !!!</span>
+&nbsp;
+curl <span class="re5">-v</span> <span class="re5">-o</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>curl.out https:<span class="sy0">//</span>www.google.com <span class="re5">--cacert</span> <span class="sy0">/</span>etc<span class="sy0">/</span>ssl<span class="sy0">/</span>certs<span class="sy0">/</span>ca-certificates.crt	<span class="co0"># single certificate file</span>
+curl <span class="re5">-v</span> <span class="re5">-o</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>curl.out https:<span class="sy0">//</span>www.google.com <span class="re5">--capath</span> <span class="sy0">/</span>etc<span class="sy0">/</span>ssl<span class="sy0">/</span>certs		<span class="co0"># certificate directory</span>
+curl <span class="re5">-v</span> <span class="re5">-o</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>curl.out https:<span class="sy0">//</span>www.google.com <span class="re5">--insecure</span>			<span class="co0"># ignore certificate !!! INSECURE !!!</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Common errors&quot;,&quot;hid&quot;:&quot;common_errors&quot;,&quot;codeblockOffset&quot;:27,&quot;secid&quot;:23,&quot;range&quot;:&quot;30017-31716&quot;} -->
+<h2 class="sectionedit24" id="provider_specifics">Provider specifics</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Provider specifics&quot;,&quot;hid&quot;:&quot;provider_specifics&quot;,&quot;codeblockOffset&quot;:29,&quot;secid&quot;:24,&quot;range&quot;:&quot;31717-31747&quot;} -->
+<h3 class="sectionedit25" id="overview">Overview</h3>
+<div class="level3">
+
+<p>
+Remember to read how to <a href="#custom_service1" title="docs:guide-user:services:ddns:client ↵" class="wikilink1">configure a custom service</a>.
+At provider specific settings, only parameters that needs to be changed are described.
+The relevant parameters to use together with a custom settings are:
+</p>
+<div class="table sectionedit26"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> UCI option </th><th class="col1"> LuCI description </th><th class="col2"> Explanatory note </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> service_name </td><td class="col1"> DDNS Service provider </td><td class="col2"> Inside LuCI set to <strong>--custom--</strong> or delete from <code>/etc/config/ddns</code> if you need to use custom update <abbr title="Uniform Resource Locator">URL</abbr> </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> update_url </td><td class="col1"> Custom update-<abbr title="Uniform Resource Locator">URL</abbr> </td><td class="col2"> Copy from description below, if necessary </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> domain </td><td class="col1"> Hostname/Domain </td><td class="col2"> The already registered name at your DDNS provider.<br/>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> <strong>Must be your public <abbr title="Fully Qualified Domain Name">FQDN</abbr></strong> because used by nslookup command to check if the send <abbr title="Internet Protocol">IP</abbr> update was recognized by your provider and published around World Wide <abbr title="Domain Name System">DNS</abbr> </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> username </td><td class="col1"> Username </td><td class="col2"> Normally your username but possibly used with different settings </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0"> password </td><td class="col1"> Password </td><td class="col2"> Normally your password but possibly used with different settings </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table5&quot;,&quot;secid&quot;:26,&quot;range&quot;:&quot;31996-32708&quot;} -->
+<p>
+If you find a <img src="/lib/images/smileys/fixme.svg" class="icon smiley" alt="FIXME" /> at a provider description below, please support the <a href="/packages/pkgdata_lede17_1/ddns-scripts" class="wikilink2" title="packages:pkgdata_lede17_1:ddns-scripts" rel="nofollow" data-wiki-id="packages:pkgdata_lede17_1:ddns-scripts">ddns-scripts</a> maintainer to test and update this page.
+Please post a <a href="#support" title="docs:guide-user:services:ddns:client ↵" class="wikilink1">support</a> request if something is not working as described or needs to be updated.
+</p>
+
+<p>
+If you find problem <strong>“Failed writing <abbr title="Hypertext Transfer Protocol">HTTP</abbr> request: Bad file descriptor”</strong> in some server / wget version (see: <a href="https://bugzilla.redhat.com/show_bug.cgi?id=912358" class="urlextern" title="https://bugzilla.redhat.com/show_bug.cgi?id=912358" rel="ugc nofollow">https://bugzilla.redhat.com/show_bug.cgi?id=912358</a>), it is worth to try changing:
+</p>
+<pre class="code diff"># /etc/config/ddns
+<span class="re7">- http://<span class="br0">&#91;</span>USERNAME<span class="br0">&#93;</span>:<span class="br0">&#91;</span>PASSWORD<span class="br0">&#93;</span>path_to_your_provider_and_other_things</span>
+<span class="re8">+ --user=<span class="br0">&#91;</span>USERNAME<span class="br0">&#93;</span> --password:<span class="br0">&#91;</span>PASSWORD<span class="br0">&#93;</span> http://path_to_your_provider_and_other_things</span>
+&nbsp;
+# /usr/lib/ddns/dynamic_dns_updater.sh
+<span class="re7">- update_output=$<span class="br0">&#40;</span> $retrieve_prog &quot;$final_url&quot; <span class="br0">&#41;</span></span>
+<span class="re8">+ update_output=$<span class="br0">&#40;</span> $retrieve_prog $final_url <span class="br0">&#41;</span></span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Overview&quot;,&quot;hid&quot;:&quot;overview&quot;,&quot;codeblockOffset&quot;:29,&quot;secid&quot;:25,&quot;range&quot;:&quot;31748-33506&quot;} -->
+<h3 class="sectionedit27" id="cloudflarecom">cloudflare.com</h3>
+<div class="level3">
+
+<p>
+Last updated: 2022-09-11
+</p>
+
+<p>
+<a href="https://www.cloudflare.com/" class="urlextern" title="https://www.cloudflare.com/" rel="ugc nofollow">Homepage</a>
+</p>
+
+<p>
+As of OpenWrt version 22.03.0, <em>ddns-scripts</em> supports the use of <a href="https://blog.cloudflare.com/api-tokens-general-availability/" class="urlextern" title="https://blog.cloudflare.com/api-tokens-general-availability/" rel="ugc nofollow">API tokens</a>.
+<abbr title="Application Programming Interface">API</abbr> Tokens provide a new way to authenticate with the Cloudflare <abbr title="Application Programming Interface">API</abbr>.
+</p>
+
+<p>
+<a href="https://dash.cloudflare.com/profile/api-tokens" class="urlextern" title="https://dash.cloudflare.com/profile/api-tokens" rel="ugc nofollow">Create Custom Token</a> by following the <a href="https://developers.cloudflare.com/api/tokens/create/" class="urlextern" title="https://developers.cloudflare.com/api/tokens/create/" rel="ugc nofollow">Creating API tokens guide</a>. make sure to add “Zone <abbr title="Domain Name System">DNS</abbr> Edit” Permission to your custom token. 
+You can also “include Specific zone” under Zone Resources.
+These allow for scoped and permissioned access to resources and use the <abbr title="Request for Comments">RFC</abbr> compliant <a href="https://tools.ietf.org/html/rfc6750#section-2.1" class="interwiki iw_rfc" title="https://tools.ietf.org/html/rfc6750#section-2.1">Authorization Bearer Token Header</a>.
+For more information on Token vs Key see the <a href="https://api.cloudflare.com/#getting-started-requests" class="urlextern" title="https://api.cloudflare.com/#getting-started-requests" rel="ugc nofollow">Cloudflare v4 API</a> documentation.
+</p>
+<pre class="code">service_name	cloudflare.com-v4
+domain		[Your domain, here: example.com]
+username	Bearer
+password	[Your API token]</pre>
+
+<p>
+To use subdomains (CNAME or A records), use the format below when filling your credentials:
+</p>
+<pre class="code">domain		{subdomain}@[zone]</pre>
+
+<p>
+Examples:
+</p>
+<ul>
+<li class="level1"><div class="li"> If the hostname is “sample.example.com”, the “domain” field would be “sample@example.com”</div>
+</li>
+<li class="level1"><div class="li"> If the hostname is “dev1.sample.example.com”, the “domain” field would be “dev1.sample@example.com”</div>
+</li>
+<li class="level1"><div class="li"> If using Cloudflare&#039;s “Subdomain Support”, your zone may already be “foo.example.com”, so if the DDNS hostname is “bar.foo.example.com” the domain field would be “bar@foo.example.com”</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;cloudflare.com&quot;,&quot;hid&quot;:&quot;cloudflarecom&quot;,&quot;codeblockOffset&quot;:30,&quot;secid&quot;:27,&quot;range&quot;:&quot;33507-35060&quot;} -->
+<h3 class="sectionedit28" id="dnsomaticcom">dnsomatic.com</h3>
+<div class="level3">
+
+<p>
+Last updated: 2021-05-16
+</p>
+
+<p>
+<abbr title="Domain Name System">DNS</abbr>-O-Matic provides you a free, easy and secure way to announce your dynamic <abbr title="Internet Protocol">IP</abbr> changes to multiple services with a single update.
+Using <abbr title="Domain Name System">DNS</abbr>-O-Matic allows you to pick and choose what Dynamic <abbr title="Domain Name System">DNS</abbr> services you want to notify, all from one easy to use interface.
+<a href="https://www.dnsomatic.com/" class="urlextern" title="https://www.dnsomatic.com/" rel="ugc nofollow">From dns-o-matic homepage</a> -- <a href="https://www.dnsomatic.com/wiki/" class="urlextern" title="https://www.dnsomatic.com/wiki/" rel="ugc nofollow">Documentation</a>
+</p>
+
+<p>
+<abbr title="Domain Name System">DNS</abbr>-O-Matic authentication is integrated with OpenDNS, so your <abbr title="Domain Name System">DNS</abbr>-O-Matic credentials are the same as your OpenDNS ones. You need to change your OpenDNS password to one that doesn&#039;t contain <abbr title="HyperText Markup Language">HTML</abbr> special characters <a href="https://support.opendns.com/hc/en-us/community/posts/360055742852-dns-o-matic-username-password-" class="urlextern" title="https://support.opendns.com/hc/en-us/community/posts/360055742852-dns-o-matic-username-password-" rel="ugc nofollow">On dnsomatic username and password</a>
+</p>
+
+<p>
+If you would like to make sure your <abbr title="Secure Socket Layer">SSL</abbr> connection is verified, then <a href="/docs/guide-user/services/ddns/client#ssl_support" class="wikilink1" title="docs:guide-user:services:ddns:client" data-wiki-id="docs:guide-user:services:ddns:client">install the CA certificates</a>
+ and set the path to <strong>/etc/ssl/certs</strong> <em>(Path to CA-Certificate in the LuCI or <strong>option &#039;cacert&#039; &#039;/etc/ssl/certs&#039;</strong> when configuring by command line.)</em>
+</p>
+
+<p>
+To update all services registered with <abbr title="Domain Name System">DNS</abbr>-O-Matic in one configuration/section use the following settings in /etc/config/ddns:
+</p>
+<pre class="code bash"><span class="co0"># /etc/config/ddns</span>
+config service <span class="st_h">'DNSoMATIC'</span>
+        option lookup_host   <span class="st_h">'anotherddns.com'</span>             <span class="co0"># It must be a FQDN that is active on dns-o-matic dashboard to be refreshed by it. if using openDNS, use myip.opendns.com</span>
+        option interface     <span class="st_h">'wan'</span>                         <span class="co0"># Set it to the network interface to be monitored on changes</span>
+        option ip_source     <span class="st_h">'web'</span>
+        option ip_url        <span class="st_h">'http://checkip.amazonaws.com/'</span> <span class="co0"># does not appear to be used, at least by the LUCI interface</span>
+        option use_https     <span class="st_h">'1'</span>
+        option cacert         <span class="st_h">'/etc/ssl/certs'</span>
+        option service_name  <span class="st_h">'dnsomatic.com'</span>
+        option domain        <span class="st_h">'all.dnsomatic.com'</span>            <span class="co0"># It will instruct dns-o-matic to update all services set on its dashboard</span>
+        option username      <span class="st_h">'OPENDNSusername'</span>              <span class="co0"># dns-o-matic uses OpenDNS login credentials</span>
+        option password      <span class="st_h">'OPENDNSpassword'</span>              <span class="co0"># It must not contain html reserved characters</span>
+        option enabled       <span class="st_h">'1'</span></pre>
+
+<p>
+Alternatively, you can issue uci commands:
+</p>
+<pre class="code bash">uci add ddns dnsomatic
+uci <span class="kw1">set</span> ddns.dnsomatic.lookup_host=<span class="st_h">'DDNSchangedBYdnsomatic.com'</span>  <span class="co0">##Change it to yours</span>
+uci <span class="kw1">set</span> ddns.dnsomatic.interface=<span class="st_h">'wan'</span>                           <span class="co0">##Change it to yours</span>
+uci <span class="kw1">set</span> ddns.dnsomatic.ip_source=<span class="st_h">'web'</span>
+uci <span class="kw1">set</span> ddns.dnsomatic.ip_url=<span class="st_h">'http://checkip.amazonaws.com/'</span>    <span class="co0">## not mandatory</span>
+uci <span class="kw1">set</span> ddns.dnsomatic.use_https=<span class="st_h">'1'</span>
+uci <span class="kw1">set</span> ddns.dnsomatic.service_name=<span class="st_h">'dnsomatic.com'</span>
+uci <span class="kw1">set</span> ddns.dnsomatic.domain=<span class="st_h">'all.dnsomatic.com'</span>
+uci <span class="kw1">set</span> ddns.dnsomatic.username=<span class="st_h">'OPENDNSusername'</span>                <span class="co0">##Change it to yours</span>
+uci <span class="kw1">set</span> ddns.dnsomatic.password=<span class="st_h">'OPENDNSpassword'</span>                <span class="co0">##Change it to yours</span>
+uci <span class="kw1">set</span> ddns.dnsomatic.enabled=<span class="st_h">'1'</span>
+uci commit
+<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>ddns reload</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;dnsomatic.com&quot;,&quot;hid&quot;:&quot;dnsomaticcom&quot;,&quot;codeblockOffset&quot;:32,&quot;secid&quot;:28,&quot;range&quot;:&quot;35061-38062&quot;} -->
+<h3 class="sectionedit29" id="duckdnsorg">duckdns.org</h3>
+<div class="level3">
+
+<p>
+Last updated: 2024-16-12
+</p>
+
+<p>
+<a href="https://www.duckdns.org/" class="urlextern" title="https://www.duckdns.org/" rel="ugc nofollow"> Homepage</a>
+</p>
+<pre class="code">service_name	duckdns.org
+domain		[Your (sub)domain, without &quot;.duckdns.org&quot;]
+username	[dummy, not used, but Luci expects something to be set]
+password	[Your authorisation token]</pre>
+
+<p>
+If <em>custom</em> configuration is required, see <a href="/docs/guide-user/services/ddns/duckdns" class="wikilink1" title="docs:guide-user:services:ddns:duckdns" data-wiki-id="docs:guide-user:services:ddns:duckdns">DuckDNS DDNS Client</a>.
+</p>
+
+<p>
+Note: this service cannot detect your <abbr title="Internet Protocol version 6">IPv6</abbr> address, it should be included in the DDNS update request; you cannot send updates over <abbr title="Internet Protocol version 6">IPv6</abbr>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;duckdns.org&quot;,&quot;hid&quot;:&quot;duckdnsorg&quot;,&quot;codeblockOffset&quot;:34,&quot;secid&quot;:29,&quot;range&quot;:&quot;38063-38592&quot;} -->
+<h3 class="sectionedit30" id="dynucom">dynu.com</h3>
+<div class="level3">
+
+<p>
+Last updated: 2025-02-13
+</p>
+
+<p>
+<a href="http://dynu.com/" class="urlextern" title="http://dynu.com/" rel="ugc nofollow"> Homepage</a> -- <a href="https://www.dynu.com/DynamicDNS/IP-Update-Protocol" class="urlextern" title="https://www.dynu.com/DynamicDNS/IP-Update-Protocol" rel="ugc nofollow"> IP Update Protocol</a>
+</p>
+
+<p>
+It works out of the box in the standard most common setup with a single user-defined <em>hostname</em> and a domain selected from what is offered by this provider:
+</p>
+<pre class="code">service_name	dynu.com
+domain		[Your FQDN, like &quot;hostname.example.com&quot;]
+username	[dummy, not used, but Luci expects something to be set]
+password	[your update token]</pre>
+
+<p>
+In order to update v4 or v6 <abbr title="Internet Protocol">IP</abbr> address for a <em>subdomain</em> that they call an <a href="https://www.dynu.com/Resources/Tutorials/DynamicDNS/Advancedfeatures/Aliases" class="urlextern" title="https://www.dynu.com/Resources/Tutorials/DynamicDNS/Advancedfeatures/Aliases" rel="ugc nofollow"> alias</a> the following custom configuration can be used:
+</p>
+<pre class="code">service_name	delete / --custom--
+update_url	http://api.dynu.com/nic/update?hostname=[DOMAIN]&amp;alias=[PARAMENC]&amp;myipv6=[IP]&amp;password=[PASSWORD]
+domain		[your 3rd level domain, like &quot;mydomain.example.com&quot;]
+param_enc	[your alias, like &quot;myhost&quot;]
+username	[dummy, not used, but Luci expects something to be set]
+password	[your update token]</pre>
+
+<p>
+This will update <abbr title="Internet Protocol version 6">IPv6</abbr> address for <code>myhost.mydomain.example.com</code>
+</p>
+
+<p>
+If you are behind a CGNAT with a valid <abbr title="Internet Protocol version 6">IPv6</abbr> address, you might want to add the option <code>myip=no</code> to the update <abbr title="Uniform Resource Locator">URL</abbr> (forcing Dynu to update <code>AAAA</code> entry only). Otherwise Dynu will add your CGNAT <abbr title="Internet Protocol version 4">IPv4</abbr> by default (<code>A</code> record) which may be undesirable. In this case, use the following <code>update_url</code>:
+</p>
+<pre class="code">http://api.dynu.com/nic/update?hostname=[DOMAIN]&amp;myip=no&amp;myipv6=[IP]&amp;password=[PASSWORD]</pre>
+
+<p>
+The <em>update token</em> used as a password in both standard and custom configurations is an MD5/SHA-256 <em>hash</em> of “<abbr title="Internet Protocol">IP</abbr> Update Password” that is set in <a href="https://www.dynu.com/en-US/ControlPanel/ManageCredentials" class="urlextern" title="https://www.dynu.com/en-US/ControlPanel/ManageCredentials" rel="ugc nofollow"> Control Panel 
+ / My Account / Username/Password</a>
+</p>
+
+<p>
+This <em>password hash</em> can be generated by the user either <a href="https://www.dynu.com/NetworkTools/Hash" class="urlextern" title="https://www.dynu.com/NetworkTools/Hash" rel="ugc nofollow"> online</a> or locally: <code>root@OpenWrt:~# echo -n myupdatepass | sha256sum</code>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;dynu.com&quot;,&quot;hid&quot;:&quot;dynucom&quot;,&quot;codeblockOffset&quot;:35,&quot;secid&quot;:30,&quot;range&quot;:&quot;38593-40570&quot;} -->
+<h3 class="sectionedit31" id="freednsafraidorg">freedns.afraid.org</h3>
+<div class="level3">
+
+<p>
+Last updated: 2025-04-11
+</p>
+
+<p>
+<a href="http://freedns.afraid.org/" class="urlextern" title="http://freedns.afraid.org/" rel="ugc nofollow">Homepage</a> -- <a href="http://freedns.afraid.org/faq/" class="urlextern" title="http://freedns.afraid.org/faq/" rel="ugc nofollow">FAQ</a>
+</p>
+
+<p>
+Option 1
+</p>
+<pre class="code">service_name	afraid.org-v2-token
+domain		[Your FQDN]
+username	[NOT used. Set to a character of your choice, because LuCI does not accept empty field]
+password	[Your authorisation token, NOT your account password]</pre>
+
+<p>
+The token - approx. 25 character sequence - can be seen (once logged in) in the sample update <abbr title="Uniform Resource Locator">URL</abbr> <a href="https://freedns.afraid.org/dynamic/v2/" class="urlextern" title="https://freedns.afraid.org/dynamic/v2/" rel="ugc nofollow">here</a>.
+</p>
+
+<p>
+Option 2
+</p>
+<pre class="code">service_name	delete / --custom--
+update_url	[Your direct URL updater from your freedns.afraid.org account]
+domain		[Your FQDN]
+username	[NOT used. Set to a character of your choice, because LuCI does not accept empty field]
+password	[NOT used because already part of direct URL. Set to a character of your choice, because LuCI does not accept empty field]</pre>
+
+<p>
+Option 3
+</p>
+<pre class="code">service_name	afraid.org-v2-basic or afraid.org-basicauth
+domain		[Your FQDN]
+username	[your username of afraid.org]
+password	[Your account password]</pre>
+
+<p>
+Option 4 (old method)
+</p>
+<pre class="code">service_name	afraid.org-keyauth
+domain		[Your FQDN]
+username	[NOT used. Set to a character of your choice, because LuCI does not accept empty field]
+password	[Your authorisation key, NOT your account password]</pre>
+
+<p>
+The key - approx. 40 character sequence - can be seen (once logged in) in the sample update <abbr title="Uniform Resource Locator">URL</abbr> or script <a href="https://freedns.afraid.org/dynamic/" class="urlextern" title="https://freedns.afraid.org/dynamic/" rel="ugc nofollow">here</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;freedns.afraid.org&quot;,&quot;hid&quot;:&quot;freednsafraidorg&quot;,&quot;codeblockOffset&quot;:38,&quot;secid&quot;:31,&quot;range&quot;:&quot;40571-42054&quot;} -->
+<h3 class="sectionedit32" id="domainsgooglecom">domains.google.com</h3>
+<div class="level3">
+
+<p>
+Last updated: 2016-04-20
+</p>
+
+<p>
+Google Domains allows for dynamic names to be set up in the section called Synthetic Records.
+To access it, log in to <a href="https://domains.google.com" class="urlextern" title="https://domains.google.com" rel="ugc nofollow">https://domains.google.com</a> and go to Configure <abbr title="Domain Name System">DNS</abbr> for the domain in question, then scroll down to Synthetic Records and add a new one.
+It will issue a specific username and password for this hostname.
+Google requires <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> for updates, so be sure to also install package wget or curl in order to allow this.
+Use the following settings:
+</p>
+<pre class="code">service_name	--custom--
+update_url	http://[USERNAME]:[PASSWORD]@domains.google.com/nic/update?hostname=[DOMAIN]&amp;myip=[IP]
+domain		[Your defined hostname]
+username	[assigned username for hostname]
+password	[assigned password for hostname]
+http_secure	Enabled
+ca_path		Set to &quot;IGNORE&quot; or download certs and provide path</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;domains.google.com&quot;,&quot;hid&quot;:&quot;domainsgooglecom&quot;,&quot;codeblockOffset&quot;:42,&quot;secid&quot;:32,&quot;range&quot;:&quot;42055-42899&quot;} -->
+<h3 class="sectionedit33" id="gratisdnsdk">gratisdns.dk</h3>
+<div class="level3">
+
+<p>
+Last updated: 2015-07-20
+</p>
+
+<p>
+<a href="http://web.gratisdns.dk/" class="urlextern" title="http://web.gratisdns.dk/" rel="ugc nofollow">Homepage</a> (Danish only)
+</p>
+
+<p>
+Taken from <a href="https://forum.openwrt.org/viewtopic.php?pid=281262" class="urlextern" title="https://forum.openwrt.org/viewtopic.php?pid=281262" rel="ugc nofollow">OpenWrt forum</a>
+</p>
+
+<p>
+GratisDNS.dk is only supported by <em>ddns-scripts</em> using custom service settings and requires to <a href="#ssl_support" title="docs:guide-user:services:ddns:client ↵" class="wikilink1">install</a> and configure <abbr title="Secure Socket Layer">SSL</abbr> support.
+</p>
+<pre class="code">service_name	delete / --custom--
+update_url	http://ssl.gratisdns.dk/ddns.phtml?u=[USERNAME]&amp;p=[PASSWORD]&amp;d=Mydomain&amp;h=[DOMAIN]&amp;i=[IP]
+		!!! replace &quot;Mydomain&quot; in this URL with domain part of your FQDN.
+		Sample: your FQDN: host.example.com -&gt; &quot;Mydomain&quot; set to example.com
+		Sample: http://ssl.gratisdns.dk/ddns.phtml?u=[USERNAME]&amp;p=[PASSWORD]&amp;d=example.com&amp;h=[DOMAIN]&amp;i=[IP]
+domain		[Your FQDN]
+username	[Your username]
+password	[Your password]</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;gratisdns.dk&quot;,&quot;hid&quot;:&quot;gratisdnsdk&quot;,&quot;codeblockOffset&quot;:43,&quot;secid&quot;:33,&quot;range&quot;:&quot;42900-43694&quot;} -->
+<h3 class="sectionedit34" id="henet">he.net</h3>
+<div class="level3">
+
+<p>
+Last updated: 2023-10-05
+</p>
+
+<p>
+<a href="https://dns.he.net/" class="urlextern" title="https://dns.he.net/" rel="ugc nofollow">Homepage</a>
+<a href="https://dns.he.net/docs.html" class="urlextern" title="https://dns.he.net/docs.html" rel="ugc nofollow">Details about their free dynamic DNS service</a>
+</p>
+
+<p>
+Background (who they are): Hurricane Electric (referred to as HE.net below) is one of the <em>original</em> supporters/pushers of the <abbr title="Internet Protocol version 6">IPv6</abbr> internet (and also provide a <a href="https://tunnelbroker.net/" class="urlextern" title="https://tunnelbroker.net/" rel="ugc nofollow">free tunnel broker</a> if you want <abbr title="Internet Protocol version 6">IPv6</abbr> connectivity but your <abbr title="Internet Service Provider">ISP</abbr> is in the stone-ages), and HE.net also run major internet backbones.
+</p>
+
+<p>
+HE.net is a great option if you <em>already</em> have a domain (or sub-domain) you can point at their 5 nameservers (ns[1-5]/dot/he.net).  This will need to be done <strong>before</strong> you can setup the zone (your domain or subdomain) up.
+</p>
+
+<p>
+You can then opt for one of an A (for <abbr title="Internet Protocol version 4">IPv4</abbr>) record or an AAAA (for <abbr title="Internet Protocol version 6">IPv6</abbr>) record <em>under</em> that sub-domain, to be updated dynamically by the ddns-service.  Security of this ability is provided via a 16-character api-access-key they can generate for you (or you can specify your own).
+</p>
+
+<p>
+If you don&#039;t have an HE.net account, you will need to <a href="https://ipv6.he.net/certification/register.php" class="urlextern" title="https://ipv6.he.net/certification/register.php" rel="ugc nofollow">open a free account</a>
+</p>
+
+<p>
+If you don&#039;t already have a domain (or subdomain) pointing to HE.net: 
+* Go to the <a href="https://dns.he.net/" class="urlextern" title="https://dns.he.net/" rel="ugc nofollow">DNS management page</a>.
+* Click on <strong>Add a new domain</strong> (on the left side-bar)
+* Enter your domain or subdomain (that should <em>already</em> have pointed to their 5 nameservers), and click the green <strong>Add domain!</strong> button (the page may take a few seconds to respond, do not click multiple times)
+* Next to the <em>new domain</em>, click the 2nd icon (the one that looks like classic-windows app + pencil icon) to <strong>Edit</strong> the records for that dns-zone.
+* Click the <strong>New A</strong> button (for <abbr title="Internet Protocol version 4">IPv4</abbr>) or <strong>New AAAA</strong> button (for <abbr title="Internet Protocol version 6">IPv6</abbr>).
+* For <strong>Name</strong>, enter only the part part before the first period in the <abbr title="Fully Qualified Domain Name">FQDN</abbr> (the part that goes <em>before</em> the domain or subdomain you pointed at HE&#039;s nameserver).
+* <strong><em>MAKE SURE</em></strong> you click <strong>Enable entry for dynamic dns</strong> checkbox <strong>ON</strong>
+* Click <strong>Submit</strong>
+* Click the <em>icon that looks like a small two-arrows</em> in a circle (pointing to each other) in the <strong>DDNS</strong> column.
+* In the popup <strong>Dynamic <abbr title="Domain Name System">DNS</abbr> Record</strong>, here you can either generate a key (up to 16 characters) or specify your own.  <strong>You will need this for the password in the example config below</strong>
+</p>
+
+<p>
+(src - above steps tested and based on <a href="https://networkingnotesblog.wordpress.com/2015/10/15/using-dynamic-dns-server-with-he-net/" class="urlextern" title="https://networkingnotesblog.wordpress.com/2015/10/15/using-dynamic-dns-server-with-he-net/" rel="ugc nofollow">this blog</a>).
+</p>
+
+<p>
+*Note:* In order for a zone to be accepted for addition to HE.net&#039;s <abbr title="Domain Name System">DNS</abbr>-manager, it <strong>must</strong> <em>already</em> be configured to point to ns1.he.net / ns2.he.net / ns3.he.net / ns4.he.net / ns5.he.net.  Adding the domain or subdomain to HE.net will fail w/ an error otherwise.  Note: I don&#039;t know if they check for all five nameservers, but may as well just add all 5 NS records to your domain (with the registrar you setup the domain) or if a sub-domain (at your existing host.
+</p>
+
+<p>
+Lastly, if you want to (it&#039;s optional) protect the update-requests that the ddns-service does, with <abbr title="Transport Layer Security">TLS</abbr>, you can see the <a href="/docs/guide-user/services/ddns/client#ssl_support1" class="wikilink1" title="docs:guide-user:services:ddns:client" data-wiki-id="docs:guide-user:services:ddns:client">above section on SSL</a>.
+The following settings have been tested/worked:
+</p>
+
+<p>
+In the below example config, the (sub-)domain pointing to HE.net nameservers is “zone.domain.tld”, and the A record is “addr-a-record” (thus the full dynamic hostname will be addr-a-record.zone.domain.tld).
+</p>
+<pre class="code"># /etc/config/ddns
+config service &#039;dns_he_net&#039;
+        option service_name &#039;he.net&#039;
+        option enabled &#039;1&#039;
+        option domain &#039;addr-a-record.your.domain.tld&#039;       # this is the A or AAAA record you created and set up a DynDNS Key for 
+        option lookup_host &#039;addr-a-record.your.domain.tld&#039;  # same as above - script queries this to see if it&#039;s outdated and needs to be updated
+        option use_ipv6 &#039;0&#039;                                 # whether to update your AAAA record (by default: A record)
+        option username &#039;your.domain.tld&#039;                   # this is not your HE.net username, but your zone (zone.domain.tld) delegated to HE.net nameservers
+        option password &#039;XXXXXXXXXXXXXXXX&#039;                  # this part is the generated Key for the DynDNS function 
+        option ip_source &#039;network&#039;
+        option ip_network &#039;wan&#039;
+        option interface &#039;wan&#039;
+        option use_syslog &#039;2&#039;
+        option check_unit &#039;minutes&#039;
+        option force_unit &#039;minutes&#039;
+        option retry_unit &#039;seconds&#039;</pre>
+
+<p>
+More info about how this works underneath the covers: <a href="https://dns.he.net/docs.html" class="urlextern" title="https://dns.he.net/docs.html" rel="ugc nofollow">https://dns.he.net/docs.html</a>
+</p>
+
+<p>
+Note: There is another (older) doc here: <a href="/docs/guide-user/services/ddns/hurricaneelectricfreedns" class="wikilink1" title="docs:guide-user:services:ddns:hurricaneelectricfreedns" data-wiki-id="docs:guide-user:services:ddns:hurricaneelectricfreedns">doc here</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;he.net&quot;,&quot;hid&quot;:&quot;henet&quot;,&quot;codeblockOffset&quot;:44,&quot;secid&quot;:34,&quot;range&quot;:&quot;43695-48282&quot;} -->
+<h3 class="sectionedit35" id="mythic-beastscom">mythic-beasts.com</h3>
+<div class="level3">
+
+<p>
+Last updated: 2015-07-20
+</p>
+
+<p>
+<a href="http://mythic-beasts.com/" class="urlextern" title="http://mythic-beasts.com/" rel="ugc nofollow">Homepage</a> -- <a href="https://www.mythic-beasts.com/support" class="urlextern" title="https://www.mythic-beasts.com/support" rel="ugc nofollow">Support</a>
+</p>
+
+<p>
+<img src="/lib/images/smileys/fixme.svg" class="icon smiley" alt="FIXME" />
+Looking on description at “<a href="https://www.mythic-beasts.com/support/domains/dynamic/openwrt" class="urlextern" title="https://www.mythic-beasts.com/support/domains/dynamic/openwrt" rel="ugc nofollow">Use Mythic Beasts Dynamic DNS with your OpenWRT router</a>” and on the existing source code I found out that there must be issues updating Dynamic <abbr title="Domain Name System">DNS</abbr>.
+I have gone in contact with support of mythic-beasts.com.
+I will update as soon a solution is available.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;mythic-beasts.com&quot;,&quot;hid&quot;:&quot;mythic-beastscom&quot;,&quot;codeblockOffset&quot;:45,&quot;secid&quot;:35,&quot;range&quot;:&quot;48283-48782&quot;} -->
+<h3 class="sectionedit36" id="namecheapcom">namecheap.com</h3>
+<div class="level3">
+
+<p>
+Last updated: 2015-07-21
+</p>
+
+<p>
+<a href="https://www.namecheap.com/" class="urlextern" title="https://www.namecheap.com/" rel="ugc nofollow">Homepage</a> -- <a href="https://www.namecheap.com/support/knowledgebase.aspx" class="urlextern" title="https://www.namecheap.com/support/knowledgebase.aspx" rel="ugc nofollow">Knowledgebase</a>
+</p>
+
+<p>
+Note that with the namecheap protocol, the username option is translated to the host argument in the update request.
+Therefore, it should be the host-part on the <abbr title="Domain Name System">DNS</abbr> record, not the username that you use to log into the namecheap.com site.
+To update multiple hosts you might need to define separate configuration/section for each host.
+To get your password, log into the namecheap.com site, enter the management console for the domain, and click the Dynamic <abbr title="Domain Name System">DNS</abbr> menu option.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Currently <em>ddns-scripts</em> only supports the case where your dynamic subdomain has the same <abbr title="Internet Protocol">IP</abbr> address as for your unqualified domain.
+Otherwise you will send updates to namecheap.com every “option check_interval” 10 minutes (default) because your <abbr title="Fully Qualified Domain Name">FQDN</abbr> is not validated.
+<a href="https://github.com/openwrt/packages/issues/2348" class="urlextern" title="https://github.com/openwrt/packages/issues/2348" rel="ugc nofollow">Proposed solution here, which you can easily implement yourself</a>.
+This may only be an issue for ddns-scripts 2.4.
+</p>
+
+<p>
+Let assume you define two <abbr title="Fully Qualified Domain Name">FQDN</abbr> at your domain “example.com”: “www.example.com” and “ftp.example.com”.
+To update only your domain record “example.com”:
+</p>
+<pre class="code">service_name	namecheap.com
+domain		[Your domain, here: example.com]
+username	@
+password	[Your password]</pre>
+
+<p>
+To update for example only your “ftp.example.com” host:
+</p>
+<pre class="code">service_name	namecheap.com
+domain		[Your domain, here: example.com]
+username	ftp
+password	[Your password]</pre>
+
+<p>
+To update all to the same <abbr title="Internet Protocol">IP</abbr> address:
+</p>
+
+<p>
+NOTE: For namecheap updating multiple subdomains is NOT working nowadays, you have to make one request per subdomain, so configure one section per subdomain. <a href="https://www.namecheap.com/support/knowledgebase/article.aspx/29/11/how-do-i-use-a-browser-to-dynamically-update-the-hosts-ip#comment-936527059" class="urlextern" title="https://www.namecheap.com/support/knowledgebase/article.aspx/29/11/how-do-i-use-a-browser-to-dynamically-update-the-hosts-ip#comment-936527059" rel="ugc nofollow">https://www.namecheap.com/support/knowledgebase/article.aspx/29/11/how-do-i-use-a-browser-to-dynamically-update-the-hosts-ip#comment-936527059</a>:
+</p>
+<pre class="code">service_name	namecheap.com
+domain		[Your domain, here: example.com]
+username	@ -a www -a ftp
+		!!! @ stands for your domain, www for www.example.com, ftp for ftp.example.com
+password	[Your password]</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;namecheap.com&quot;,&quot;hid&quot;:&quot;namecheapcom&quot;,&quot;codeblockOffset&quot;:45,&quot;secid&quot;:36,&quot;range&quot;:&quot;48783-50884&quot;} -->
+<h3 class="sectionedit37" id="noipcom">noip.com</h3>
+<div class="level3">
+
+<p>
+Last updated: 2024-10-03
+</p>
+
+<p>
+<a href="http://www.noip.com/" class="urlextern" title="http://www.noip.com/" rel="ugc nofollow"> Homepage</a> -- <a href="http://www.noip.com/support/" class="urlextern" title="http://www.noip.com/support/" rel="ugc nofollow"> SupportCenter</a> -- <a href="https://www.noip.com/integrate/request/" class="urlextern" title="https://www.noip.com/integrate/request/" rel="ugc nofollow"> Dynamic DNS API</a>
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Install the <a href="/packages/pkgdata/ddns-scripts-noip" class="wikilink1" title="packages:pkgdata:ddns-scripts-noip" data-wiki-id="packages:pkgdata:ddns-scripts-noip">ddns-scripts-noip</a> package.
+</p>
+
+<p>
+The default is to use <code>username</code> and <code>password</code> as normal inside <em>ddns-scripts</em> together with <code>service_name no-ip.com</code>.
+</p>
+
+<p>
+If you want to update multiple hosts inside one configuration/section you need the following settings:
+</p>
+<pre class="code">service_name	delete / --custom--
+update_url	http://[USERNAME]:[PASSWORD]@dynupdate.no-ip.com/nic/update?myip=[IP]&amp;hostname=
+
+		!!! After the &#039;hostname=&#039; fill in a comma separated list of hosts to update.
+		Sample: host1.example.com,host2.example.com,host3.example.com without any spaces in between.
+		Sample: http://[USERNAME]:[PASSWORD]@dynupdate.no-ip.com/nic/update?myip=[IP]&amp;hostname=host1.example.com,host2.example.com,host3.example.com
+
+domain		[Only ONE of your defined hostnames, i.e. host1.example.com]
+username	[Your username]
+password	[Your password]</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;noip.com&quot;,&quot;hid&quot;:&quot;noipcom&quot;,&quot;codeblockOffset&quot;:48,&quot;secid&quot;:37,&quot;range&quot;:&quot;50885-51959&quot;} -->
+<h3 class="sectionedit38" id="spdynde_old_spdnsde">spdyn.de (old spdns.de)</h3>
+<div class="level3">
+
+<p>
+Last updated: 2016-08-02
+</p>
+
+<p>
+<a href="http://spdyn.de/" class="urlextern" title="http://spdyn.de/" rel="ugc nofollow">Homepage</a> -- <a href="http://wiki.securepoint.de/index.php/SPDNS_FAQ" class="urlextern" title="http://wiki.securepoint.de/index.php/SPDNS_FAQ" rel="ugc nofollow">Wiki/FAQ</a> (German only)
+</p>
+
+<p>
+The web-pages of <em>spdns.de</em> are now reachable at <em>spdyn.de</em>.
+Currently updates send to <em>update.spdns.de</em> pages are still handled but produce warnings in DDNS update log at the provder.
+Created accounts and domains at <em>spdns.de</em> are still working without any problems.
+</p>
+
+<p>
+The default is to use your <code>username</code> and <code>password</code> as normal inside <em>ddns-scripts</em> together with <code>service_name spdyn.de</code>.
+If you want to use Update-Token, keep in mind that this token can only update the host it is generated for.
+Use this settings:
+</p>
+<pre class="code">service_name	spdyn.de
+domain		[Your defined hostname at spdyn.de]
+username	[Your defined hostname at spdyn.de]
+password	[The token generated for this hostname]</pre>
+
+<p>
+If you want to update multiple hosts inside one configuration/section you need the following settings (Update-Token doesn&#039;t work):
+</p>
+<pre class="code">service_name	delete / --custom--
+update_url	http://[USERNAME]:[PASSWORD]@update.spdyn.de/nic/update?myip=[IP]&amp;hostname=
+
+		!!! After the &#039;hostname=&#039; fill in a comma separated list of hosts (max. 20) to update.
+		Sample: host1.spdyn.de,host2.spdyn.de,host3.spdyn.de without any spaces in between.
+		Sample: http://[USERNAME]:[PASSWORD]@update.spdyn.de/nic/update?myip=[IP]&amp;hostname=host1.spdyn.de,host2.spdyn.de,host3.spdyn.de
+
+domain		[Only ONE of your defined hostnames i.e. host3.spdyn.de]
+username	[Your username at spdyn.de]
+password	[Your password at spdyn.de]</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;spdyn.de (old spdns.de)&quot;,&quot;hid&quot;:&quot;spdynde_old_spdnsde&quot;,&quot;codeblockOffset&quot;:49,&quot;secid&quot;:38,&quot;range&quot;:&quot;51960-53554&quot;} -->
+<h3 class="sectionedit39" id="tunnelbrokernet">tunnelbroker.net</h3>
+<div class="level3">
+
+<p>
+Hurricane Electric provides a free IPv6inIPv4 tunnel through Tunnel Broker that demands a permanent <abbr title="Internet Protocol">IP</abbr> or a real-time updated one.
+From its <a href="https://tunnelbroker.net/" class="urlextern" title="https://tunnelbroker.net/" rel="ugc nofollow">homepage</a>: “Our free tunnel broker service enables you to reach the <abbr title="Internet Protocol version 6">IPv6</abbr> Internet by tunneling over existing <abbr title="Internet Protocol version 4">IPv4</abbr> connections from your <abbr title="Internet Protocol version 6">IPv6</abbr> enabled host or router to one of our <abbr title="Internet Protocol version 6">IPv6</abbr> routers.
+To use this service you need to have an <abbr title="Internet Protocol version 6">IPv6</abbr> capable host (<abbr title="Internet Protocol version 6">IPv6</abbr> support is available for most platforms) or router which also has <abbr title="Internet Protocol version 4">IPv4</abbr> (existing Internet) connectivity.”
+</p>
+
+<p>
+Apply the following patch to include that service on OpenWRT DDNS
+</p>
+<pre class="code bash"><span class="kw2">grep</span> <span class="re5">-q</span> <span class="re5">-e</span> <span class="st0">&quot;ipv4\.tunnelbroker\.net&quot;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>ddns<span class="sy0">/</span>services \
+<span class="sy0">&amp;&amp;</span> <span class="kw3">echo</span> <span class="re5">-e</span> <span class="st0">&quot;<span class="es1">\&quot;</span>tunnelbroker.net<span class="es1">\&quot;</span><span class="es1">\t</span><span class="es1">\&quot;</span>http://[USERNAME]:[PASSWORD]@ipv4.tunnelbroker.net/nic/update?hostname=[DOMAIN]&amp;myip=[IP]<span class="es1">\&quot;</span><span class="es1">\t</span><span class="es1">\&quot;</span>good|nochg<span class="es1">\&quot;</span>&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>ddns<span class="sy0">/</span>services</pre>
+
+<p>
+Now you can configure your tunnelbroker ddns:
+</p>
+<pre class="code bash"><span class="co0"># /etc/config/ddns</span>
+config service <span class="st_h">'HE6in4'</span>
+        option service_name  <span class="st_h">'tunnelbroker.net'</span>
+        option lookup_host   <span class="st_h">'hostToCheck.com'</span>             <span class="co0">#Change it to yours. It should be a hostname updated by a DDNS with the current IP.</span>
+        option ip_source     <span class="st_h">'web'</span>
+        option ip_url        <span class="st_h">'http://checkip.amazonaws.com/'</span>
+        option interface     <span class="st_h">'wan'</span>                         <span class="co0">#Change it to yours</span>
+        option username      <span class="st_h">'tunnelbrokerUSERname'</span>        <span class="co0">#Change it to yours. It's the same tunnelbroker login.</span>
+        option password      <span class="st_h">'tunnelbrokerDDNSpassword'</span>    <span class="co0">#Change it to yours. It's not the same tunnelbroker login.</span>
+        option domain        <span class="st_h">'tunnelbrokerDDNSnumber'</span>      <span class="co0">#Change it to yours. It's only numbers.</span>
+        option enabled       <span class="st_h">'1'</span></pre>
+
+<p>
+Instead of using a web service, that has the risk of being eventually offline, to detect the public <abbr title="Internet Protocol">IP</abbr>, you can detect the <a href="/docs/guide-user/services/ddns/client#detecting_wan_public_ip_by_script" class="wikilink1" title="docs:guide-user:services:ddns:client" data-wiki-id="docs:guide-user:services:ddns:client">WAN public IP by this script</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;tunnelbroker.net&quot;,&quot;hid&quot;:&quot;tunnelbrokernet&quot;,&quot;codeblockOffset&quot;:51,&quot;secid&quot;:39,&quot;range&quot;:&quot;53555-55466&quot;} -->
+<h2 class="sectionedit40" id="additional_forum_threads_for_configuration">Additional forum threads for configuration</h2>
+<div class="level2">
+
+<p>
+<a href="https://forum.openwrt.org/t/enabling-dynamic-dns-is-too-convoluted-difficult/152939" class="urlextern" title="https://forum.openwrt.org/t/enabling-dynamic-dns-is-too-convoluted-difficult/152939" rel="ugc nofollow">https://forum.openwrt.org/t/enabling-dynamic-dns-is-too-convoluted-difficult/152939</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Additional forum threads for configuration&quot;,&quot;hid&quot;:&quot;additional_forum_threads_for_configuration&quot;,&quot;codeblockOffset&quot;:53,&quot;secid&quot;:40,&quot;range&quot;:&quot;55467-&quot;} -->

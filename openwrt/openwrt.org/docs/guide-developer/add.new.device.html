@@ -1,0 +1,389 @@
+
+<h1 class="sectionedit1" id="adding_new_device_support">Adding new device support</h1>
+<div class="level1">
+
+<p>
+This article assumes your device is based on a platform already supported by OpenWrt. If you need to add a new platform, see →<a href="/docs/guide-developer/add.new.platform" class="wikilink1" title="docs:guide-developer:add.new.platform" data-wiki-id="docs:guide-developer:add.new.platform">add.new.platform</a>
+</p>
+
+<p>
+If you already solved the puzzle and are looking for device support submission guidelines, check out <a href="/docs/guide-developer/device-support-policies" class="wikilink1" title="docs:guide-developer:device-support-policies" data-wiki-id="docs:guide-developer:device-support-policies">Device support policies / best practices</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Adding new device support&quot;,&quot;hid&quot;:&quot;adding_new_device_support&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-402&quot;} -->
+<h2 class="sectionedit2" id="general_approach">General Approach</h2>
+<div class="level2">
+<ol>
+<li class="level1"><div class="li"> Make a detailed list of chips on the device and find info about support for them. Focus on processor, flash, ethernet and wireless. Some helpful tips are available on <a href="/docs/guide-developer/hw.hacking.first.steps" class="wikilink1" title="docs:guide-developer:hw.hacking.first.steps" data-wiki-id="docs:guide-developer:hw.hacking.first.steps">hw.hacking.first.steps</a></div>
+</li>
+<li class="level1"><div class="li"> Make sure you have working serial console and access to the bootloader.</div>
+</li>
+<li class="level1"><div class="li"> Prepare and install firmware, watch the bootlog for problems and errors.</div>
+</li>
+<li class="level1"><div class="li"> Verify flash partitioning, LEDs and buttons.</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;General Approach&quot;,&quot;hid&quot;:&quot;general_approach&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;403-854&quot;} -->
+<h2 class="sectionedit3" id="gpios">GPIOs</h2>
+<div class="level2">
+
+<p>
+Most of devices use <a href="/docs/techref/hardware/port.gpio" class="wikilink1" title="docs:techref:hardware:port.gpio" data-wiki-id="docs:techref:hardware:port.gpio">GPIOs</a> for controlling LEDs and buttons. There aren&#039;t any generic GPIOs numbers, so OpenWrt has to use device specific mappings. It means we need to find out GPIOs for every controllable LED and button on every supported device.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;GPIOs&quot;,&quot;hid&quot;:&quot;gpios&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;855-1158&quot;} -->
+<h3 class="sectionedit4" id="gpio_leds">GPIO LEDs</h3>
+<div class="level3">
+
+<p>
+If LED is controlled by GPIO, direction has to be set to <code>out</code> and we need to know the polarity:
+</p>
+<ul>
+<li class="level1"><div class="li"> If LED turns on for value 1, it&#039;s active high</div>
+</li>
+<li class="level1"><div class="li"> If LED turns on for value 0, it&#039;s active low</div>
+</li>
+</ul>
+
+<p>
+A single GPIO can be tested in the following way:
+</p>
+<pre class="code">cd /sys/class/gpio
+GPIO=3
+echo $GPIO &gt; export
+echo &quot;out&quot; &gt; gpio$GPIO/direction
+echo 0 &gt; gpio$GPIO/value
+sleep 1s
+echo 1 &gt; gpio$GPIO/value
+sleep 1s
+echo $GPIO &gt; unexport</pre>
+
+<p>
+Of course every GPIO (starting with 0) has to be tested, not only a GPIO 3 as in the example above.
+</p>
+
+<p>
+So basically you need to create a table like:
+</p>
+<div class="table sectionedit5"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Color </th><th class="col1"> Name </th><th class="col2"> GPIO </th><th class="col3"> Polarity </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> Green </td><td class="col1"> Power </td><td class="col2"> 0 </td><td class="col3"> Active high </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> Blue </td><td class="col1"> <abbr title="Wireless Local Area Network">WLAN</abbr> </td><td class="col2"> 7 </td><td class="col3"> Active high </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> Blue </td><td class="col1"> USB </td><td class="col2"> 12 </td><td class="col3"> Active low </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;1761-1898&quot;} -->
+<p>
+To speed up testing all GPIOs one by one you can use following bash script. Please note you have to follow LEDs state and console output. If the USB LED turns on and the last console message is <code>[GPIO12] Trying value 0</code> it means USB LED uses GPIO 12 and is active low.
+</p>
+<dl class="file">
+<dt><a href="/_export/code/docs/guide-developer/add.new.device?codeblock=1" title="Download Snippet" class="mediafile mf_sh">gpio-test.sh</a></dt>
+<dd><pre class="code file bash"><span class="co0">#!/bin/sh</span>
+<span class="re2">GPIOCHIP</span>=<span class="nu0">0</span>
+<span class="re2">BASE</span>=$<span class="br0">&#40;</span><span class="kw2">cat</span> <span class="sy0">/</span>sys<span class="sy0">/</span>class<span class="sy0">/</span>gpio<span class="sy0">/</span>gpiochip<span class="co1">${GPIOCHIP}</span><span class="sy0">/</span>base<span class="br0">&#41;</span>
+<span class="re2">NGPIO</span>=$<span class="br0">&#40;</span><span class="kw2">cat</span> <span class="sy0">/</span>sys<span class="sy0">/</span>class<span class="sy0">/</span>gpio<span class="sy0">/</span>gpiochip<span class="co1">${GPIOCHIP}</span><span class="sy0">/</span>ngpio<span class="br0">&#41;</span>
+<span class="re2">max</span>=$<span class="br0">&#40;</span><span class="br0">&#40;</span><span class="re1">$BASE</span>+<span class="re1">$NGPIO</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+<span class="re2">gpio</span>=<span class="re1">$BASE</span>
+<span class="kw1">while</span> <span class="br0">&#91;</span> <span class="re1">$gpio</span> <span class="re5">-lt</span> <span class="re1">$max</span> <span class="br0">&#93;</span> ; <span class="kw1">do</span>
+	<span class="kw3">echo</span> <span class="re1">$gpio</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>sys<span class="sy0">/</span>class<span class="sy0">/</span>gpio<span class="sy0">/</span><span class="kw3">export</span>
+	<span class="br0">&#91;</span> <span class="re5">-d</span> <span class="sy0">/</span>sys<span class="sy0">/</span>class<span class="sy0">/</span>gpio<span class="sy0">/</span>gpio<span class="co1">${gpio}</span> <span class="br0">&#93;</span> <span class="sy0">&amp;&amp;</span> <span class="br0">&#123;</span>
+		<span class="kw3">echo</span> out <span class="sy0">&gt;</span> <span class="sy0">/</span>sys<span class="sy0">/</span>class<span class="sy0">/</span>gpio<span class="sy0">/</span>gpio<span class="re1">$gpio</span><span class="sy0">/</span>direction
+&nbsp;
+		<span class="kw3">echo</span> <span class="st0">&quot;[GPIO<span class="es2">$gpio</span>] Trying value 0&quot;</span>
+		<span class="kw3">echo</span> <span class="nu0">0</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>sys<span class="sy0">/</span>class<span class="sy0">/</span>gpio<span class="sy0">/</span>gpio<span class="re1">$gpio</span><span class="sy0">/</span>value
+		<span class="kw2">sleep</span> 3s
+&nbsp;
+		<span class="kw3">echo</span> <span class="st0">&quot;[GPIO<span class="es2">$gpio</span>] Trying value 1&quot;</span>
+		<span class="kw3">echo</span> <span class="nu0">1</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>sys<span class="sy0">/</span>class<span class="sy0">/</span>gpio<span class="sy0">/</span>gpio<span class="re1">$gpio</span><span class="sy0">/</span>value
+		<span class="kw2">sleep</span> 3s
+&nbsp;
+		<span class="kw3">echo</span> <span class="re1">$gpio</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>sys<span class="sy0">/</span>class<span class="sy0">/</span>gpio<span class="sy0">/</span>unexport
+	<span class="br0">&#125;</span>
+	<span class="re2">gpio</span>=$<span class="br0">&#40;</span><span class="br0">&#40;</span>gpio+<span class="nu0">1</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+<span class="kw1">done</span></pre>
+</dd></dl>
+<ul>
+<li class="level1"><div class="li"> Save the above content as a file <code>gpio-test.sh</code> &amp; then transfer inside router&#039;s <code>/tmp</code> directory, or copy above content &amp; paste inside <code>vi</code> editor in router &amp; save as <code>gpio-test.sh</code> file.</div>
+</li>
+<li class="level1"><div class="li"> to make it executable, run: <code>chmod +x /tmp/gpio-test.sh</code></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;GPIO LEDs&quot;,&quot;hid&quot;:&quot;gpio_leds&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;1159-3035&quot;} -->
+<h3 class="sectionedit6" id="gpio_buttons">GPIO buttons</h3>
+<div class="level3">
+
+<p>
+In case of GPIO controlled buttons value changes during button press. So the best idea to find out which GPIO is connected to some hardware button is to:
+</p>
+<ol>
+<li class="level1"><div class="li"> Dump values of all GPIOs</div>
+</li>
+<li class="level1"><div class="li"> Push button and keep it pushed</div>
+</li>
+<li class="level1"><div class="li"> Dump values of all GPIOs</div>
+</li>
+<li class="level1"><div class="li"> Find out which GPIO changed its value</div>
+</li>
+</ol>
+
+<p>
+For dumping GPIO values following script can be used:
+</p>
+<dl class="file">
+<dt><a href="/_export/code/docs/guide-developer/add.new.device?codeblock=2" title="Download Snippet" class="mediafile mf_sh">gpio-dump.sh</a></dt>
+<dd><pre class="code file bash"><span class="co0">#!/bin/sh</span>
+<span class="re2">GPIOCHIP</span>=<span class="nu0">0</span>
+<span class="re2">BASE</span>=$<span class="br0">&#40;</span><span class="kw2">cat</span> <span class="sy0">/</span>sys<span class="sy0">/</span>class<span class="sy0">/</span>gpio<span class="sy0">/</span>gpiochip<span class="co1">${GPIOCHIP}</span><span class="sy0">/</span>base<span class="br0">&#41;</span>
+<span class="re2">NGPIO</span>=$<span class="br0">&#40;</span><span class="kw2">cat</span> <span class="sy0">/</span>sys<span class="sy0">/</span>class<span class="sy0">/</span>gpio<span class="sy0">/</span>gpiochip<span class="co1">${GPIOCHIP}</span><span class="sy0">/</span>ngpio<span class="br0">&#41;</span>
+<span class="re2">max</span>=$<span class="br0">&#40;</span><span class="br0">&#40;</span><span class="re1">$BASE</span>+<span class="re1">$NGPIO</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+<span class="re2">gpio</span>=<span class="re1">$BASE</span>
+<span class="kw1">while</span> <span class="br0">&#91;</span> <span class="re1">$gpio</span> <span class="re5">-lt</span> <span class="re1">$max</span> <span class="br0">&#93;</span> ; <span class="kw1">do</span>
+	<span class="kw3">echo</span> <span class="re1">$gpio</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>sys<span class="sy0">/</span>class<span class="sy0">/</span>gpio<span class="sy0">/</span><span class="kw3">export</span>
+	<span class="br0">&#91;</span> <span class="re5">-d</span> <span class="sy0">/</span>sys<span class="sy0">/</span>class<span class="sy0">/</span>gpio<span class="sy0">/</span>gpio<span class="co1">${gpio}</span> <span class="br0">&#93;</span> <span class="sy0">&amp;&amp;</span> <span class="br0">&#123;</span>
+		<span class="kw3">echo</span> <span class="kw1">in</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>sys<span class="sy0">/</span>class<span class="sy0">/</span>gpio<span class="sy0">/</span>gpio<span class="co1">${gpio}</span><span class="sy0">/</span>direction
+		<span class="kw3">echo</span> <span class="st0">&quot;[GPIO<span class="es3">${gpio}</span>] value <span class="es4">$(cat /sys/class/gpio/gpio${gpio}/value)</span>&quot;</span>
+		<span class="kw3">echo</span> <span class="co1">${gpio}</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>sys<span class="sy0">/</span>class<span class="sy0">/</span>gpio<span class="sy0">/</span>unexport
+	<span class="br0">&#125;</span>
+	<span class="re2">gpio</span>=$<span class="br0">&#40;</span><span class="br0">&#40;</span>gpio+<span class="nu0">1</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+<span class="kw1">done</span></pre>
+</dd></dl>
+<ul>
+<li class="level1"><div class="li"> Save the above content as a file <code>gpio-dump.sh</code> &amp; then transfer inside router&#039;s <code>/tmp</code> directory, or copy above content &amp; paste inside <code>vi</code> editor in router &amp; save as <code>gpio-dump.sh</code> file</div>
+</li>
+<li class="level1"><div class="li"> to make it executable, run: <code>chmod +x /tmp/gpio-dump.sh</code></div>
+</li>
+</ul>
+
+<p>
+If GPIO value changes from 1 to 0 while pressing the button, it&#039;s active low. Otherwise it&#039;s active high.
+</p>
+
+<p>
+Example table:
+</p>
+<div class="table sectionedit7"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Name </th><th class="col1"> GPIO </th><th class="col2"> Polarity </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> WPS </td><td class="col1"> 4 </td><td class="col2"> Active low </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> Reset </td><td class="col1"> 6 </td><td class="col2"> Active low </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table1&quot;,&quot;secid&quot;:7,&quot;range&quot;:&quot;4281-4359&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;GPIO buttons&quot;,&quot;hid&quot;:&quot;gpio_buttons&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:6,&quot;range&quot;:&quot;3036-4360&quot;} -->
+<h3 class="sectionedit8" id="kseg1addr_and_accessing_nor_flash">KSEG1ADDR() and accessing NOR flash</h3>
+<div class="level3">
+
+<p>
+For getting MAC addresses, EEPROM and other calibration data for your board, you may need to read from flash in the kernel. In the case of many Atheros chips using NOR flash, done using the KSEG1ADDR() macro which translates the hardware address of the flash to the virtual address for the process context which is executing your init function. 
+</p>
+
+<p>
+If you are reviewing the code for initializing a board similar to your own and you see this idium: KSEG1ADDR(0x1fff0000), the number at first appears to be magic but it is logical if you understand two things. Firstly, Atheros SoCs using NOR flash wire it to the physical address 0x1f000000 (there are no guarantees about where the flash will be wired for your board but this is a common location). You cannot rely on the address given in the bootloader, you might see 0xbf000000 but this is probably also a virtual address. If your board wires flash to these memory locations, you may obviously access flash using KSEG1ADDR(0x1f000000 + OFFSET_FROM_BEGIN) but in the event that you have to access data which you know will exist at the very end of the flash, you can use a trick to make your code compatible with multiple sizes of flash memory. 
+</p>
+
+<p>
+Often flash will be mapped to a full 16MB of address space no matter whether it is 4MB, 8MB or 16MB so in this case KSEG1ADDR(0x20000000 - OFFSET_FROM_END) will work for accessing things which you know to be a certain distance from the end of the flash memory. When you see KSEG1ADDR(0x1fff0000), on devices with 4MB or 8MB of flash, it&#039;s fair to guess that it&#039;s using this trick to reference the flash which resides 64k below the end of the flash (where Atheros Radio Test data is stored).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;KSEG1ADDR() and accessing NOR flash&quot;,&quot;hid&quot;:&quot;kseg1addr_and_accessing_nor_flash&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:8,&quot;range&quot;:&quot;4361-6092&quot;} -->
+<h2 class="sectionedit9" id="examples">Examples</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Examples&quot;,&quot;hid&quot;:&quot;examples&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:9,&quot;range&quot;:&quot;6093-6114&quot;} -->
+<h3 class="sectionedit10" id="brcm63xx_platform">Brcm63xx Platform</h3>
+<div class="level3">
+
+<p>
+If you have the OEM sourcecode for your <a href="/docs/techref/hardware/soc/soc.broadcom.bcm63xx" class="wikilink1" title="docs:techref:hardware:soc:soc.broadcom.bcm63xx" data-wiki-id="docs:techref:hardware:soc:soc.broadcom.bcm63xx">bcm63xx</a> specific device, it may be useful some things for later adding the OpenWrt support:
+</p>
+<ul>
+<li class="level1"><div class="li"> Look for your Board Id at <code>shared/opensource/boardparms/boardparms.c</code></div>
+</li>
+<li class="level1"><div class="li"> Adapt the <code>imagetag.c</code> to create a different tag (see <code>shared/opensource/inlude/bcm963xx/bcmTag.h</code> in the <abbr title="GNU General Public License">GPL</abbr> tar for the layout)</div>
+</li>
+<li class="level1"><div class="li"> Finally xor the whole image with &#039;12345678&#039; (the ascii string, not hex).</div>
+</li>
+</ul>
+
+<p>
+(from <a href="https://forum.openwrt.org/viewtopic.php?pid=123105#p123105" class="urlextern" title="https://forum.openwrt.org/viewtopic.php?pid=123105#p123105" rel="ugc nofollow">https://forum.openwrt.org/viewtopic.php?pid=123105#p123105</a>)
+</p>
+
+<p>
+For creating the OpenWrt firmware your <a href="/docs/techref/hardware/soc/soc.broadcom.bcm63xx" class="wikilink1" title="docs:techref:hardware:soc:soc.broadcom.bcm63xx" data-wiki-id="docs:techref:hardware:soc:soc.broadcom.bcm63xx">bcm63xx</a> device, you can follow the following steps:
+</p>
+<ol>
+<li class="level1"><div class="li"> Obtain the <a href="/docs/guide-developer/toolchain/start" class="wikilink1" title="docs:guide-developer:toolchain:start" data-wiki-id="docs:guide-developer:toolchain:start">source and follow the compile procedure</a> with the make menuconfig as last step.</div>
+</li>
+<li class="level1"><div class="li"> During <strong>menuconfig</strong> select the correct target system.</div>
+</li>
+<li class="level1"><div class="li"> Next generate the board_bcm963xx.c file for the selected platform with all board parameters execute the following command: <br/>
+<pre class="code">make kernel_menuconfig</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Add the board-id to the ./target/linux/brcm63xx/image/Makefile.<br/>
+<strong>Example</strong><br/>
+<pre class="code">	# Davolink DV2020	
+	$(call Image/Build/CFE,$(1),DV2020,6348)</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> add the board-id with the parameters to ./build_dir/linux-brcm63xx/linux-2.6.37.4/arch/mips/bcm63xx/boards/board_bcm963xx.c<br/>
+<strong>Example</strong><br/>
+<pre class="code">static struct board_info __initdata board_DV2020 = {
+        .name                           = &quot;DV2020&quot;,
+        .expected_cpu_id                = 0x6348,
+
+        .has_uart0                      = 1,
+        .has_pci                        = 1,
+        .has_ohci0                      = 1,
+
+        .has_enet0                      = 1,
+        .has_enet1                      = 1,
+        .enet0 = {
+                .has_phy                = 1,
+                .use_internal_phy       = 1,
+        },	
+        .enet1 = {	
+                .force_speed_100        = 1,	
+                .force_duplex_full      = 1,	
+        },	
+};
+
+static const struct board_info __initdat
+:
+:
+:
+	&amp;board_DV2020,</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Finish the <a href="/docs/guide-developer/toolchain/start" class="wikilink1" title="docs:guide-developer:toolchain:start" data-wiki-id="docs:guide-developer:toolchain:start">compile instructions</a> according the procedure from the make step.</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Brcm63xx Platform&quot;,&quot;hid&quot;:&quot;brcm63xx_platform&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:10,&quot;range&quot;:&quot;6115-8324&quot;} -->
+<h3 class="sectionedit11" id="ramips_platform">Ramips Platform</h3>
+<div class="level3">
+
+<p>
+As long as you are adding support for an ramips board with an existing chipset, this is rather straightforward.  You need to create a new <em>board</em> definition, which will generate an image file specifically for your device and runs device-specific code.  Then you write various board-specific hacks to initialize devices and set the correct default configuration.
+</p>
+
+<p>
+Your board identifier will be passed in the following sequence:
+</p>
+<pre class="code"> (Image Generator puts it in the kernel command line)
+          ↓
+ (Kernel command line is executed with BOARD=MY_BOARD)
+          ↓
+ (Kernel code for ramips finds your board and loads machine-specific code)
+          ↓
+ (/lib/ramips.sh:ramips_board_name() reads the board name from /proc/cpuinfo)
+          ↓
+ (Several userspace scripts use ramips_board_name() for board-specific setup)</pre>
+
+<p>
+At a minimum, you need to make the following changes to make a basic build, all under target/linux/ramips/:
+</p>
+<ul>
+<li class="level1"><div class="li"> Add a new machine image in <code>image/Makefile</code></div>
+</li>
+<li class="level1 node"><div class="li"> Create a new machine file in <code>arch/mips/ralink/$CHIP/mach-myboard.c</code> where you register:</div>
+<ul>
+<li class="level2"><div class="li"> GPIO pins for LEDs and buttons</div>
+</li>
+<li class="level2"><div class="li"> Port layout for the device (vlan configuration)</div>
+</li>
+<li class="level2"><div class="li"> Flash memory configuration</div>
+</li>
+<li class="level2"><div class="li"> Wifi</div>
+</li>
+<li class="level2"><div class="li"> USB</div>
+</li>
+<li class="level2"><div class="li"> Watchdog timer</div>
+</li>
+<li class="level2"><div class="li"> And anything else specific to your board</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Reference the new machine file in <code>arch/mips/ralink/$CHIP/{Kconfig,Makefile}</code></div>
+</li>
+<li class="level1"><div class="li"> Reference the new machine name in <code>files/arch/mips/include/asm/mach-ralink/machine.h</code></div>
+</li>
+<li class="level1"><div class="li"> Add your board to <code>base-files/lib/ramips.sh</code> for userspace scripts to read the board name</div>
+</li>
+</ul>
+
+<p>
+Then you&#039;ll want to modify some of these files depending on your board&#039;s features:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>base-files/etc/diag.sh</code> to set a LED which OpenWRT should blink on bootup</div>
+</li>
+<li class="level1"><div class="li"> <code>base-files/lib/upgrade/platform.sh</code> to allow sysupgrade to work on your board</div>
+</li>
+<li class="level1"><div class="li"> <code>base-files/etc/uci-defaults/network</code> to configure default network interface settings, particularly MAC addresses</div>
+</li>
+<li class="level1"><div class="li"> <code>base-files/etc/uci-defaults/leds</code> if you have configurable LEDs which should default to a behavior, like a <abbr title="Wireless Local Area Network">WLAN</abbr> activity LED</div>
+</li>
+<li class="level1"><div class="li"> <code>base-files/etc/hotplug.d/firmware/10-rt2x00-eeprom</code> to extract the firmware image for the wireless module</div>
+</li>
+<li class="level1"><div class="li"> <code>base-files/lib/preinit/06_set_iface_mac</code> to set the MAC addresses of any other interfaces</div>
+</li>
+</ul>
+
+<p>
+Example commits:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/changeset/30645" class="urlextern" title="https://dev.openwrt.org/changeset/30645" rel="ugc nofollow">Skyline SL-R7205 (rt305x)</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/changeset/29617" class="urlextern" title="https://dev.openwrt.org/changeset/29617" rel="ugc nofollow">Belkin F5D8235-4 v1 (rt288x)</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/changeset/46918" class="urlextern" title="https://dev.openwrt.org/changeset/46918" rel="ugc nofollow">Planex DB-WRT01 (MT7620A)</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Ramips Platform&quot;,&quot;hid&quot;:&quot;ramips_platform&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:11,&quot;range&quot;:&quot;8325-10887&quot;} -->
+<h2 class="sectionedit12" id="tips">Tips</h2>
+<div class="level2">
+
+<p>
+After add a new board, you may should clean the <code>tmp</code> folder first.
+</p>
+<pre class="code"> cd trunk
+ rm -rf tmp
+ make menuconfig </pre>
+
+<p>
+If you have added a device profile, and it isn&#039;t showing up in “make menuconfig” try touching the main target makefile
+</p>
+<pre class="code">touch target/linux/*/Makefile</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Tips&quot;,&quot;hid&quot;:&quot;tips&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:12,&quot;range&quot;:&quot;10888-&quot;} -->

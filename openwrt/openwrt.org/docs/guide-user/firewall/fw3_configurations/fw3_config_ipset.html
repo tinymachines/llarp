@@ -1,0 +1,132 @@
+
+<h1 class="sectionedit1" id="ip_set_examples">IP set examples</h1>
+<div class="level1">
+
+<p>
+See also:
+<a href="/docs/guide-user/firewall/firewall_configuration#ip_sets" class="wikilink1" title="docs:guide-user:firewall:firewall_configuration" data-wiki-id="docs:guide-user:firewall:firewall_configuration">IP set configuration</a>,
+<a href="/docs/guide-user/firewall/fw3_configurations/dns_ipset" class="wikilink1" title="docs:guide-user:firewall:fw3_configurations:dns_ipset" data-wiki-id="docs:guide-user:firewall:fw3_configurations:dns_ipset">Filtering traffic with IP sets by DNS</a>
+</p>
+
+<p>
+<a href="https://wiki.nftables.org/wiki-nftables/index.php/Sets" class="urlextern" title="https://wiki.nftables.org/wiki-nftables/index.php/Sets" rel="ugc nofollow">IP sets</a> is a netfilter feature to manage a large group of stations/networks as a single named set.
+The netfilter rules can then match packet fields on the set rather than individual stations.
+This creates a number of efficiencies, for example a hash lookup of the station addresses in the set.
+</p>
+
+<p>
+firewall4 supports the most common <abbr title="Internet Protocol">IP</abbr> sets functions.
+This section provides some examples to illustrate how to incorporate <abbr title="Internet Protocol">IP</abbr> sets into netfilter rules.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;IP set examples&quot;,&quot;hid&quot;:&quot;ip_set_examples&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-728&quot;} -->
+<h2 class="sectionedit2" id="using_ip_sets_to_drop_smtp_spam">Using IP sets to drop SMTP spam</h2>
+<div class="level2">
+
+<p>
+<abbr title="Internet Protocol">IP</abbr> sets is great for collecting a large set of <abbr title="Internet Protocol">IP</abbr> addresses/networks under one label and then using the label in subsequent rules as a single match criteria for any entry in the <abbr title="Internet Protocol">IP</abbr> set.
+</p>
+
+<p>
+One of the big uses of <abbr title="Internet Protocol">IP</abbr> sets is to block spam generators (stations or networks that randomly generate <em>billions</em> of spam emails daily.)
+There are thousands of spam generators; adding a reject rule for each makes the netfilter rule list huge and inefficient.
+</p>
+
+<p>
+So all Spam networks are added to a single <abbr title="Internet Protocol">IP</abbr> set <code>name</code> and then that <code>name</code> is used in the match rules.
+</p>
+
+<p>
+In the <code>/etc/config/firewall</code> rules add:
+</p>
+<pre class="code bash">config	ipset
+	option	name		<span class="st_h">'dropcidr'</span>
+	option	match		<span class="st_h">'src_net'</span>
+	option	enabled		<span class="st_h">'1'</span>
+	list	entry		<span class="st_h">'42.56.0.0/16'</span>
+	list	entry		<span class="st_h">'180.178.160.0/20'</span>
+	list	entry		<span class="st_h">'79.133.43.0/24'</span>
+	list	entry		<span class="st_h">'27.44.0.0/15'</span>
+	list	entry		<span class="st_h">'192.168.3.0/24'</span>
+&nbsp;
+config	rule
+	option	src		<span class="st_h">'wan'</span>
+	option	ipset		<span class="st_h">'dropcidr'</span>
+	option	dest_port	<span class="st_h">'25'</span>
+	option	target		<span class="st_h">'DROP'</span>
+	option	name		<span class="st_h">'DROP-SMTP-WAN-LAN'</span>
+	option	enabled		<span class="st_h">'1'</span></pre>
+
+<p>
+The <code>ipset</code> configuration instructs the firewall to create an <abbr title="Internet Protocol">IP</abbr> set named <code>dropcidr</code> and matches it to the source network field using a traffic rule.
+</p>
+
+<p>
+You can list the resulted <abbr title="Internet Protocol">IP</abbr> sets to check it.
+</p>
+<pre class="code bash">nft list sets</pre>
+
+<p>
+There is a good deal of internal optimization that can be done inside the <abbr title="Internet Protocol">IP</abbr> sets kernel modules.
+This <abbr title="Internet Protocol">IP</abbr> set is configured to use a highly efficient hash rather than a linear search to match the source network.
+</p>
+
+<p>
+The <code>rule</code> section matches on a network in <code>dropcidr</code> and port 25 aka <abbr title="Simple Mail Transfer Protocol">SMTP</abbr>.
+If there is a match, the DROP target is called.
+Use DROP and not REJECT for this rule.
+</p>
+
+<p>
+See <a href="/docs/guide-user/firewall/netfilter_iptables/netfilter_management" class="wikilink1" title="docs:guide-user:firewall:netfilter_iptables:netfilter_management" data-wiki-id="docs:guide-user:firewall:netfilter_iptables:netfilter_management">Netfilter Managment</a> to view and verify the new firewall sections.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Using IP sets to drop SMTP spam&quot;,&quot;hid&quot;:&quot;using_ip_sets_to_drop_smtp_spam&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;729-2549&quot;} -->
+<h2 class="sectionedit3" id="populating_the_ip_set">Populating the IP set</h2>
+<div class="level2">
+
+<p>
+The configuration above uses a number of <code>list entry</code> lines to populate the <abbr title="Internet Protocol">IP</abbr> set with some initial <abbr title="Internet Protocol">IP</abbr> ranges.
+<code>192.168.3.0</code> is a private network on the <abbr title="Wide Area Network">WAN</abbr>-side used to test this feature.
+The others are actual spam sources.
+</p>
+
+<p>
+In practice it is better to use the <code>loadfile</code> option instead which allows specifying the <abbr title="Internet Protocol">IP</abbr> set contents in an external file for easier maintenance.
+Such an external file can be for example created from publicly available blocklists or populated by other programs for use with the <abbr title="Internet Protocol">IP</abbr> set.
+</p>
+
+<p>
+To use the <code>loadfile</code> option, first create a plaintext file containing the <abbr title="Internet Protocol">IP</abbr> ranges to add to the set:
+</p>
+<pre class="code bash"><span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>dropcidr.txt
+42.56.0.0<span class="sy0">/</span><span class="nu0">16</span>
+180.178.160.0<span class="sy0">/</span><span class="nu0">20</span>
+79.133.43.0<span class="sy0">/</span><span class="nu0">24</span>
+27.44.0.0<span class="sy0">/</span><span class="nu0">15</span>
+192.168.3.0<span class="sy0">/</span><span class="nu0">24</span>
+EOF</pre>
+
+<p>
+Afterwards, modify the <abbr title="Internet Protocol">IP</abbr> set declaration in the firewall configuration by removing the <code>list entry</code> lines and replacing them with a sole <code>loadfile</code> option:
+</p>
+<pre class="code bash">config	ipset
+	option	name		<span class="st_h">'dropcidr'</span>
+	option	match		<span class="st_h">'src_net'</span>
+	option	enabled		<span class="st_h">'1'</span>
+	option	loadfile	<span class="st_h">'/etc/dropcidr.txt'</span></pre>
+
+<p>
+The CIDRs can be dynamically added and deleted in the <code>dropcidr</code> table while the netfilter rule is active.
+</p>
+
+<p>
+Besides adding IPs manually, package <a href="/packages/pkgdata/dnsmasq-full" class="wikilink1" title="packages:pkgdata:dnsmasq-full" data-wiki-id="packages:pkgdata:dnsmasq-full">dnsmasq-full</a> can automatically populate the list.
+It can be used to add IPs that were send to hosts for certain names.
+This is helpful if names are used for filtering.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Populating the IP set&quot;,&quot;hid&quot;:&quot;populating_the_ip_set&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:3,&quot;range&quot;:&quot;2550-&quot;} -->

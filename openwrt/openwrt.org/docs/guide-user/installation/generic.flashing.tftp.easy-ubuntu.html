@@ -1,0 +1,204 @@
+
+<h1 class="sectionedit1" id="installing_openwrt_with_tftp_from_a_linux_computer">Installing OpenWrt with TFTP from a Linux computer</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installing OpenWrt with TFTP from a Linux computer&quot;,&quot;hid&quot;:&quot;installing_openwrt_with_tftp_from_a_linux_computer&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-65&quot;} -->
+<h3 class="sectionedit2" id="audience">Audience</h3>
+<div class="level3">
+
+<p>
+This guide is targeted towards relative beginners that have a Linux device.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Audience&quot;,&quot;hid&quot;:&quot;audience&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;66-161&quot;} -->
+<h3 class="sectionedit3" id="requirements">Requirements</h3>
+<div class="level3">
+
+<p>
+This simple guide for flashing via <abbr title="Trivial File Transfer Protocol">TFTP</abbr> requires you have the following tools:
+</p>
+<div class="table sectionedit4"><table class="inline">
+	<tr class="row0">
+		<td class="col0"><strong>Computer:</strong> Most Linux desktop or laptop computers with an ethernet port (or can use a USB to Ethernet adapter)</td>
+	</tr>
+	<tr class="row1">
+		<td class="col0"><strong>Router:</strong> Any router or device which can be installed using <abbr title="Trivial File Transfer Protocol">TFTP</abbr> (<a href="/docs/guide-user/installation/generic.flashing.tftp" class="wikilink1" title="docs:guide-user:installation:generic.flashing.tftp" data-wiki-id="docs:guide-user:installation:generic.flashing.tftp"> TFTP Installation Setup</a>)</td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"><strong>Knowledge:</strong> Minimal knowledge of how to open and run commands in a terminal</td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;264-611&quot;} -->
+<p>
+You will also want to collect the following information:
+</p>
+
+<p>
+* What is your distribution based on?
+</p>
+<ul>
+<li class="level1"><div class="li"> X/L/K/Ubuntu, ElementaryOS, Kali, Finnix: Debian (you use the `apt` and `apt-get` command to install packages)</div>
+</li>
+<li class="level1"><div class="li"> Fedora/CentOS/Red Hat: Red Hat (you use the `yum` command to install packages)</div>
+</li>
+<li class="level1"><div class="li"> Manjaro, Arch: Arch Linux (you use the `pacman` command to install commands)</div>
+</li>
+</ul>
+
+<p>
+* What is your ethernet port&#039;s device name?
+</p>
+<ul>
+<li class="level1"><div class="li"> Run `ip link` in a terminal, looking for devices beginning with `e`.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Requirements&quot;,&quot;hid&quot;:&quot;requirements&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;162-1109&quot;} -->
+<h3 class="sectionedit5" id="overview">Overview</h3>
+<div class="level3">
+
+<p>
+There are three basic steps:
+</p>
+
+<p>
+- Network Setup
+</p>
+
+<p>
+- tftpd setup
+</p>
+
+<p>
+- Triggering <abbr title="Trivial File Transfer Protocol">TFTP</abbr> on the router
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Overview&quot;,&quot;hid&quot;:&quot;overview&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;1110-1223&quot;} -->
+<h3 class="sectionedit6" id="network_setup">Network Setup</h3>
+<div class="level3">
+
+<p>
+You will want to install the following package:
+</p>
+
+<p>
+- `network-manager`: to make consistently configuring your network easier. (This integrates with the network configuration present on most desktop devices)
+</p>
+
+<p>
+From your <abbr title="Trivial File Transfer Protocol">TFTP</abbr> installation guide, find which address the router expects to request an image from - for example, 192.168.1.20 - then use the `nmtui` command to configure it:
+</p>
+
+<p>
+Edit a connection → Add → Ethernet:
+- Profile name &#039;Static Address for <abbr title="Trivial File Transfer Protocol">TFTP</abbr>&#039;
+- Device &#039;(the name of the ethernet port you found earlier, e.g. enp0s25)&#039;
+- <abbr title="Internet Protocol version 4">IPv4</abbr> CONFIGURATION:
+</p>
+<ol>
+<li class="level1"><div class="li"> Manual</div>
+</li>
+<li class="level1 node"><div class="li"> Show:</div>
+<ol>
+<li class="level2"><div class="li"> Addresses &#039;192.168.1.20/24&#039; (the /24 is a subnet mask - can only talk to everyone who has the same first 24 bits in the address field)</div>
+</li>
+</ol>
+</li>
+</ol>
+
+<p>
+- ... now go all the way down and hit &#039;&lt;OK&gt;&#039;
+</p>
+
+<p>
+If you would like to test this earlier, try hooking up your laptop or computer via ethernet cable to a router or switch, and selecting the &#039;Static Address for <abbr title="Trivial File Transfer Protocol">TFTP</abbr>&#039; connection; then run `ip address` in a terminal to verify that your address automatically comes up correctly.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Network Setup&quot;,&quot;hid&quot;:&quot;network_setup&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;1224-2288&quot;} -->
+<h3 class="sectionedit7" id="tftpd_setup">tftpd setup</h3>
+<div class="level3">
+
+<p>
+You will want to install the following package:
+</p>
+
+<p>
+- tftpd-hpa: to provide a service which automatically responds to <abbr title="Trivial File Transfer Protocol">TFTP</abbr> requests for files
+</p>
+
+<p>
+Once this is installed, a directory named `/var/lib/tftpboot/` should be created (under Debian/Ubuntu and many other distros the directory is: `/srv/tftp`). This is where you will place files for `tftpd-hpa` to serve up. <span style='color:#c3c3c3; '>(If it&#039;s not created: try `dpkg -L` on Ubuntu or similar to find where it was created.</span>
+</p>
+
+<p>
+Copy the files you intend to send to the router under `/var/lib/tftpboot/`. You may need to use sudo to do this.
+</p>
+
+<p>
+Start tftpd-hpa service by running the following command:
+</p>
+<pre class="code">sudo systemctl start tftpd-hpa</pre>
+
+<p>
+Or restart the tftpd-hpa service if needed:
+</p>
+<pre class="code">sudo systemctl restart tftpd-hpa</pre>
+
+<p>
+You should get no output. You can validate that the server is “active” via the following command:
+</p>
+<pre class="code">sudo systemctl status tftpd-hpa</pre>
+
+<p>
+<em>Hint:</em> if this fails to start, you likely have another process which is listening on port 69, thereby blocking `tftpd-hpa` from doing so. To check, run:
+</p>
+<pre class="code">sudo netstat -tupena | grep :69</pre>
+<pre class="code">  hurricos@myhost:~$ sudo netstat -tupena | grep :69
+  udp        0      0 0.0.0.0:69              0.0.0.0:*                           0          1786355    11349/inetd      
+  udp6       0      0 :::69                   :::*                                0          1786356    11349/inetd     </pre>
+
+<p>
+You will want to stop the process (in this case, `inetd`) which is using this port. In this case, you could use `sudo systemctl stop inetd`.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;tftpd setup&quot;,&quot;hid&quot;:&quot;tftpd_setup&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;2289-3844&quot;} -->
+<h3 class="sectionedit8" id="triggering_tftp">Triggering TFTP</h3>
+<div class="level3">
+
+<p>
+Now, you will plug your router to-be-flashed into your laptop, and follow your guide in order to trigger the router to request <abbr title="Trivial File Transfer Protocol">TFTP</abbr>. In the cases where you are using a serial cable to control your router, you are usually using the uBoot console to tell the router to boot from the network -- for example, on the <a href="/toh/meraki/mr16" class="wikilink1" title="toh:meraki:mr16" data-wiki-id="toh:meraki:mr16">Meraki MR16</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Triggering TFTP&quot;,&quot;hid&quot;:&quot;triggering_tftp&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:8,&quot;range&quot;:&quot;3845-4217&quot;} -->
+<h3 class="sectionedit9" id="debugging_issues">Debugging issues</h3>
+<div class="level3">
+
+<p>
+If you are not able to get the router to boot, there are a few things you can check:
+</p>
+
+<p>
+- Are you actually receiving a <abbr title="Trivial File Transfer Protocol">TFTP</abbr>/BOOTP packet from the router?
+</p>
+<ol>
+<li class="level1"><div class="li"> You can check this by running `sudo tcpdump -i &lt;ethernet device&gt; port 69`</div>
+</li>
+</ol>
+
+<p>
+- Are your files named correctly?
+</p>
+<ol>
+<li class="level1"><div class="li"> <abbr title="Trivial File Transfer Protocol">TFTP</abbr> requests will be responded to with files named exactly as they are found under `/var/lib/tftpboot/`.</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Debugging issues&quot;,&quot;hid&quot;:&quot;debugging_issues&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:9,&quot;range&quot;:&quot;4218-&quot;} -->

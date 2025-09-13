@@ -1,0 +1,101 @@
+
+<h1 class="sectionedit1" id="mmcsd_card_over_gpio_howto">MMC/SD card over GPIO howto</h1>
+<div class="level1">
+
+<p>
+This is a short guide to get an MMC/SD card working with OpenWrt Kamikaze 8.09 and an 2.6 Kernel. The driver can be configured using either UCI CLI or the LuCI WebUI.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;MMC\/SD card over GPIO howto&quot;,&quot;hid&quot;:&quot;mmcsd_card_over_gpio_howto&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-210&quot;} -->
+<h2 class="sectionedit2" id="gpio_pinouts">GPIO Pinouts</h2>
+<div class="level2">
+<pre class="code">Description                GPIO
+------------------------------------
+PIN 1, CS - Chip Select    GPIO 7
+PIN 2, DI - Data In        GPIO 1
+PIN 3, VSS - Ground        GND
+PIN 4, VDD - 3.3 Volts     3.3 Volts
+PIN 5, CLK - Clock         GPIO 3
+PIN 7, DO - Data Out       GPIO 4</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;GPIO Pinouts&quot;,&quot;hid&quot;:&quot;gpio_pinouts&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;211-524&quot;} -->
+<h2 class="sectionedit3" id="gpio_solder_points">GPIO Solder Points</h2>
+<div class="level2">
+
+<p>
+Images from PCB.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;GPIO Solder Points&quot;,&quot;hid&quot;:&quot;gpio_solder_points&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;525-573&quot;} -->
+<h2 class="sectionedit4" id="configuration_using_uci_cli">Configuration using UCI CLI</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration using UCI CLI&quot;,&quot;hid&quot;:&quot;configuration_using_uci_cli&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:4,&quot;range&quot;:&quot;574-613&quot;} -->
+<h3 class="sectionedit5" id="install_packages">Install packages</h3>
+<div class="level3">
+
+<p>
+Required packages:
+</p>
+<ul>
+<li class="level1"><div class="li"> kmod-mmc-over-gpio</div>
+</li>
+<li class="level1"><div class="li"> kmod-fs-ext4/kmod-fs-vfat/.... (we use the EXT3 file system here)</div>
+</li>
+<li class="level1"><div class="li"> cfdisk/fdisk (we use cfdisk here)</div>
+</li>
+<li class="level1"><div class="li"> e2fsprogs (for formating SD card to EXT3)</div>
+</li>
+</ul>
+<pre class="code">opkg update
+opkg install kmod-mmc-over-gpio kmod-fs-ext4 cfdisk e2fsprogs kmod-nls-base kmod-nls-cp437 kmod-nls-iso8859-1</pre>
+
+<p>
+Nice to have packages:
+</p>
+<ul>
+<li class="level1"><div class="li"> blkid</div>
+</li>
+</ul>
+<pre class="code">opkg install blkid</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Install packages&quot;,&quot;hid&quot;:&quot;install_packages&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:5,&quot;range&quot;:&quot;614-1045&quot;} -->
+<h3 class="sectionedit6" id="configure_gpios">Configure GPIOs</h3>
+<div class="level3">
+<pre class="code">uci set mmc_over_gpio.@mmc_over_gpio[0].enabled=1
+uci set mmc_over_gpio.@mmc_over_gpio[0].DI_pin=1
+uci set mmc_over_gpio.@mmc_over_gpio[0].DO_pin=4
+uci set mmc_over_gpio.@mmc_over_gpio[0].CLK_pin=3
+uci set mmc_over_gpio.@mmc_over_gpio[0].CS_pin=7
+uci commit mmc_over_gpio
+/etc/init.d/mmc_over_gpio enable
+/etc/init.d/mmc_over_gpio start</pre>
+
+<p>
+If you ger an error saying “can&#039;t create /config/gpiommc/ directory” then first reboot the device.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configure GPIOs&quot;,&quot;hid&quot;:&quot;configure_gpios&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:6,&quot;range&quot;:&quot;1046-1524&quot;} -->
+<h3 class="sectionedit7" id="mount_the_mmcsd_card_via_fstab">Mount the MMC/SD card via fstab</h3>
+<div class="level3">
+
+<p>
+To get partition mounted automatically you have to edit and change START=20 to START=98 in the /etc/init.d/fstab init script.
+</p>
+<pre class="code">uci add fstab mount
+uci set fstab.@mount[0].enabled=1
+uci set fstab.@mount[0].fstype=ext3
+uci set fstab.@mount[0].device=/dev/mmcblk0p1
+uci set fstab.@mount[0].target=/mnt/mmc
+uci set fstab.@mount[0].options=rw,sync,noatime
+uci commit fstab
+/etc/init.d/fstab restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Mount the MMC\/SD card via fstab&quot;,&quot;hid&quot;:&quot;mount_the_mmcsd_card_via_fstab&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:7,&quot;range&quot;:&quot;1525-&quot;} -->

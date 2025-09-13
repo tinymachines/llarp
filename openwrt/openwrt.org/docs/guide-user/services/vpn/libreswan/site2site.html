@@ -1,0 +1,125 @@
+
+<h1 class="sectionedit1" id="ipsec_site-to-site">IPsec site-to-site</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;IPsec site-to-site&quot;,&quot;hid&quot;:&quot;ipsec_site-to-site&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-33&quot;} -->
+<h2 class="sectionedit2" id="background">Background</h2>
+<div class="level2">
+
+<p>
+In our office environment we use CentOS on many of our internet facing servers.
+In RedHat Enterprise Linux 5 the IPsec implementation was provided by racoon (KAME), userspace tools, and NETKEY in the kernel.
+We set up our six office <abbr title="Wide Area Network">WAN</abbr> using this and when it&#039;s up and running it seems to be stable, however adding a new site to the <abbr title="Wide Area Network">WAN</abbr> seems to require resetting all of the IPsec server across the <abbr title="Wide Area Network">WAN</abbr>.
+This can be accomplished by killing off the racoon service and starting it again.
+This is not particularly helpful.
+RedHat have decided to move to Libreswan for their Enterprise Linux 6 release as the default IPsec implementation using pluto for the userspace tools but keeping with NETKEY for the kernel stack.
+We are now in the process of migrating all our IPsec <abbr title="Virtual Private Network">VPN</abbr> connections to CentOS 6.x.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Background&quot;,&quot;hid&quot;:&quot;background&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;34-857&quot;} -->
+<h2 class="sectionedit3" id="preparation">Preparation</h2>
+<div class="level2">
+
+<p>
+<a href="https://en.wikipedia.org/wiki/IPsec" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/IPsec">IPsec</a> <a href="http://www.linuxjournal.com/article/9916" class="urlextern" title="http://www.linuxjournal.com/article/9916" rel="ugc nofollow">Linux Journal IPsec article</a> A good explanation IPsec implementations in Linux.
+A good grounding on Libreswan and openVPN with discussion about the two kernel stacks KLIPS and NETKEY as well as the userspace tools pluto (Libreswan) and racoon (KAME).
+Note KLIPS is used in openWRT and NETKEY is used in RHEL 6.x / CentOS 6.x the peculiarities of this are discussed later.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Preparation&quot;,&quot;hid&quot;:&quot;preparation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;858-1311&quot;} -->
+<h3 class="sectionedit4" id="installation">Installation</h3>
+<div class="level3">
+<pre class="code bash">opkg <span class="kw2">install</span> libreswan</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation&quot;,&quot;hid&quot;:&quot;installation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;1312-1378&quot;} -->
+<h2 class="sectionedit5" id="configuration">Configuration</h2>
+<div class="level2">
+<pre class="code bash"><span class="co0"># vi /etc/ipsec.conf</span>
+include <span class="sy0">/</span>etc<span class="sy0">/</span>ipsec.d<span class="sy0">/*</span>.conf
+&nbsp;
+<span class="co0"># vi /etc/ipsec.secrets</span>
+include <span class="sy0">/</span>etc<span class="sy0">/</span>ipsec.d<span class="sy0">/*</span>.secret</pre>
+
+<p>
+These two lines allow you to create separate configuration and secret files in the <code>/etc/ipsec.d/</code> directory for each connection.
+</p>
+
+<p>
+By convention it makes sense to name these files: <code>&lt;connection_name&gt;.conf</code> and <code>&lt;connection_name&gt;.secrets</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:5,&quot;range&quot;:&quot;1379-1775&quot;} -->
+<h3 class="sectionedit6" id="dns">DNS</h3>
+<div class="level3">
+
+<p>
+Connecting two private networks opens an interesting <abbr title="Domain Name System">DNS</abbr> challenge.
+The ACME <abbr title="Domain Name System">DNS</abbr> server does not only resolve official server names to <abbr title="Internet Protocol">IP</abbr> addresses but also those of ACME internal servers.
+E.g. hobbit.acme.inc and its <abbr title="Internet Protocol">IP</abbr> 10.1.2.42.
+As we have established a <abbr title="Virtual Private Network">VPN</abbr> connection we already can reach this host by its address.
+To get it by its name too we have to offer a name resolution in our home domain.
+With OpenWrt being very powerful we assume that our router has an active Dnsmasq <abbr title="Domain Name System">DNS</abbr> server.
+So we have two possibilities to resolve acme.inc addresses.
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong>Manually</strong>: Each acme.inc server and its <abbr title="Internet Protocol">IP</abbr> address is put into the OpenWrt local hosts file. Dnsmasq will read this list and answer <abbr title="Domain Name System">DNS</abbr> requests for those ACME machines correctly. This should only be an option if we have a very restrictive <abbr title="Virtual Private Network">VPN</abbr> connection.</div>
+</li>
+<li class="level1"><div class="li"> <strong>Automatically</strong>: Dnsmasq forwards requests for acme.inc through the tunnel to the ACME <abbr title="Domain Name System">DNS</abbr> server. This avoids double work.</div>
+</li>
+</ul>
+
+<p>
+<abbr title="Domain Name System">DNS</abbr> forwarding through <abbr title="Virtual Private Network">VPN</abbr> tunnels is almost the same as normal <abbr title="Domain Name System">DNS</abbr> forwarding with one exception.
+Dnsmasq must use the correct source interface.
+By default it will use the OpenWrt internet <abbr title="Internet Protocol">IP</abbr> for it&#039;s requests but this cannot be tunneled.
+So just expand the Dnsmasq forward settings in LuCI with the OpenWrt internal <abbr title="Internet Protocol">IP</abbr> address.
+In our scenario we wan&#039;t to reach ACME <abbr title="Domain Name System">DNS</abbr> at 10.1.2.250 by using our internal <abbr title="Internet Protocol">IP</abbr> 192.168.2.82.
+Don&#039;t forget to add this domain on the whitelist otherwise Dnsmasq will detect rebind attacks and discard requests.
+</p>
+
+<p>
+<a href="/_detail/doc/howto/ipsec_dns.png?id=docs%3Aguide-user%3Aservices%3Avpn%3Alibreswan%3Asite2site" class="media" title="doc:howto:ipsec_dns.png"><img src="/_media/doc/howto/ipsec_dns.png" class="media" loading="lazy" alt="" /></a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;DNS&quot;,&quot;hid&quot;:&quot;dns&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:6,&quot;range&quot;:&quot;1776-3309&quot;} -->
+<h2 class="sectionedit7" id="troubleshooting">Troubleshooting</h2>
+<div class="level2">
+
+<p>
+If you are having problems getting the IPsec stuff to work, try dropping the firewalls.
+</p>
+
+</div>
+
+<h4 id="usefull_commands">Usefull commands</h4>
+<div class="level4">
+<pre class="code bash"><span class="co0"># Interface &amp; routing</span>
+<span class="kw2">ip</span> a; <span class="kw2">ip</span> r
+<span class="kw2">ip xfrm</span> policy
+<span class="kw2">ip xfrm</span> state
+&nbsp;
+<span class="co0"># IPsec related</span>
+ipsec look <span class="sy0">&lt;</span>connection name<span class="sy0">&gt;</span>
+ipsec auto <span class="re5">--add</span> <span class="sy0">&lt;</span>connection name<span class="sy0">&gt;</span>
+ipsec auto <span class="re5">--up</span> <span class="sy0">&lt;</span>connection name<span class="sy0">&gt;</span>
+ipsec auto <span class="re5">--down</span> <span class="sy0">&lt;</span>connection name<span class="sy0">&gt;</span>
+ipsec auto <span class="re5">--delete</span> <span class="sy0">&lt;</span>connection name<span class="sy0">&gt;</span>
+&nbsp;
+<span class="co0"># Ping</span>
+<span class="kw2">ping</span> <span class="re5">-I</span> <span class="sy0">&lt;</span>local_internal_interface <span class="sy0">|</span> local_internal_ip<span class="sy0">&gt;</span> <span class="sy0">&lt;</span>remote_internal_ip<span class="sy0">&gt;</span>
+&nbsp;
+<span class="co0"># TCP dump</span>
+tcpdump <span class="re5">-i</span> <span class="sy0">&lt;</span>external interface<span class="sy0">&gt;</span>
+tcpdump <span class="re5">-i</span> <span class="sy0">&lt;</span>internal interface<span class="sy0">&gt;</span>
+&nbsp;
+<span class="co0"># Firewall</span>
+nft list ruleset</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Troubleshooting&quot;,&quot;hid&quot;:&quot;troubleshooting&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:7,&quot;range&quot;:&quot;3310-&quot;} -->

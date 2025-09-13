@@ -1,0 +1,283 @@
+
+<h1 class="sectionedit1" id="webdav_share">WebDAV Share</h1>
+<div class="level1">
+
+<p>
+<a href="https://en.wikipedia.org/wiki/WebDAV" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/WebDAV">WebDAV</a> is an <abbr title="Hypertext Transfer Protocol">HTTP</abbr> based file transfer protocol.
+It&#039;s integrated into Windows, GNOME, KDE and many programs for backups, file sharing and media players.
+</p>
+
+<p>
+It&#039;s installed as a plugin for a web server.
+Unfortunately OpenWrt&#039;s uhttpd doesn&#039;t support it.
+If you have enough space you can install <a href="/docs/guide-user/services/webserver/lighttpd" class="wikilink1" title="docs:guide-user:services:webserver:lighttpd" data-wiki-id="docs:guide-user:services:webserver:lighttpd">Lighttpd webserver</a> and configure WebDAV share.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;WebDAV Share&quot;,&quot;hid&quot;:&quot;webdav_share&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-427&quot;} -->
+<h3 class="sectionedit2" id="webdav_with_lighttpd">WebDAV with Lighttpd</h3>
+<div class="level3">
+
+<p>
+If don&#039;t have yet the Lighttpd install it:
+</p>
+<pre class="code bash">opkg <span class="kw2">install</span> lighttpd</pre>
+
+<p>
+If you didn&#039;t uninstalled the default <code>ughttpd</code> webserver you should change the Lighttpd port to avoid conflicts e.g. for the <abbr title="Hypertext Transfer Protocol">HTTP</abbr> set to 2080 and for the <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> set port to 2443.
+In the <code>/etc/lighttpd/lighttpd.conf</code> by the <code>server.port = 2080</code>. For the <abbr title="Transport Layer Security">TLS</abbr> you better to create a separate file <code>/etc/lighttpd/conf.d/40-tls-enable_custom.conf</code>:
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-user/services/nas/webdav?codeblock=1" title="Download Snippet" class="mediafile mf_conf">/etc/lighttpd/conf.d/40-tls-enable_custom.conf</a></dt>
+<dd><pre class="code">$SERVER[&quot;socket&quot;] == &quot;:2443&quot; {
+  ssl.engine = &quot;enable&quot;
+}
+
+$SERVER[&quot;socket&quot;] == &quot;[::]:2443&quot; {
+  ssl.engine = &quot;enable&quot;
+}</pre>
+</dd></dl>
+
+<p>
+If you already have the Lighttpd that is used by a firmware then update it and it&#039;s modules to avoid conflicts:
+</p>
+<pre class="code bash">opkg update
+opkg list-upgradable <span class="sy0">|</span> <span class="kw2">cut</span> <span class="re5">-f</span> <span class="nu0">1</span> <span class="re5">-d</span> <span class="st_h">' '</span> <span class="sy0">|</span> <span class="kw2">grep</span> lighttpd <span class="sy0">|</span> <span class="kw2">xargs</span> opkg upgrade</pre>
+
+<p>
+Install the Basic Auth and WebDAV modules:
+</p>
+<pre class="code bash">opkg <span class="kw2">install</span> lighttpd-mod-auth lighttpd-mod-authn_file lighttpd-mod-webdav</pre>
+
+<p>
+Assuming that USB drive is mounted to <code>/mnt/disk/</code> folder:
+</p>
+<pre class="code bash"><span class="kw2">mkdir</span> <span class="re5">-p</span> <span class="sy0">/</span>mnt<span class="sy0">/</span>disk<span class="sy0">/</span>dav <span class="sy0">/</span>var<span class="sy0">/</span>lib<span class="sy0">/</span>lighttpd
+<span class="kw2">chown</span> http:www-data <span class="sy0">/</span>mnt<span class="sy0">/</span>disk<span class="sy0">/</span>dav <span class="sy0">/</span>var<span class="sy0">/</span>lib<span class="sy0">/</span>lighttpd
+<span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>lighttpd<span class="sy0">/</span>conf.d<span class="sy0">/</span><span class="nu0">99</span>-disk.conf
+<span class="re1">$HTTP</span><span class="br0">&#91;</span><span class="st0">&quot;url&quot;</span><span class="br0">&#93;</span> =~ <span class="st0">&quot;^/dav($|/)&quot;</span> <span class="br0">&#123;</span>
+  server.document-root := <span class="st0">&quot;/mnt/disk/&quot;</span>
+  auth.backend = <span class="st0">&quot;plain&quot;</span>
+  auth.backend.plain.userfile = <span class="st0">&quot;/etc/lighttpd/webdav.shadow&quot;</span>
+  auth.require = <span class="br0">&#40;</span>
+    <span class="st0">&quot;/dav/&quot;</span> =<span class="sy0">&gt;</span> <span class="br0">&#40;</span><span class="st0">&quot;method&quot;</span> =<span class="sy0">&gt;</span> <span class="st0">&quot;basic&quot;</span>, <span class="st0">&quot;realm&quot;</span> =<span class="sy0">&gt;</span> <span class="st0">&quot;disk&quot;</span>, <span class="st0">&quot;require&quot;</span> =<span class="sy0">&gt;</span> <span class="st0">&quot;valid-user&quot;</span><span class="br0">&#41;</span>
+  <span class="br0">&#41;</span>
+  auth.cache = <span class="br0">&#40;</span><span class="st0">&quot;max-age&quot;</span> =<span class="sy0">&gt;</span> <span class="st0">&quot;3600&quot;</span><span class="br0">&#41;</span>
+<span class="br0">&#125;</span>
+EOF</pre>
+
+<p>
+Now set a password:
+</p>
+<pre class="code bash"><span class="kw3">echo</span> <span class="st0">&quot;youruser:somesecret&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>lighttpd<span class="sy0">/</span>webdav.shadow</pre>
+
+<p>
+<strong>Note:</strong> your secret is not encoded and saved on router in clear text for a better performance.
+If a hacker get access to the file it can see your password.
+So don&#039;t put here a password that you are using anywhere else.
+Just generate a new one for example with the command:
+</p>
+<pre class="code bash"><span class="sy0">&lt;</span> <span class="sy0">/</span>dev<span class="sy0">/</span>urandom <span class="kw2">tr</span> <span class="re5">-dc</span> _A-Z-a-z-<span class="nu0">0</span>-<span class="nu0">9</span> <span class="sy0">|</span> <span class="kw2">head</span> <span class="re5">-c</span><span class="co1">${1:-32}</span>; <span class="kw3">echo</span></pre>
+
+<p>
+And finally restart Lighttpd:
+</p>
+<pre class="code bash"><span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>lighttpd restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;WebDAV with Lighttpd&quot;,&quot;hid&quot;:&quot;webdav_with_lighttpd&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;428-2507&quot;} -->
+<h3 class="sectionedit3" id="troubleshooting">Troubleshooting</h3>
+<div class="level3">
+
+<p>
+If you got the error:
+</p>
+<pre class="code">(../src/mod_webdav.c.1327) sqlite3_open() &#039;/var/lib/lighttpd/webdav.db&#039;: unable to open database file
+(../src/server.c.1943) Configuration of plugins failed. Going down.</pre>
+
+<p>
+Then you need to create the file manually with <code>touch /var/lib/lighttpd/webdav.db</code>.
+</p>
+
+<p>
+To test configuration use <code>lighttpd -tt -f /etc/lighttpd/lighttpd.conf</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Troubleshooting&quot;,&quot;hid&quot;:&quot;troubleshooting&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:3,&quot;range&quot;:&quot;2508-2904&quot;} -->
+<h3 class="sectionedit4" id="test_it">Test it</h3>
+<div class="level3">
+
+<p>
+Open in a browser <a href="http://192.168.1.1/dav/" class="urlextern" title="http://192.168.1.1/dav/" rel="ugc nofollow">http://192.168.1.1/dav/</a> and you&#039;ll be prompted for credentials.
+After login you&#039;ll see a directory listing but this not yet a WebDAV, just an additional feature.
+</p>
+
+<p>
+To connect to WebDAV see <a href="https://www.webdavsystem.com/server/access/" class="urlextern" title="https://www.webdavsystem.com/server/access/" rel="ugc nofollow">Accessing WebDAV Server</a>.
+</p>
+
+<p>
+A quick test can be done with a <code>curl</code> (replace the <code>youruser</code>):
+</p>
+<pre class="code bash">curl <span class="re5">-u</span> youruser:pass <span class="re5">-X</span> PROPFIND <span class="re5">-H</span> <span class="st_h">'Depth: 1'</span> http:<span class="sy0">//</span>192.168.1.1<span class="sy0">/</span>dav<span class="sy0">/</span></pre>
+
+<p>
+You must see a 207 status code and XML response with directory listing.
+</p>
+
+<p>
+See more details and examples <a href="https://gist.github.com/stokito/cf82ce965718ce87f36b78f7501d7940" class="urlextern" title="https://gist.github.com/stokito/cf82ce965718ce87f36b78f7501d7940" rel="ugc nofollow">WebDAV with curl</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Test it&quot;,&quot;hid&quot;:&quot;test_it&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:4,&quot;range&quot;:&quot;2905-3554&quot;} -->
+<h3 class="sectionedit5" id="don_t_forget_about_encryption">Don&#039;t forget about encryption!</h3>
+<div class="level3">
+
+<p>
+Please note that you must configure <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> if you are going to access your files from internet.
+You&#039;ll need to <a href="/docs/guide-user/services/tls/certs" class="wikilink1" title="docs:guide-user:services:tls:certs" data-wiki-id="docs:guide-user:services:tls:certs">get a TLS certificate</a> and  <a href="https://redmine.lighttpd.net/projects/lighttpd/wiki/Docs_SSL" class="urlextern" title="https://redmine.lighttpd.net/projects/lighttpd/wiki/Docs_SSL" rel="ugc nofollow">configure lighttpd for HTTPS</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Don&#039;t forget about encryption!&quot;,&quot;hid&quot;:&quot;don_t_forget_about_encryption&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:5,&quot;range&quot;:&quot;3555-3866&quot;} -->
+<h3 class="sectionedit6" id="browser_ui_for_the_webdav_share">Browser UI for the WebDAV share</h3>
+<div class="level3">
+
+<p>
+As with usual <abbr title="Hypertext Transfer Protocol">HTTP</abbr> you can see (GET) any file directly from a browser but you can&#039;t see a listing of files in a folder. That&#039;s because for a listing is used a PROPFIND method but not just GET.
+But you can install a <a href="https://github.com/stokito/webdav-browser-extension" class="urlextern" title="https://github.com/stokito/webdav-browser-extension" rel="ugc nofollow">browser extension</a> or more advanced <a href="https://chrome.google.com/webstore/detail/file-management-webdav/famepaffkmmhdefbapbadnniioekdppm" class="urlextern" title="https://chrome.google.com/webstore/detail/file-management-webdav/famepaffkmmhdefbapbadnniioekdppm" rel="ugc nofollow">app</a>.
+</p>
+
+<p>
+But a better is to install the small and nice UI <a href="https://github.com/dom111/webdav-js" class="urlextern" title="https://github.com/dom111/webdav-js" rel="ugc nofollow">webdav-js</a>. Just create a file in dav folder&#039;s root `/mnt/disk/dav/index.html`
+</p>
+<pre class="code html4strict"><span class="sc0">&lt;!DOCTYPE html&gt;</span>
+<span class="sc2">&lt;<a href="http://december.com/html/4/element/html.html"><span class="kw2">html</span></a> <span class="kw3">lang</span><span class="sy0">=</span><span class="st0">&quot;en&quot;</span>&gt;</span>
+<span class="sc2">&lt;<a href="http://december.com/html/4/element/head.html"><span class="kw2">head</span></a>&gt;</span>
+<span class="sc2">&lt;<a href="http://december.com/html/4/element/meta.html"><span class="kw2">meta</span></a> <span class="kw3">charset</span><span class="sy0">=</span><span class="st0">&quot;UTF-8&quot;</span>&gt;</span>
+<span class="sc2">&lt;<a href="http://december.com/html/4/element/title.html"><span class="kw2">title</span></a>&gt;</span>WebDAV<span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/title.html"><span class="kw2">title</span></a>&gt;</span>
+<span class="sc2">&lt;<a href="http://december.com/html/4/element/link.html"><span class="kw2">link</span></a> <span class="kw3">rel</span><span class="sy0">=</span><span class="st0">&quot;stylesheet&quot;</span> <span class="kw3">href</span><span class="sy0">=</span><span class="st0">&quot;https://cdn.jsdelivr.net/gh/dom111/webdav-js/assets/css/style-min.css&quot;</span><span class="sy0">/</span>&gt;</span>
+<span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/head.html"><span class="kw2">head</span></a>&gt;</span>
+<span class="sc2">&lt;<a href="http://december.com/html/4/element/body.html"><span class="kw2">body</span></a>&gt;</span>
+<span class="sc2">&lt;<a href="http://december.com/html/4/element/script.html"><span class="kw2">script</span></a> <span class="kw3">src</span><span class="sy0">=</span><span class="st0">&quot;https://cdn.jsdelivr.net/gh/dom111/webdav-js/src/webdav-min.js&quot;</span>&gt;&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/script.html"><span class="kw2">script</span></a>&gt;</span>
+<span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/body.html"><span class="kw2">body</span></a>&gt;</span>
+<span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/html.html"><span class="kw2">html</span></a>&gt;</span></pre>
+
+<p>
+Then open <a href="http://192.168.1.1/dav/" class="urlextern" title="http://192.168.1.1/dav/" rel="ugc nofollow">http://192.168.1.1/dav/</a> and you&#039;ll see a simple file manager. Internally it performs all webdav operations with AJAX e.g. sends a PROPFIND to list files.
+</p>
+
+<p>
+To set it up so you don&#039;t have to add this `index.html` to every directory, modify `/etc/lighttpd/conf.d/99-disk.conf` to add the last two lines to enable directory listing and use index.html on every directory.
+</p>
+<pre class="code">$HTTP[&quot;url&quot;] =~ &quot;^/dav($|/)&quot; {
+  server.document-root := &quot;/mnt/disk/&quot;
+  auth.backend = &quot;plain&quot;
+  auth.backend.plain.userfile = &quot;/etc/lighttpd/webdav.shadow&quot;
+  auth.require = (
+    &quot;/dav/&quot; =&gt; (&quot;method&quot; =&gt; &quot;basic&quot;, &quot;realm&quot; =&gt; &quot;disk&quot;, &quot;require&quot; =&gt; &quot;valid-user&quot;)
+  )
+  auth.cache = (&quot;max-age&quot; =&gt; &quot;3600&quot;)
+  
+  # Enable directory listing to see folders
+  dir-listing.activate = &quot;enable&quot;
+  index-file.names = ( &quot;index.html&quot; )
+} </pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Browser UI for the WebDAV share&quot;,&quot;hid&quot;:&quot;browser_ui_for_the_webdav_share&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:6,&quot;range&quot;:&quot;3867-5636&quot;} -->
+<h3 class="sectionedit7" id="online_apps_and_pwas">Online apps and PWAs</h3>
+<div class="level3">
+
+<p>
+You can also try an online apps that can connect directly to your WebDAV share to backup data. Some notable apps:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="https://diffuse.sh/" class="urlextern" title="https://diffuse.sh/" rel="ugc nofollow">Diffuse</a> a music player <a href="https://github.com/icidasset/diffuse" class="urlextern" title="https://github.com/icidasset/diffuse" rel="ugc nofollow">Source code</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://app.super-productivity.com/" class="urlextern" title="https://app.super-productivity.com/" rel="ugc nofollow">Supper Productivity</a> a powerful TODO App. <a href="https://github.com/johannesjo/super-productivity" class="urlextern" title="https://github.com/johannesjo/super-productivity" rel="ugc nofollow">Source code</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://buttercup.pw/" class="urlextern" title="https://buttercup.pw/" rel="ugc nofollow">Buttercup</a> a password manager as a browser extension.</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://app.keeweb.info/" class="urlextern" title="https://app.keeweb.info/" rel="ugc nofollow">KeeWeb</a> a password manager as PWA</div>
+</li>
+</ul>
+
+<p>
+To allow online apps to connect with your WebDAV it need a CORS enabled.
+Here is an example <a href="https://gist.github.com/stokito/0a6274106d407ba6d9fb776e7773445d" class="urlextern" title="https://gist.github.com/stokito/0a6274106d407ba6d9fb776e7773445d" rel="ugc nofollow">https://gist.github.com/stokito/0a6274106d407ba6d9fb776e7773445d</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Online apps and PWAs&quot;,&quot;hid&quot;:&quot;online_apps_and_pwas&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:7,&quot;range&quot;:&quot;5637-6347&quot;} -->
+<h3 class="sectionedit8" id="useful_apps">Useful Apps</h3>
+<div class="level3">
+
+<p>
+Useful mobile apps that supports WebDAV sync:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="https://www.orgzly.com/" class="urlextern" title="https://www.orgzly.com/" rel="ugc nofollow">Orgzly</a> - Outliner for notes and to-do lists. <a href="https://github.com/orgzly" class="urlextern" title="https://github.com/orgzly" rel="ugc nofollow">Source code</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://www.cloudbeatsapp.com/" class="urlextern" title="https://www.cloudbeatsapp.com/" rel="ugc nofollow">CloudBeats</a> - a music player. Proprietary.</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/phpbg/easysync" class="urlextern" title="https://github.com/phpbg/easysync" rel="ugc nofollow">EasySync</a> - two way synchronization of images, videos, audio and downloads.</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://play.google.com/store/apps/details?id=dk.tacit.android.foldersync.lite" class="urlextern" title="https://play.google.com/store/apps/details?id=dk.tacit.android.foldersync.lite" rel="ugc nofollow">FolderSync</a> - a backup and sync e.g. you can upload photos automatically. Proprietary.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Useful Apps&quot;,&quot;hid&quot;:&quot;useful_apps&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:8,&quot;range&quot;:&quot;6348-6907&quot;} -->
+<h3 class="sectionedit9" id="links_and_docs">Links and docs</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> <a href="https://redmine.lighttpd.net/projects/1/wiki/docs_modauth" class="urlextern" title="https://redmine.lighttpd.net/projects/1/wiki/docs_modauth" rel="ugc nofollow">Module mod_auth - Using authentication</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://redmine.lighttpd.net/projects/1/wiki/Docs_ModWebDAV" class="urlextern" title="https://redmine.lighttpd.net/projects/1/wiki/Docs_ModWebDAV" rel="ugc nofollow">Module mod_webdav - WebDAV</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://redmine.lighttpd.net/projects/1/wiki/Docs_ModSecDownload" class="urlextern" title="https://redmine.lighttpd.net/projects/1/wiki/Docs_ModSecDownload" rel="ugc nofollow">Module mod_secdownload - Secure and fast downloading</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/webdavdevs/awesome-webdav" class="urlextern" title="https://github.com/webdavdevs/awesome-webdav" rel="ugc nofollow">Awesome WebDAV</a> a list of software that works with WebDAV.</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://gist.github.com/stokito/77c42f8aff2dade91621c1051f73e58c" class="urlextern" title="https://gist.github.com/stokito/77c42f8aff2dade91621c1051f73e58c" rel="ugc nofollow">WebDAV with Lighttpd on Turris Omnia (TurrisOS)</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/yurt-page/openwrt-lighttpd-public" class="urlextern" title="https://github.com/yurt-page/openwrt-lighttpd-public" rel="ugc nofollow">openwrt-lighttpd-public</a>  OpenWrt configuration for Lighttpd with WebDAV and autosharing </div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Links and docs&quot;,&quot;hid&quot;:&quot;links_and_docs&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:9,&quot;range&quot;:&quot;6908-7641&quot;} -->
+<h3 class="sectionedit10" id="zeroconf_autodiscovery">ZeroConf autodiscovery</h3>
+<div class="level3">
+
+<p>
+You can advertise a WebDAV share with <a href="/docs/guide-developer/mdns" class="wikilink1" title="docs:guide-developer:mdns" data-wiki-id="docs:guide-developer:mdns">umdns</a>.
+Then it will be seen in Network folder of a file manager in GNOME and KDE and can be <a href="https://kodi.wiki/view/Avahi_Zeroconf" class="urlextern" title="https://kodi.wiki/view/Avahi_Zeroconf" rel="ugc nofollow">discovered from a Kodi media player</a>.
+</p>
+
+<p>
+Install the umdns package with <code>opkg install umdns</code> and create a service description file:
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-user/services/nas/webdav?codeblock=12" title="Download Snippet" class="mediafile mf_json">/etc/umdns/lighttpd_webdav.json</a></dt>
+<dd><pre class="code yaml"><span class="br0">&#123;</span><span class="co3">
+  &quot;lighttpd_webdav&quot;</span><span class="sy2">: </span><span class="br0">&#123;</span><span class="co3">
+    &quot;service&quot;</span><span class="sy2">: </span><span class="st0">&quot;_webdav._tcp.local&quot;</span>,<span class="co3">
+    &quot;port&quot;</span><span class="sy2">: </span>80,<span class="co3">
+    &quot;txt&quot;</span><span class="sy2">: </span><span class="br0">&#91;</span>
+      <span class="st0">&quot;path=/dav/&quot;</span>,
+      <span class="st0">&quot;u=media&quot;</span>
+    <span class="br0">&#93;</span>
+  <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+</dd></dl>
+
+<p>
+The reload the umdns service with: <code>ubus call umdns reload</code> or <code>service umdns reload</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;ZeroConf autodiscovery&quot;,&quot;hid&quot;:&quot;zeroconf_autodiscovery&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:10,&quot;range&quot;:&quot;7642-&quot;} -->

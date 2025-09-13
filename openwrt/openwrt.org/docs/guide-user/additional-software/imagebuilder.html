@@ -1,0 +1,604 @@
+
+<h1 class="sectionedit1" id="using_the_image_builder">Using the Image Builder</h1>
+<div class="level1">
+
+<p>
+See also:
+<a href="/docs/guide-developer/imagebuilder_frontends" class="wikilink1" title="docs:guide-developer:imagebuilder_frontends" data-wiki-id="docs:guide-developer:imagebuilder_frontends">Image Builder frontends</a>,
+<a href="/docs/guide-developer/start#using_the_toolchain" class="wikilink1" title="docs:guide-developer:start" data-wiki-id="docs:guide-developer:start">Using the toolchain</a>,
+<a href="/docs/guide-developer/toolchain/beginners-build-guide" class="wikilink1" title="docs:guide-developer:toolchain:beginners-build-guide" data-wiki-id="docs:guide-developer:toolchain:beginners-build-guide">Quick image building guide</a>
+</p>
+
+<p>
+The Image Builder (previously called the Image Generator) is a pre-compiled environment suitable for creating custom images without the need for compiling them from source.
+It downloads pre-compiled packages and integrates them in a single flashable image.
+</p>
+
+<p>
+Doing so is useful if:
+</p>
+<ul>
+<li class="level1"><div class="li"> you want to fit more packages in a small flash size</div>
+</li>
+<li class="level1"><div class="li"> you want to follow development snapshots</div>
+</li>
+<li class="level1"><div class="li"> your device has 32MB or less RAM and opkg does not work properly</div>
+</li>
+<li class="level1"><div class="li"> you want to mass-flash dozens of devices and you need a specific firmware setup</div>
+</li>
+</ul>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap">
+<p>
+The Image Builder images are not identical to official images as they obtain pre-generated packages.
+When recent/important changes are made, there can be some delay for these packages to propagate and it is best to check that packages were uploaded after the date of the imagebuilder/change.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Using the Image Builder&quot;,&quot;hid&quot;:&quot;using_the_image_builder&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1132&quot;} -->
+<h2 class="sectionedit4" id="prerequisites">Prerequisites</h2>
+<div class="level2">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap"><ul>
+<li class="level1"><div class="li"> The Image Builder runs only in 64-bit Linux. You can however run a 64-bit Linux in PC or VM, e.g. VirtualBox, even from 32-bit Windows.</div>
+</li>
+<li class="level1"><div class="li"> The Image Builder has similar prerequisites as the <a href="/docs/guide-developer/toolchain/install-buildsystem" class="wikilink1" title="docs:guide-developer:toolchain:install-buildsystem" data-wiki-id="docs:guide-developer:toolchain:install-buildsystem">Build system</a>.</div>
+</li>
+</ul>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:6,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+Example dependencies in the most common distros:
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Prerequisites&quot;,&quot;hid&quot;:&quot;prerequisites&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;1133-1498&quot;} -->
+<h3 class="sectionedit7" id="arch">Arch</h3>
+<div class="level3">
+<pre class="code bash"><span class="kw2">sudo</span> pacman <span class="re5">-S</span> <span class="re5">--needed</span> base-devel ncurses zlib <span class="kw2">gawk</span> <span class="kw2">git</span> <span class="kw2">gettext</span> \
+openssl libxslt <span class="kw2">wget</span> <span class="kw2">unzip</span> python python-distutils-extra</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Arch&quot;,&quot;hid&quot;:&quot;arch&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;1499-1658&quot;} -->
+<h3 class="sectionedit8" id="fedora">Fedora</h3>
+<div class="level3">
+<pre class="code bash"><span class="kw2">sudo</span> dnf <span class="kw2">install</span> <span class="kw2">git</span> <span class="kw2">gawk</span> <span class="kw2">gettext</span> ncurses-devel zlib-devel \
+openssl-devel libxslt <span class="kw2">wget</span> <span class="kw2">which</span> <span class="sy0">@</span>c-development <span class="sy0">@</span>development-tools \
+<span class="sy0">@</span>development-libs zlib-static <span class="kw2">which</span> python3 <span class="kw2">perl</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Fedora&quot;,&quot;hid&quot;:&quot;fedora&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:8,&quot;range&quot;:&quot;1659-1875&quot;} -->
+<h3 class="sectionedit9" id="debianubuntumint">Debian / Ubuntu / Mint</h3>
+<div class="level3">
+<pre class="code bash"><span class="kw2">sudo</span> apt <span class="kw2">install</span> build-essential <span class="kw2">file</span> libncurses-dev zlib1g-dev <span class="kw2">gawk</span> <span class="kw2">git</span> \
+<span class="kw2">gettext</span> libssl-dev xsltproc rsync <span class="kw2">wget</span> <span class="kw2">unzip</span> python3 python3-distutils</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Debian \/ Ubuntu \/ Mint&quot;,&quot;hid&quot;:&quot;debianubuntumint&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:9,&quot;range&quot;:&quot;1876-2075&quot;} -->
+<h3 class="sectionedit10" id="wsl">WSL</h3>
+<div class="level3">
+
+<p>
+This method is NOT officially supported.
+</p>
+
+<p>
+But it works. <a href="/docs/guide-developer/toolchain/wsl" class="wikilink1" title="docs:guide-developer:toolchain:wsl" data-wiki-id="docs:guide-developer:toolchain:wsl">Build system setup WSL</a>
+</p>
+
+<p>
+Recommend to use VirtualBox with Debian or DietPi(Debian) for less resource and config.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;WSL&quot;,&quot;hid&quot;:&quot;wsl&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:10,&quot;range&quot;:&quot;2076-2296&quot;} -->
+<h2 class="sectionedit11" id="obtaining_the_image_builder">Obtaining the Image Builder</h2>
+<div class="level2">
+
+<p>
+You can download an archive that contains the <strong>Image Builder</strong>, it is usually located in the same download page where you find the firmware image for your device.
+</p>
+
+<p>
+For example, this is the page where you can download all firmware images for <strong>ath79/generic</strong> devices:
+<a href="https://downloads.openwrt.org/snapshots/targets/ath79/generic/" class="urlextern" title="https://downloads.openwrt.org/snapshots/targets/ath79/generic/" rel="ugc nofollow">https://downloads.openwrt.org/snapshots/targets/ath79/generic/</a>
+and you will find a <strong>openwrt-imagebuilder-ath79-generic.Linux-x86_64.tar.zst</strong> archive with the image builder in it.
+Also, it is always created by the build system because it is needed to create the image file.
+If the option “<strong>Build the OpenWrt Image Builder</strong>” is enabled, the image builder will be generated in the same folder you find firmware images (<code>source/bin/targets/xxx</code>) and you can use it to create more images from the packages you obtained during compilation.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Obtaining the Image Builder&quot;,&quot;hid&quot;:&quot;obtaining_the_image_builder&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:11,&quot;range&quot;:&quot;2297-3150&quot;} -->
+<h2 class="sectionedit12" id="usage">Usage</h2>
+<div class="level2">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:13,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap">
+<p>
+All operations should be performed with a non-root user account.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:14,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+Unpack the archive and change the working directory:
+</p>
+<pre class="code bash"><span class="kw2">tar</span> <span class="re5">--zstd</span> <span class="re5">-xvf</span> openwrt-imagebuilder-<span class="sy0">*</span>.tar.zst
+<span class="kw3">cd</span> openwrt-imagebuilder-<span class="sy0">*/</span></pre>
+
+<p>
+The image building can be customized with the following variables:
+</p>
+<div class="table sectionedit15"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign"> Variable               </th><th class="col1 leftalign"> Description                                        </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> <code>PROFILE</code>            </td><td class="col1 leftalign"> Specifies the target image to build                </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> <code>PACKAGES</code>           </td><td class="col1 leftalign"> A list of packages to embed into the image         </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> <code>FILES</code>              </td><td class="col1 leftalign"> Directory with custom files to include             </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"> <code>BIN_DIR</code>            </td><td class="col1 leftalign"> Alternative output directory for the images        </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 leftalign"> <code>EXTRA_IMAGE_NAME</code>   </td><td class="col1 leftalign"> Add this to the output image filename (sanitized)  </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0 leftalign"> <code>DISABLED_SERVICES</code>  </td><td class="col1 leftalign"> A list of services to disable                      </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0 leftalign"> <code>ROOTFS_PARTSIZE</code>    </td><td class="col1 leftalign"> Size of root partition, in megabytes               </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:15,&quot;range&quot;:&quot;3477-4116&quot;} -->
+<p>
+Run <code>make help</code> to get <a href="/docs/guide-user/additional-software/imagebuilder#detailed_help" class="wikilink1" title="docs:guide-user:additional-software:imagebuilder" data-wiki-id="docs:guide-user:additional-software:imagebuilder">detailed help</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Usage&quot;,&quot;hid&quot;:&quot;usage&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:12,&quot;range&quot;:&quot;3151-4225&quot;} -->
+<h3 class="sectionedit16" id="selecting_profile">Selecting profile</h3>
+<div class="level3">
+
+<p>
+The <code>PROFILE</code> variable specifies the target image to build.
+</p>
+<pre class="code bash"><span class="re2">PROFILE</span>=<span class="st0">&quot;profile-name&quot;</span></pre>
+
+<p>
+Run <code>make info</code> to obtain a list of <a href="/docs/guide-user/additional-software/imagebuilder#available_profiles" class="wikilink1" title="docs:guide-user:additional-software:imagebuilder" data-wiki-id="docs:guide-user:additional-software:imagebuilder">available profiles</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Selecting profile&quot;,&quot;hid&quot;:&quot;selecting_profile&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:16,&quot;range&quot;:&quot;4226-4491&quot;} -->
+<h3 class="sectionedit17" id="selecting_packages">Selecting packages</h3>
+<div class="level3">
+
+<p>
+The <code>PACKAGES</code> variable allows to include and/or exclude packages in the firmware image.
+By default (empty PACKAGES variable) the Image Builder will create a minimal image with device-specific kernel and drivers, uci, ssh, switch, firewall, ppp and ipv6 support.
+</p>
+<pre class="code bash"><span class="re2">PACKAGES</span>=<span class="st0">&quot;pkg1 pkg2 pkg3 -pkg4 -pkg5 -pkg6&quot;</span></pre>
+
+<p>
+The example above will include pkg1, pkg2, pkg3, and exclude pkg4, pkg5, pkg6, note the “-” before each excluded package.
+</p>
+
+<p>
+You don&#039;t need to list all dependencies of the packages you need in this list, the Image Builder uses <code>opkg</code> to resolve automatically the package dependencies and install other required packages.
+</p>
+
+<p>
+The list of currently installed packages on your device can be obtained with the following command:
+</p>
+<pre class="code bash"><span class="kw3">echo</span> $<span class="br0">&#40;</span>opkg list-installed <span class="sy0">|</span> <span class="kw2">sed</span> <span class="re5">-e</span> <span class="st0">&quot;s/\s.*$//&quot;</span><span class="br0">&#41;</span></pre>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:18,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap">
+<p>
+Many devices are limited in storage capacity and there is no guarantee that the build system will detect when you have added too many packages to fit into the device storage space, which may render the device unbootable if installed.
+If in doubt, do not go overboard.
+Use what you had installed on the device last as a guide or create a minimal image first, install it to the device and test what you would like to add first.
+Consider removing unnecessary packages to <a href="/docs/guide-user/additional-software/saving_space" class="wikilink1" title="docs:guide-user:additional-software:saving_space" data-wiki-id="docs:guide-user:additional-software:saving_space">save firmware space</a>.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:19,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+In addition ABI versioned packages such as <code>libubus20191227</code> or similar may cause problems with image builder.
+You may get compile errors when these are provided as packages.
+To avoid issues you should omit them from image builder and let the correct versions be installed via package dependencies.
+The <code>--strip-abi</code> parameter can be used to export a normalized package list.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Selecting packages&quot;,&quot;hid&quot;:&quot;selecting_packages&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:17,&quot;range&quot;:&quot;4492-6297&quot;} -->
+<h3 class="sectionedit20" id="custom_packages">Custom packages</h3>
+<div class="level3">
+
+<p>
+If there is a custom package or ipk you would prefer to use create a <code>packages</code> directory if one does not exist and place your custom ipk within this directory.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Custom packages&quot;,&quot;hid&quot;:&quot;custom_packages&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:20,&quot;range&quot;:&quot;6298-6487&quot;} -->
+<h3 class="sectionedit21" id="custom_files">Custom files</h3>
+<div class="level3">
+
+<p>
+The <code>FILES</code> variable allows custom configuration files to be included in images built with Image Builder.
+This is especially useful if you need to change the network configuration from default before flashing, or if you are preparing an image for mass-flashing many devices.
+</p>
+<pre class="code bash"><span class="re2">FILES</span>=<span class="st0">&quot;files&quot;</span></pre>
+
+<p>
+The <code>files</code> directory should be placed in the Image Builder root directory where you issue the make command, otherwise specify an absolute/full path.
+</p>
+
+<p>
+It is strongly recommended to use <a href="/docs/guide-developer/uci-defaults" class="wikilink1" title="docs:guide-developer:uci-defaults" data-wiki-id="docs:guide-developer:uci-defaults">uci-defaults</a> to incrementally integrate only the required customization.
+This helps minimize conflicts with auto-generated settings which can change between versions.
+</p>
+
+<p>
+see: <a href="/docs/guide-user/additional-software/imagebuilder#restricting_root_access" class="wikilink1" title="docs:guide-user:additional-software:imagebuilder" data-wiki-id="docs:guide-user:additional-software:imagebuilder">uci-default_example</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Custom files&quot;,&quot;hid&quot;:&quot;custom_files&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:21,&quot;range&quot;:&quot;6488-7320&quot;} -->
+<h3 class="sectionedit22" id="building_image">Building image</h3>
+<div class="level3">
+
+<p>
+After you select the appropriate profile, packages and custom files, pass it to the <code>make image</code> command.
+</p>
+<pre class="code bash"><span class="kw2">make</span> image \
+<span class="re2">PROFILE</span>=<span class="st0">&quot;profile-name&quot;</span> \
+<span class="re2">PACKAGES</span>=<span class="st0">&quot;pkg1 pkg2 pkg3 -pkg4 -pkg5 -pkg6&quot;</span> \
+<span class="re2">FILES</span>=<span class="st0">&quot;files&quot;</span> \
+<span class="re2">DISABLED_SERVICES</span>=<span class="st0">&quot;svc1 svc2 svc3&quot;</span></pre>
+
+<p>
+After the make command is finished, the generated images are stored in the bin<em>/device-architecture</em> directory, just like if you were compiling them.
+</p>
+
+<p>
+The built image will be found under the subdirectory <code>./bin/targets/&lt;target&gt;/generic</code> or look inside .<code>/build_dir/</code> for a files <code>*-squashfs-sysupgrade.bin</code> and <code>*-squashfs-factory.bin</code> (e.g. <code>/build_dir/target-mips_24kc_musl/linux-ar71xx_tiny/tmp/openwrt-18.06.2-ar71xx-tiny-tl-wr740n-v6-squashfs-factory.bin</code>)
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Building image&quot;,&quot;hid&quot;:&quot;building_image&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:22,&quot;range&quot;:&quot;7321-8085&quot;} -->
+<h3 class="sectionedit23" id="cleaning_up">Cleaning up</h3>
+<div class="level3">
+
+<p>
+To clean up temporary build files and generated images, use the <code>make clean</code> command.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Cleaning up&quot;,&quot;hid&quot;:&quot;cleaning_up&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:23,&quot;range&quot;:&quot;8086-8196&quot;} -->
+<h3 class="sectionedit24" id="examples">Examples</h3>
+<div class="level3">
+
+<p>
+The following example shows:
+</p>
+<ul>
+<li class="level1"><div class="li"> Creating the directory for the configuration files.</div>
+</li>
+<li class="level1"><div class="li"> Using <code>scp</code> to transfer <code>uci</code> configuration files from a WL500GP router to the <code>files/etc/config</code> directory.</div>
+</li>
+<li class="level1"><div class="li"> Generating an image for WL500GP with custom packages and <code>uci</code> configuration files.</div>
+</li>
+</ul>
+<pre class="code bash"><span class="kw2">mkdir</span> <span class="re5">-p</span> files<span class="sy0">/</span>etc<span class="sy0">/</span>config
+<span class="kw2">scp</span> root<span class="sy0">@</span>192.168.1.1:<span class="sy0">/</span>etc<span class="sy0">/</span>config<span class="sy0">/</span>network files<span class="sy0">/</span>etc<span class="sy0">/</span>config<span class="sy0">/</span>
+<span class="kw2">scp</span> root<span class="sy0">@</span>192.168.1.1:<span class="sy0">/</span>etc<span class="sy0">/</span>config<span class="sy0">/</span>wireless files<span class="sy0">/</span>etc<span class="sy0">/</span>config<span class="sy0">/</span>
+<span class="kw2">scp</span> root<span class="sy0">@</span>192.168.1.1:<span class="sy0">/</span>etc<span class="sy0">/</span>config<span class="sy0">/</span>firewall files<span class="sy0">/</span>etc<span class="sy0">/</span>config<span class="sy0">/</span>
+<span class="kw2">make</span> image \
+<span class="re2">PROFILE</span>=<span class="st0">&quot;wl500gp&quot;</span> \
+<span class="re2">PACKAGES</span>=<span class="st0">&quot;nano openvpn -ppp -ppp-mod-pppoe&quot;</span> \
+<span class="re2">FILES</span>=<span class="st0">&quot;files&quot;</span> \
+<span class="re2">DISABLED_SERVICES</span>=<span class="st0">&quot;dnsmasq firewall odhcpd&quot;</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Examples&quot;,&quot;hid&quot;:&quot;examples&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:24,&quot;range&quot;:&quot;8197-8875&quot;} -->
+<h2 class="sectionedit25" id="troubleshooting">Troubleshooting</h2>
+<div class="level2">
+<ol>
+<li class="level1"><div class="li"> Did you run everything as a non-root user?</div>
+</li>
+<li class="level1"><div class="li"> Check the logged output, are there package issues (conflicts, improper names)?</div>
+</li>
+<li class="level1"><div class="li"> Check the logged output, did you exceed maximum space?</div>
+</li>
+<li class="level1"><div class="li"> Check the logged output, are there other obvious errors?</div>
+</li>
+<li class="level1"><div class="li"> Wait a few hours/day(s) upstream packages may be in an inconsistent state especially on master/snapshot</div>
+</li>
+<li class="level1"><div class="li"> Verify you have a supported <abbr title="Operating System">OS</abbr>, prerequisites, file system and path naming</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Troubleshooting&quot;,&quot;hid&quot;:&quot;troubleshooting&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:25,&quot;range&quot;:&quot;8876-9341&quot;} -->
+<h2 class="sectionedit26" id="extras">Extras</h2>
+<div class="level2">
+
+<p>
+The topics below go beyond simple usage and aimed at developers and advanced users.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Extras&quot;,&quot;hid&quot;:&quot;extras&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:26,&quot;range&quot;:&quot;9342-9445&quot;} -->
+<h3 class="sectionedit27" id="detailed_help">Detailed help</h3>
+<div class="level3">
+
+<p>
+See also: <a href="https://github.com/openwrt/openwrt/blob/master/target/imagebuilder/files/Makefile" class="urlextern" title="https://github.com/openwrt/openwrt/blob/master/target/imagebuilder/files/Makefile" rel="ugc nofollow">ImageBuilder makefile</a>
+</p>
+
+<p>
+Getting detailed help:
+</p>
+<pre class="code"># make help
+
+Available Commands:
+	help:	This help text
+	info:	Show a list of available target profiles
+	clean:	Remove images and temporary build files
+	image:	Build an image (see below for more information).
+
+Building images:
+	By default &#039;make image&#039; will create an image with the default
+	target profile and package set. You can use the following parameters
+	to change that:
+
+	make image PROFILE=&quot;&lt;profilename&gt;&quot; # override the default target profile
+	make image PACKAGES=&quot;&lt;pkg1&gt; [&lt;pkg2&gt; [&lt;pkg3&gt; ...]]&quot; # include extra packages
+	make image FILES=&quot;&lt;path&gt;&quot; # include extra files from &lt;path&gt;
+	make image BIN_DIR=&quot;&lt;path&gt;&quot; # alternative output directory for the images
+	make image EXTRA_IMAGE_NAME=&quot;&lt;string&gt;&quot; # Add this to the output image filename (sanitized)
+	make image DISABLED_SERVICES=&quot;&lt;svc1&gt; [&lt;svc2&gt; [&lt;svc3&gt; ..]]&quot; # Which services in /etc/init.d/ should be disabled
+	make image ADD_LOCAL_KEY=1 # store locally generated signing key in built images
+	make image ROOTFS_PARTSIZE=&quot;&lt;size&gt;&quot; # override the default rootfs partition size in MegaBytes
+
+
+Print manifest:
+	List &quot;all&quot; packages which get installed into the image.
+	You can use the following parameters:
+
+	make manifest PROFILE=&quot;&lt;profilename&gt;&quot; # override the default target profile
+	make manifest PACKAGES=&quot;&lt;pkg1&gt; [&lt;pkg2&gt; [&lt;pkg3&gt; ...]]&quot; # include extra packages
+	make manifest STRIP_ABI=1 # remove ABI version from printed package names</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Detailed help&quot;,&quot;hid&quot;:&quot;detailed_help&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:27,&quot;range&quot;:&quot;9446-11020&quot;} -->
+<h3 class="sectionedit28" id="available_profiles">Available profiles</h3>
+<div class="level3">
+
+<p>
+Listing available profiles:
+</p>
+<pre class="code"># make info
+
+Available Profiles:
+
+Default:
+    Default Profile
+    Packages: kmod-usb-core kmod-usb2 kmod-usb-ohci kmod-usb-ledtrig-usbport
+ai-br100:
+    Aigale Ai-BR100
+    Packages: kmod-usb2 kmod-usb-ohci
+rp-n53:
+    Asus RP-N53
+    Packages:
+rt-n14u:
+    Asus RT-N14u
+    Packages:
+whr-1166d:
+    Buffalo WHR-1166D
+    Packages:
+whr-300hp2:
+    Buffalo WHR-300HP2
+    Packages:
+...</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Available profiles&quot;,&quot;hid&quot;:&quot;available_profiles&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:28,&quot;range&quot;:&quot;11021-11480&quot;} -->
+<h3 class="sectionedit29" id="building_the_image_builder_with_all_packages_inside">Building the Image Builder with all packages inside</h3>
+<div class="level3">
+
+<p>
+It is possible to use a buildroot to create your own Image Builder and integrate in it all packages so it will be able to generate images without downloading packages.
+</p>
+
+<p>
+In the graphical configuration, select “<strong>Build the OpenWrt Image Builder</strong>” to build the image builder, then  select <strong>Global Build Settings → Select all packages by default</strong>, save and exit.
+You can <a href="/docs/guide-developer/toolchain/use-buildsystem#ignore_build_errors" class="wikilink1" title="docs:guide-developer:toolchain:use-buildsystem" data-wiki-id="docs:guide-developer:toolchain:use-buildsystem">ignore build errors</a> if you encounter unmaintained packages that fail to compile, assuming this doesn&#039;t affect kernel and core dependencies.
+</p>
+
+<p>
+Don&#039;t call <code>make defconfig</code> or leave an old <code>.config</code> file in the path as <code>Select all packages by default</code> will only set the package selection to <code>[m]</code> for packages that are not already configured otherwise! <code>make defconfig</code> will set most packages to <code>[n]</code>, i.e. <em>do not build</em>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Building the Image Builder with all packages inside&quot;,&quot;hid&quot;:&quot;building_the_image_builder_with_all_packages_inside&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:29,&quot;range&quot;:&quot;11481-12419&quot;} -->
+<h3 class="sectionedit30" id="adding_package_repositories">Adding package repositories</h3>
+<div class="level3">
+
+<p>
+The Image Builder you download from the OpenWrt pages is already configured to download any non-default packages from official repositories.
+The package sources are configured in the <code>repositories.conf</code> file in the extracted directory.
+Sources are specified in <em>opkg</em> native config format.
+This can be either the official package repositories or custom generated repositories.
+</p>
+
+<p>
+An example of the contents of the <code>repositories.conf</code> from the <strong>openwrt-imagebuilder-18.06.0-rc2-ramips-mt7621.Linux-x86_64.tar.xz</strong>:
+</p>
+<pre class="code bash"><span class="co0">## Place your custom repositories here, they must match the architecture and version.</span>
+<span class="co0"># src/gz %n http://downloads.openwrt.org/releases/18.06.0-rc2</span>
+<span class="co0"># src custom file:///usr/src/openwrt/bin/ramips/packages</span>
+&nbsp;
+<span class="co0">## Remote package repositories</span>
+src<span class="sy0">/</span>gz openwrt_core http:<span class="sy0">//</span>downloads.openwrt.org<span class="sy0">/</span>releases<span class="sy0">/</span>18.06.0-rc2<span class="sy0">/</span>targets<span class="sy0">/</span>ramips<span class="sy0">/</span>mt7621<span class="sy0">/</span>packages
+src<span class="sy0">/</span>gz openwrt_base http:<span class="sy0">//</span>downloads.openwrt.org<span class="sy0">/</span>releases<span class="sy0">/</span>18.06.0-rc2<span class="sy0">/</span>packages<span class="sy0">/</span>mipsel_24kc<span class="sy0">/</span>base
+src<span class="sy0">/</span>gz openwrt_luci http:<span class="sy0">//</span>downloads.openwrt.org<span class="sy0">/</span>releases<span class="sy0">/</span>18.06.0-rc2<span class="sy0">/</span>packages<span class="sy0">/</span>mipsel_24kc<span class="sy0">/</span>luci
+src<span class="sy0">/</span>gz openwrt_packages http:<span class="sy0">//</span>downloads.openwrt.org<span class="sy0">/</span>releases<span class="sy0">/</span>18.06.0-rc2<span class="sy0">/</span>packages<span class="sy0">/</span>mipsel_24kc<span class="sy0">/</span>packages
+src<span class="sy0">/</span>gz openwrt_routing http:<span class="sy0">//</span>downloads.openwrt.org<span class="sy0">/</span>releases<span class="sy0">/</span>18.06.0-rc2<span class="sy0">/</span>packages<span class="sy0">/</span>mipsel_24kc<span class="sy0">/</span>routing
+src<span class="sy0">/</span>gz openwrt_telephony http:<span class="sy0">//</span>downloads.openwrt.org<span class="sy0">/</span>releases<span class="sy0">/</span>18.06.0-rc2<span class="sy0">/</span>packages<span class="sy0">/</span>mipsel_24kc<span class="sy0">/</span>telephony
+&nbsp;
+<span class="co0">## This is the local package repository, do not remove!</span>
+src imagebuilder file:packages</pre>
+
+<p>
+The <code>repositories.conf</code> in an imagebuilder you compile from source will lack the “Remote package repositories” links.
+</p>
+
+<p>
+If you want to add a custom local repository, copy the <code>src custom file:///usr/src/openwrt/bin/ramips/packages</code> line and modify it to point to the local folder where you have your packages and package lists (<a href="https://downloads.openwrt.org/releases/21.02.3/targets/ramips/mt7621/packages/Packages" class="urlextern" title="https://downloads.openwrt.org/releases/21.02.3/targets/ramips/mt7621/packages/Packages" rel="ugc nofollow">example package list</a>).
+If you have problems with using you local repository because the “Signature check failed” then remove the line <code>option check_signature</code> from <code>repositories.conf</code>
+</p>
+
+<p>
+If you have custom repositories online, copy and modify the <code>src/gz reboot http://downloads.openwrt.org/snapshots</code> line instead.
+</p>
+
+<p>
+NOTE: if you want to override packages coming from an existing feed, you must write your custom feed ABOVE the line of the package feed containing the packages you want to override, as shown in the examples above.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Adding package repositories&quot;,&quot;hid&quot;:&quot;adding_package_repositories&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:30,&quot;range&quot;:&quot;12420-14894&quot;} -->
+<h3 class="sectionedit31" id="restricting_root_access">Restricting root access</h3>
+<div class="level3">
+
+<p>
+Create a non-privileged admin user and lock root password.
+Configure privilege elevation with sudo.
+Set up key-based authentication and disable password authentication for Dropbear.
+</p>
+<pre class="code bash"><span class="kw2">mkdir</span> <span class="re5">-p</span> files<span class="sy0">/</span>etc<span class="sy0">/</span>uci-defaults
+<span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> files<span class="sy0">/</span>etc<span class="sy0">/</span>uci-defaults<span class="sy0">/</span><span class="nu0">99</span>-custom
+<span class="re2">USER_NAME</span>=<span class="st0">&quot;admin&quot;</span>
+<span class="re2">USER_SSHPUB</span>=<span class="st0">&quot;SSH_PUBLIC_KEY&quot;</span>
+<span class="re2">USER_SHELL</span>=<span class="st0">&quot;/bin/ash&quot;</span>
+<span class="re2">SUDO_USER</span>=<span class="st0">&quot;root&quot;</span>
+<span class="re2">SUDO_GROUP</span>=<span class="st0">&quot;sudo&quot;</span>
+groupadd <span class="re5">-r</span> <span class="st0">&quot;<span class="es3">${SUDO_GROUP}</span>&quot;</span>
+useradd <span class="re5">-m</span> <span class="re5">-G</span> <span class="st0">&quot;<span class="es3">${SUDO_GROUP}</span>&quot;</span> <span class="re5">-s</span> <span class="st0">&quot;<span class="es3">${USER_SHELL}</span>&quot;</span> <span class="st0">&quot;<span class="es3">${USER_NAME}</span>&quot;</span>
+<span class="kw2">passwd</span> <span class="re5">-l</span> <span class="st0">&quot;<span class="es3">${SUDO_USER}</span>&quot;</span>
+<span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> EOI <span class="sy0">&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>sudoers.d<span class="sy0">/</span>00-custom
+<span class="sy0">%</span><span class="co1">${SUDO_GROUP}</span> <span class="re2">ALL</span>=<span class="br0">&#40;</span>ALL<span class="br0">&#41;</span> ALL
+EOI
+<span class="re2">USER_HOME</span>=<span class="st0">&quot;<span class="es4">$(eval echo ~&quot;${USER_NAME}&quot;)</span>&quot;</span>
+<span class="kw2">mkdir</span> <span class="re5">-p</span> <span class="st0">&quot;<span class="es3">${USER_HOME}</span>&quot;</span><span class="sy0">/</span>.ssh
+<span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> EOI <span class="sy0">&gt;</span> <span class="st0">&quot;<span class="es3">${USER_HOME}</span>&quot;</span><span class="sy0">/</span>.ssh<span class="sy0">/</span>authorized_keys
+<span class="co1">${USER_SSHPUB}</span>
+EOI
+uci <span class="kw1">set</span> dropbear.<span class="sy0">@</span>dropbear<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.PasswordAuth=<span class="st0">&quot;0&quot;</span>
+uci <span class="kw1">set</span> dropbear.<span class="sy0">@</span>dropbear<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.RootPasswordAuth=<span class="st0">&quot;0&quot;</span>
+uci commit dropbear
+<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>dropbear restart
+EOF
+<span class="kw2">make</span> image \
+<span class="re2">FILES</span>=<span class="st0">&quot;files&quot;</span> \
+<span class="re2">PACKAGES</span>=<span class="st0">&quot;nano shadow sudo&quot;</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Restricting root access&quot;,&quot;hid&quot;:&quot;restricting_root_access&quot;,&quot;codeblockOffset&quot;:13,&quot;secid&quot;:31,&quot;range&quot;:&quot;14895-15850&quot;} -->
+<h3 class="sectionedit32" id="addingmodifying_profiles">Adding/modifying profiles</h3>
+<div class="level3">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:33,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap">
+<p>
+Examples below may contain version dependent / legacy information and are for informational purposes. They are very low level so expect to have a good level of skill and familiarity with the ImageBuilder / OpenWrt in general. 
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:34,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+The image building is tied to the profile names.
+If you add a new profile without also adding an appropriate macro to the image-generation Makefile, no suitable firmware file will get generated when using the custom profile.
+Remove the <code>/tmp</code> directory to properly apply the modified package selection from profiles.
+</p>
+
+<p>
+The location of the profiles for the pre-compiled package for <em>brcm47xx-for-Linux-i686</em> was <em>target/linux/brcm47xx/profiles</em>/
+</p>
+
+<p>
+Remarkably, all that needs to be done to add a new profile, is to add a new file to the <em>profiles</em> directory.
+<em>While this may have been the case in earlier releases, for 17.01, it appears that manual editing of <code>.targetinfo</code> is also required.</em>
+</p>
+
+<p>
+Here is what the <em>profiles/100-Broadcom-b43.mk</em> profile file looks like:
+</p>
+<pre class="code bash">define Profile<span class="sy0">/</span>Broadcom-b43
+	NAME:=Broadcom BCM43xx WiFi <span class="br0">&#40;</span>default<span class="br0">&#41;</span>
+	PACKAGES:=kmod-b43 kmod-b43legacy
+endef
+&nbsp;
+define Profile<span class="sy0">/</span>Broadcom-b43<span class="sy0">/</span>Description
+	Package <span class="kw1">set</span> compatible with hardware using Broadcom BCM43xx cards
+endef
+$<span class="br0">&#40;</span><span class="kw3">eval</span> $<span class="br0">&#40;</span>call Profile,Broadcom-b43<span class="br0">&#41;</span><span class="br0">&#41;</span></pre>
+
+<p>
+Alternately edit the hidden .profile.mk file at the top level directory of the image builder and manually add the names of the desired packages to be added to the output image.
+An “ls -a” will reveal the files hidden in the various directories.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Adding\/modifying profiles&quot;,&quot;hid&quot;:&quot;addingmodifying_profiles&quot;,&quot;codeblockOffset&quot;:14,&quot;secid&quot;:32,&quot;range&quot;:&quot;15851-17444&quot;} -->
+<h3 class="sectionedit35" id="removing_useless_files_from_firmware">Removing useless files from firmware</h3>
+<div class="level3">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:36,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap">
+<p>
+This is not a standard feature of the Image Builder.
+</p>
+
+<p>
+It is highly recommended that you test file removal prior to incorporating such changes at the image builder level or that you have low level means to recover a device before attempting this type of mod, as bricking / non booting may result.
+</p>
+
+<p>
+Note that it requires patching of the <code>Makefile</code>
+</p>
+
+<p>
+It is based on older Chaos Calmer era code... and not applicable to modern ImageBuilders but useful as a reference...
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:37,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+Create file <code>files_remove</code> with full filenames:
+</p>
+<pre class="code bash"><span class="sy0">/</span>lib<span class="sy0">/</span>modules<span class="sy0">/</span>3.10.49<span class="sy0">/</span>ts_bm.ko
+<span class="sy0">/</span>lib<span class="sy0">/</span>modules<span class="sy0">/</span>3.10.49<span class="sy0">/</span>nf_nat_ftp.ko
+<span class="sy0">/</span>lib<span class="sy0">/</span>modules<span class="sy0">/</span>3.10.49<span class="sy0">/</span>nf_nat_irc.ko
+<span class="sy0">/</span>lib<span class="sy0">/</span>modules<span class="sy0">/</span>3.10.49<span class="sy0">/</span>nf_nat_tftp.ko</pre>
+
+<p>
+Patch Makefile:
+</p>
+<pre class="code diff"> ifneq <span class="br0">&#40;</span>$<span class="br0">&#40;</span>USER_FILES<span class="br0">&#41;</span>,<span class="br0">&#41;</span>
+ 	$<span class="br0">&#40;</span>MAKE<span class="br0">&#41;</span> copy_files
+ endif
+<span class="re8">+</span>
+<span class="re8">+ifneq <span class="br0">&#40;</span>$<span class="br0">&#40;</span>FILES_REMOVE<span class="br0">&#41;</span>,<span class="br0">&#41;</span></span>
+<span class="re8">+	@echo</span>
+<span class="re8">+	@echo Remove useless files</span>
+<span class="re8">+</span>
+<span class="re8">+	while read filename; do \</span>
+<span class="re8">+	    rm -rfv &quot;$<span class="br0">&#40;</span>TARGET_DIR<span class="br0">&#41;</span>$$filename&quot;; \</span>
+<span class="re8">+	done &lt; $<span class="br0">&#40;</span>FILES_REMOVE<span class="br0">&#41;</span>;</span>
+<span class="re8">+endif</span>
+<span class="re8">+</span>
+ 	$<span class="br0">&#40;</span>MAKE<span class="br0">&#41;</span> package_postinst
+ 	$<span class="br0">&#40;</span>MAKE<span class="br0">&#41;</span> build_image</pre>
+
+<p>
+Rebuild firmware:
+</p>
+<pre class="code bash"><span class="kw2">make</span> image \
+<span class="re2">PROFILE</span>=<span class="st0">&quot;tlwr841&quot;</span> \
+<span class="re2">PACKAGES</span>=<span class="st0">&quot;igmpproxy ip iptraf kmod-ipt-nathelper-extra openvpn-polarssl tcpdump-mini -firewall -ip6tables -kmod-ip6tables -kmod-ipv6 -odhcp6c -ppp -ppp-mod-pppoe&quot;</span> \
+<span class="re2">FILES_REMOVE</span>=<span class="st0">&quot;files_remove&quot;</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Removing useless files from firmware&quot;,&quot;hid&quot;:&quot;removing_useless_files_from_firmware&quot;,&quot;codeblockOffset&quot;:15,&quot;secid&quot;:35,&quot;range&quot;:&quot;17445-&quot;} -->

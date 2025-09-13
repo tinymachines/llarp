@@ -1,0 +1,222 @@
+
+<p>
+This information is based upon v21.02, last updated for <a href="https://github.com/openwrt/openwrt/tree/6d266ef158" class="urlextern" title="https://github.com/openwrt/openwrt/tree/6d266ef158" rel="ugc nofollow">commit 6d266ef158 on 2022-02-10</a>.
+</p>
+
+<h1 class="sectionedit1" id="sysupgrade_technical_reference">Sysupgrade – Technical Reference</h1>
+<div class="level1">
+
+<p>
+In contrast to <code>opkg</code>, <code>mtd</code> and others, <code>sysupgrade</code> is merely a shell script: <code><a href="https://github.com/openwrt/openwrt/blob/6d266ef158/package/base-files/files/sbin/sysupgrade" class="urlextern" title="https://github.com/openwrt/openwrt/blob/6d266ef158/package/base-files/files/sbin/sysupgrade" rel="ugc nofollow">/sbin/sysupgrade</a></code> intended to facilitate easy updates.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Sysupgrade \u2013 Technical Reference&quot;,&quot;hid&quot;:&quot;sysupgrade_technical_reference&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;146-435&quot;} -->
+<h2 class="sectionedit2" id="usage">Usage</h2>
+<div class="level2">
+
+<p>
+This page lists all <code>sysupgrade</code> command-line options. For the overall upgrade procedure and typical usage, please read <a href="/docs/guide-user/installation/generic.sysupgrade" class="wikilink1" title="docs:guide-user:installation:generic.sysupgrade" data-wiki-id="docs:guide-user:installation:generic.sysupgrade">OpenWrt OS upgrade procedure (sysupgrade or LuCI)</a> instead.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Usage&quot;,&quot;hid&quot;:&quot;usage&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;436-687&quot;} -->
+<h2 class="sectionedit3" id="options">Options</h2>
+<div class="level2">
+
+<p>
+sysupgrade supports the following options
+</p>
+<pre class="code">Usage: /sbin/sysupgrade [&lt;upgrade-option&gt;...] &lt;image file or URL&gt;
+       /sbin/sysupgrade [-q] [-i] [-c] [-u] [-o] [-k] &lt;backup-command&gt; &lt;file&gt;
+
+upgrade-option:
+        -f &lt;config&gt;  restore configuration from .tar.gz (file or url)
+        -i           interactive mode
+        -c           attempt to preserve all changed files in /etc/
+        -o           attempt to preserve all changed files in /, except those
+                     from packages but including changed confs.
+        -u           skip from backup files that are equal to those in /rom
+        -n           do not save configuration over reflash
+        -p           do not attempt to restore the partition table after flash.
+        -k           include in backup a list of current installed packages at
+                     /etc/backup/installed_packages.txt
+        -T | --test
+                     Verify image and config .tar.gz but do not actually flash.
+        -F | --force
+                     Flash image even if image checks fail, this is dangerous!
+        -q           less verbose
+        -v           more verbose
+        -h | --help  display this help
+
+backup-command:
+        -b | --create-backup &lt;file&gt;
+                     create .tar.gz of files specified in sysupgrade.conf
+                     then exit. Does not flash an image. If file is &#039;-&#039;,
+                     i.e. stdout, verbosity is set to 0 (i.e. quiet).
+        -r | --restore-backup &lt;file&gt;
+                     restore a .tar.gz created with sysupgrade -b
+                     then exit. Does not flash an image. If file is &#039;-&#039;,
+                     the archive is read from stdin.
+        -l | --list-backup
+                     list the files that would be backed up when calling
+                     sysupgrade -b. Does not create a backup file.
+</pre>
+
+<p>
+WARNING: Preserving files across sysupgrades <a href="https://openwrt.org/docs/techref/preinit_mount#mount_root_filesystem" class="interwiki iw_this" title="https://openwrt.org/docs/techref/preinit_mount#mount_root_filesystem">can be fatal</a> (see &#039;NOTE: ...&#039;) on systems with weak cpu and exceptionally large rootfs_data partitions. 
+</p>
+
+<p>
+Files to be preserved depend on the following:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code><a href="/docs/guide-user/base-system/notuci.config#etcsysupgradeconf" class="wikilink1" title="docs:guide-user:base-system:notuci.config" data-wiki-id="docs:guide-user:base-system:notuci.config">/etc/sysupgrade.conf</a></code> - customizable backup configuration.</div>
+</li>
+<li class="level1"><div class="li"> <code>/lib/upgrade/keep.d/*</code> - system configurations provided by specific packages preserved by default.</div>
+</li>
+<li class="level1"><div class="li"> <code>opkg list-changed-conffiles</code> - list of files derived by package manager.</div>
+</li>
+<li class="level1"><div class="li"> <code>-o</code> will cause the entire <code>/overlay</code> directory to be saved (with the <code>-u</code> caveat below).</div>
+</li>
+<li class="level1"><div class="li"> <code>-n</code> will cause <em>NO</em> files will be saved and all configuration settings will be initialized from default values.</div>
+</li>
+<li class="level1"><div class="li"> <code>-u</code> will prevent preservation of any file that has not been changed since the last sysupgrade.  This prevents the need for programs to migrate an old configuration and reduces time needed for sysupgrade.</div>
+</li>
+<li class="level1"><div class="li"> <code>-f</code> will <em>COMPLETELY OVERRIDE</em> all behaviour described above.  Instead, the exact files provided in the .tar.gz file will be extracted into <code>/overlay/upper</code> after the sysupgrade.</div>
+</li>
+</ul>
+
+<p>
+<strong>Q:</strong> Does this mean, I make an archive.tar.gz of /etc and /root for example and sysupgrade -f archive.tar.gz will flash the router and afterwards restores the configs from this archive?
+</p>
+
+<p>
+<strong>A:</strong> That&#039;s what is says: &#039;restore configuration from .tar.gz (file or url)&#039;. Anything archived in the tgz will be written to /overlay after the flash. This way you can hand-pick the files that will be the system after new firmware boot.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Options&quot;,&quot;hid&quot;:&quot;options&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;688-4196&quot;} -->
+<h2 class="sectionedit4" id="how_it_works">How It Works</h2>
+<div class="level2">
+
+<p>
+The <code>sysupgrade</code> process starts with the execution of <code><a href="https://github.com/openwrt/openwrt/blob/6d266ef158/package/base-files/files/sbin/sysupgrade" class="urlextern" title="https://github.com/openwrt/openwrt/blob/6d266ef158/package/base-files/files/sbin/sysupgrade" rel="ugc nofollow">/sbin/sysupgrade</a></code>.  The below list describes its behavior.
+</p>
+<ol>
+<li class="level1"><div class="li"> Parse command line and validate no mutually exclusive options passed.</div>
+</li>
+<li class="level1 node"><div class="li"> At this point, sysupgrade calls <code><a href="https://github.com/openwrt/openwrt/blob/6d266ef158/package/base-files/files/sbin/sysupgrade#L219" class="urlextern" title="https://github.com/openwrt/openwrt/blob/6d266ef158/package/base-files/files/sbin/sysupgrade#L219" rel="ugc nofollow">include /lib/upgrade</a></code> -- a function in <code><a href="https://github.com/openwrt/openwrt/blob/6d266ef158/package/base-files/files/lib/functions.sh#L293" class="urlextern" title="https://github.com/openwrt/openwrt/blob/6d266ef158/package/base-files/files/lib/functions.sh#L293" rel="ugc nofollow">/lib/functions.sh</a></code> that will source all <code>*.sh</code> files in the given directory.</div>
+<ol>
+<li class="level2"><div class="li"> NOTE: An optional, platform-specific <code>/lib/upgrade/platform.sh</code> can override behavior, so for a full understanding, you should examine this file.  (See <code>target/linux/&lt;arch&gt;/&lt;sub-arch&gt;/base-files/lib/upgrade/platform.sh</code> in your source tree.)</div>
+</li>
+<li class="level2"><div class="li"> The optional functions <code>platform_copy_config</code> and <code>platform_do_upgrade</code> are at the end of this list.</div>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> Create list of files to preserve and store them in <code>/tmp/sysupgrade.tgz</code> (unless <code>-f</code> was supplied).</div>
+</li>
+<li class="level1"><div class="li"> If the image supplied is an http or https <abbr title="Uniform Resource Locator">URL</abbr>, <code>wget</code> is run to retrieve it.</div>
+</li>
+<li class="level1"><div class="li"> The firmware image is saved (if a <abbr title="Uniform Resource Locator">URL</abbr>) or copied to <code>/tmp/sysupgrade.img</code>.</div>
+</li>
+<li class="level1"><div class="li"> Validates the firmware image, and that the root <code>compatible</code> node in the device tree file matches the value in <code>/sys/firmware/devicetree/base/compatible</code> from the existing firmware&#039;s device tree. (May be overridden with <code>-F</code>).</div>
+</li>
+<li class="level1"><div class="li"> Copies <code><a href="https://git.openwrt.org/?p=project/procd.git;a=blob;f=upgraded/upgraded.c;h=db98701d8ab64da4c78f105a6182ae0db9edb062;hb=2cfc26f8456a4d5ba3836c914a742f3d00bad781" class="interwiki iw_commit" title="https://git.openwrt.org/?p=project/procd.git;a=blob;f=upgraded/upgraded.c;h=db98701d8ab64da4c78f105a6182ae0db9edb062;hb=2cfc26f8456a4d5ba3836c914a742f3d00bad781">/sbin/upgraded</a></code> into <code>/tmp</code></div>
+</li>
+<li class="level1 node"><div class="li"> Builds a <a href="https://git.openwrt.org/?p=project/procd.git;a=blob;f=system.c;h=83aea423ec6aaceedca54e42aea18ce90d7ddfa1;hb=37eed131e9967a35f47bacb3437a9d3c8a57b3f4#l627" class="urlextern" title="https://git.openwrt.org/?p=project/procd.git;a=blob;f=system.c;h=83aea423ec6aaceedca54e42aea18ce90d7ddfa1;hb=37eed131e9967a35f47bacb3437a9d3c8a57b3f4#l627" rel="ugc nofollow">json message</a> and sends a message, via <code>ubus</code>, to <code>procd</code>, to initiate the upgrade.  Among other things, the message specifies:</div>
+<ol>
+<li class="level2"><div class="li"> path: <code>/tmp/sysupgrade.img</code>,</div>
+</li>
+<li class="level2"><div class="li"> backup: <code>/tmp/sysupgrade.tgz</code> if any files are being preserved, unset otherwise,</div>
+</li>
+<li class="level2"><div class="li"> force: if <code>-F</code> was supplied,</div>
+</li>
+<li class="level2"><div class="li"> and command: <code><a href="https://github.com/openwrt/openwrt/blob/6d266ef158/package/base-files/files/lib/upgrade/do_stage2" class="urlextern" title="https://github.com/openwrt/openwrt/blob/6d266ef158/package/base-files/files/lib/upgrade/do_stage2" rel="ugc nofollow">/lib/upgrade/do_stage2</a></code>.</div>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> The <code><a href="https://git.openwrt.org/?p=project/procd.git;a=blob;f=system.c;h=83aea423ec6aaceedca54e42aea18ce90d7ddfa1;hb=37eed131e9967a35f47bacb3437a9d3c8a57b3f4#l651" class="urlextern" title="https://git.openwrt.org/?p=project/procd.git;a=blob;f=system.c;h=83aea423ec6aaceedca54e42aea18ce90d7ddfa1;hb=37eed131e9967a35f47bacb3437a9d3c8a57b3f4#l651" rel="ugc nofollow">sysupgrade</a></code> function in <code>procd</code> will unpack and validate the message, then validate the firmware image and such.</div>
+</li>
+<li class="level1"><div class="li"> Notably, <code>procd</code> does not terminate any services here.</div>
+</li>
+<li class="level1 node"><div class="li"> <strong>This is where things get funky!</strong> If all is well, we call <a href="https://git.openwrt.org/?p=project/procd.git;a=blob;f=sysupgrade.c;h=fc588b0248353137d4b81fce130d2d35d8dfa710;hb=37eed131e9967a35f47bacb3437a9d3c8a57b3f4#l28" class="urlextern" title="https://git.openwrt.org/?p=project/procd.git;a=blob;f=sysupgrade.c;h=fc588b0248353137d4b81fce130d2d35d8dfa710;hb=37eed131e9967a35f47bacb3437a9d3c8a57b3f4#l28" rel="ugc nofollow">sysupgrade_exec_upgraded</a>, which further parses the original json and then passes control to <code><a href="https://git.openwrt.org/?p=project/procd.git;a=blob;f=upgraded/upgraded.c;h=db98701d8ab64da4c78f105a6182ae0db9edb062;hb=2cfc26f8456a4d5ba3836c914a742f3d00bad781#l66" class="interwiki iw_commit" title="https://git.openwrt.org/?p=project/procd.git;a=blob;f=upgraded/upgraded.c;h=db98701d8ab64da4c78f105a6182ae0db9edb062;hb=2cfc26f8456a4d5ba3836c914a742f3d00bad781#l66">/sbin/upgraded</a></code> via <code><a href="https://pubs.opengroup.org/onlinepubs/9699919799/functions/exec.html" class="urlextern" title="https://pubs.opengroup.org/onlinepubs/9699919799/functions/exec.html" rel="ugc nofollow">execvp</a></code>.</div>
+<ol>
+<li class="level2"><div class="li"> Note that at boot time, the kernel passes control to <code>/sbin/init</code> as PID=1, which in turn <code>exec</code>s <code>/sbin/procd</code>.  Thus, this results in <code>/tmp/upgraded</code> becoming the new PID=1 (“init”) process.</div>
+</li>
+<li class="level2"><div class="li"> At this point, service management is no longer possible.</div>
+</li>
+</ol>
+</li>
+<li class="level1 node"><div class="li"> <code>/sbin/upgraded</code> executes the command passed (<code>/lib/upgrade/stage2</code>) with parameters. The remaining sequence runs from this shell script.</div>
+<ol>
+<li class="level2"><div class="li"> <code>/bin/sh /lib/upgrade/stage2</code> is run via fork/exec, so is not PID1.</div>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> Terminate (<code>SIGKILL</code>) all <code>telnet</code>, <code>ash</code>, and <code>dropbear</code> processes.</div>
+</li>
+<li class="level1"><div class="li"> Loop over all remaining processes, sending them the TERM signal.</div>
+</li>
+<li class="level1"><div class="li"> Loop over all remaining processes, sending them the KILL signal.</div>
+</li>
+<li class="level1"><div class="li"> Create a new RAM filesystem, mount it, and copy over a very small set of binaries into it.</div>
+</li>
+<li class="level1"><div class="li"> Change root into the new RAM filesystem.</div>
+</li>
+<li class="level1"><div class="li"> Remount <code>/overlay</code> read-only, and lazy-unmount it.</div>
+</li>
+<li class="level1"><div class="li"> Write the upgraded firmware to disk.  If <code>platform_do_upgrade</code> is defined then it is run.  Otherwise, this is done via <a href="https://github.com/openwrt/openwrt/blob/6d266ef158/package/base-files/files/lib/upgrade/common.sh#L301" class="urlextern" title="https://github.com/openwrt/openwrt/blob/6d266ef158/package/base-files/files/lib/upgrade/common.sh#L301" rel="ugc nofollow">default_do_upgrade</a>, using <code>mtd</code> to flash the firmware.</div>
+</li>
+<li class="level1 node"><div class="li"> If any files are being preserved, the tarball is passed via <code>mtd</code>&#039;s <code>-j</code> option.  This causes mtd to <a href="https://github.com/openwrt/openwrt/blob/6d266ef158/package/system/mtd/src/jffs2.c#L163" class="urlextern" title="https://github.com/openwrt/openwrt/blob/6d266ef158/package/system/mtd/src/jffs2.c#L163" rel="ugc nofollow">write a raw jffs2 inode (with id = 1) and file data</a>, resulting in the tarball to appearing as <code>/sysupgrade.tgz</code> once the jffs2 file system is mounted.</div>
+<ol>
+<li class="level2"><div class="li"> A consequence is that the mtd sources are intimately tied to the jffs2 implementation and can break if changes are made to jffs2 in the kernel (it should probably be using the uapi header from the kernel <code>make headers_install</code> instead of copying it into its source tree).</div>
+</li>
+<li class="level2"><div class="li"> After reboot, this file will be extracted by <code>/lib/preinit/80_mount_root</code> (<code>/sbin/init</code> during <a href="https://git.openwrt.org/?p=project/procd.git;a=blob;f=initd/preinit.c;h=46411aa413a2a65614cfc765d3d6a42dee200532;hb=37eed131e9967a35f47bacb3437a9d3c8a57b3f4#l157" class="urlextern" title="https://git.openwrt.org/?p=project/procd.git;a=blob;f=initd/preinit.c;h=46411aa413a2a65614cfc765d3d6a42dee200532;hb=37eed131e9967a35f47bacb3437a9d3c8a57b3f4#l157" rel="ugc nofollow">preinit</a> -→ <code>/bin/sh <a href="https://github.com/openwrt/openwrt/blob/fdbdbe8eaaa6aa3acacdcb3ae1308b2a2055fc39/package/base-files/files/etc/preinit" class="urlextern" title="https://github.com/openwrt/openwrt/blob/fdbdbe8eaaa6aa3acacdcb3ae1308b2a2055fc39/package/base-files/files/etc/preinit" rel="ugc nofollow">/etc/preinit</a></code> -→ <code><a href="https://github.com/openwrt/openwrt/blob/6d266ef158/package/base-files/files/lib/preinit/80_mount_root#L20" class="urlextern" title="https://github.com/openwrt/openwrt/blob/6d266ef158/package/base-files/files/lib/preinit/80_mount_root#L20" rel="ugc nofollow">/lib/preinit/80_mount_root</a></code>)</div>
+</li>
+<li class="level2"><div class="li"> and finally deleted by <code>/etc/rc.d/S95done</code> (<code>/sbin/procd</code> -→ at <code><a href="https://git.openwrt.org/?p=project/procd.git;a=blob;f=state.c;h=fb81248fd7e7bc7b588a82a5e667424af188cbab;hb=37eed131e9967a35f47bacb3437a9d3c8a57b3f4#l159" class="urlextern" title="https://git.openwrt.org/?p=project/procd.git;a=blob;f=state.c;h=fb81248fd7e7bc7b588a82a5e667424af188cbab;hb=37eed131e9967a35f47bacb3437a9d3c8a57b3f4#l159" rel="ugc nofollow">STATE_INIT</a></code> -→ <code><a href="https://git.openwrt.org/?p=project/procd.git;a=blob;f=inittab.c;h=45118f4f1eaf05867e98040562131dc7df8e233e;hb=37eed131e9967a35f47bacb3437a9d3c8a57b3f4#l273" class="urlextern" title="https://git.openwrt.org/?p=project/procd.git;a=blob;f=inittab.c;h=45118f4f1eaf05867e98040562131dc7df8e233e;hb=37eed131e9967a35f47bacb3437a9d3c8a57b3f4#l273" rel="ugc nofollow">procd_inittab_run(&quot;sysinit&quot;);</a></code> -→ <code>/etc/inittab</code>)</div>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> If a <code>platform_copy_config</code> is implemented, it is run at this point.</div>
+</li>
+<li class="level1"><div class="li"> Unmount any remaining filesystems.</div>
+</li>
+<li class="level1"><div class="li"> Reboot.</div>
+</li>
+</ol>
+
+<p>
+There are plenty of potential deficiencies in this process, among them:
+</p>
+<ul>
+<li class="level1"><div class="li"> Hardcodes a list of “potentially-interfering” / interactive processes (<code>ash</code>, <code>telnet</code>, <code>dropbear</code>) to kill first; this is not exhaustive or up-to-date (e.g., <code>telnet</code> is no longer in the base install; <code>openssh</code> is not handled).</div>
+</li>
+<li class="level1"><div class="li"> Does not give processes much time in between TERM and KILL signals.</div>
+</li>
+<li class="level1"><div class="li"> Does not utilise <code>procd</code> to tear down services.</div>
+</li>
+<li class="level1"><div class="li"> Susceptible to fork bombs.</div>
+</li>
+<li class="level1"><div class="li"> Easily broken by open files on storage devices (e.g., for swap, or explicitly opened), as these can prevent unmounting <code>/overlay</code>.</div>
+</li>
+<li class="level1"><div class="li"> Does not handle errors (e.g., I/O) in writing the disk image, potentially leaving a partially-upgraded system upon reboot.</div>
+</li>
+<li class="level1"><div class="li"> Various error conditions are ignored in <code>mtd</code>, which can also result in preserved files not being written to the new jffs2 file system or and leaving the file system corrupted, but without reporting an error.</div>
+</li>
+</ul>
+
+<p>
+Many of these deficiencies are historical artifacts, remaining simply because no one has fixed them.
+</p>
+
+<p>
+Thanks to Michael Jones for writing most of this down on the mailing list <a href="http://lists.openwrt.org/pipermail/openwrt-devel/2020-May/029074.html" class="urlextern" title="http://lists.openwrt.org/pipermail/openwrt-devel/2020-May/029074.html" rel="ugc nofollow">[OpenWrt-Devel] Sysupgrade and Failed to kill all processes</a>.
+</p>
+
+<p>
+TODO: Explain how this process works during failsafe mode.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;How It Works&quot;,&quot;hid&quot;:&quot;how_it_works&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:4,&quot;range&quot;:&quot;4197-&quot;} -->

@@ -1,0 +1,635 @@
+
+<h2 class="sectionedit1" id="snort">Snort</h2>
+<div class="level2">
+
+<p>
+<a href="https://www.snort.org" class="urlextern" title="https://www.snort.org" rel="ugc nofollow">Snort</a> is the foremost open source Intrusion Prevention System (IPS). It uses a series of rules that help define malicious network activity, finds packets that match against them, and generates alerts for users. It can be deployed inline to stop these packets, as well. Snort has three primary uses: As a packet sniffer like tcpdump, as a packet logger which is useful for network traffic debugging, or as a full-blown network intrusion prevention system.
+</p>
+
+<p>
+Snort can operate in several modes:
+</p>
+<ol>
+<li class="level1"><div class="li"> Alert/logging only, so-called Intrusion Detection System (IDS)</div>
+</li>
+<li class="level1"><div class="li"> Alert/logging + blocking, so-called Intrusion Prevention System (IPS)</div>
+</li>
+</ol>
+
+<p>
+The IDS configuration will:
+</p>
+<ul>
+<li class="level1"><div class="li"> Only require a single NIC</div>
+</li>
+<li class="level1"><div class="li"> Only alert users to rule matches but take no action to prevent them (ie will not drop or reject)</div>
+</li>
+</ul>
+
+<p>
+The IPS configuration will:
+</p>
+<ul>
+<li class="level1"><div class="li"> Require at least two NICs, one <abbr title="Local Area Network">LAN</abbr> facing and a second one <abbr title="Wide Area Network">WAN</abbr> facing.  If the device is the network router, only two are required but if the device is physically connected to the router, a third NIC will be needed in order to connect to the snort box.</div>
+</li>
+</ul>
+
+<p>
+Before you install:
+</p>
+<ul>
+<li class="level1"><div class="li"> Make sure you have sufficient resources for <code>snort</code> to operate, as it is very memory and CPU intensive.</div>
+</li>
+<li class="level1"><div class="li"> Specifically, <code>snort</code> will consume from 200 <abbr title="Megabyte">MB</abbr> to 1 <abbr title="Gigabyte">GB</abbr> of RAM, depending on your rules and configuration.</div>
+</li>
+<li class="level1"><div class="li"> Intrusion prevention will use a lot of CPU, so x86 or high-end ARM (Pi-4-like performance) is necessary.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Snort&quot;,&quot;hid&quot;:&quot;snort&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1476&quot;} -->
+<h2 class="sectionedit2" id="installation">Installation</h2>
+<div class="level2">
+
+<p>
+While packages for both Snort 2 and Snort 3 are available, this page is focused on the current 3.x series. Snort 2 was removed from SNAPSHOT in Janaury 2024 but remains as a legacy package in 23.05 and earlier releases, but likely without maintenance updates.
+</p>
+
+<p>
+Install snort: 
+</p>
+<pre class="code">opkg update
+opkg install snort3</pre>
+
+<p>
+Check the installed package version:
+</p>
+<pre class="code">opkg info snort3 | grep Version</pre>
+
+<p>
+This will tell you which of the following instructions are applicable for your version:
+</p>
+<ol>
+<li class="level1"><div class="li"> Package version at or before 3.1.48.0-1, you installed a very old version that will require completely manual setup.  The <a href="#obtain_rules" title="docs:guide-user:services:snort ↵" class="wikilink1">Obtain Rules</a> section applies, but not much else.</div>
+</li>
+<li class="level1"><div class="li"> Package version 3.1.48.0-2 or newer, AND OpenWrt version is 23.05 or older.  This has OpenWrt-specific files that help get things set up with a handful of steps.  After reading <a href="#obtain_rules" title="docs:guide-user:services:snort ↵" class="wikilink1">Obtain Rules</a>, jump to <a href="#manual_configuration" title="docs:guide-user:services:snort ↵" class="wikilink1">Manual Configuration</a> for these versions.</div>
+</li>
+<li class="level1"><div class="li"> Package version 3.1.78.0-2 or later, AND you are running OpenWrt SNAPSHOTs (or a version after 23.05).  Many more features were added to the config file and full auto-configuration scripts allow you to customize your use case with much greater ease.  Jump immediately to <a href="#auto-configuration" title="docs:guide-user:services:snort ↵" class="wikilink1">Auto-Configuration</a> for these versions, which has tools for installing rules automatically.</div>
+</li>
+</ol>
+
+</div>
+
+<h4 id="disable_flow_offloading">Disable Flow Offloading</h4>
+<div class="level4">
+
+<p>
+Make sure that Flow offloading type (luci: network&gt;firewall&gt; Routing/<abbr title="Network Address Translation">NAT</abbr> Offloading) is set to none. With hardware or software offloading enabled, not all packets will flow through snort.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation&quot;,&quot;hid&quot;:&quot;installation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;1477-3092&quot;} -->
+<h2 class="sectionedit3" id="obtain_rules">Obtain rules</h2>
+<div class="level2">
+
+<p>
+At a minimum, grab a copy of the freely available <a href="https://www.snort.org/downloads/community/snort3-community-rules.tar.gz" class="urlextern" title="https://www.snort.org/downloads/community/snort3-community-rules.tar.gz" rel="ugc nofollow">community rules</a> and place snort3-community.rules in a directory of your choosing, for example on external media, for example, <code>/mnt/mmcblk0p3/snort/</code>.
+</p>
+
+<p>
+In addition to this rule set, users may optionally register for a free account at <a href="https://www.snort.org/users/sign_up" class="urlextern" title="https://www.snort.org/users/sign_up" rel="ugc nofollow">snort.org</a> which grants access to more rule sets to augment the free ones described above.
+</p>
+
+<p>
+Here is a simple helper script:
+</p>
+<pre class="code bash"><span class="co0">#!/bin/sh</span>
+<span class="co0"># snortver needs to be manually defined</span>
+<span class="co0"># find the largest number from https://www.snort.org/downloads/#rule-downloads</span>
+<span class="re2">shortver</span>=<span class="nu0">31470</span>
+<span class="re2">snort</span>=<span class="sy0">/</span>mnt<span class="sy0">/</span>mmcblk0p3<span class="sy0">/</span>snort<span class="sy0">/</span>
+<span class="re2">oinkcode</span>=your-unique-hash
+&nbsp;
+<span class="kw2">wget</span> <span class="st0">&quot;https://www.snort.org/rules/snortrules-snapshot-<span class="es2">$shortver</span>.tar.gz?oinkcode=<span class="es2">$oinkcode</span>&quot;</span> <span class="re5">-O</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>new.tar.gz <span class="sy0">||</span> <span class="kw3">exit</span> <span class="nu0">1</span>
+<span class="kw2">tar</span> zxf <span class="sy0">/</span>tmp<span class="sy0">/</span>new.tar.gz <span class="re5">-C</span> <span class="st0">&quot;<span class="es2">$snort</span>&quot;</span> <span class="sy0">||</span> <span class="kw3">exit</span> <span class="nu0">1</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Obtain rules&quot;,&quot;hid&quot;:&quot;obtain_rules&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:3,&quot;range&quot;:&quot;3093-4029&quot;} -->
+<h2 class="sectionedit4" id="manual_configuration">Manual Configuration</h2>
+<div class="level2">
+
+<p>
+The following sections apply to OpenWrt&#039;s Snort3 package versions 3.1.48.0-2 through 3.1.77.0-0.  If your version is later than that, jump down to <a href="#auto-configuration" title="docs:guide-user:services:snort ↵" class="wikilink1">Auto-Configuration</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Manual Configuration&quot;,&quot;hid&quot;:&quot;manual_configuration&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:4,&quot;range&quot;:&quot;4030-4255&quot;} -->
+<h3 class="sectionedit5" id="ids_configuration_for_stable_release_only">IDS Configuration for stable release ONLY</h3>
+<div class="level3">
+
+<p>
+There are several config files:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>/etc/config/snort</code> is the OpenWrt daemon config file holding some runtime options.</div>
+</li>
+<li class="level1"><div class="li"> <code>/etc/snort/snort.lua</code> is the main configuration, allowing the implementation and configuration of Snort inspectors (preprocessors), rules files inclusion, event filters, output, etc.</div>
+</li>
+<li class="level1"><div class="li"> <code>/etc/snort/snort_defaults.lua</code> file contains default values such as paths to rules, AppID, intelligence lists, and network variables.</div>
+</li>
+</ul>
+
+<p>
+1. Define which interface on which to listen in <code>/etc/config/snort</code> (default is eth0).
+</p>
+
+<p>
+2. Edit <code>/etc/snort/snort_defaults.lua</code> defining the path to the directory holding the contents of the tarball.  In the example below, we are using attached storage but any path will work:
+</p>
+<pre class="code">RULE_PATH = &#039;/mnt/mmcblk0p3/snort/rules/&#039;
+BUILTIN_RULE_PATH = &#039;/mnt/mmcblk0p3/snort/builtin_rules&#039;
+PLUGIN_RULE_PATH = &#039;/mnt/mmcblk0p3/snort/so_rules&#039;</pre>
+
+<p>
+3. Edit the main config file, <code>/etc/snort/snort.lua</code> for the initial setup.  At a minimum, we need to define three sections:
+</p>
+<ul>
+<li class="level1"><div class="li"> HOME_NET (define the network/networks to protect by <abbr title="Internet Protocol">IP</abbr> range, note that multiple ranges can be defined as shown below)</div>
+</li>
+<li class="level1"><div class="li"> EXTERNAL_NET (define everything but HOME_NET)</div>
+</li>
+<li class="level1"><div class="li"> ips section (setup run mode [listen and alert only or listen, alert, and drop] and define the .rules file/files to read)</div>
+</li>
+</ul>
+<pre class="code">HOME_NET = [[ 10.1.8.0/24 192.168.1.0/24 ]]
+EXTERNAL_NET = &quot;!$HOME_NET&quot;</pre>
+
+<p>
+Snort can operate in three modes:
+</p>
+<ol>
+<li class="level1"><div class="li"> Tap: act as an IDS, only alerting to rule matches, use <strong>mode = tap,</strong></div>
+</li>
+<li class="level1"><div class="li"> Inline: act as an IPS, both alerting to rule matches AND triggering corresponding drop rules, use <strong>mode = inline,</strong></div>
+</li>
+<li class="level1"><div class="li"> Inline-test: simulate the inline mode allowing users to evaluate the behavior of inline without affecting traffic, use <strong>mode = inline-test,</strong></div>
+</li>
+</ol>
+<pre class="code">ips =
+{
+    mode = tap,
+    variables = default_variables,
+    
+    rules = [[ 
+    include $RULE_PATH/snort3-community.rules
+    include $RULE_PATH/snort3-malware-backdoor.rules
+    include $RULE_PATH/snort3-policy-multimedia.rules
+    include $RULE_PATH/snort3-protocol-services.rules
+    include $RULE_PATH/snort3-policy-social.rules
+    ]]
+}</pre>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:6,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_center wrap_info wrap_round plugin_wrap" style="width: 80%;">
+<p>
+Memory and CPU usage will proportionally increase as the number of rules increases.  Be sure to check system usage with a utility like top or htop.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:7,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;IDS Configuration for stable release ONLY&quot;,&quot;hid&quot;:&quot;ids_configuration_for_stable_release_only&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:5,&quot;range&quot;:&quot;4256-6649&quot;} -->
+<h3 class="sectionedit8" id="ips_configuration_for_stable_release_only">IPS Configuration for stable release ONLY</h3>
+<div class="level3">
+
+<p>
+1. Define the interface pair or device pair on which to listen in <code>/etc/config/snort</code> (for example eth0:eth1).
+</p>
+
+<p>
+2. Change <code>mode = tap</code> in the <code>ips =&lt;</code> section of <code>/etc/snort/snort.lua</code> to <code>mode = inline</code>.
+</p>
+
+<p>
+3. Add the following under the <code>ips =</code> section of <code>/etc/snort/snort.lua</code>:
+</p>
+<pre class="code">daq = {
+  module_dirs = {
+    &#039;/usr/lib/daq&#039;,
+  },
+  modules = {
+    {
+      name = &#039;afpacket&#039;,
+      mode = &#039;inline&#039;,
+      action_override = &#039;drop&#039;,
+      variables = {
+        &#039;fanout_type=hash&#039;
+      }
+    }
+  }
+}</pre>
+
+<p>
+4. Edit <code>/etc/init.d/snort</code> and append a <code>-Q</code> to the <code>procd_set_param command</code> like so to enable Inline mode which will trigger drop rules:
+</p>
+<pre class="code">procd_set_param command $PROG -q --daq-dir /usr/lib/daq/ -i &quot;$interface&quot; -c &quot;$config_name&quot; -A &quot;$alert_module&quot; -Q</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;IPS Configuration for stable release ONLY&quot;,&quot;hid&quot;:&quot;ips_configuration_for_stable_release_only&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:8,&quot;range&quot;:&quot;6650-7505&quot;} -->
+<h3 class="sectionedit9" id="configuration_for_development_snapshot_only">Configuration for development snapshot ONLY</h3>
+<div class="level3">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:10,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_center wrap_info wrap_round plugin_wrap" style="width: 80%;">
+<p>
+This section only applies to users running development snapshots post 07-Dec-2022!  This version of the package is much compartmentalized and simplified in its setup compared to the older package.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:11,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+There are several config files:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>/etc/config/snort</code> is the OpenWrt daemon config file holding some runtime options.</div>
+</li>
+<li class="level1"><div class="li"> <code>/etc/snort/homenet.lua</code> contains definitions for several key variables.</div>
+</li>
+<li class="level1"><div class="li"> <code>/etc/snort/local.lua</code> contains all other modules and options.</div>
+</li>
+</ul>
+
+<p>
+1. Edit <code>/etc/snort/homenet.lua</code> and redefine <code>HOME_NET</code> and <code>EXTERNAL_NET</code>, for example:
+</p>
+<pre class="code">HOME_NET = [[ 10.9.8.0/24 192.168.1.0/24 ]]
+EXTERNAL_NET = &quot;!$HOME_NET&quot;</pre>
+
+<p>
+2. Edit <code>/etc/snort/local.lua</code> to setup options unique to your use case of snort.  The defaults included should be sane for the role of IDS (alert only), but users may easily uncomment some options therein to use IPS (drop) mode.  See the comments in the file.  Be sure to add the following line in the ips = section if running in IPS mode: <code>action_override = &#039;drop&#039;,</code>
+</p>
+
+<p>
+3. Install or symlink rules to <code>/etc/snort/rules/snort.rules</code> edit optionally edit <code>/etc/snort/local.lua</code> to define extra rules files if not using unified &#039;snort.rules&#039;
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration for development snapshot ONLY&quot;,&quot;hid&quot;:&quot;configuration_for_development_snapshot_only&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:9,&quot;range&quot;:&quot;7506-8796&quot;} -->
+<h3 class="sectionedit12" id="validate_the_configuration">Validate the configuration</h3>
+<div class="level3">
+
+<p>
+Validate the config file by running the following:
+</p>
+
+</div>
+
+<h4 id="for_the_stable_release_only">For the stable release ONLY</h4>
+<div class="level4">
+<pre class="code">snort -c /etc/snort/snort.lua --daq-dir /usr/lib/daq -T</pre>
+
+</div>
+
+<h4 id="for_the_development_release_only">For the development release ONLY</h4>
+<div class="level4">
+<pre class="code">snort -c /etc/snort/snort.lua --tweaks local -T</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Validate the configuration&quot;,&quot;hid&quot;:&quot;validate_the_configuration&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:12,&quot;range&quot;:&quot;8797-9097&quot;} -->
+<h3 class="sectionedit13" id="run_snort">Run snort</h3>
+<div class="level3">
+
+<p>
+Start the daemon and optionally enable it to run at boot:
+</p>
+<pre class="code">/etc/init.d/snort start
+/etc/init.d/snort enable</pre>
+
+<p>
+The OpenWrt package writes alerts to the syslog by default.  Query like so:
+</p>
+<pre class="code"># logread -e snort
+Mon Nov 28 09:55:23 2022 auth.info snort: [1:254:16] &quot;PROTOCOL-DNS SPOOF query response with TTL of 1 min. and no authority&quot; [Classification: Potentially Bad Traffic] [Priority: 2] {UDP} 1.1.1.1:53 -&gt; 10.1.8.202:55572
+Mon Nov 28 13:09:16 2022 auth.info snort: [1:29456:3] &quot;PROTOCOL-ICMP Unusual PING detected&quot; [Classification: Information Leak] [Priority: 2] {ICMP} 10.9.1.235 -&gt; 0.0.0.15
+Mon Nov 28 13:09:17 2022 auth.info snort: [1:29456:3] &quot;PROTOCOL-ICMP Unusual PING detected&quot; [Classification: Information Leak] [Priority: 2] {ICMP} 10.9.1.235 -&gt; 0.0.0.15
+Mon Nov 28 13:09:18 2022 auth.info snort: [1:29456:3] &quot;PROTOCOL-ICMP Unusual PING detected&quot; [Classification: Information Leak] [Priority: 2] {ICMP} 10.9.1.235 -&gt; 0.0.0.15
+Mon Nov 28 13:09:19 2022 auth.info snort: [1:29456:3] &quot;PROTOCOL-ICMP Unusual PING detected&quot; [Classification: Information Leak] [Priority: 2] {ICMP} 10.9.1.235 -&gt; 0.0.0.15</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Run snort&quot;,&quot;hid&quot;:&quot;run_snort&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:13,&quot;range&quot;:&quot;9098-10254&quot;} -->
+<h2 class="sectionedit14" id="auto-configuration">Auto-Configuration</h2>
+<div class="level2">
+
+<p>
+This section describes OpenWrt&#039;s Snort3 configuration when the package version is 3.1.78.0-2 and later (released January 2024).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Auto-Configuration&quot;,&quot;hid&quot;:&quot;auto-configuration&quot;,&quot;codeblockOffset&quot;:13,&quot;secid&quot;:14,&quot;range&quot;:&quot;10255-10414&quot;} -->
+<h3 class="sectionedit15" id="quickstart">Quickstart</h3>
+<div class="level3">
+
+<p>
+To boost your confidence, we&#039;ll do the minimum to verify that everything is in place and all the data is flowing through snort as expected.
+</p>
+
+<p>
+First, set the config to use auto-configuration, enable it and point it to your <abbr title="Wide Area Network">WAN</abbr> interface.
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> snort.snort.enabled=<span class="nu0">1</span>
+uci <span class="kw1">set</span> snort.snort.manual=<span class="nu0">0</span>
+uci <span class="kw1">set</span> snort.snort.home_net=<span class="st0">&quot;any&quot;</span>
+uci <span class="kw1">set</span> snort.snort.interface=<span class="st0">&quot;<span class="es4">$(uci get network.wan.device)</span>&quot;</span>
+uci commit</pre>
+
+<p>
+Next, set up a set of testing rules.
+</p>
+<pre class="code bash">snort-rules <span class="re5">--testing</span>
+snort-mgr check <span class="re5">--verbose</span></pre>
+
+<p>
+That <code>snort-mgr check</code> command will spit out pile of diagnostics, there are two lines that mean everything is working.  We want to be sure it&#039;s loading rules (the first line) and that it <code>successfully validated</code>.
+</p>
+<pre class="code">... a bunch of stuff ...
+Loading /etc/snort/rules/testing.rules:
+... a bunch of stuff ...
+Snort successfully validated the configuration (with 5 warnings).</pre>
+
+<p>
+Time to start snort up.
+</p>
+<pre class="code bash"><span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>snort start
+logread <span class="re5">-e</span> snort
+snort-mgr status</pre>
+
+<p>
+The <code>snort-mgr status</code> command should show something like this:
+</p>
+<pre class="code">snort is running
+Total system memory=984.027M  Used=319.121M (32.4%)  Free=664.906M (67.6%)
+  PID USER       VSZ STAT COMMAND
+11694 root     92000 S    /usr/bin/snort -q -c /var/snort.d/snort_conf.lua</pre>
+
+<p>
+Now it&#039;s time for that test, which uses the test rule (it detects pings from anywhere to anywhere and logs them as incidents).
+</p>
+<pre class="code bash"><span class="kw2">ping</span> <span class="re5">-c4</span> 8.8.8.8
+snort-mgr report</pre>
+
+<p>
+The output from <code>snort-mgr report</code> should show those four pings from your router&#039;s <abbr title="Internet Protocol">IP</abbr> as the source, and Google <abbr title="Domain Name System">DNS</abbr> as the destination.
+</p>
+<pre class="code">Events involving all IPs - 2024-01-10T14:55:57-08:00
+  Count Message            gid   sid Dir Source    Destination
+      4 TEST ALERT ICMP v4   1 99010 C2S 10.1.1.20 8.8.8.8
+      4 incidents shown of 4 logged</pre>
+
+<p>
+Now we&#039;re ready for “production”, so simply do this to fetch the snort community rules (assuming no <code>oinkcode</code>, see below).
+</p>
+<pre class="code bash">snort-rules
+<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>snort restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Quickstart&quot;,&quot;hid&quot;:&quot;quickstart&quot;,&quot;codeblockOffset&quot;:13,&quot;secid&quot;:15,&quot;range&quot;:&quot;10415-12470&quot;} -->
+<h3 class="sectionedit16" id="config_file">Config File</h3>
+<div class="level3">
+
+<p>
+There is no LuCI support for any of snort configuration, but there is a fairly rich command line suite for managing snort behavior and determining what incidents are actual intrusions.
+</p>
+
+<p>
+The <code>snort</code> section of the configuration file contains all the basic parameters for generating custom Lua configuration for your installation.
+</p>
+<div class="sortable"><div class="table sectionedit17"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Name </th><th class="col1"> Type </th><th class="col2"> Default </th><th class="col3"> Description </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> <code>enabled</code>      </td><td class="col1 leftalign"> bool    </td><td class="col2 leftalign"> <code>0</code>              </td><td class="col3"> Defaults to off, so that user must configure before first start. </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> <code>manual</code>       </td><td class="col1 leftalign"> bool    </td><td class="col2 leftalign"> <code>1</code>              </td><td class="col3"> When set to 1, use manual configuration for legacy behavior.  When disabled, then auto-generate configuration. </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> <code>oinkcode</code>     </td><td class="col1 leftalign"> string  </td><td class="col2 leftalign"> -                  </td><td class="col3"></td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"> <code>home_net</code>     </td><td class="col1"> address </td><td class="col2"> <code>192.168.1.0/24</code> </td><td class="col3"> The <abbr title="Internet Protocol">IP</abbr> range or ranges to protect. May be <code>any</code>, but more likely it&#039;s your lan range, default is <code>192.168.1.0/24</code>. </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0"> <code>external_net</code> </td><td class="col1"> address </td><td class="col2 leftalign"> <code>any</code>            </td><td class="col3"> The <abbr title="Internet Protocol">IP</abbr> range external to home.  Usually <code>any</code>, but if you only care about true external hosts (trusting all lan devices), then <code>!$HOME_NET</code> or some specific range. </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0 leftalign"> <code>config_dir</code>   </td><td class="col1 leftalign"> path    </td><td class="col2 leftalign"> <code>/etc/snort</code>     </td><td class="col3"> Location of the base snort configuration files.  It is very unlikely that you&#039;ll want to change this, as by default a large part of the default configuration resides in <code>/etc/snort</code>, and this is also the prefix for locating the <code>rules</code> directory. </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0 leftalign"> <code>temp_dir</code>     </td><td class="col1 leftalign"> path    </td><td class="col2 leftalign"> <code>/var/snort.d</code>   </td><td class="col3"> Location of all transient snort configuration.  If you use the <code>snort-rules</code> utility to download rules, it places the downloads here. </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0 leftalign"> <code>log_dir</code>      </td><td class="col1 leftalign"> path    </td><td class="col2 leftalign"> <code>/var/log</code>       </td><td class="col3"> Location of the generated logs.  You may want to point this to a non-volatile location, say an external hard drive, if you wish to keep historical records of alerts. </td>
+	</tr>
+	<tr class="row9">
+		<td class="col0 leftalign"> <code>logging</code>      </td><td class="col1 leftalign"> bool    </td><td class="col2 leftalign"> <code>1</code>              </td><td class="col3"> Enable external logging of events thus enabling &#039;snort-mgr report&#039;.  <code>snort</code> can run in IPS mode without logging, but you&#039;ll be unable to see what or why packets are being rejected. </td>
+	</tr>
+	<tr class="row10">
+		<td class="col0 leftalign"> <code>openappid</code>    </td><td class="col1 leftalign"> bool    </td><td class="col2 leftalign"> <code>0</code>              </td><td class="col3"> If you install the <code>openappid</code> package, which allows more sophisticated application and service filtering, then turn this on to enable its use. </td>
+	</tr>
+	<tr class="row11">
+		<td class="col0 leftalign"> <code>mode</code>         </td><td class="col1 leftalign"> one_of  </td><td class="col2 leftalign"> <code>ids</code>            </td><td class="col3"> <code>ids</code>, <code>ips</code> for detection-only or prevention, respectively. </td>
+	</tr>
+	<tr class="row12">
+		<td class="col0 leftalign"> <code>method</code>       </td><td class="col1 leftalign"> one_of  </td><td class="col2 leftalign"> <code>pcap</code>           </td><td class="col3"> <code>pcap</code>, <code>afpacket</code>, <code>nfq</code> </td>
+	</tr>
+	<tr class="row13">
+		<td class="col0 leftalign"> <code>action</code>       </td><td class="col1 leftalign"> one_of  </td><td class="col2 leftalign"> <code>default</code>        </td><td class="col3"> <code>default</code>, <code>alert</code>, <code>block</code>, <code>drop</code>, <code>reject</code> </td>
+	</tr>
+	<tr class="row14">
+		<td class="col0 leftalign"> <code>interface</code>    </td><td class="col1 leftalign"> id      </td><td class="col2 leftalign"> <code>eth0</code>           </td><td class="col3"> The interface on which to filter packets, usually <code>uci get network.wan.device</code>, possibly <code>br-lan</code> or even both.  Note that this item is used by both legacy and auto-generated configurations. </td>
+	</tr>
+	<tr class="row15">
+		<td class="col0 leftalign"> <code>snaplen</code>      </td><td class="col1 leftalign"> int     </td><td class="col2 leftalign"> <code>1518</code>           </td><td class="col3"> Set snap length  { 0-65535 } </td>
+	</tr>
+	<tr class="row16">
+		<td class="col0 leftalign"> <code>include</code>      </td><td class="col1 leftalign"> path    </td><td class="col2 leftalign"> -                  </td><td class="col3"> User-defined snort configuration.  It is applied at end of the generated <code>snort_conf.lua</code>, so its contents may override any of the defaults. </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:17,&quot;range&quot;:&quot;12838-15734&quot;} --></div>
+<p>
+When the <code>snort.method</code> option is set to <code>nfq</code>, then the <code>nfq</code> section of the config file contains tuning parameters for the rules and queues that are used for packet capture.
+</p>
+<div class="sortable"><div class="table sectionedit18"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Name </th><th class="col1"> Type </th><th class="col2"> Default </th><th class="col3"> Description </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> <code>queue_count</code>    </td><td class="col1 leftalign"> int    </td><td class="col2 leftalign"> <code>4</code>      </td><td class="col3"> An integer in the range 1-16.  Count of queues to allocate in the nftables chain, usually 2-8. </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> <code>queue_start</code>    </td><td class="col1 leftalign"> int    </td><td class="col2 leftalign"> <code>4</code>      </td><td class="col3"> An integer in the range 1-32768.  Start of queue numbers in nftables. </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> <code>queue_maxlen</code>   </td><td class="col1 leftalign"> int    </td><td class="col2 leftalign"> <code>1024</code>   </td><td class="col3"> An integer in the range 1024-65536. </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"> <code>fanout_type</code>    </td><td class="col1"> one_of </td><td class="col2 leftalign"> <code>hash</code>   </td><td class="col3"> <code>hash</code>, <code>lb</code>, <code>cpu</code>, <code>rollover</code>, <code>rnd</code>, <code>qm</code>  For details, see<br/>
+<a href="https://github.com/florincoras/daq/blob/master/README" class="urlextern" title="https://github.com/florincoras/daq/blob/master/README" rel="ugc nofollow">https://github.com/florincoras/daq/blob/master/README</a><br/>
+<a href="https://www.kernel.org/doc/Documentation/networking/packet_mmap.txt" class="urlextern" title="https://www.kernel.org/doc/Documentation/networking/packet_mmap.txt" rel="ugc nofollow">https://www.kernel.org/doc/Documentation/networking/packet_mmap.txt</a> </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 leftalign"> <code>thread_count</code>   </td><td class="col1 leftalign"> int    </td><td class="col2 leftalign"> <code>0</code>      </td><td class="col3"> An integer in the range 0-32, defaulting to 0.  A value of 0 computes available CPUs and uses all. </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0 leftalign"> <code>chain_type</code>     </td><td class="col1"> one_of </td><td class="col2 leftalign"> <code>input</code>  </td><td class="col3"> <code>prerouting</code>, <code>input</code>, <code>forward</code>, <code>output</code>, <code>postrouting</code> </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0"> <code>chain_priority</code> </td><td class="col1"> one_of </td><td class="col2"> <code>filter</code> </td><td class="col3"> <code>raw</code>, <code>filter</code>, <code>300</code> </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0 leftalign"> <code>include</code>        </td><td class="col1 leftalign"> path   </td><td class="col2 leftalign"> -          </td><td class="col3"> User-defined rules to include inside queue chain.  The rules supplied here are inserted before the <code>queue</code> statement, so you can filter or drop packets prior to them reaching <code>snort</code>. </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table1&quot;,&quot;secid&quot;:18,&quot;range&quot;:&quot;15942-17143&quot;} --></div>
+<p>
+Logging alerts to the system log is completely disabled by default (i.e., <code>logread -e snort</code> only shows startup messages and errors and so on).  If you wish for alerts to be written to the system log, use the <code>snort.include</code> facility to override this.  Be aware that this can be quite verbose and cause the log to rollover quite often.
+</p>
+<pre class="code bash">$ <span class="kw3">echo</span> <span class="st0">&quot;alert_syslog = { level = 'info', }&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>snort<span class="sy0">/</span>include.snort
+$ uci <span class="kw1">set</span> snort.snort.include=<span class="sy0">/</span>etc<span class="sy0">/</span>snort<span class="sy0">/</span>include.snort
+$ uci commit
+$ <span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>snort restart
+...
+$ logread <span class="re5">-e</span> snort</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Config File&quot;,&quot;hid&quot;:&quot;config_file&quot;,&quot;codeblockOffset&quot;:21,&quot;secid&quot;:16,&quot;range&quot;:&quot;12471-17708&quot;} -->
+<h3 class="sectionedit19" id="rules">Rules</h3>
+<div class="level3">
+
+<p>
+Before you can run snort, you need to install a set of snort rules.  The command line package, <code>snort-rules</code>, allows you to do so quickly and easily.  You can use it to generate a set of test rules that detect ping between any two hosts on your network, so that&#039;s a good place to start as it provides assurance that all the other pieces are in place.
+</p>
+<pre class="code">$ snort-rules --testing
+snort-rules[29098]: Generating testing rules...
+snort-rules[29098]: Snort rules loaded, restart snort now.
+
+$ cat /etc/snort/rules/testing.rules
+alert icmp any any &lt;&gt; any any (msg:&quot;TEST ALERT ICMP v4&quot;; icode:0; itype: 8; sid:99010;)
+alert icmp any any &lt;&gt; any any (msg:&quot;TEST ALERT ICMP v6&quot;; icode:0; itype:33; sid:99011;)
+alert icmp any any &lt;&gt; any any (msg:&quot;TEST ALERT ICMP v6&quot;; icode:0; itype:34; sid:99012;)</pre>
+
+<p>
+Once you&#039;re confident that you have everything else in place, you can then use <code>snort-rules</code> to download a real ruleset.
+</p>
+
+<p>
+If you have registered with <a href="https://snort.org" class="urlextern" title="https://snort.org" rel="ugc nofollow">snort.org</a> and have an <code>oinkcode</code>, then your first step is to edit <code>/etc/config/snort</code> and modify the value of <code>oinkcode</code> in the <code>snort</code> section of that file.  If you don&#039;t wish to register, that&#039;s fine, you can still use the <a href="https://www.snort.org/downloads/#rule-downloads" class="urlextern" title="https://www.snort.org/downloads/#rule-downloads" rel="ugc nofollow">snort community rules</a>, by simply running <code>snort-rules</code> without adding an <code>oinkcode</code> to your config.
+</p>
+
+<p>
+By default, the <code>snort.snort.temp_dir</code> location points to <code>/var/snort.d/</code>, which is in OpenWrt&#039;s volatile RAM file system.  This is where the rules are installed, then a symbolic link is created from <code>/etc/snort/rules/</code> to this volatile ruleset.  When you reboot, or do a sysupgrade, then the rules are lost and you will need to reload them.
+</p>
+
+<p>
+The <code>--persist</code> option allows you to install the ruleset into the <code>conf_dir</code> location instead of linking there.  If you simply supply that option, then the rules are stored in <code>/etc/snort/rules/</code> directly rather than being linked, so when you do <code>sysupgrade</code> they will be automatically restored.  Be aware that this makes the sysupgrade backup file very large if you are using a large ruleset (say from 50-60K bytes to 3-4MB!), so this might not be a good idea depending on your hardware capacity.
+</p>
+
+<p>
+Another solution is to simply point <code>temp_dir</code> to an external drive location, say <code>uci set snort.snort.temp_dir=/mnt/sda2/snort.d</code>, where the files are non-volatile and will not become part of the backup as they are when in <code>/etc/</code>.
+</p>
+
+<p>
+Without <code>--persist</code> we see the link from where snort expects the rules, to where they actually reside.
+</p>
+<pre class="code">$ snort-rules
+...
+$ ll /etc/snort/rules
+lrwxr-xr-x    1 root     root            26 Jan  8 13:54 /etc/snort/rules -&gt; /var/snort.d/rules/
+
+$ ll /var/snort.d/rules
+drwxr-xr-x    2 root     root          4096 Jan  8 14:27 ./
+drwxr-xr-x    7 root     root          4096 Jan  8 14:27 ../
+-rw-r--r--    1 root     root         66826 Jan  4 13:31 snort3-app-detect.rules
+-rw-r--r--    1 root     root         87719 Jan  4 13:31 snort3-browser-chrome.rules
+-rw-r--r--    1 root     root        156437 Jan  4 13:31 snort3-browser-firefox.rules
+...</pre>
+
+<p>
+With the <code>--persist</code> option...
+</p>
+<pre class="code">$ snort-rules --persist
+...
+$ ll /etc/snort/rules
+drwxr-xr-x    2 root     root          4096 Jan  8 14:27 ./
+drwxr-xr-x    7 root     root          4096 Jan  8 14:27 ../
+-rw-r--r--    1 root     root         66826 Jan  4 13:31 snort3-app-detect.rules
+-rw-r--r--    1 root     root         87719 Jan  4 13:31 snort3-browser-chrome.rules
+-rw-r--r--    1 root     root        156437 Jan  4 13:31 snort3-browser-firefox.rules
+...</pre>
+
+<p>
+Note that the <code>/etc/snort</code> directory is included in <code>sysupgrade</code> backups, so storing data here is probably not a good idea as it can bloat your backups by 10s or 100s of megabytes depending on the size of your ruleset.  Likewise, unless you&#039;ve expanded your root partition, this can easily fill the partition and cause issues.  One way around this is to specify a <code>temp_dir</code> on an external, non-volatile drive as in this example:
+</p>
+<pre class="code bash">$ <span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>snort stop
+&nbsp;
+<span class="co0"># '/mnt/sda2' is a USB drive or whatever...</span>
+$ uci <span class="kw1">set</span> snort.snort.temp_dir=<span class="st_h">'/mnt/sda2/snort.d'</span>
+$ uci commit
+&nbsp;
+$ snort-rules  <span class="co0"># Fetch them to the new location, and fix the link in 'snort.config_dir'</span>
+$ <span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>snort start</pre>
+
+<p>
+TODO <code>snort-mgr check</code>, restart and all that...
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Rules&quot;,&quot;hid&quot;:&quot;rules&quot;,&quot;codeblockOffset&quot;:22,&quot;secid&quot;:19,&quot;range&quot;:&quot;17709-22084&quot;} -->
+<h3 class="sectionedit20" id="reports">Reports</h3>
+<div class="level3">
+
+<p>
+The reporting facility requires the <code>coreutils-sort</code> package for proper operation.  It is not installed as a dependency, so if you choose to use <code>snort-mgr report</code>, then you&#039;ll have to manually add it: <code>opkg update &amp;&amp; opkg install coreutils-sort</code>.
+</p>
+
+<p>
+Here&#039;s an example report, using the <code>--verbose</code> option to list both the rules involved and the symbolic names of the hosts referenced in the incidents.  The incidents are filtered in two ways for this example:
+</p>
+<ol>
+<li class="level1"><div class="li"> By date, with the <code>--date-<abbr title="specification">spec</abbr></code> option.  The <code>today</code> value shows everything occurring since the most recent midnight.  Alternatively, you can supply <code>+YY/DD/MM-hh:mm</code> (everything at or after the supplied date), or <code>-YY/MM/DD-hh:mm</code>, which selects everything before the date.</div>
+</li>
+<li class="level1"><div class="li"> By content, using the <code>--pattern</code> option.  In this case, <code>ssh|scan</code> is applied to the output lines as a case-insensitive alternation of the two values.</div>
+</li>
+</ol>
+<pre class="code">$ snort-mgr report -v -d today -p &quot;ssh|scan&quot;
+Events involving ssh|scan - 2024-01-08T13:21:54-08:00
+  Count Message                                       gid   sid Dir Source     Destination
+     43 INDICATOR-SHELLCODE ssh CRC32 overflow filler   1  1325 C2S 10.1.1.186 10.1.1.20(22)
+     20 INDICATOR-SCAN SSH brute force login attempt    1 19559 C2S 10.1.1.186 10.1.1.20(22)
+      2 INDICATOR-SHELLCODE ssh CRC32 overflow filler   1  1325 C2S 10.1.1.186 192.168.1.204(22)
+     65 incidents shown of 2596 logged
+
+2 unique rules triggered:
+  1 - gid=  1 sid= 1325 /etc/snort/rules/snort3-indicator-shellcode.rules:41:alert tcp $EXTERNAL_NET any -&gt; $HOME_NET $SSH_PORTS ( msg:&quot;INDICATO
+  2 - gid=  1 sid=19559 /etc/snort/rules/snort3-indicator-scan.rules:43:alert tcp $EXTERNAL_NET any -&gt; $HOME_NET 22 ( msg:&quot;INDICATOR-SCAN SSH br
+
+Per-rule details may be viewed by specifying the appropriate gid and sid, e.g.:
+    https://www.snort.org/rule-docs/1-19559
+
+Hosts by name:
+  192.168.1.204                           alma9.vm.lan
+  10.1.1.186                              rover.main.lan
+  10.1.1.20                               openwrt-vm.main.lan</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Reports&quot;,&quot;hid&quot;:&quot;reports&quot;,&quot;codeblockOffset&quot;:26,&quot;secid&quot;:20,&quot;range&quot;:&quot;22085-24178&quot;} -->
+<h2 class="sectionedit21" id="information_references">Information references</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Look up log entries by keyword in the <a href="https://www.snort.org/search" class="urlextern" title="https://www.snort.org/search" rel="ugc nofollow">snort database</a>.</div>
+</li>
+<li class="level1"><div class="li"> Linux installation/configuration <a href="https://snort-org-site.s3.amazonaws.com/production/document_files/files/000/004/026/original/Snort_3_GA_on_OracleLinux_8.pdf" class="urlextern" title="https://snort-org-site.s3.amazonaws.com/production/document_files/files/000/004/026/original/Snort_3_GA_on_OracleLinux_8.pdf" rel="ugc nofollow">guide</a> written by Yaser Mansour.  It is targeted at Oracle Linux 8 but concepts are not distro-specific.</div>
+</li>
+<li class="level1"><div class="li"> Official <a href="https://www.snort.org/documents/1" class="urlextern" title="https://www.snort.org/documents/1" rel="ugc nofollow">Snort User Manual</a>.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Information references&quot;,&quot;hid&quot;:&quot;information_references&quot;,&quot;codeblockOffset&quot;:27,&quot;secid&quot;:21,&quot;range&quot;:&quot;24179-&quot;} -->

@@ -1,0 +1,514 @@
+
+<h1 class="sectionedit1" id="mini-httpd_webserver">mini-httpd webserver</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;mini-httpd webserver&quot;,&quot;hid&quot;:&quot;mini-httpd_webserver&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-37&quot;} -->
+<h2 class="sectionedit2" id="installation">Installation</h2>
+<div class="level2">
+
+<p>
+See →<code><a href="/docs/guide-user/additional-software/opkg" class="wikilink1" title="docs:guide-user:additional-software:opkg" data-wiki-id="docs:guide-user:additional-software:opkg">opkg</a></code> on its usage.
+</p>
+
+<p>
+First update, then install mini-httpd, openssl-util, and libopenssl.
+</p>
+<pre class="code">opkg update
+opkg install mini-httpd
+opkg install mini-httpd-openssl
+opkg install openssl-util</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation&quot;,&quot;hid&quot;:&quot;installation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;38-312&quot;} -->
+<h2 class="sectionedit3" id="configuration">Configuration</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;313-339&quot;} -->
+<h3 class="sectionedit4" id="get_mini-httpd-openssl_working_without_ssl_certificate_errors">Get mini-httpd-openssl working without SSL Certificate errors</h3>
+<div class="level3">
+
+<p>
+Quick guide for Chaos Calmer and later (using self-signed certs):
+</p>
+<ol>
+<li class="level1"><div class="li"> The certificate&#039;s &#039;common-name&#039; must match the host part of the <abbr title="Uniform Resource Locator">URL</abbr> which you use to access your router.  OpenWRT defaults to &#039;OpenWRT&#039;, as the common name, so if you don&#039;t plan to use <a href="https://OpenWRT/" class="urlextern" title="https://OpenWRT/" rel="ugc nofollow">https://OpenWRT/</a>, then edit /etc/config/uhttpd so that the commonname reflects the host part of the <abbr title="Uniform Resource Locator">URL</abbr> you&#039;ll be using.  You&#039;ll then need to rm (or backup) /etc/uhttpd.key and /etc/uhttpd.crt, and regenerate them with: /etc/init.d/uhttpd restart</div>
+</li>
+<li class="level1"><div class="li"> Set your web browser to recognise the self-signed key without lots of scary warnings etc.  This is very platform specific but the following guides may be useful (please add to this list):</div>
+</li>
+</ol>
+<ul>
+<li class="level1"><div class="li"> Chrome / Linux <a href="https://chromium.googlesource.com/chromium/src/+/master/docs/linux_cert_management.md" class="urlextern" title="https://chromium.googlesource.com/chromium/src/+/master/docs/linux_cert_management.md" rel="ugc nofollow">https://chromium.googlesource.com/chromium/src/+/master/docs/linux_cert_management.md</a></div>
+</li>
+<li class="level1"><div class="li"> Chrome (and other browsers, since Chrome uses the <abbr title="Operating System">OS</abbr>&#039;s native cert management) on various desktop platforms <a href="http://stackoverflow.com/questions/7580508/getting-chrome-to-accept-self-signed-localhost-certificate" class="urlextern" title="http://stackoverflow.com/questions/7580508/getting-chrome-to-accept-self-signed-localhost-certificate" rel="ugc nofollow">http://stackoverflow.com/questions/7580508/getting-chrome-to-accept-self-signed-localhost-certificate</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Get mini-httpd-openssl working without SSL Certificate errors&quot;,&quot;hid&quot;:&quot;get_mini-httpd-openssl_working_without_ssl_certificate_errors&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:4,&quot;range&quot;:&quot;340-1430&quot;} -->
+<h3 class="sectionedit5" id="get_mini-httpd-openssl_working_without_ssl_certificate_errors1">Get mini-httpd-openssl working without SSL Certificate errors</h3>
+<div class="level3">
+
+<p>
+As with Telnet, <abbr title="Hypertext Transfer Protocol">HTTP</abbr> will transmit your usernames, passwords, and all data in clear text across the network.
+This means that anyone on the same subnet on either the client or the server networks could intercept the traffic and steal your credentials. 
+Using packages from Backports, you can install an <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr>-only Web server.
+</p>
+
+<p>
+This guide will show you how to turn on <abbr title="Secure Socket Layer">SSL</abbr> access to your OpenWrt running LuCI. Enabling https access to your router, and disabling http access, will provide greater 
+security. 
+This guide will also show you how to install your certificate in Windows 7, which will get rid of browser errors stating the certificate is not valid.
+</p>
+
+<p>
+<strong><code>Note:</code></strong> My build at the time of this article trunk (r32793)
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Get mini-httpd-openssl working without SSL Certificate errors&quot;,&quot;hid&quot;:&quot;get_mini-httpd-openssl_working_without_ssl_certificate_errors1&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:5,&quot;range&quot;:&quot;1431-2225&quot;} -->
+<h3 class="sectionedit6" id="process_breakdown">Process Breakdown</h3>
+<div class="level3">
+<ol>
+<li class="level1"><div class="li"> Create keys and certs</div>
+</li>
+<li class="level1"><div class="li"> Create mini_httpd.pem </div>
+</li>
+<li class="level1"><div class="li"> Install cert to Windows 7 </div>
+</li>
+<li class="level1"><div class="li"> Upload mini_httpd.pem </div>
+</li>
+<li class="level1"><div class="li"> Enable / Start mini_httpd </div>
+</li>
+<li class="level1"><div class="li"> Test </div>
+</li>
+<li class="level1"><div class="li"> Disable http access </div>
+</li>
+</ol>
+
+</div>
+
+<h4 id="backup_your_mini-httpdpem">Backup your mini-httpd.pem</h4>
+<div class="level4">
+
+<p>
+<a href="/_detail/doc/howto/winscp-ss1.png?id=docs%3Aguide-user%3Aservices%3Awebserver%3Ahttp.mini-httpd" class="media" title="doc:howto:winscp-ss1.png"><img src="/_media/doc/howto/winscp-ss1.png" class="media" loading="lazy" title="?400" alt="?400" /></a><br/>
+
+</p>
+
+<p>
+Next, get into the router using WinSCP (don&#039;t forget to change the protocol) and navigate to /etc
+Make a backup of <code>mini_httpd.pem</code> and stick it in a secure place, just in case you need to revert back to this original key at some point. 
+What I did was copy the file to my desktop and renamed it to <code>mini_httpd-ORG.pem</code>
+</p>
+
+</div>
+
+<h4 id="a_simple_understanding_of_tls_and_ssl">A Simple Understanding of TLS and SSL</h4>
+<div class="level4">
+
+<p>
+After much discussion with mancha in the #openssl <abbr title="Internet Relay Chat">IRC</abbr> channel, he explained some basics about the underlying encrypted network connections that I feel are important for those of you who are doing this. Without knowing some of what this guide will teaching, changing it to suit your situation will be more difficult. 
+Creating a certificate is for your router to say to a browser, “Hey this is me and you can trust it is me.”
+The webserver on the router and your browser will use transport protocol <abbr title="Secure Socket Layer">SSL</abbr> or <abbr title="Transport Layer Security">TLS</abbr> to negotiate a cipher. 
+Your browser client says “Here are the ciphers I understand”. The server will reply “Good, I understand this subset of ciphers, now pick this one.” This all goes on without our interaction. We just see a browser connecting via <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr>. This process has nothing to do with the certificate we are creating. This is important to understand, as creating a strong certificate does <em class="u">not</em> mean mini_httpd and your browser will use the <em>maximum</em> available cipher. So you can generate a 4096-bit RSA certificate, only to have your browser and the server decide to use DES-CBC-SHA (Kx=RSA Au=RSA Enc=DES(56) Mac=SHA1) which is considered a Medium Strength Cipher (&gt;= 56-bit and &lt; 112-bit key). Fortunately, we can force mini-httpd to always use a stronger one. This is detailed below in the section <em>Forcing a strong <abbr title="Secure Socket Layer">SSL</abbr>/<abbr title="Transport Layer Security">TLS</abbr> Cipher</em>. 
+</p>
+
+</div>
+
+<h4 id="creating_the_1024-bit_key_and_certificate">Creating the 1024-bit key and certificate</h4>
+<div class="level4">
+
+<p>
+Step 1: Using PuTTY to access the router over <abbr title="Secure Shell">SSH</abbr>, we then make our keys using openssl by issuing these commands:
+</p>
+<pre class="code">openssl req -nodes -new &gt; cert.csr</pre>
+
+<p>
+This requests the key and certificate creation. <code>-nodes</code> creates a key which will not be encrypted with a DES pass phrase. More info <a href="http://www.madboa.com/geek/openssl/#cert-self" class="urlextern" title="http://www.madboa.com/geek/openssl/#cert-self" rel="ugc nofollow">here</a>
+</p>
+
+</div>
+
+<h4 id="optionalcreate_a_2048-bit_key_and_certificate_instead">Optional: Create a 2048-bit key and certificate instead</h4>
+<div class="level4">
+
+<p>
+If you prefer to have stronger than 1024-bit encryption, use this command <em class="u">instead</em> to get 2048-bit encryption:
+</p>
+<pre class="code">openssl req -nodes -newkey rsa:2048 -new &gt; cert.csr</pre>
+
+</div>
+
+<h4 id="fill_in_the_certificate">Fill in the certificate</h4>
+<div class="level4">
+
+<p>
+Step 2: Next enter this stuff based on your own info:
+</p>
+<div class="table sectionedit7"><table class="inline">
+	<tr class="row0">
+		<td class="col0"><code>Country Name: US
+State/Province: CA
+Locality Name: Los Angeles
+Organization Name: You may hit enter to leave blank.
+Organization Unit Name: You may hit enter to leave blank.
+Common Name: 192.168.1.1
+Email Address: You may hit enter to leave blank.
+A Challenge Password: You may hit enter to leave blank.
+Optional company name: You may hit enter to leave blank.</code></td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:7,&quot;range&quot;:&quot;4973-5339&quot;} -->
+<p>
+Note that <code>Common Name:</code> is VERY important. Without this entered properly, it will always error out. Make this the <abbr title="Internet Protocol">IP</abbr> of the router, and <em class="u">do not</em> suffix it with the cgi-bin/luci.
+</p>
+
+</div>
+
+<h4 id="convert_and_sign_the_certificate">Convert and sign the certificate</h4>
+<div class="level4">
+
+<p>
+Step 3: Lastly, issue this command:
+</p>
+<pre class="code">openssl x509 -in cert.csr -out cert.pem -req -signkey privkey.pem -days 365</pre>
+
+<p>
+x509 option converts the certificate (.csr) to .pem certificate. It then signs the privkey.pem and makes it valid for 1 year. For more info 
+<a href="http://en.wikipedia.org/wiki/X.509#Certificate_filename_extensions" class="urlextern" title="http://en.wikipedia.org/wiki/X.509#Certificate_filename_extensions" rel="ugc nofollow">see this page</a>
+</p>
+
+</div>
+
+<h4 id="grabbing_the_key_and_certificate">Grabbing the key and certificate</h4>
+<div class="level4">
+
+<p>
+Use WinSCP to login and navigate to /root 
+Copy these 2 files to your <abbr title="Operating System">OS</abbr>, as you will be manipulating them (I threw mine on my desktop): 
+</p>
+<pre class="code">cert.pem (copy to OS, then delete)
+privkey.pem (copy to OS, then delete)
+cert.csr (Just delete)</pre>
+
+</div>
+
+<h4 id="creating_a_new_mini-httpdpem">Creating a new mini-httpd.pem</h4>
+<div class="level4">
+
+<p>
+Open <code>cert.pem</code> with a text editor and copy the contents from the top starting with:
+</p>
+<pre class="code">-----BEGIN CERTIFICATE-----</pre>
+
+<p>
+all the way to the end and including the line
+</p>
+<pre class="code">-----END CERTIFICATE-----</pre>
+
+<p>
+Open <code>privkey.pem</code>, and right after
+</p>
+<pre class="code">-----END RSA PRIVATE KEY-----</pre>
+
+<p>
+Paste onto the line below it, the contents of cert.pem that you copied.
+</p>
+
+<p>
+It should look like this:
+</p>
+<pre class="code">-----BEGIN PRIVATE KEY-----
+RANDOM GARBLED ENCRYPTION RANDOM GARBLED ENCRYPTION
+RANDOM GARBLED ENCRYPTION RANDOM GARBLED ENCRYPTION
+RANDOM GARBLED ENCRYPTION RANDOM GARBLED ENCRYPTION
+RANDOM GARBLED ENCRYPTION RANDOM GARBLED ENCRYPTION
+RANDOM GARBLED ENCRYPTION RANDOM GARBLED ENCRYPTION
+RANDOM GARBLED ENCRYPTION RANDOM GARBLED ENCRYPTION
+RANDOM GARBLED ENCRYPTION RANDOM GARBLED ENCRYPTION
+RANDOM GARBLED ENCRYPTION RANDOM GARBLED ENCRYPTION
+RANDOM GARBLED ENCRYPTION RANDOM GARBLED ENCRYPTION
+-----END PRIVATE KEY-----
+-----BEGIN CERTIFICATE-----
+RANDOM GARBLED ENCRYPTION RANDOM GARBLED ENCRYPTION
+RANDOM GARBLED ENCRYPTION RANDOM GARBLED ENCRYPTION
+RANDOM GARBLED ENCRYPTION RANDOM GARBLED ENCRYPTION
+RANDOM GARBLED ENCRYPTION RANDOM GARBLED ENCRYPTION
+RANDOM GARBLED ENCRYPTION RANDOM GARBLED ENCRYPTION
+RANDOM GARBLED ENCRYPTION RANDOM GARBLED ENCRYPTION
+RANDOM GARBLED ENCRYPTION RANDOM GARBLED ENCRYPTION
+RANDOM GARBLED ENCRYPTION RANDOM GARBLED ENCRYPTION
+RANDOM GARBLED ENCRYPTION RANDOM GARBLED ENCRYPTION
+-----END CERTIFICATE-----</pre>
+
+<p>
+Save <code>privkey.pem</code>. Then rename it to: <code>mini_httpd.pem</code>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Process Breakdown&quot;,&quot;hid&quot;:&quot;process_breakdown&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:6,&quot;range&quot;:&quot;2226-7764&quot;} -->
+<h2 class="sectionedit8" id="installing_the_certificate_to_windows_7">Installing the certificate to Windows 7</h2>
+<div class="level2">
+
+<p>
+<a href="/_detail/doc/howto/chromeerror.png?id=docs%3Aguide-user%3Aservices%3Awebserver%3Ahttp.mini-httpd" class="media" title="doc:howto:chromeerror.png"><img src="/_media/doc/howto/chromeerror.png?w=400&amp;tok=3690fe" class="media" loading="lazy" alt="" width="400" /></a> <a href="/_detail/doc/howto/ie-cert-error.jpg?id=docs%3Aguide-user%3Aservices%3Awebserver%3Ahttp.mini-httpd" class="media" title="doc:howto:ie-cert-error.jpg"><img src="/_media/doc/howto/ie-cert-error.jpg?w=400&amp;tok=46fd35" class="media" loading="lazy" alt="" width="400" /></a>
+</p>
+
+<p>
+To avoid issues with your browser whining that the <abbr title="Secure Socket Layer">SSL</abbr> connection is not secure, we will install the certificate we made to the <abbr title="Operating System">OS</abbr>, so that it knows it is indeed safe. Note: At this point in the guide you won&#039;t see the above erros in your browser, as the service is not started. They are to demonstrate what it will whine about after you have the service running, but have not yet installed the certificate to your <abbr title="Operating System">OS</abbr>.
+</p>
+
+<p>
+To accomplish this, we need to install <code>cert.pem</code> on the computer(s) accessing the WebGUI. On Windows 7 execute:
+</p>
+<pre class="code">certmgr.msc</pre>
+
+<p>
+Next, on the left pane click on Trusted Root Certification Authorities, expand it, or double click on Certificates in the right pane. You should now see a bunch of other certificates.
+</p>
+
+<p>
+<a href="/_detail/doc/howto/certmgr-ss.jpg?id=docs%3Aguide-user%3Aservices%3Awebserver%3Ahttp.mini-httpd" class="media" title="doc:howto:certmgr-ss.jpg"><img src="/_media/doc/howto/certmgr-ss.jpg" class="media" loading="lazy" title="?300" alt="?300" /></a>
+</p>
+
+<p>
+Now, Right-click in the right pane (or click Action in the toolbar) and choose &#039;All Tasks&#039; then &#039;Import...&#039;
+Click on next. Click Browse, in the explorer window that pops up, change the extension (bottom right) from &#039;X.509 Certificate (*.cer,*.crt) to All Files (*.*) then select <code>cert.pem</code> from your Desktop. 
+</p>
+
+<p>
+<a href="/_detail/doc/howto/cert-ext-window-ss.png?id=docs%3Aguide-user%3Aservices%3Awebserver%3Ahttp.mini-httpd" class="media" title="doc:howto:cert-ext-window-ss.png"><img src="/_media/doc/howto/cert-ext-window-ss.png" class="media" loading="lazy" title="?300" alt="?300" /></a>
+</p>
+
+<p>
+Then click on next. Choose &#039;Place all certificates in the following store. If &#039;Trusted Root Certification Authorities&#039; <em class="u">is</em> select already, click next, then Finish.
+If it <em class="u">is not</em> already selected, click browse and then click on &#039;Trusted Root Certification Authorities&#039; and click ok. Then click next, and Finish. 
+</p>
+
+<p>
+Now, it will issue a security warning. It warns you that it cannot validate the certificate is actually from your router <abbr title="Internet Protocol">IP</abbr> address. As this is a self-signed certificate, you know it&#039;s from you, so click on YES to install the certificate. It will then successfully install to the Trusted Root Certification Authorities. If you do not see it in the list, simply hit right-click in the right pane, and choose &#039;Refresh&#039;. Ta-da!
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installing the certificate to Windows 7&quot;,&quot;hid&quot;:&quot;installing_the_certificate_to_windows_7&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:8,&quot;range&quot;:&quot;7765-9775&quot;} -->
+<h2 class="sectionedit9" id="upload_mini_httpdpem_and_starting_the_service">Upload mini_httpd.pem and starting the service</h2>
+<div class="level2">
+
+<p>
+Now, before you can access the router by <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr>, you will need to do a couple more things: giving the router the private key and cert in the form of the <code>mini_httpd.pem</code>, and enabling then starting the service.
+</p>
+
+<p>
+Now, we already created <code>mini_httpd.pem</code> above, so let&#039;s place it on the router where it belongs. Using WinSCP, login and navigate to /etc. Delete the existing<code>mini_httpd.pem</code> from the router (If you have been following this word for word, then you should already have a backup named <code>mini_httpd-ORG.pem</code> on the desktop or wherever) and copy your created <code>mini_httpd.pem</code> over to /etc.
+</p>
+
+<p>
+Once that is completed, you can close WinSCP. 
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Upload mini_httpd.pem and starting the service&quot;,&quot;hid&quot;:&quot;upload_mini_httpdpem_and_starting_the_service&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:9,&quot;range&quot;:&quot;9776-10492&quot;} -->
+<h2 class="sectionedit10" id="starting_the_service">Starting the service</h2>
+<div class="level2">
+<pre class="code">/etc/init.d/mini_httpd enable
+/etc/init.d/mini_httpd start</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Starting the service&quot;,&quot;hid&quot;:&quot;starting_the_service&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:10,&quot;range&quot;:&quot;10493-10600&quot;} -->
+<h3 class="sectionedit11" id="testing">Testing</h3>
+<div class="level3">
+
+<p>
+Try opening a browser and navigate to: <a href="https://192.168.1.1" class="urlextern" title="https://192.168.1.1" rel="ugc nofollow">https://192.168.1.1</a>
+</p>
+
+<p>
+If you have trouble, try:
+Clearing the cookies/cache in your browser.
+Trying Incognito mode (Chrome) or InPrivate (Internet Explorer)
+Try navigating to the full url: <code><a href="https://192.168.1.1/cgi-bin/luci" class="urlextern" title="https://192.168.1.1/cgi-bin/luci" rel="ugc nofollow">https://192.168.1.1/cgi-bin/luci</a></code>
+</p>
+
+<p>
+You should get NO error regarding the certificate. :)
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Testing&quot;,&quot;hid&quot;:&quot;testing&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:11,&quot;range&quot;:&quot;10601-10938&quot;} -->
+<h3 class="sectionedit12" id="shutting_down_regular_http_access_uhttpd">Shutting Down regular HTTP access (uhttpd)</h3>
+<div class="level3">
+
+<p>
+Before Chaos Calmer:
+</p>
+<pre class="code">/etc/init.d/uhttpd stop
+/etc/init.d/uhttpd disable</pre>
+
+<p>
+To test it&#039;s down, navigate to your <a href="http://192.168.1.1" class="urlextern" title="http://192.168.1.1" rel="ugc nofollow">http://192.168.1.1</a> and it should error out.
+</p>
+
+<p>
+You can also stop and disable this through Luci.
+Log into Luci (<abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr>), go to the System tab, then to the Startup sub tab. Find uhttpd and choose STOP. Then DISABLE.
+</p>
+
+<p>
+Chaos Calmer and later:
+</p>
+
+<p>
+uhttpd listens on both http and https, so stopping / disabling uhttpd will turn off both.  Instead, tell uhttpd not to listen on http - edit /etc/config/uhttpd and remove the &#039;listen_http&#039; lines stop listening on port 80.  Then:
+</p>
+<pre class="code">/etc/init.d/uhttpd restart</pre>
+
+<p>
+and use:
+</p>
+<pre class="code">netstat -l</pre>
+
+<p>
+to verify that nothing is listening on http / <abbr title="Transmission Control Protocol">TCP</abbr> port 80.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Shutting Down regular HTTP access (uhttpd)&quot;,&quot;hid&quot;:&quot;shutting_down_regular_http_access_uhttpd&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:12,&quot;range&quot;:&quot;10939-11722&quot;} -->
+<h2 class="sectionedit13" id="forcing_a_strong_ssltls_cipher">Forcing a strong SSL/TLS Cipher</h2>
+<div class="level2">
+
+<p>
+As written above, creating a strong certificate does not mean mini_httpd and your browser will use the maximum available cipher. <br/>
+
+Following <a href="http://www.skytale.net/blog/archives/22-SSL-cipher-settings.html" class="urlextern" title="http://www.skytale.net/blog/archives/22-SSL-cipher-settings.html" rel="ugc nofollow">information that I found here</a>, I found some strong <abbr title="Secure Socket Layer">SSL</abbr> ciphers and plugged them into mini-httpd.
+</p>
+
+<p>
+You will need to find which cipher you prefer, or you should be able to use one of the following: <br/>
+
+<strong><abbr title="Secure Socket Layer">SSL</abbr> v3</strong> <br/>
+
+DES-CBC3-SHA <br/>
+
+RC4-MD5 <br/>
+
+RC4-SHA <br/>
+
+</p>
+
+<p>
+<strong>TLSv1</strong> <br/>
+
+DES-CBC3-SHA <br/>
+
+AES128-SHA <br/>
+
+AES256-SHA <br/>
+
+RC4-MD5 <br/>
+
+RC4-SHA <br/>
+
+SEED-SHA <br/>
+
+</p>
+
+<p>
+You can find out more about the different ciphers by running: 
+</p>
+<pre class="code">openssl ciphers -v</pre>
+
+<p>
+The format being Cipher name, Key eXchange, Authentication, Encryption method, and Message Authentication Code
+</p>
+
+<p>
+Now, if you run <a href="http://www.digipedia.pl/man/doc/view/mini-httpd.8/" class="urlextern" title="http://www.digipedia.pl/man/doc/view/mini-httpd.8/" rel="ugc nofollow">mini_httpd --help</a> you will see that there is a [-Y cipher] option. To utilize this, edit your mini_httpd.conf
+</p>
+<pre class="code">vi /etc/mini_httpd.conf</pre>
+
+<p>
+At the bottom, insert a new line:
+</p>
+<pre class="code">cipher=&lt;NAME OF CIPHER&gt;</pre>
+
+<p>
+Obviously replacing &lt;NAME OF CIPHER&gt; with one of those from above. For example:
+</p>
+<pre class="code">cipher=AES128-SHA</pre>
+
+<p>
+Save the file. Restart mini_httpd. 
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Forcing a strong SSL\/TLS Cipher&quot;,&quot;hid&quot;:&quot;forcing_a_strong_ssltls_cipher&quot;,&quot;codeblockOffset&quot;:14,&quot;secid&quot;:13,&quot;range&quot;:&quot;11723-12972&quot;} -->
+<h2 class="sectionedit14" id="using_a_different_port">Using a different port</h2>
+<div class="level2">
+
+<p>
+By using an un-standard port to run mini-httpd, you add one more layer to the onion of security. Security by obscurity may not be an end-all-be-all, but it never hurts. <br/>
+
+Dynamic/Private ports exist in this range: 49152-65535.
+</p>
+
+<p>
+If you run <a href="http://www.digipedia.pl/man/doc/view/mini-httpd.8/" class="urlextern" title="http://www.digipedia.pl/man/doc/view/mini-httpd.8/" rel="ugc nofollow">mini_httpd --help</a> you will see that there is a [-p port] option. To utilize this, edit your mini_httpd.conf
+</p>
+<pre class="code">vi /etc/mini_httpd.conf</pre>
+
+<p>
+At the bottom, insert a new line:
+</p>
+<pre class="code">port=&lt;PORT NUMBER&gt;</pre>
+
+<p>
+Obviously replacing &lt;PORT NUMBER&gt; with something other than 80 or 443. For example:
+</p>
+<pre class="code">port=51529</pre>
+
+<p>
+Save the file. Restart mini_httpd. 
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Using a different port&quot;,&quot;hid&quot;:&quot;using_a_different_port&quot;,&quot;codeblockOffset&quot;:18,&quot;secid&quot;:14,&quot;range&quot;:&quot;12973-13665&quot;} -->
+<h2 class="sectionedit15" id="troubleshooting">Troubleshooting</h2>
+<div class="level2">
+
+<p>
+<strong>Help! I need my http back!</strong>
+</p>
+
+<p>
+Now, if something happened and need to get back into your router through the normal <abbr title="Hypertext Transfer Protocol">HTTP</abbr> <abbr title="Graphical User Interface">GUI</abbr>. It’s easy to bring it back using <abbr title="Secure Shell">SSH</abbr>.
+</p>
+
+<p>
+Login to your router by <abbr title="Secure Shell">SSH</abbr>. Issue the following 2 commands:
+</p>
+<pre class="code">/etc/init.d/uhttpd enable
+/etc/init.d/uhttpd start</pre>
+
+<p>
+Now, try accessing your 192.168.1.1 via regular http and not https. It should be back up and running.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Troubleshooting&quot;,&quot;hid&quot;:&quot;troubleshooting&quot;,&quot;codeblockOffset&quot;:21,&quot;secid&quot;:15,&quot;range&quot;:&quot;13666-14090&quot;} -->
+<h2 class="sectionedit16" id="notes">Notes</h2>
+<div class="level2">
+
+<p>
+I found that a couple of times, I needed to run the commands to shut down and disable uhttpd and restart mini_httpd like this
+</p>
+<pre class="code">/etc/init.d/uhttpd stop
+/etc/init.d/uhttpd disable
+/etc/init.d/mini_httpd stop
+/etc/init.d/mini_httpd disable
+/etc/init.d/mini_httpd enable
+/etc/init.d/mini_httpd start</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Notes&quot;,&quot;hid&quot;:&quot;notes&quot;,&quot;codeblockOffset&quot;:22,&quot;secid&quot;:16,&quot;range&quot;:&quot;14091-&quot;} -->

@@ -1,0 +1,795 @@
+
+<h1 class="sectionedit1" id="batmanbatman-adv">B.A.T.M.A.N. / batman-adv</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__meta:infobox:howto_links">
+<div class="level1">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap">
+<p>
+This article may contain network configuration that depends on migration to DSA in OpenWrt 21.02
+</p>
+<ul>
+<li class="level1"><div class="li"> Check if your device uses DSA or swconfig as not all devices have been migrated</div>
+</li>
+<li class="level1"><div class="li"> ifname@interface has been moved to device sections</div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/network/dsa/start" class="wikilink1" title="docs:guide-user:network:dsa:start" data-wiki-id="docs:guide-user:network:dsa:start">DSA Networking</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://forum.openwrt.org/t/mini-tutorial-for-dsa-network-config/96998" class="urlextern" title="https://forum.openwrt.org/t/mini-tutorial-for-dsa-network-config/96998" rel="ugc nofollow">Mini tutorial for DSA network config</a> on the forum</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://openwrt.org/releases/21.02/notes-21.02.0#new_network_configuration_syntax_and_boardjson_change" class="urlextern" title="https://openwrt.org/releases/21.02/notes-21.02.0#new_network_configuration_syntax_and_boardjson_change" rel="ugc nofollow">DSA in the 21.02 release notes</a></div>
+</li>
+</ul>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level1">
+
+<p>
+<a href="https://en.wikipedia.org/wiki/B.A.T.M.A.N." class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/B.A.T.M.A.N.">B.A.T.M.A.N.</a> is derived from “Better Approach To Mobile Adhoc Networking” and works for stationary systems as well.
+</p>
+
+<p>
+In addition to providing node-to-node and node-to-net connectivity, batman-adv can provide bridging of multiple VLANs over a mesh (or link), such as for “trusted” client, guest, IoT, and management networks. It provides an easy-to-configure alternative to other approaches to “backhaul”, such as <abbr title="Wireless distribution system">WDS</abbr> connections, GRE tunnels, and various “relay” and “pseudo-relay” approaches.
+</p>
+
+<p>
+batman-adv can run on top of a variety of mesh implementations, including 802.11s, ad-hoc (IBSS), and multiple point-to-point links, wired or wireless.
+</p>
+
+<p>
+batman-adv is reasonably robust to topology changes, typically adapting within a couple seconds.
+</p>
+
+<p>
+batman-adv does <em>not</em> provide encryption or authentication. If required, it should be implemented either or both in the underlying transport (encrypted, authenticated mesh, for example), or protocols (IPSEC, <abbr title="Transport Layer Security">TLS</abbr>, ssh, ...).
+</p>
+<ul>
+<li class="level1"><div class="li"> <code><a href="/packages/pkgdata/kmod-batman-adv" class="wikilink1" title="packages:pkgdata:kmod-batman-adv" data-wiki-id="packages:pkgdata:kmod-batman-adv">batman-adv</a></code> is a mesh protocol for a Layer 2 networking (like Ethernet frames) running in the kernel</div>
+</li>
+<li class="level1"><div class="li"> <code><a href="/packages/pkgdata/batmand" class="wikilink1" title="packages:pkgdata:batmand" data-wiki-id="packages:pkgdata:batmand">batmand</a></code> is a user-space daemon for an older B.A.T.M.A.N. protocol that operates at Layer 3 (like <abbr title="Transmission Control Protocol">TCP</abbr>/<abbr title="Internet Protocol">IP</abbr> packets)</div>
+</li>
+</ul>
+
+<p>
+Unless you&#039;ve got a strong reason to use the older, Layer 3 protocol (such as interoperation with an existing mesh), <code>batman-adv</code> is suggested. This page documents configuration of <code>batman-adv</code> for a local mesh.
+</p>
+
+<p>
+For further information, see, for example
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="http://www.open-mesh.org/projects/open-mesh/wiki" class="urlextern" title="http://www.open-mesh.org/projects/open-mesh/wiki" rel="ugc nofollow">Documentation on the B.A.T.M.A.N. Project Homepage</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://www.open-mesh.org/wiki/open-mesh/BranchesExplained" class="urlextern" title="http://www.open-mesh.org/wiki/open-mesh/BranchesExplained" rel="ugc nofollow">http://www.open-mesh.org/wiki/open-mesh/BranchesExplained</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://downloads.open-mesh.org/batman/manpages/batctl.8.html" class="urlextern" title="https://downloads.open-mesh.org/batman/manpages/batctl.8.html" rel="ugc nofollow">batctl man page</a></div>
+</li>
+</ul>
+
+<p>
+Special thanks to the authors of this OpenWrt walk-through
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="https://www.radiusdesk.com/old_wiki/technical_discussions/batman_basic" class="urlextern" title="https://www.radiusdesk.com/old_wiki/technical_discussions/batman_basic" rel="ugc nofollow">https://www.radiusdesk.com/old_wiki/technical_discussions/batman_basic</a></div>
+</li>
+</ul>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:6,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_center wrap_round wrap_tip plugin_wrap" style="width: 60%;">
+<p>
+<strong>This page now applies to OpenWrt with <code>batman-adv</code> 2019.1 and later.</strong>
+</p>
+
+<p>
+The configuration approach for <code>batman-adv</code> changed in March 2019, 
+See <a href="https://git.openwrt.org/?p=feed/routing.git;a=commit;h=54af5a209e0a0a75b5eb712c0ca8056e66de02c0" class="urlextern" title="https://git.openwrt.org/?p=feed/routing.git;a=commit;h=54af5a209e0a0a75b5eb712c0ca8056e66de02c0" rel="ugc nofollow">commit 54af5a2</a> for further details.
+</p>
+
+<p>
+The last <a href="https://openwrt.org/docs/guide-user/network/wifi/mesh/batman?rev=1555021785" class="urlextern" title="https://openwrt.org/docs/guide-user/network/wifi/mesh/batman?rev=1555021785" rel="ugc nofollow">revision of this page discussing the older configuration</a> is still available. 
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:7,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;B.A.T.M.A.N. \/ batman-adv&quot;,&quot;hid&quot;:&quot;batmanbatman-adv&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-2568&quot;} -->
+<h1 class="sectionedit8" id="installation_and_configuration_of_batman-adv">Installation and Configuration of batman-adv</h1>
+<div class="level1">
+
+<p>
+802.11s configuration developed and tested on <code>openwrt-18.06</code> and <code>master</code> in September, 2018 on Archer C7v2 units running the non-CT firmware (see note above about configuration changes if running 18.06 and its older version of <code>batman-adv</code>. 
+</p>
+
+<p>
+Current (2019.1 and later) <code>batman-adv</code> configuration confirmed on EA8300 and <code>master</code> in May, 2019.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation and Configuration of batman-adv&quot;,&quot;hid&quot;:&quot;installation_and_configuration_of_batman-adv&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:8,&quot;range&quot;:&quot;2569-2985&quot;} -->
+<h2 class="sectionedit9" id="does_your_device_support_80211s_or_ibss">Does Your Device Support 802.11s or IBSS?</h2>
+<div class="level2">
+
+<p>
+Typically, either 802.11s or IBSS (“ad hoc”) is required to set up a mesh.
+</p>
+
+<p>
+IBSS configuration is not discussed in detail on this page. See further <a href="/docs/guide-user/network/wifi/basic" class="wikilink1" title="docs:guide-user:network:wifi:basic" data-wiki-id="docs:guide-user:network:wifi:basic">WiFi /etc/config/wireless</a>
+</p>
+
+<p>
+Note that not all driver / firmware combinations support 802.11s mesh (or IBSS). This may be checked with <code>iw phy</code>, looking for “mesh point” (or “IBSS”) in the various sections of the output. If the -CT drivers/firmware do not support mesh on your device, it may be the case that the “classic” (no -CT) variants do.
+</p>
+<pre class="code">root@test:~# iw phy | fgrep mesh
+		 * mesh point
+		 * #{ managed } &lt;= 16, #{ AP, mesh point } &lt;= 16, #{ IBSS } &lt;= 1,
+		 * mesh point
+		 * #{ managed } &lt;= 16, #{ AP, mesh point } &lt;= 16, #{ IBSS } &lt;= 1,
+		 * mesh point
+		 * #{ managed } &lt;= 16, #{ AP, mesh point } &lt;= 16, #{ IBSS } &lt;= 1,</pre>
+
+<p>
+It has been reported that certain Marvell chips supported by the <code>mwlwifi</code> driver do not support 802.11s, even if indicated in the capabilities.<br/>
+
+ See further <a href="https://github.com/kaloz/mwlwifi/issues?utf8=%E2%9C%93&amp;q=is%3Aissue+802.11s" class="urlextern" title="https://github.com/kaloz/mwlwifi/issues?utf8=%E2%9C%93&amp;q=is%3Aissue+802.11s" rel="ugc nofollow">https://github.com/kaloz/mwlwifi/issues?utf8=%E2%9C%93&amp;q=is%3Aissue+802.11s</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Does Your Device Support 802.11s or IBSS?&quot;,&quot;hid&quot;:&quot;does_your_device_support_80211s_or_ibss&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:9,&quot;range&quot;:&quot;2986-4112&quot;} -->
+<h2 class="sectionedit10" id="overview">Overview</h2>
+<div class="level2">
+
+<p>
+In this walk-through the following steps are described
+</p>
+<ul>
+<li class="level1"><div class="li"> Install needed packages for batman-adv</div>
+</li>
+<li class="level1"><div class="li"> Configure a mesh on which batman-adv will run</div>
+</li>
+<li class="level1"><div class="li"> Configure batman-adv to use the mesh</div>
+</li>
+<li class="level1"><div class="li"> Configure one or more VLANs to be routed by batman-adv</div>
+</li>
+</ul>
+
+<p>
+While an 802.11s mesh is described here, an ad-hoc (IBSS) mesh, or point-to-point links can also be utilized. 
+</p>
+
+<p>
+Note that use of Ethernet links with their typical <abbr title="Maximum Transmission Unit">MTU</abbr> of 1500 will reduce the PMTU to below 1500 due to the batman-adv headers. batman-adv is typically configured to <a href="https://www.open-mesh.org/news/43" class="urlextern" title="https://www.open-mesh.org/news/43" rel="ugc nofollow">manage fragmentation</a>, with the attendant slight reduction in throughput when packets are fragmented. For many use cases, the higher speeds, lower latency, and/or reliability of an Ethernet link will make up for this effect.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Overview&quot;,&quot;hid&quot;:&quot;overview&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:10,&quot;range&quot;:&quot;4113-4925&quot;} -->
+<h2 class="sectionedit11" id="installation">Installation</h2>
+<div class="level2">
+<pre class="code">opkg update
+opkg install kmod-batman-adv</pre>
+
+<p>
+Suggested for ease of monitoring and debugging
+</p>
+<pre class="code">opkg install batctl</pre>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> if <code>batctl</code> isn&#039;t available, install <code>batctl-default</code>. <br/>
+<br/>
+
+To enable use of 802.11s mesh:
+</p>
+<pre class="code"># Remove
+opkg remove wpad-basic
+opkg remove wpad-basic-wolfssl
+
+# Install
+opkg install wpad-mesh-openssl  # or wpad-mesh-wolfssl</pre>
+
+<p>
+If building/assembling your own image, you will need to remove the default <code>wpad-basic</code> as it conflicts with <code>wpad-mesh-*</code>. 
+</p>
+
+<p>
+<a href="https://github.com/openwrt/openwrt/commit/49cc712b44c76e99bfb716c06700817692975e05" class="urlextern" title="https://github.com/openwrt/openwrt/commit/49cc712b44c76e99bfb716c06700817692975e05" rel="ugc nofollow">As of September 2019</a>, <code>wpad-openssl</code> or <code>wpad-wolfssl</code> are <em><strong>also</strong></em> sufficient for 802.11s use and are the <strong>full version</strong> of <code>wpad</code>.
+</p>
+
+<p>
+<strong>Notes:</strong>
+</p>
+<ol>
+<li class="level1"><div class="li"> <code>wpad-basic-wolfssl</code> only has <strong>802.11r</strong> and <strong>802.11w</strong> support.</div>
+</li>
+<li class="level1"><div class="li"> <code>wpad-mesh-openssl</code> and <code>wpad-mesh-wolfssl</code> only have <strong>802.11r/w</strong> and <strong>802.11s</strong> support.</div>
+</li>
+<li class="level1"><div class="li"> <code>wpad-openssl</code> and <code>wpad-wolfssl</code> are the <strong>full version</strong> of <code>wpad</code> and have <strong>802.11k/v/r/w</strong> and <strong>802.11s</strong> support.</div>
+</li>
+<li class="level1"><div class="li"> The <strong>full version</strong> of <code>wpad</code> means that nothing was trimmed to reduce its size like the <code>basic</code> or <code>mesh</code> versions.</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation&quot;,&quot;hid&quot;:&quot;installation&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:11,&quot;range&quot;:&quot;4926-6142&quot;} -->
+<h2 class="sectionedit12" id="configuration">Configuration</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:12,&quot;range&quot;:&quot;6143-6168&quot;} -->
+<h3 class="sectionedit13" id="general">General</h3>
+<div class="level3">
+
+<p>
+Configuration for batman-adv from 2019.1 and onward is done in <code>/etc/config/network</code> (only). There is no <code>/etc/config/batman-adv</code> file used with current versions.
+</p>
+
+<p>
+Options for an interface with <code>option proto &#039;batadv</code>&#039; are described in the <code>batctl</code> man page, available at this time at <a href="https://downloads.open-mesh.org/batman/manpages/batctl.8.html" class="urlextern" title="https://downloads.open-mesh.org/batman/manpages/batctl.8.html" rel="ugc nofollow">https://downloads.open-mesh.org/batman/manpages/batctl.8.html</a>
+</p>
+
+<p>
+The UCI configuration is applied by <code>/lib/netifd/proto/batadv*.sh</code> at this time. 
+</p>
+
+<p>
+<abbr title="Virtual Local Area Network">VLAN</abbr>-specific configuration is not discussed here, but can be see by examining <code>/lib/netifd/proto/batadv_vlan.sh</code> and consulting the batman-adv documentation.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;General&quot;,&quot;hid&quot;:&quot;general&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:13,&quot;range&quot;:&quot;6169-6788&quot;} -->
+<h3 class="sectionedit14" id="s_encrypted_authenticated_mesh">(1) 802.11s Encrypted, Authenticated Mesh</h3>
+<div class="level3">
+
+<p>
+For purposes of this walk-through, an 802.11s mesh is used. Other mesh and point-to-point links can be used. 
+</p>
+
+<p>
+<strong><em>WARNING - Do not configure a full 802.11s backhaul using uci, iw or packages like mesh11sd as the resulting HWMP mac routing is incompatible with batman-adv.</em></strong>
+</p>
+
+<p>
+Configure <em>all</em> mesh nodes with the same <code>/etc/config/wireless</code> stanza:
+</p>
+<pre class="code">config wifi-iface &#039;mesh0&#039;
+        option device &#039;radio5pci&#039;
+        option ifname &#039;mesh0&#039;
+        option network &#039;nwi_mesh0&#039;
+        option mode &#039;mesh&#039;
+        option mesh_fwding &#039;0&#039;
+        option mesh_id &#039;&lt;your advertised mesh &quot;name&quot; goes here&gt;&#039;
+        option encryption &#039;psk2+ccmp&#039;
+        option key &#039;&lt;your secure pass phrase goes here&gt;&#039;</pre>
+
+<p>
+<em>Note that in 18.01 “key” is the proper place to put the passphrase, not “sae_password”</em>
+</p>
+
+<p>
+Important points:
+</p>
+
+<p>
+In many places I use a more descriptive name than default configuration or add a name that is not required for clarity.
+</p>
+<ul>
+<li class="level1 node"><div class="li"> <code>radio5pci</code> needs to match the declaration in <code>/etc/config/wireless</code> of your device, such as <code>config wifi-device &#039;radio5pci</code>&#039;</div>
+<ul>
+<li class="level2"><div class="li"> The radios all need to be on the same channel and be configured to interoperate with each other (basically configured the same as each other)</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> <code>mesh0</code> is a <em>fixed</em> identifier for the name of the interface itself, for clarity (otherwise it will be dynamically assigned)</div>
+</li>
+<li class="level1"><div class="li"> <code>nwi_mesh0</code> is a reference to the entry in <code>/etc/config/network</code> that will be used to set the <abbr title="Maximum Transmission Unit">MTU</abbr> and associate it with a batman-adv interface. Its name is selected here for readability, not to match a construct such as OpenWrt&#039;s prefixing of interface names.</div>
+</li>
+<li class="level1"><div class="li"> <code>mesh_fwding &#039;0</code>&#039; turns off 802.11s forwarding/routing; it will be handled by batman-adv at each node</div>
+</li>
+<li class="level1"><div class="li"> <code>psk2+ccmp</code> is believed to be the most secure option for home users at this time</div>
+</li>
+</ul>
+
+<p>
+Once applied, <code>mesh0</code> should be seen in the output of <code>ip link</code>. 
+</p>
+<pre class="code">8: mesh0: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc noqueue state UP mode DORMANT group default qlen 1000
+    link/ether 32:23:03:xx:xx:xx brd ff:ff:ff:ff:ff:ff</pre>
+
+<p>
+The operation of the mesh can be confirmed with <code>iw dev mesh0 station dump</code>. You should see the other peers in the listing with <code>mesh plink:	ESTAB</code> indicating that the peering has been successful. 
+</p>
+<div class="hiddenGlobal  hiddenActive"><div class="hiddenElements"></div><div class="hiddenHead  hiddenSinceBeginning"><div class="hiddenOnHidden">
+<p>
+Click to reveal example <code>iw dev mesh0 station dump</code> output
+</p>
+</div><div class="hiddenOnVisible">
+<p>
+Click to reveal example <code>iw dev mesh0 station dump</code> output
+</p>
+</div></div> <!-- .hiddenHead --><div class="hiddenBody"><pre class="code">root@test:~# iw dev mesh0 station dump
+Station c6:6e:1f:xx:xx:xx (on mesh0)
+	inactive time:	50 ms
+	rx bytes:	40640
+	rx packets:	439
+	tx bytes:	966
+	tx packets:	7
+	tx retries:	0
+	tx failed:	0
+	rx drop misc:	2
+	signal:  	-87 [-88, -92, -95, -95] dBm
+	signal avg:	-86 [-88, -91, -95, -95] dBm
+	Toffset:	366695690570 us
+	tx bitrate:	6.0 MBit/s
+	rx bitrate:	6.0 MBit/s
+	rx duration:	0 us
+	last ack signal:-95 dBm
+	mesh llid:	0
+	mesh plid:	0
+	mesh plink:	ESTAB
+	mesh local PS mode:	ACTIVE
+	mesh peer PS mode:	UNKNOWN
+	mesh non-peer PS mode:	ACTIVE
+	authorized:	yes
+	authenticated:	yes
+	associated:	yes
+	preamble:	long
+	WMM/WME:	yes
+	MFP:		yes
+	TDLS peer:	no
+	DTIM period:	2
+	beacon interval:100
+	connected time:	17 seconds
+Station 1a:d6:c7:xx:xx:xx (on mesh0)
+	inactive time:	50 ms
+	rx bytes:	38909
+	rx packets:	418
+[...]</pre>
+</div></div>
+<p>
+<br/>
+
+If testing the mesh prior to association with an entry in <code>/etc/config/network</code>, you may need to use <code>ip</code> to bring the interfaces up and modify their parameters, such as <abbr title="Maximum Transmission Unit">MTU</abbr>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;(1) 802.11s Encrypted, Authenticated Mesh&quot;,&quot;hid&quot;:&quot;s_encrypted_authenticated_mesh&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:14,&quot;range&quot;:&quot;6789-10220&quot;} -->
+<h3 class="sectionedit15" id="associate_batman-adv_with_mesh">(2) Associate batman-adv With Mesh</h3>
+<div class="level3">
+
+<p>
+Now that the mesh is (or could be) up and running, create the batman-adv interfaces for routing traffic over the mesh.
+</p>
+
+<p>
+Configure <em>all</em> mesh nodes with the same two <code>/etc/config/network</code> stanzas:
+</p>
+
+<p>
+The first, <code>bat0</code>, is the “control” interface. Here it is taken verbatim from <a href="https://git.openwrt.org/?p=feed/routing.git;a=commit;h=54af5a209e0a0a75b5eb712c0ca8056e66de02c0" class="urlextern" title="https://git.openwrt.org/?p=feed/routing.git;a=commit;h=54af5a209e0a0a75b5eb712c0ca8056e66de02c0" rel="ugc nofollow">commit 54af5a2</a> that introduced the 2019 configuration. 
+</p>
+
+<p>
+Adjust if you have a reason to do so. Options for an interface with <code>option proto &#039;batadv</code>&#039; are described in the <code>batctl</code> man page, available at this time at <a href="https://downloads.open-mesh.org/batman/manpages/batctl.8.html" class="urlextern" title="https://downloads.open-mesh.org/batman/manpages/batctl.8.html" rel="ugc nofollow">https://downloads.open-mesh.org/batman/manpages/batctl.8.html</a>
+</p>
+<pre class="code">config interface &#039;bat0&#039;
+	option proto &#039;batadv&#039;
+	option routing_algo &#039;BATMAN_IV&#039;
+	option aggregated_ogms 1
+	option ap_isolation 0
+	option bonding 0
+	option fragmentation 1
+	#option gw_bandwidth &#039;10000/2000&#039;
+	option gw_mode &#039;off&#039;
+	#option gw_sel_class 20
+	option log_level 0
+	option orig_interval 1000
+	option bridge_loop_avoidance 1
+	option distributed_arp_table 1
+	option multicast_mode 1
+	option network_coding 0
+	option hop_penalty 30
+	option isolation_mark &#039;0x00000000/0x00000000&#039;</pre>
+
+<p>
+The second puts a “physical” link under the control of <code>bat0</code>. 
+</p>
+
+<p>
+In this case, the wireless management in OpenWrt will do the association of the wireless interface when it comes up. See the <a href="https://git.openwrt.org/?p=feed/routing.git;a=commit;h=54af5a209e0a0a75b5eb712c0ca8056e66de02c0" class="urlextern" title="https://git.openwrt.org/?p=feed/routing.git;a=commit;h=54af5a209e0a0a75b5eb712c0ca8056e66de02c0" rel="ugc nofollow">commit 54af5a2</a> for suggestions of how to add other link types.
+</p>
+<pre class="code">config interface &#039;nwi_mesh0&#039;
+	option mtu &#039;2304&#039;
+	option proto &#039;batadv_hardif&#039;
+	option master &#039;bat0&#039;</pre>
+
+<p>
+Important points:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>nwi_mesh0</code> needs to match the declaration in <code>/etc/config/wireless</code> of your device, such as <code>option network &#039;nwi_mesh0</code>&#039;</div>
+</li>
+<li class="level1"><div class="li"> The <abbr title="Maximum Transmission Unit">MTU</abbr> is set to 2304 here, what an 802.11s link will support. A minimum of 1532 is suggested to provide batman-adv routing of typical 1500-byte Ethernet packets. The <abbr title="Maximum Transmission Unit">MTU</abbr> cannot exceed the link&#039;s native <abbr title="Maximum Transmission Unit">MTU</abbr>.</div>
+</li>
+</ul>
+
+<p>
+At this time (Fall, 2018, batman-adv 2018.2), the default routing algorithm is BATMAN_IV (4). BATMAN_V (5), in the author&#039;s experience, is not robust in this on-premise application. See, for example, <a href="https://forum.openwrt.org/t/batman-v-routing-on-prem-connectivity-loss-seen/20432" class="urlextern" title="https://forum.openwrt.org/t/batman-v-routing-on-prem-connectivity-loss-seen/20432" rel="ugc nofollow">https://forum.openwrt.org/t/batman-v-routing-on-prem-connectivity-loss-seen/20432</a>
+</p>
+
+<p>
+With the mesh up and the network configuration done, you should see <code>bat0</code> in the output of <code>ip link</code>. The output of <code>batctl o</code> and/or <code>batctl n</code> should indicate that the various batman-adv nodes are “seeing” each other over the mesh.
+</p>
+<div class="hiddenGlobal  hiddenActive"><div class="hiddenElements"></div><div class="hiddenHead  hiddenSinceBeginning"><div class="hiddenOnHidden">
+<p>
+Click to reveal diagnostic output
+</p>
+</div><div class="hiddenOnVisible">
+<p>
+Click to reveal diagnostic output
+</p>
+</div></div> <!-- .hiddenHead --><div class="hiddenBody"><pre class="code">8: bat0: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000
+    link/ether ea:cb:a5:xx:xx:xx brd ff:ff:ff:ff:ff:ff
+9: mesh0: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 2304 qdisc noqueue master bat0 state UP mode DORMANT group default qlen 1000
+    link/ether 32:23:03:xx:xx:xx brd ff:ff:ff:ff:ff:ff
+    
+root@test:~# batctl n
+[B.A.T.M.A.N. adv openwrt-2019.2-0, MainIF/MAC: mesh0/32:23:03:xx:xx:xx (bat0/ea:cb:a5:xx:xx:xx BATMAN_IV)]
+IF             Neighbor              last-seen
+        mesh0	  c6:6e:1f:xx:xx:xx    0.730s
+        mesh0	  32:b5:c2:xx:xx:xx    0.950s
+        mesh0	  1a:d6:c7:xx:xx:xx    0.140s</pre>
+</div></div>
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;(2) Associate batman-adv With Mesh&quot;,&quot;hid&quot;:&quot;associate_batman-adv_with_mesh&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:15,&quot;range&quot;:&quot;10221-13527&quot;} -->
+<h3 class="sectionedit16" id="bridge_vlans_over_batman-adv">(3) Bridge VLANs Over batman-adv</h3>
+<div class="level3">
+
+<p>
+<em>Note: This does not discuss how to <a href="/docs/guide-user/base-system/basic-networking" class="wikilink1" title="docs:guide-user:base-system:basic-networking" data-wiki-id="docs:guide-user:base-system:basic-networking">configure switches for VLANs</a>, <a href="/docs/guide-user/network/wifi/basic" class="wikilink1" title="docs:guide-user:network:wifi:basic" data-wiki-id="docs:guide-user:network:wifi:basic">associate wireless interfaces with bridges</a>, or <a href="/docs/guide-user/firewall/start" class="wikilink1" title="docs:guide-user:firewall:start" data-wiki-id="docs:guide-user:firewall:start">firewall traffic</a>. Please consult other documentation for details of those operations as they may apply to your situation.</em>
+</p>
+
+<p>
+With batman-adv now able to route packets among peers, the remaining step is to use that facility to route “useful” traffic.
+</p>
+
+<p>
+As appropriate for each node, edit <code>/etc/config/network</code> based on these examples. Multiple VLANs can be bridged/routed over a single batman-adv interface.
+</p>
+
+<p>
+The <code>option delegate &#039;0</code>&#039; “turns off” certain <abbr title="Internet Protocol version 6">IPv6</abbr>-related features on the interface. If you are using <abbr title="Internet Protocol version 6">IPv6</abbr>, you should examine if this is the proper setting for your application.
+</p>
+
+<p>
+By current convention, OpenWrt will name the interfaces for bridges by prefixing them with <code>br-</code> yielding <code>br-vlan1111</code> and the like. There is the typical 15-character limit on interface names in the Linux kernel, which needs to include the <code>br-</code> prefix.
+</p>
+
+<p>
+These bridges will have an <abbr title="Maximum Transmission Unit">MTU</abbr> no larger than the smallest <abbr title="Maximum Transmission Unit">MTU</abbr> of its bridged interfaces. As soon as a typical Ethernet-like interface is included, the <abbr title="Maximum Transmission Unit">MTU</abbr> will be 1500 or less, even if one or more members of the bridge have a larger <abbr title="Maximum Transmission Unit">MTU</abbr>. This is how bridges operate in Linux, in general, not an OpenWrt-specific limitation.
+</p>
+
+</div>
+
+<h4 id="bridge_with_ipv4_address">Bridge With IPv4 Address</h4>
+<div class="level4">
+<pre class="code">config interface &#039;vlan1111&#039;
+        option type &#039;bridge&#039;
+        option stp &#039;1&#039;
+        option ifname &#039;eth1.1111 bat0.1111&#039;
+        option proto &#039;static&#039;
+        option ipaddr &#039;192.168.11.11&#039;
+        option netmask &#039;255.255.255.0&#039;
+        option delegate &#039;0&#039;</pre>
+
+</div>
+
+<h4 id="bridge_without_ipv4_address">Bridge Without IPv4 Address</h4>
+<div class="level4">
+<pre class="code">config interface &#039;vlan2222&#039;
+        option type &#039;bridge&#039;
+        option stp &#039;1&#039;
+        option ifname &#039;eth1.2222 bat0.2222&#039;
+        option proto &#039;none&#039;
+        option auto &#039;1&#039;
+        option delegate &#039;0&#039;</pre>
+
+</div>
+
+<h4 id="bridge_without_ethernet_interface">Bridge Without Ethernet Interface</h4>
+<div class="level4">
+
+<p>
+(such as for “only” a bridged wireless interface)
+</p>
+<pre class="code">config interface &#039;vlan3333&#039;
+        option type &#039;bridge&#039;
+        option stp &#039;1&#039;
+        option ifname &#039;bat0.3333&#039;
+        option proto &#039;none&#039;
+        option auto &#039;1&#039;
+        option delegate &#039;0&#039;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;(3) Bridge VLANs Over batman-adv&quot;,&quot;hid&quot;:&quot;bridge_vlans_over_batman-adv&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:16,&quot;range&quot;:&quot;13528-15849&quot;} -->
+<h3 class="sectionedit17" id="bridging_with_dsa">Bridging with DSA</h3>
+<div class="level3">
+
+<p>
+Since OpenWrt version 21.02.0, DSA architecture is used for the switch instead of <code>swconfig</code>.
+<br/>
+
+For any of the above examples to work, you must first make the Bridge and VLANs in <code>/etc/config/network</code> and bridge the Batman VLANs.
+<br/>
+
+</p>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:18,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_round wrap_info plugin_wrap" style="width: 60%;">
+<p>
+You can change what&#039;s bridged, you can refer to <a href="/playground/richb/dsa-mini-tutorial" class="wikilink2" title="playground:richb:dsa-mini-tutorial" rel="nofollow" data-wiki-id="playground:richb:dsa-mini-tutorial">DSA Mini-Tutorial</a> AND <a href="/docs/guide-user/network/dsa/converting-to-dsa" class="wikilink1" title="docs:guide-user:network:dsa:converting-to-dsa" data-wiki-id="docs:guide-user:network:dsa:converting-to-dsa">Converting to DSA</a>
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:19,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+
+<h4 id="bridging_all_lan_ports_and_batman_vlan_interfaces_later_to_be_separated_by_vlans">Bridging all LAN ports and Batman VLAN interfaces (later to be separated by VLANs)</h4>
+<div class="level4">
+<pre class="code">config device
+	option name &#039;br-lan&#039;
+	option type &#039;bridge&#039;
+	list ports &#039;lan1&#039;
+	list ports &#039;lan2&#039;
+	list ports &#039;lan3&#039;
+	list ports &#039;lan4&#039;
+	list ports &#039;bat0.1&#039; # Batman VLAN 1
+	list ports &#039;bat0.2&#039; # Batman VLAN 2
+	option stp &#039;1&#039;
+	option igmp_snooping &#039;1&#039;
+	option ipv6 &#039;0&#039;
+	option mtu &#039;2304&#039;</pre>
+
+</div>
+
+<h4 id="driver-level_vlans">Driver-level VLANs</h4>
+<div class="level4">
+<pre class="code"># VLAN 1, br-lan.1, the VLAN with all ports bridged together (you can change what to bridge)
+config bridge-vlan
+	option device &#039;br-lan&#039;
+	option vlan &#039;1&#039;
+	list ports &#039;lan1&#039;
+	list ports &#039;lan2&#039;
+	list ports &#039;lan3&#039;
+	list ports &#039;lan4&#039;
+	list ports &#039;bat0.1&#039;
+
+# VLAN 2, br-lan.2, using only Batman&#039;s 2nd VLAN, separated from the rest
+config bridge-vlan
+	option device &#039;br-lan&#039;
+	option vlan &#039;2&#039;
+	list ports &#039;bat0.2&#039;</pre>
+
+</div>
+
+<h4 id="network_interfaces">Network interfaces</h4>
+<div class="level4">
+<pre class="code"># LAN with VLAN 1, and bridged(as stated above) with Batman VLAN 1 and all 4 Ethernet ports
+config interface &#039;lan&#039;
+	option device &#039;br-lan.1&#039; # VLAN number 1
+	option proto &#039;static&#039;
+	option ipaddr &#039;192.168.1.254&#039;
+	option netmask &#039;255.255.255.0&#039;
+	option force_link &#039;yes&#039;
+
+# Guest network in VLAN 2, and bridged(as stated above) with Batman VLAN 2
+config interface &#039;guest&#039;
+	option device &#039;br-lan.2&#039;
+	option proto &#039;static&#039;
+	option ipaddr &#039;192.168.2.254&#039;
+	option netmask &#039;255.255.255.0&#039;
+	option force_link &#039;yes&#039;</pre>
+
+<p>
+The 2nd node should disable <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> and sport a similar setup, the only difference is to use different IPs for the networks (lan: <code>192.168.1.254</code> and guest: <code>192.168.2.254</code> should use another <abbr title="Internet Protocol">IP</abbr> in that subnet)
+</p>
+<pre class="code"># LAN with VLAN 1, and bridged(as stated above) with Batman VLAN 1 and all 4 Ethernet ports
+config interface &#039;lan&#039;
+	option device &#039;br-lan.1&#039; # VLAN number 1
+	option proto &#039;static&#039;
+	option ipaddr &#039;192.168.1.100&#039;
+	option netmask &#039;255.255.255.0&#039;
+	option force_link &#039;yes&#039;
+
+# Guest network in VLAN 2, and bridged(as stated above) with Batman VLAN 2
+config interface &#039;guest&#039;
+	option device &#039;br-lan.2&#039;
+	option proto &#039;static&#039;
+	option ipaddr &#039;192.168.2.100&#039;
+	option netmask &#039;255.255.255.0&#039;
+	option force_link &#039;yes&#039;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Bridging with DSA&quot;,&quot;hid&quot;:&quot;bridging_with_dsa&quot;,&quot;codeblockOffset&quot;:13,&quot;secid&quot;:17,&quot;range&quot;:&quot;15850-18449&quot;} -->
+<h3 class="sectionedit20" id="optionaletcbat-hosts">(Optional) /etc/bat-hosts</h3>
+<div class="level3">
+
+<p>
+<em>This is not a required step -- It makes some diagnostic output easier to read.</em>
+</p>
+
+<p>
+By creating the file <code>/etc/bat-hosts</code> the output of many <code>batctl</code> commands will replace the MAC addresses with symbolic names. These names do not need to be the host name, nor be consistent with <abbr title="Domain Name System">DNS</abbr>.
+</p>
+
+<p>
+The MAC address to use is that of the “raw” interfaces that are used by <code>bat0</code> -- in this example configuration, those of <code>mesh0</code> on each of the nodes.
+</p>
+<pre class="code">32:b5:c2:aa:aa:aa	office.5g
+c6:6e:1f:bb:bb:bb	garage.5g
+32:b5:c2:cc:cc:cc	front.5g
+1a:d6:c7:dd:dd:dd	back.5g
+c6:e9:84:ee:ee:ee 	devel.5g</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;(Optional) \/etc\/bat-hosts&quot;,&quot;hid&quot;:&quot;optionaletcbat-hosts&quot;,&quot;codeblockOffset&quot;:17,&quot;secid&quot;:20,&quot;range&quot;:&quot;18450-19086&quot;} -->
+<h3 class="sectionedit21" id="batman-adv_options_for_bat0_the_main_mesh_interface">batman-adv Options for bat0 (the main mesh interface)</h3>
+<div class="level3">
+
+<p>
+These are options for the main network interface in <code>/etc/config/network</code> for batman-adv.
+</p>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:22,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_round wrap_important plugin_wrap" style="width: 60%;">
+<p>
+<strong>This section was written using the official batman-adv docs as reference and is subject to change, please read the official documentation if something doesn&#039;t work as expected</strong>
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:23,&quot;range&quot;:&quot;0-&quot;} --><div class="table sectionedit24"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign"> Name                      </th><th class="col1 leftalign"> Type    </th><th class="col2 leftalign"> Default                                       </th><th class="col3 leftalign"> Range                                                                 </th><th class="col4"> Description </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> <code>aggregated_ogms</code>       </td><td class="col1"> boolean </td><td class="col2 leftalign"> <code>1</code>                                         </td><td class="col3 leftalign"> <code>0</code>, <code>1</code>                                                          </td><td class="col4"> <strong>OGMs</strong> AKA <strong>Originator Messages</strong> are messages used to determine the qualities needed to direct neighbors and spreading this message throughout the whole mesh, aggregating them reduces the number of packets being sent. </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> <code>routing_algo</code>          </td><td class="col1 leftalign"> string  </td><td class="col2 leftalign"> <code>BATMAN_IV</code>                                 </td><td class="col3 leftalign"> <code>BATMAN_IV</code> or <code>BATMAN_V</code>                                         </td><td class="col4"> Which routing algorithm to use - more info below but for now use <code>BATMAN_IV</code> until <code>BATMAN_V</code> is ready for actual use. </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> <code>bonding</code>               </td><td class="col1"> boolean </td><td class="col2 leftalign"> <code>0</code>                                         </td><td class="col3 leftalign"> <code>0</code>, <code>1</code>                                                          </td><td class="col4"> If some interfaces are similar in quality and speed, it&#039;s possible to distribute frames through them using Round Robin which shows a 50% throughput increase, but if the links aren&#039;t similar in speed and since it isn&#039;t detected by BATMAN_IV, you may actually lose throughput, so it should be done explicitly on known nodes. </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"> <code>fragmentation</code>         </td><td class="col1"> boolean </td><td class="col2 leftalign"> <code>1</code>                                         </td><td class="col3 leftalign"> <code>0</code>, <code>1</code>                                                          </td><td class="col4"> Since batman-adv prepends its own headers and some clients aren&#039;t aware of that, packets are optimized for 1500 <abbr title="Maximum Transmission Unit">MTU</abbr> even though 1528 is required, if it isn&#039;t possible with some devices fragmentation is used(the algorithm that handles fragmented data). </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 leftalign"> <code>gw_mode</code>               </td><td class="col1 leftalign"> string  </td><td class="col2 leftalign"> <code>off</code>                                       </td><td class="col3 leftalign"> <code>off</code>, <code>client</code>, <code>server</code>                                       </td><td class="col4"> Gateway mode, if set to <code>server</code> other nodes are notified of that node&#039;s internet connection and <strong>must</strong> be complemented by <code>gw_bandwidth</code>, that notifies the algorithm that server is one of the best paths for internet access. <br/>
+If set to <code>client</code>, the criteria by which batman-adv will choose a gateway(other nodes with <code>gw_mode</code> set as <code>server</code>) is <strong>required</strong> to be set with <code>gw_sel_class</code>. </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0 leftalign"> <code>gw_bandwidth</code>          </td><td class="col1"> string </td><td class="col2 leftalign"> <code>10000/2000</code>                                 </td><td class="col3 leftalign"> <code>not specified</code>                                                     </td><td class="col4"> <strong>(Server)</strong> Set the bandwidth, so <code>client</code> nodes will know about the gateway&#039;s quality stated by <code>download/upload</code>, units can be suffixed with <code>mbit</code> or <code>kbit</code> (<code>10mbit/2mbit</code>), if you state download but not upload, upload defaults to the value of <code>download / 5</code>, so 100mbit without upload would default to 100 / 5 = 20mbit. </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0 leftalign"> <code>gw_sel_class</code>          </td><td class="col1"> integer </td><td class="col2"> <strong>BATMAN_IV</strong> <code>20</code> <br/>
+<strong>BATMAN_V</strong> <code>5000</code> </td><td class="col3"> <strong>BATMAN_IV</strong> <code>1</code>, <code>256</code> <br/>
+<strong>BATMAN_V</strong> <code>0</code>, <code>Not specified</code> </td><td class="col4"> <strong>(Client)</strong> Set the criteria by which to select a gateway(internet connection) indicated by TQ. <br/>
+With <strong>BATMAN_IV_</strong> set in <code>routed_algo</code>: <br/>
+default: <code>20</code> (late switch) <br/>
+<code>1</code> (Fast), prioritize by advertised throughput and link quality, use until gateway disappears. <br/>
+<code>2</code> (Stable), prioritize by link quality only, use until gateway disappears. <br/>
+<code>3</code> (Fast Switch), prioritize link quality only, but scan and  switch to a better gateway if found. <br/>
+<code>XX</code> (Late Switch), prioritize link quality only, but scan and switch to a better gateway if found, which is at least <code>XX</code> TQ better than the currently selected gateway, where XX is between 3-256. <br/>
+With <strong>BATMAN_V</strong> set in <code>routed_algo</code>: <br/>
+default: <code>5000</code> (Late Switch), 5000 kbit/s throughput. <br/>
+example: <code>1500</code> (Fast Switch), scan and switch to another gateway only if its throughput is at least 1500 kbit/s faster than the current, throughput is evaluated by determining what&#039;s lower: advertised throughput or the maximum bandwidth across the entire path. </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0 leftalign"> <code>log_level</code>                   </td><td class="col1"> integer </td><td class="col2 leftalign"> <code>0</code>                                   </td><td class="col3 leftalign"> <code>0</code>, <code>255</code> (8 bit Bitmask)                            </td><td class="col4"> Standard warning/error messages are sent to the kernel log, but more is possible(depending if compiling with debugging enabled). <br/>
+[0] all debug output disabled (none) <br/>
+[1](BIT 0 set) messages related to routing / flooding / broadcasting (batman), <br/>
+[2](BIT 1 set) messages related to route added / changed / deleted (routes) <br/>
+[4](BIT 2 set) messages related to translation table operations (tt) <br/>
+[8](BIT 3 set) messages related to bridge loop avoidance (bla) <br/>
+[16](BIT 4 set) messages related to arp snooping and distributed arp table (dat) <br/>
+[32](BIT 5 set) messages related to network coding (nc) <br/>
+[64](BIT 6 set) messages related to multicast (mcast) <br/>
+[128](BIT 7 set) messages related to throughput meter (tp) <br/>
+[255](ALL BITS set) Enable all messages <br/>
+<strong>NOTE:</strong> Integer values are form the <a href="https://www.kernel.org/doc/html/v5.0/networking/batman-adv.html#logging-debugging" class="urlextern" title="https://www.kernel.org/doc/html/v5.0/networking/batman-adv.html#logging-debugging" rel="ugc nofollow"> Kernel docs</a> and bitfield from <a href="https://github.com/open-mesh-mirror/batman-adv/blob/master/net/batman-adv/log.h#L38" class="urlextern" title="https://github.com/open-mesh-mirror/batman-adv/blob/master/net/batman-adv/log.h#L38" rel="ugc nofollow"> batman-adv source</a></td>
+	</tr>
+	<tr class="row9">
+		<td class="col0 leftalign"> <code>orig_interval</code>               </td><td class="col1"> integer </td><td class="col2 leftalign"> <code>1000</code>                                </td><td class="col3 leftalign"> <code>not specified</code>                                                     </td><td class="col4"> Specified in milliseconds, the interval in which batman-adv floods the network with its protocol information, &#039;1000&#039; as a default means a message per second which allows batman to recognize a route change up to a minute. In a static environment(nodes aren&#039;t moving, rare up/down of nodes) you might want to increase the interval value to save bandwidth, inversely, in a highly mobile environment(cars) but remember that will drastically increase traffic. <br/>
+It&#039;s recommended to keep the default unless there are problems. </td>
+	</tr>
+	<tr class="row10">
+		<td class="col0 leftalign"> <code>bridge_loop_avoidance</code>       </td><td class="col1"> boolean </td><td class="col2 leftalign"> <code>1</code>                                   </td><td class="col3 leftalign"> <code>0</code>, <code>1</code>                                                          </td><td class="col4"> In bridged <abbr title="Local Area Network">LAN</abbr> setups, this should be enabled in order to avoid broadcast loops that can completely flood the entire <abbr title="Local Area Network">LAN</abbr>(this option might need to be compiled), if you don&#039;t connect multiple batman-adv hosts to the same ethernet or don&#039;t use bridging, you can disable this option. </td>
+	</tr>
+	<tr class="row11">
+		<td class="col0 leftalign"> <code>distributed_arp_table</code>       </td><td class="col1"> boolean </td><td class="col2 leftalign"> <code>1</code>                                   </td><td class="col3 leftalign"> <code>0</code>, <code>1</code>                                                          </td><td class="col4"> Mesh-wide ARP table cache, helps non-mesh clients get ARP responses more reliably without much delay(this option might need to be compiled). </td>
+	</tr>
+	<tr class="row12">
+		<td class="col0 leftalign"> <code>multicast_mode</code>              </td><td class="col1"> boolean </td><td class="col2 leftalign"> <code>1</code>                                   </td><td class="col3 leftalign"> <code>0</code>, <code>1</code>                                                          </td><td class="col4"> A more efficient, group aware multicast forwarding infrastructure, aiming to reduce unnecessary packet transmissions, if disabled, every multicast traffic will flood every node(broadcast). </td>
+	</tr>
+	<tr class="row13">
+		<td class="col0 leftalign"> <code>multicast_fanout</code>            </td><td class="col1"> integer </td><td class="col2 leftalign"> <code>16</code>                                  </td><td class="col3 leftalign"> <code>not specified</code>                                                     </td><td class="col4"> Requires and related to <code>multicast_mode</code>, batman-adv detects potential multicast listeners who are interested in traffic to a given multicast destination address, so no listeners means nothing is transmitted. <br/>
+The default value of <code>16</code> is the max number of listeners before a classic flooding of all multicast frames is used, if it&#039;s equal or under <code>16</code>, batman-adv can use individual unicast transmissions instead - that&#039;s the fanout <br/>
+<strong>NOTE:</strong> Classic multicast flooding will still happen if: <br/>
+-- No IGMP/MLD querier <br/>
+-- The packet&#039;s destination is an <abbr title="Internet Protocol version 4">IPv4</abbr> multicast <br/>
+-- The <abbr title="Internet Protocol version 6">IPv6</abbr> multicast destination is <code>ff02::1</code>. </td>
+	</tr>
+	<tr class="row14">
+		<td class="col0 leftalign"> <code>network_coding</code>              </td><td class="col1"> boolean </td><td class="col2 leftalign"> <code>1</code>                                   </td><td class="col3 leftalign"> <code>0</code>, <code>1</code>                                                          </td><td class="col4"> Combine two packets into a single transmission, which saves air-time but <strong>requires</strong>: <br/>
+-- At least 3 nodes to be effective <br/>
+-- One node must act as a relay which has this option enabled <br/>
+-- Relay must support Promiscuous mode (both receive and send) <br/>
+-- Support <abbr title="Maximum Transmission Unit">MTU</abbr> value of at least 1546. </td>
+	</tr>
+	<tr class="row15">
+		<td class="col0 leftalign"> <code>hop_penalty</code>                 </td><td class="col1"> boolean </td><td class="col2 leftalign"> <code>30</code>                                  </td><td class="col3 leftalign"> <code>not specified</code>                                                     </td><td class="col4"> Modify batman_adv&#039;s preference for multihop routes vs short routes, the value is applied to the TQ of each forwarded OGM, propagating the cost of an extra hop(packet must be received and re-transmitted), the higher it&#039;s the more unlikely other nodes will choose the current node as an intermediate hop towards any node, otherwise, a lower value will result in longer routes because re-transmissions aren&#039;t penalized. </td>
+	</tr>
+	<tr class="row16">
+		<td class="col0 leftalign"> <code>ap_isolation</code>                </td><td class="col1"> boolean </td><td class="col2 leftalign"> <code>0</code>                                   </td><td class="col3 leftalign"> <code>0</code>, <code>1</code>                                                          </td><td class="col4"> Standard WiFi APs support <abbr title="Access Point">AP</abbr> Isolation, which prevents clients communicating with each other, if the WiFi <abbr title="Access Point">AP</abbr> interface is bridged into batman-adv mesh network, it might be desirable to extend this isolation throughout the mesh by enabling this option. </td>
+	</tr>
+	<tr class="row17">
+		<td class="col0 leftalign"> <code>isolation_mark</code>              </td><td class="col1 leftalign"> string  </td><td class="col2 leftalign"> <code>0x00000000/0x00000000</code>               </td><td class="col3 leftalign"> <code>0</code>, <code>1</code>                                                          </td><td class="col4"> An extension of <code>ap_isolation</code>, it allows the user to decide which client is classified as isolated via firewall rules, increasing the flexibility of the isolation, batman-adv extracts the fwmark the firewall attached to each packet it receives through the soft-interface and decides based on that value if the source client is isolated or not, this value is defined as a <code>value/mask</code>, in the firewall, a simple case is to mark all the packets coming with a fwmark using <code>tc</code>, you then set the fwmark you&#039;ve set with <code>tc</code> in this option for it to work. </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:24,&quot;range&quot;:&quot;19462-29423&quot;} -->
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Options that might need to be compiled are options the official B.A.T.M.A.N docs state which require compiling, OpenWrt packages batman-adv so you might not need to and it depends on what&#039;s actually compiled.
+</p>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:25,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_round wrap_info plugin_wrap" style="width: 60%;">
+<p>
+<strong>BATMAN_IV</strong> uses OGM to determine link quality and spread the message in the mesh, there are drawbacks, wireless interfaces suffer packet loss over time, which ends with more overhead(due to the transmission protocol), also it would be better to detect link quality changes faster than spreading it through the mesh first(far-end of mesh doesn&#039;t care anyways) and it might be possible to avoid OGM for certain tasks.
+</p>
+
+<p>
+<strong>BATMAN_V</strong> apparently has some problems on-site currently, but it&#039;s the better algorithm, since ELP(Echo Location Protocol) was introduced, which is a packet that doesn&#039;t forward/re-broadcast in the mesh used for neighbor discovery, besides, OGM v2 is used to further determine the overall best transmit paths and that task separation is what leads to reduced overhead, neighbor discovery can be individual and multiple interface handling can be reduced and finally BATMAN_V uses throughput as a metric *instead* of a packet loos metric like in BATMAN_IV.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:26,&quot;range&quot;:&quot;0-&quot;} --><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:27,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_round wrap_info plugin_wrap" style="width: 60%;">
+<p>
+<strong>TQ</strong> - <strong>Transmit Quality</strong> algorithm (Batman IV), used to define a better path by finding both the receiving <strong>and</strong> transmitting quality of a node, where transmit speed is prioritized, TQ is calculated by propagating an OGM message and finding the best paths, the value of TQ starts as the max 255(count from 255 to 0) and through each node&#039;s TQ is re-calculated and transmitted to the next node etc..
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:28,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;batman-adv Options for bat0 (the main mesh interface)&quot;,&quot;hid&quot;:&quot;batman-adv_options_for_bat0_the_main_mesh_interface&quot;,&quot;codeblockOffset&quot;:18,&quot;secid&quot;:21,&quot;range&quot;:&quot;19087-31084&quot;} -->
+<h1 class="sectionedit29" id="in_operation">In Operation</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;In Operation&quot;,&quot;hid&quot;:&quot;in_operation&quot;,&quot;codeblockOffset&quot;:18,&quot;secid&quot;:29,&quot;range&quot;:&quot;31085-31111&quot;} -->
+<h2 class="sectionedit30" id="on-_and_off-mesh_access">On- and Off-Mesh Access</h2>
+<div class="level2">
+
+<p>
+When bridging VLANs as described above, with one node bridging to the wired networks, off-mesh clients have access to mesh clients and vice-versa without any additional configuration. Off-mesh clients can also access other off-mesh clients over the mesh (such as clients of different APs and/or those on the wired network). With a five-node, on-premise mesh using BATMAN_IV, initial ping requests are typically returned within one or two seconds.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;On- and Off-Mesh Access&quot;,&quot;hid&quot;:&quot;on-_and_off-mesh_access&quot;,&quot;codeblockOffset&quot;:18,&quot;secid&quot;:30,&quot;range&quot;:&quot;31112-31595&quot;} -->
+<h2 class="sectionedit31" id="multiple_nodes_bridging_to_same_network_segment">Multiple Nodes Bridging to Same Network Segment</h2>
+<div class="level2">
+
+<p>
+Use of multiple nodes bridged to the same wired networks has not been deeply examined at this time. STP <em>might</em> be sufficient as a “poor-man&#039;s” approach, though there have been cases with other networking protocols where bridge loops involving the on-device switches did not seem to be detected and resolved by STP alone. 
+</p>
+
+<p>
+A quick test with two of the OpenWrt nodes (of the five deployed and participating in batman-adv) connected to the wired network through Cisco SG300-series switches had a “fail-over” occur after unplugging the “active” cable in ~90 seconds, with disturbances evident for another half minute. The output of <code>batctl cl</code> (“claim table”) appears to empty and update on about the same time scale. STP in the OpenWrt bridges has a hello_time of 2.00 s, max_age of 20.00 s, and forward_delay of 2.00 s, suggesting an STP cut-over time of ~26 seconds. Watching the claim table on one node while bringing down <code>bat0</code> on the “preferred gateway” (without changing Ethernet connectivity) showed a one-minute delay before those associated with the down node were removed. As a result, at this time the delays are believed to be primarily due to batman-adv operation.
+</p>
+
+<p>
+There is a <a href="https://www.open-mesh.org/projects/batman-adv/wiki/Gateways" class="urlextern" title="https://www.open-mesh.org/projects/batman-adv/wiki/Gateways" rel="ugc nofollow">batman-adv feature around advertising gateways</a>. It appears to be designed for larger-scale deployments and seems to work by moderating <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> assignments, rather than by dynamically routing packets with the mesh-routing logic itself.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Multiple Nodes Bridging to Same Network Segment&quot;,&quot;hid&quot;:&quot;multiple_nodes_bridging_to_same_network_segment&quot;,&quot;codeblockOffset&quot;:18,&quot;secid&quot;:31,&quot;range&quot;:&quot;31596-33148&quot;} -->
+<h2 class="sectionedit32" id="other_systems_logs_flooded_with_kernelarp430543050000_is_multicast">Other Systems&#039; Logs Flooded With kernel: arp: 43:05:43:05:00:00 is multicast</h2>
+<div class="level2">
+
+<p>
+The batman-adv <a href="https://www.open-mesh.org/projects/batman-adv/wiki/Bridge-loop-avoidance-Protocol" class="urlextern" title="https://www.open-mesh.org/projects/batman-adv/wiki/Bridge-loop-avoidance-Protocol" rel="ugc nofollow">Bridge Loop Avoidance Protocol</a> appears to use gratuitous ARP for 0.0.0.0 with the multicast bit set, acknowledging that “this is a misuse of ARP packets”. Some <abbr title="Request for Comments">RFC</abbr>-compliant systems will log this as an error, as “Installing such entries is an <a href="https://tools.ietf.org/html/rfc1812#section-3.3.2" class="urlextern" title="https://tools.ietf.org/html/rfc1812#section-3.3.2" rel="ugc nofollow">RFC 1812</a> violation, but some proprietary load balancing techniques require routers to do so.”
+</p>
+
+<p>
+Disabling Bridge Loop Avoidance Protocol in <code>/etc/config/batman-adv</code> with <code>option bridge_loop_avoidance 0</code> is one way to resolve this, though STP or other loop-avoidance methods are strongly suggested if this done.
+</p>
+
+<p>
+For FreeBSD and FreeBSD-based systems, setting <code>net.link.ether.inet.allow_multicast=1</code> should remove the log messages, but will “pollute” the ARP table as described in <a href="http://man.cx/arp%284%29" class="interwiki iw_man" title="http://man.cx/arp%284%29">arp(4)</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Other Systems&#039; Logs Flooded With kernel: arp: 43:05:43:05:00:00 is multicast&quot;,&quot;hid&quot;:&quot;other_systems_logs_flooded_with_kernelarp430543050000_is_multicast&quot;,&quot;codeblockOffset&quot;:18,&quot;secid&quot;:32,&quot;range&quot;:&quot;33149-&quot;} -->

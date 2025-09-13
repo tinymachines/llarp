@@ -1,0 +1,171 @@
+
+<h1 class="sectionedit1" id="signal_strength_led_meter">Signal strength LED meter</h1>
+<div class="level1">
+
+<p>
+Sometimes you may need a simple indicator to know if the link has a good signal strength. Or for moving an antenna to catch the remote <abbr title="Access Point">AP</abbr>. Using leds is the more simple aproach. 
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Signal strength LED meter&quot;,&quot;hid&quot;:&quot;signal_strength_led_meter&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-220&quot;} -->
+<h2 class="sectionedit2" id="scripts">Scripts</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Scripts&quot;,&quot;hid&quot;:&quot;scripts&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;221-240&quot;} -->
+<h3 class="sectionedit3" id="by_blinking_one_led">By blinking one led</h3>
+<div class="level3">
+
+<p>
+This script uses 5 different blinks on the same led to show the signal strength. When blinking, if the led is more time on, it means the signal is better.
+</p>
+
+<p>
+<a href="/_media/media/doc/howtos/led-meter-ex.gif" class="media" title="media:doc:howtos:led-meter-ex.gif"><img src="/_media/media/doc/howtos/led-meter-ex.gif" class="media" loading="lazy" alt="" /></a>
+</p>
+
+<p>
+The image shows left to right worst to best signal.
+</p>
+<pre class="code bash"><span class="co0">#!/bin/sh</span>
+<span class="co0">#Filename: ledwsignal.sh </span>
+<span class="co0">#Description: This script shows wifi signal strength by blinking one led.</span>
+<span class="co0">#2015 raphik, danitool</span>
+&nbsp;
+<span class="re2">AVLEDS</span>=<span class="sy0">`</span><span class="kw2">ls</span> <span class="sy0">/</span>sys<span class="sy0">/</span>class<span class="sy0">/</span>leds<span class="sy0">`</span>
+<span class="re2">ELED</span>=<span class="sy0">`</span><span class="kw2">ls</span> <span class="sy0">/</span>sys<span class="sy0">/</span>class<span class="sy0">/</span>leds<span class="sy0">|</span><span class="kw2">grep</span> <span class="re5">-wo</span> <span class="re5">-m1</span> <span class="st0">&quot;$1&quot;</span><span class="sy0">`</span>
+<span class="re2">OLD_STRENGTH</span>=-<span class="nu0">1</span>
+&nbsp;
+Led_On<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> 
+	  <span class="kw3">echo</span> <span class="re4">$2</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>sys<span class="sy0">/</span>class<span class="sy0">/</span>leds<span class="sy0">/</span><span class="re4">$1</span><span class="sy0">/</span>delay_on 
+<span class="br0">&#125;</span>
+&nbsp;
+Led_Off<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+	  <span class="kw3">echo</span> <span class="re4">$2</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>sys<span class="sy0">/</span>class<span class="sy0">/</span>leds<span class="sy0">/</span><span class="re4">$1</span><span class="sy0">/</span>delay_off
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="co0">#HELP</span>
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="st0">&quot;$#&quot;</span> <span class="re5">-ne</span> <span class="nu0">1</span> <span class="br0">&#93;</span> <span class="sy0">||</span> <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es2">$ELED</span>&quot;</span> <span class="sy0">!</span>= <span class="st0">&quot;$1&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+    <span class="kw3">printf</span> <span class="st0">&quot;<span class="es1">\n</span>USAGE:
+    ledwsignal.sh &lt;led name&gt;
+    <span class="es1">\n</span>available leds:<span class="es1">\n</span><span class="es2">$AVLEDS</span>
+    <span class="es1">\n</span><span class="es1">\n</span>ERROR<span class="es1">\n</span>&quot;</span>
+    <span class="kw3">exit</span> <span class="nu0">255</span>
+<span class="kw1">fi</span>
+&nbsp;
+<span class="kw3">echo</span> timer <span class="sy0">&gt;</span> <span class="sy0">/</span>sys<span class="sy0">/</span>class<span class="sy0">/</span>leds<span class="sy0">/</span><span class="re4">$1</span><span class="sy0">/</span>trigger
+&nbsp;
+<span class="kw1">while</span> <span class="kw2">true</span> ; <span class="kw1">do</span>
+  <span class="re2">RSSI</span>=<span class="sy0">`</span><span class="kw2">cat</span> <span class="sy0">/</span>proc<span class="sy0">/</span>net<span class="sy0">/</span>wireless <span class="sy0">|</span> <span class="kw2">awk</span> <span class="st_h">'NR==3 {print $4}'</span> <span class="sy0">|</span> <span class="kw2">sed</span> <span class="st_h">'s/\.//'</span><span class="sy0">`</span>
+  <span class="co0">#echo &quot;RSSI: $RSSI&quot;</span>
+&nbsp;
+  <span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-z</span> <span class="re1">$RSSI</span> <span class="br0">&#93;</span> <span class="sy0">||</span> <span class="br0">&#91;</span> <span class="re1">$RSSI</span> <span class="re5">-ge</span> <span class="nu0">0</span> <span class="br0">&#93;</span>; <span class="kw1">then</span> <span class="re2">STRENGTH</span>=<span class="nu0">0</span> <span class="co0">#error</span>
+  <span class="kw1">elif</span> <span class="br0">&#91;</span> <span class="re1">$RSSI</span> <span class="re5">-ge</span> <span class="re5">-65</span> <span class="br0">&#93;</span> ; <span class="kw1">then</span> <span class="re2">STRENGTH</span>=<span class="nu0">4</span> <span class="co0">#excellent</span>
+  <span class="kw1">elif</span> <span class="br0">&#91;</span> <span class="re1">$RSSI</span> <span class="re5">-ge</span> <span class="re5">-73</span> <span class="br0">&#93;</span> ; <span class="kw1">then</span> <span class="re2">STRENGTH</span>=<span class="nu0">3</span> <span class="co0">#good</span>
+  <span class="kw1">elif</span> <span class="br0">&#91;</span> <span class="re1">$RSSI</span> <span class="re5">-ge</span> <span class="re5">-80</span> <span class="br0">&#93;</span> ; <span class="kw1">then</span> <span class="re2">STRENGTH</span>=<span class="nu0">2</span> <span class="co0">#fair</span>
+  <span class="kw1">elif</span> <span class="br0">&#91;</span> <span class="re1">$RSSI</span> <span class="re5">-ge</span> <span class="re5">-94</span> <span class="br0">&#93;</span> ; <span class="kw1">then</span> <span class="re2">STRENGTH</span>=<span class="nu0">1</span> <span class="co0">#bad</span>
+  <span class="kw1">else</span> <span class="re2">STRENGTH</span>=<span class="nu0">0</span>
+  <span class="kw1">fi</span>
+&nbsp;
+  <span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re1">$OLD_STRENGTH</span> <span class="sy0">!</span>= <span class="re1">$STRENGTH</span> <span class="br0">&#93;</span> ; <span class="kw1">then</span>
+    <span class="kw1">case</span> <span class="re1">$STRENGTH</span> <span class="kw1">in</span>
+      <span class="nu0">4</span><span class="br0">&#41;</span>  Led_On <span class="re4">$1</span> <span class="nu0">1960</span>; Led_Off <span class="re4">$1</span> <span class="nu0">40</span> <span class="sy0">;;</span>
+      <span class="nu0">3</span><span class="br0">&#41;</span>  Led_On <span class="re4">$1</span> <span class="nu0">950</span>;  Led_Off <span class="re4">$1</span> <span class="nu0">50</span>  <span class="sy0">;;</span>
+      <span class="nu0">2</span><span class="br0">&#41;</span>  Led_On <span class="re4">$1</span> <span class="nu0">500</span>;  Led_Off <span class="re4">$1</span> <span class="nu0">500</span> <span class="sy0">;;</span>
+      <span class="nu0">1</span><span class="br0">&#41;</span>  Led_On <span class="re4">$1</span> <span class="nu0">50</span>;   Led_Off <span class="re4">$1</span> <span class="nu0">950</span>  <span class="sy0">;;</span>
+      <span class="nu0">0</span><span class="br0">&#41;</span>  Led_On <span class="re4">$1</span> <span class="nu0">40</span>;   Led_Off <span class="re4">$1</span> <span class="nu0">1960</span> <span class="sy0">;;</span>
+    <span class="kw1">esac</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;STRENGTH (0-4): <span class="es2">$STRENGTH</span>&quot;</span>
+  <span class="kw1">fi</span>
+&nbsp;
+<span class="re2">OLD_STRENGTH</span>=<span class="re1">$STRENGTH</span>
+&nbsp;
+<span class="kw2">sleep</span> <span class="nu0">3</span>
+<span class="kw1">done</span>
+<span class="kw3">exit</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;By blinking one led&quot;,&quot;hid&quot;:&quot;by_blinking_one_led&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;241-1870&quot;} -->
+<h3 class="sectionedit4" id="by_controlling_one_led_brightness">By controlling one led brightness</h3>
+<div class="level3">
+
+<p>
+This script virtually controls the brightness of the led using the concept of PWM for brightness, with an interval of 20 miliseconds and 4 states:
+</p>
+<ul>
+<li class="level1"><div class="li"> Excelent signal: Full brightness (no PWM)</div>
+</li>
+<li class="level1"><div class="li"> Good signal: High brightness</div>
+</li>
+<li class="level1"><div class="li"> Fair signal: Low brightness</div>
+</li>
+<li class="level1"><div class="li"> Bad signal: Minimal brightness (1 milisecond on)</div>
+</li>
+<li class="level1"><div class="li"> Signal error: Blinking led</div>
+</li>
+</ul>
+<pre class="code bash"><span class="co0">#!/bin/sh</span>
+<span class="co0">#Filename: ledwsignal.sh </span>
+<span class="co0">#Description: This script shows wifi signal strength by controlling one led brightness</span>
+<span class="co0">#2015 raphik, danitool</span>
+&nbsp;
+<span class="re2">AVLEDS</span>=<span class="sy0">`</span><span class="kw2">ls</span> <span class="sy0">/</span>sys<span class="sy0">/</span>class<span class="sy0">/</span>leds<span class="sy0">`</span>
+<span class="re2">ELED</span>=<span class="sy0">`</span><span class="kw2">ls</span> <span class="sy0">/</span>sys<span class="sy0">/</span>class<span class="sy0">/</span>leds<span class="sy0">|</span><span class="kw2">grep</span> <span class="re5">-wo</span> <span class="re5">-m1</span> <span class="st0">&quot;$1&quot;</span><span class="sy0">`</span>
+<span class="re2">OLD_STRENGTH</span>=-<span class="nu0">1</span>
+&nbsp;
+Led_On<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> 
+	  <span class="kw3">echo</span> <span class="re4">$2</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>sys<span class="sy0">/</span>class<span class="sy0">/</span>leds<span class="sy0">/</span><span class="re4">$1</span><span class="sy0">/</span>delay_on 
+<span class="br0">&#125;</span>
+&nbsp;
+Led_Off<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+	  <span class="kw3">echo</span> <span class="re4">$2</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>sys<span class="sy0">/</span>class<span class="sy0">/</span>leds<span class="sy0">/</span><span class="re4">$1</span><span class="sy0">/</span>delay_off
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="co0">#HELP</span>
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="st0">&quot;$#&quot;</span> <span class="re5">-ne</span> <span class="nu0">1</span> <span class="br0">&#93;</span> <span class="sy0">||</span> <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es2">$ELED</span>&quot;</span> <span class="sy0">!</span>= <span class="st0">&quot;$1&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+    <span class="kw3">printf</span> <span class="st0">&quot;<span class="es1">\n</span>USAGE:
+    ledwsignal.sh &lt;led name&gt;
+    <span class="es1">\n</span>available leds:<span class="es1">\n</span><span class="es2">$AVLEDS</span>
+    <span class="es1">\n</span><span class="es1">\n</span>ERROR<span class="es1">\n</span>&quot;</span>
+    <span class="kw3">exit</span> <span class="nu0">255</span>
+<span class="kw1">fi</span>
+&nbsp;
+<span class="kw3">echo</span> timer <span class="sy0">&gt;</span> <span class="sy0">/</span>sys<span class="sy0">/</span>class<span class="sy0">/</span>leds<span class="sy0">/</span><span class="re4">$1</span><span class="sy0">/</span>trigger
+&nbsp;
+<span class="kw1">while</span> <span class="kw2">true</span> ; <span class="kw1">do</span>
+  <span class="re2">RSSI</span>=<span class="sy0">`</span><span class="kw2">cat</span> <span class="sy0">/</span>proc<span class="sy0">/</span>net<span class="sy0">/</span>wireless <span class="sy0">|</span> <span class="kw2">awk</span> <span class="st_h">'NR==3 {print $4}'</span> <span class="sy0">|</span> <span class="kw2">sed</span> <span class="st_h">'s/\.//'</span><span class="sy0">`</span>
+  <span class="co0">#echo &quot;RSSI: $RSSI&quot;</span>
+&nbsp;
+  <span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-z</span> <span class="re1">$RSSI</span> <span class="br0">&#93;</span> <span class="sy0">||</span> <span class="br0">&#91;</span> <span class="re1">$RSSI</span> <span class="re5">-ge</span> <span class="nu0">0</span> <span class="br0">&#93;</span>; <span class="kw1">then</span> <span class="re2">STRENGTH</span>=<span class="nu0">0</span> <span class="co0">#error</span>
+  <span class="kw1">elif</span> <span class="br0">&#91;</span> <span class="re1">$RSSI</span> <span class="re5">-ge</span> <span class="re5">-65</span> <span class="br0">&#93;</span> ; <span class="kw1">then</span> <span class="re2">STRENGTH</span>=<span class="nu0">4</span> <span class="co0">#excellent</span>
+  <span class="kw1">elif</span> <span class="br0">&#91;</span> <span class="re1">$RSSI</span> <span class="re5">-ge</span> <span class="re5">-73</span> <span class="br0">&#93;</span> ; <span class="kw1">then</span> <span class="re2">STRENGTH</span>=<span class="nu0">3</span> <span class="co0">#good</span>
+  <span class="kw1">elif</span> <span class="br0">&#91;</span> <span class="re1">$RSSI</span> <span class="re5">-ge</span> <span class="re5">-80</span> <span class="br0">&#93;</span> ; <span class="kw1">then</span> <span class="re2">STRENGTH</span>=<span class="nu0">2</span> <span class="co0">#fair</span>
+  <span class="kw1">elif</span> <span class="br0">&#91;</span> <span class="re1">$RSSI</span> <span class="re5">-ge</span> <span class="re5">-94</span> <span class="br0">&#93;</span> ; <span class="kw1">then</span> <span class="re2">STRENGTH</span>=<span class="nu0">1</span> <span class="co0">#bad</span>
+  <span class="kw1">else</span> <span class="re2">STRENGTH</span>=<span class="nu0">0</span>
+  <span class="kw1">fi</span>
+&nbsp;
+  <span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re1">$OLD_STRENGTH</span> <span class="sy0">!</span>= <span class="re1">$STRENGTH</span> <span class="br0">&#93;</span> ; <span class="kw1">then</span>
+      <span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re1">$OLD_STRENGTH</span> = <span class="nu0">4</span> <span class="br0">&#93;</span> ; <span class="kw1">then</span> <span class="kw3">echo</span> timer <span class="sy0">&gt;</span> <span class="sy0">/</span>sys<span class="sy0">/</span>class<span class="sy0">/</span>leds<span class="sy0">/</span><span class="re4">$1</span><span class="sy0">/</span>trigger
+      <span class="kw1">fi</span>
+      <span class="kw1">case</span> <span class="re1">$STRENGTH</span> <span class="kw1">in</span>
+	<span class="nu0">4</span><span class="br0">&#41;</span>  <span class="kw3">echo</span> default-on <span class="sy0">&gt;</span> <span class="sy0">/</span>sys<span class="sy0">/</span>class<span class="sy0">/</span>leds<span class="sy0">/</span><span class="re4">$1</span><span class="sy0">/</span>trigger <span class="sy0">;;</span>
+	<span class="nu0">3</span><span class="br0">&#41;</span>  Led_On <span class="re4">$1</span> <span class="nu0">12</span>;  Led_Off <span class="re4">$1</span> <span class="nu0">8</span>  <span class="sy0">;;</span>
+	<span class="nu0">2</span><span class="br0">&#41;</span>  Led_On <span class="re4">$1</span> <span class="nu0">6</span>;   Led_Off <span class="re4">$1</span> <span class="nu0">14</span> <span class="sy0">;;</span>
+	<span class="nu0">1</span><span class="br0">&#41;</span>  Led_On <span class="re4">$1</span> <span class="nu0">1</span>;   Led_Off <span class="re4">$1</span> <span class="nu0">19</span>  <span class="sy0">;;</span>
+	<span class="nu0">0</span><span class="br0">&#41;</span>  Led_On <span class="re4">$1</span> <span class="nu0">500</span>; Led_Off <span class="re4">$1</span> <span class="nu0">500</span> <span class="sy0">;;</span>
+      <span class="kw1">esac</span>
+  <span class="kw3">echo</span> <span class="st0">&quot;SIGNAL STRENGTH (0-4): <span class="es2">$STRENGTH</span>&quot;</span>
+  <span class="kw1">fi</span>
+&nbsp;
+<span class="re2">OLD_STRENGTH</span>=<span class="re1">$STRENGTH</span>
+&nbsp;
+<span class="kw2">sleep</span> <span class="nu0">3</span>
+<span class="kw1">done</span>
+<span class="kw3">exit</span></pre>
+
+<p>
+Note: to appreciate the different led states with this script you may need to be in a dark environment.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;By controlling one led brightness&quot;,&quot;hid&quot;:&quot;by_controlling_one_led_brightness&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:4,&quot;range&quot;:&quot;1871-&quot;} -->

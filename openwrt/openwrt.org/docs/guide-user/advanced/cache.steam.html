@@ -1,0 +1,432 @@
+
+<h1 class="sectionedit1" id="steam_caching_using_nginx">Steam Caching using Nginx</h1>
+<div class="level1">
+
+<p>
+Nginx can also be used for caching <a href="http://store.steampowered.com/" class="urlextern" title="http://store.steampowered.com/" rel="ugc nofollow">Steam</a> game updates and downloads, which is so useful for <abbr title="Local Area Network">LAN</abbr> parties or any situations where there are more than 1 user using Steam, as any subsequent updates from other Steam users will update from this router instead of consuming and bottlenecking the Internet uplink. This will also increases the update speed significantly, as usually the computers are connected to the router through Wi-Fi or even gigabit ethernet.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Steam Caching using Nginx&quot;,&quot;hid&quot;:&quot;steam_caching_using_nginx&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-533&quot;} -->
+<h2 class="sectionedit2" id="screenshots">Screenshots</h2>
+<div class="level2">
+
+<p>
+Unfortunately I don&#039;t have enough privilege to upload files, so no embedded picture here :(
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Screenshots&quot;,&quot;hid&quot;:&quot;screenshots&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;534-651&quot;} -->
+<h3 class="sectionedit3" id="before_using_router_caching">Before using router caching:</h3>
+<div class="level3">
+
+<p>
+<a href="http://i.imgur.com/W6r1VFb.png" class="urlextern" title="http://i.imgur.com/W6r1VFb.png" rel="ugc nofollow">http://i.imgur.com/W6r1VFb.png</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Before using router caching:&quot;,&quot;hid&quot;:&quot;before_using_router_caching&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;652-722&quot;} -->
+<h3 class="sectionedit4" id="after_using_router_caching">After using router caching:</h3>
+<div class="level3">
+
+<p>
+<a href="http://i.imgur.com/dRKmGYb.png" class="urlextern" title="http://i.imgur.com/dRKmGYb.png" rel="ugc nofollow">http://i.imgur.com/dRKmGYb.png</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;After using router caching:&quot;,&quot;hid&quot;:&quot;after_using_router_caching&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;723-793&quot;} -->
+<h2 class="sectionedit5" id="installation">Installation</h2>
+<div class="level2">
+
+<p>
+The default nginx that lives inside the opkg system have http-cache compiled out, so don&#039;t use the 
+</p>
+<pre class="code">opkg install nginx</pre>
+
+<p>
+or nginx will spew out unknown directive errors in the log and fails to start. To compile nginx, first set up your buildroot and go to 
+</p>
+<pre class="code">menuconfig -&gt; network -&gt; Web Servers/Proxies -&gt; nginx -&gt; Configuration</pre>
+
+<p>
+and select Enable <abbr title="Hypertext Transfer Protocol">HTTP</abbr> cache, Enable <abbr title="Hypertext Transfer Protocol">HTTP</abbr> limit conn and Enable <abbr title="Hypertext Transfer Protocol">HTTP</abbr> limit req. Build it as module so you can install it at running OpenWrt installation, and make sure to have your architecture the same as the target architecture.
+</p>
+
+<p>
+You also need a working fstab that can mount your mass storage as Steam game updates are usually hundreds in megabytes in size, which can instantly make your router storage be full, hence a hard drive, either internal or external, is highly recommended.
+</p>
+
+<p>
+If you are using LuCI, change the uhttpd config to listen to another port because nginx also works in port 80, which will conflict with the LuCI website.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation&quot;,&quot;hid&quot;:&quot;installation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;794-1818&quot;} -->
+<h3 class="sectionedit6" id="configuring_everything">Configuring everything</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="nginx">nginx</h4>
+<div class="level4">
+
+<p>
+You need to delete the content of nginx.conf inside <code>/etc/nginx/nginx.conf</code> and use this config instead:
+</p>
+
+<p>
+<code>/etc/nginx/nginx.conf</code>
+</p>
+<pre class="code"># Valve SteamPipe Reverse Proxy Configuration for nginx on OpenWrt.
+# by Brian Astrolox Wojtczak, May 2013.
+#
+# For caching steam content when lots of gamers are attempting to use 
+# a single low speed high contention connection to the internet
+# (e.g. LAN parties).
+# Based on configuration written by Brian Astrolox Wojitczak
+# http://www.astrolox.com/2013/05/31/valve-steampipe-reverse-proxy/
+# Which is based on configuration written by Steven Hartland at Multiplay
+# http://blog.multiplay.co.uk/2013/04/caching-steam-downloads-lans/
+#
+# Changed in the following ways:
+#
+#   1/ Tweaked for Ubuntu Linux rather than FreeBSD 
+#		(can be tweaked to work on FreeBSD again of course).
+#		NB. Will probably work on Debian without modification.
+#
+#   2/ Will steam cache content other than the main depots, such as the
+#		big images and videos used on the store and	community pages. 
+#		Will honour source set expiry dates, privcy flags, etc.
+#
+#	3/ Created a per user bandwidth limit
+#
+#	4/ Blocked crash reports from being sent to valve
+#
+#	5/ Ensured that the correct Host header is always returned
+#
+
+#######################################################################
+# This configuration is intended to be used with the following DNS
+# configuration - tested using Acrylic DNS Proxy.
+#
+# # Ensure that these are the same as in the real world as steam needs
+# # to communicate directly to valve on these hostnames. Redirecting
+# # them to your nginx server will prevent logins and game purchases.
+#208.64.201.136 gds1.steampowered.com
+#208.64.201.136 gds2.steampowered.com
+#208.64.201.136 gds3.steampowered.com
+#208.64.201.136 gds4.steampowered.com
+#23.77.200.247 store.steampowered.com
+#23.77.200.247 support.steampowered.com
+# 
+# # Use the IP of your nginx server in place of &lt;YourIP&gt;
+#10.0.0.2 *.cs.steampowered.com
+#10.0.0.2 *.steampowered.com
+#
+#######################################################################
+
+# NB. You should change the ulimit for nginx to be as high as possible. 
+# If you do not then you&#039;ll get a &quot;Too many open files&quot; error.
+# On Ubuntu edit /etc/default/nginx and uncomment the ulimit line.
+
+user cache;
+worker_processes 16;
+pid /var/run/nginx.pid;
+worker_rlimit_nofile 300000;
+
+events {
+        worker_connections 8192;
+        multi_accept on;
+
+        # kqueue (FreeBSD 4.1+), epoll (Linux 2.6+), rt signals (Linux 2.2.19+)
+        # /dev/poll (Solaris 7 11/99+), event ports (Solaris 10), select, and poll
+        use epoll;
+        #use kqueue;
+}
+
+http {
+        include mime.types;
+
+        access_log /var/log/nginx/access.log;
+        error_log /var/log/nginx/error.log debug;
+
+        sendfile on;
+        tcp_nopush on;
+        tcp_nodelay on;
+        types_hash_max_size 2048;
+        keepalive_timeout 65;
+
+        resolver 114.114.115.115;
+        resolver_timeout 30s;
+
+        # You may wish to limit the &quot;speed of transmission of the answer to client&quot;
+        # in order to support more clients simultaneously. However it&#039;s probably
+        # sensible to only impose the limit after a set amount of data has been
+        # sent (per request); this results in small files being fast (most requests)
+        # and large files being non-intrusive (aka slower).
+        limit_rate_after 10m;
+        limit_rate 2048k;
+
+        proxy_cache_path  /path/to/mass/storage/CS levels=1:2 keys_zone=CS:10m
+                           inactive=72h max_size=1g;
+
+        proxy_cache_path  /path/to/mass/storage/OTHER levels=2:2 keys_zone=OTHER:100m
+                           inactive=72h max_size=1g;
+
+        proxy_cache_key &quot;$scheme$host$request_uri$cookie_user&quot;;
+
+		# Prevent steam crash logs from being submitted to valve - just
+		# in case our man in the middle reverse proxy is the cause.
+        server {
+                listen 80;
+                server_name crash.steampowered.com;
+
+                location / {
+                        satisfy all;
+                        deny all;
+
+                        access_log /var/log/nginx/crash.steampowered.com-access.log;
+                        error_log /var/log/nginx/crash.steampowered.com-error.log;
+                }
+        }
+
+		# Cache the main steam content servers - this is the important bit
+        server {
+                listen 80;
+                server_name *.cs.steampowered.com;
+
+                access_log /var/log/nginx/cs.steampowered.com-access.log;
+                error_log /var/log/nginx/cs.steampowered.com-error.log;
+
+                root /var/www/cs.steampowered.com/;
+
+                location /depot/ {
+                        try_files $uri @mirror;
+
+                        access_log /var/log/nginx/cs.steampowered.com-access-depot-local.log;
+                }
+
+                location / {
+                        proxy_next_upstream error timeout http_404;
+                        proxy_pass http://$host$uri;
+                        proxy_redirect off;
+
+                        proxy_set_header Host $host;
+                        proxy_set_header X-Real-IP $remote_addr;
+                        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+                        proxy_cache CS;
+                        proxy_cache_valid 200 301 302 10m;
+                        proxy_cache_valid any 1m;
+                        proxy_cache_use_stale   error timeout invalid_header updating
+                                                 http_500 http_502 http_503 http_504;
+
+                        add_header Host $host;
+                        add_header X-Mirror-Upstream-Status $upstream_status;
+                        add_header X-Mirror-Upstream-Response-Time $upstream_response_time;
+                        add_header X-Mirror-Status $upstream_cache_status;
+
+                        access_log /var/log/nginx/cs.steampowered.com-access-other.log;
+                }
+
+                location @mirror {
+                        proxy_store on;
+                        proxy_store_access user:rw group:rw all:r;
+                        proxy_next_upstream error timeout http_404;
+                        proxy_pass http://$host$uri;
+                        proxy_redirect off;
+
+                        proxy_set_header Host $host;
+                        proxy_set_header X-Real-IP $remote_addr;
+                        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+Ubuntu
+                        add_header Host $host;
+                        add_header X-Mirror-Upstream-Status $upstream_status;
+                        add_header X-Mirror-Upstream-Response-Time $upstream_response_time;
+                        add_header X-Mirror-Status $upstream_cache_status;
+
+                        access_log /var/log/nginx/cs.steampowered.com-access-depot-remote.log;
+                }
+        }
+
+		# All non game content server content can be cached here,
+		#  as long as DNS is pointing at this nginx server.
+        server {
+                listen 80;
+                server_name *.steampowered.com;
+
+                access_log /var/log/nginx/steampowered.com-access.log;
+                error_log /var/log/nginx/steampowered.com-error.log;
+
+                location / {
+                        proxy_next_upstream error timeout http_404;
+                        proxy_pass http://$host$uri;
+                        proxy_redirect off;
+
+                        proxy_set_header Host $host;
+                        proxy_set_header X-Real-IP $remote_addr;
+                        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+                        proxy_cache OTHER;
+                        proxy_cache_valid 200 301 302 10m;
+                        proxy_cache_valid any 1m;
+                        proxy_cache_use_stale   error timeout invaUbuntulid_header updating
+                                                 http_500 http_502 http_503 http_504;
+
+                        add_header Host $host;
+                        add_header X-Mirror-Upstream-Status $upstream_status;
+                        add_header X-Mirror-Upstream-Response-Time $upstream_response_time;
+                        add_header X-Mirror-Status $upstream_cache_status;
+                }
+        }
+
+		# Serve up default web root folder for unrecognised hosts, you
+		#  should put something informative here, such as an error message.
+        server {
+                listen 80 default;Ubuntu
+
+                location / {
+                        root /www;
+                        proxy_pass http://10.0.0.1:81;
+                        add_header Host $host;
+                }
+        }
+}</pre>
+
+</div>
+
+<h4 id="dnsmasq">dnsmasq</h4>
+<div class="level4">
+
+<p>
+Append this inside <code>/etc/dnsmasq.conf</code>
+</p>
+
+<p>
+<code>/etc/dnsmasq.conf</code>
+</p>
+<pre class="code">log-queries
+log-facility=/etc/dnsmasq.log
+
+address=/.cs.steampowered.com/10.0.0.1
+address=/.steampowered.com/10.0.0.1</pre>
+
+<p>
+and append this inside <code>/etc/hosts</code> file
+</p>
+
+<p>
+<code>/etc/hosts</code>
+</p>
+<pre class="code">208.64.201.136 gds1.steampowered.comUbuntu
+208.64.201.136 gds2.steampowered.com
+208.64.201.136 gds3.steampowered.com
+208.64.201.136 gds4.steampowered.com
+23.77.200.247 store.steampowered.com
+23.77.200.247 support.steampowered.com</pre>
+
+<p>
+Make sure to change those <abbr title="Internet Protocol">IP</abbr> address to something that those servers actually use, to find them out use nslookup or bind.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuring everything&quot;,&quot;hid&quot;:&quot;configuring_everything&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:6,&quot;range&quot;:&quot;1819-11201&quot;} -->
+<h2 class="sectionedit7" id="testing_and_debugging">Testing and debugging</h2>
+<div class="level2">
+
+<p>
+Reboot the router, then tail everything inside /var/log/nginx by using
+</p>
+<pre class="code">tail -f /var/log/nginx/*</pre>
+
+<p>
+Here is the result at startup:
+</p>
+<pre class="code">root@OpenWrt:~# tail -f /var/log/nginx/*
+==&gt; /var/log/nginx/access.log &lt;==
+
+==&gt; /var/log/nginx/crash.steampowered.com-access.log &lt;==
+
+==&gt; /var/log/nginx/crash.steampowered.com-error.log &lt;==
+
+==&gt; /var/log/nginx/cs.steampowered.com-access-depot-local.log &lt;==
+
+==&gt; /var/log/nginx/cs.steampowered.com-access-depot-remote.log &lt;==
+
+==&gt; /var/log/nginx/cs.steampowered.com-access-other.log &lt;==
+
+==&gt; /var/log/nginx/cs.steampowered.com-access.log &lt;==
+
+==&gt; /var/log/nginx/cs.steampowered.com-error.log &lt;==
+
+==&gt; /var/log/nginx/error.log &lt;==
+
+==&gt; /var/log/nginx/steampowered.com-access.log &lt;==
+
+==&gt; /var/log/nginx/steampowered.com-error.log &lt;==</pre>
+
+<p>
+Then, try to download something from Steam, preferably something small. You will then see a lot of activity in that tail if everything is working
+</p>
+<pre class="code">0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:34 +0000] &quot;GET /depot/239823/chunk/522f86d7c99769903760fd46b3c6737cfa4411ed HTTP/1.1&quot; 200 121600 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:34 +0000] &quot;GET /depot/239823/chunk/3886ddf0795596e9a254d5b8a5d3b0e6d5a075a8 HTTP/1.1&quot; 200 768 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:34 +0000] &quot;GET /depot/239823/chunk/a45e7bbbdc991401e48cb7262701da9f4f3973f0 HTTP/1.1&quot; 200 496 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:34 +0000] &quot;GET /depot/239823/chunk/a72814afaeea8b42a960ecc5275010b61041b0bc HTTP/1.1&quot; 200 1248 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:35 +0000] &quot;GET /depot/239823/chunk/9e2485dd6637394d0ff874c7f5b0c40b09f552d5 HTTP/1.1&quot; 200 117872 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:35 +0000] &quot;GET /depot/239823/chunk/93c4b77fcc86472f296f8db47744300e50ad9ea3 HTTP/1.1&quot; 200 111136 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:35 +0000] &quot;GET /depot/239823/chunk/e8ed3dc89c4756464fca9431ed522de2bb28adb0 HTTP/1.1&quot; 200 67984 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:35 +0000] &quot;GET /depot/239823/chunk/3f039217e6d8336d06960e5bd7a02605114ec87d HTTP/1.1&quot; 200 106032 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:35 +0000] &quot;GET /depot/239823/chunk/f793e5f5466f83ae067b1af0a0ce5f5858c9476a HTTP/1.1&quot; 200 4208 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:35 +0000] &quot;GET /depot/239823/chunk/bab6e7147e74ba88169964058c6915fb9fda3f27 HTTP/1.1&quot; 200 105584 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:35 +0000] &quot;GET /depot/239823/chunk/cee0f713daa4fb950dc35f04a3d90ff6828e4c7d HTTP/1.1&quot; 200 37824 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:35 +0000] &quot;GET /depot/239823/chunk/16972f09bdb6c874b4c8e44f19f6491b6b5c00a7 HTTP/1.1&quot; 200 400 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:36 +0000] &quot;GET /depot/239823/chunk/ff85c4b814b5d51228aaf95e17a080b7df38a494 HTTP/1.1&quot; 200 1680 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:36 +0000] &quot;GET /depot/239823/chunk/c66cf3201bc610a37f733b6f93be2c6a3931c01b HTTP/1.1&quot; 200 6256 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:36 +0000] &quot;GET /depot/239823/chunk/f01e3637e0ccd6d8996a86f997bb78f2a8249005 HTTP/1.1&quot; 200 2656 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:37 +0000] &quot;GET /depot/239823/chunk/37a4ef3ee3055317b36e3a7b5eb1fbc7b3ab709c HTTP/1.1&quot; 200 262576 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:37 +0000] &quot;GET /depot/239823/chunk/a6809b7c04231f4fba5a558daa0a0a91520adeff HTTP/1.1&quot; 200 310688 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:37 +0000] &quot;GET /depot/239823/chunk/46f0caffc43b0ba8013d7e057a005dbaf94e1a6c HTTP/1.1&quot; 200 153600 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:37 +0000] &quot;GET /depot/239823/chunk/118648884c9c3c0307fd6f84aad1a8ce622a1e8a HTTP/1.1&quot; 200 2000 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:38 +0000] &quot;GET /depot/239823/chunk/90bd069b48c67cdd6a46a866981d7426df8d76ea HTTP/1.1&quot; 200 2640 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:38 +0000] &quot;GET /depot/239823/chunk/d19afda155d874411f1d17b8da88773380213876 HTTP/1.1&quot; 200 1344 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:38 +0000] &quot;GET /depot/239823/chunk/6f01764e47c3955eaddb5b2cb44ddcacf5c3ac57 HTTP/1.1&quot; 200 2160 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:38 +0000] &quot;GET /depot/239823/chunk/6896ecc4c6d241425c4919fa51a662e109b905a6 HTTP/1.1&quot; 200 324032 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:38 +0000] &quot;GET /depot/239823/chunk/54baf576050127ada0ebbb749176ec1518401746 HTTP/1.1&quot; 200 5952 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:39 +0000] &quot;GET /depot/239823/chunk/df6c9cd6cd1618b21e8d922ab04899533860f768 HTTP/1.1&quot; 200 14752 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:39 +0000] &quot;GET /depot/239823/chunk/68410d3a24053b06d02fdd79a37a30f764982068 HTTP/1.1&quot; 200 14880 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:39 +0000] &quot;GET /depot/239823/chunk/0f150b4f5993b7e2347a2a9c02d9a8fda4f39cc4 HTTP/1.1&quot; 200 14512 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:39 +0000] &quot;GET /depot/239823/chunk/6a03f08ce1dbfb305a935b9a735927d784ae527f HTTP/1.1&quot; 200 16864 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:39 +0000] &quot;GET /depot/239823/chunk/60dced3baff9e822d7237b245f37ce45591bdc46 HTTP/1.1&quot; 200 267680 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:40 +0000] &quot;GET /depot/239823/chunk/33edfc4001c11ba52da8403a6dcba3270f55be75 HTTP/1.1&quot; 200 117136 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:40 +0000] &quot;GET /depot/239823/chunk/13c6206c190bb75d2448969531a91cef86923d01 HTTP/1.1&quot; 200 864 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:40 +0000] &quot;GET /depot/239823/chunk/fefcbcb45cb79bdb225b6c9b08d99e8b2d580008 HTTP/1.1&quot; 200 16256 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:40 +0000] &quot;GET /depot/239823/chunk/10b1299acf47780991d1c9d6241420380e4fcda5 HTTP/1.1&quot; 200 16976 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:40 +0000] &quot;GET /depot/239823/chunk/e633c69e6a843f02e61aa44540c35d892cbe6938 HTTP/1.1&quot; 200 160352 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:40 +0000] &quot;GET /depot/239823/chunk/0d0039a7f33ad163fe3393eacc9a14628ce43458 HTTP/1.1&quot; 200 720 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;
+10.0.0.127 - - [03/Aug/2015:15:06:40 +0000] &quot;GET /depot/239823/chunk/300509b58024b53e5aa8ffe90f73232bbc64ae52 HTTP/1.1&quot; 200 944 &quot;-&quot; &quot;Valve/Steam HTTP Client 1.0&quot;</pre>
+
+<p>
+Then the download will proceed at normal speed, or even slower, as it also writes to the storage in the router. Then, when it is finished, delete the game and reinstall it. And watch the download speed shot up to 7 <abbr title="Megabyte">MB</abbr>/sec or even higher. You will probably run into Wi-Fi or Fast Ethernet bottleneck, so it is highly available to upgrade to Gigabit Ethernet.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Testing and debugging&quot;,&quot;hid&quot;:&quot;testing_and_debugging&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:7,&quot;range&quot;:&quot;11202-18448&quot;} -->
+<h2 class="sectionedit8" id="possible_things_that_can_be_done">Possible things that can be done</h2>
+<div class="level2">
+
+<p>
+It is theoretically possible to use <a href="https://developer.valvesoftware.com/wiki/SteamCMD" class="urlextern" title="https://developer.valvesoftware.com/wiki/SteamCMD" rel="ugc nofollow">SteamCMD</a> in the router and set it up to download any games (that you own) you want to the router, and then nginx will cache that like normal updates. Then, when it is complete, you just download the game from the Steam client and it will use the cache that is filled earlier. With this, you can download Steam games like downloading torrents, downloading where no one is using the internet and without leaving your computer on at night.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Possible things that can be done&quot;,&quot;hid&quot;:&quot;possible_things_that_can_be_done&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:8,&quot;range&quot;:&quot;18449-19022&quot;} -->
+<h2 class="sectionedit9" id="notes">Notes</h2>
+<div class="level2">
+
+<p>
+Make sure path&#039;s are correct for your case.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Notes&quot;,&quot;hid&quot;:&quot;notes&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:9,&quot;range&quot;:&quot;19023-&quot;} -->

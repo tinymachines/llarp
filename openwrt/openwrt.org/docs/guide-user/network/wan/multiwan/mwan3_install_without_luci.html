@@ -1,0 +1,193 @@
+
+<h1 class="sectionedit1" id="mwan3_install_using_filesystem_not_luci">mwan3 install using filesystem (not luci)</h1>
+<div class="level1">
+
+<p>
+Most guides on the wiki have moved to uci commands (good for scripting but
+not intuitive) or
+only cover the install for luci, so here will be a guide for mwan3 that is
+intended for users that administer openwrt via the filesystem. 
+</p>
+
+<p>
+This guide will be for a <strong>failover</strong> use case (arguably the most common). It&#039;s also possible
+to use mwan3 in a balanced type configuration, although in this author&#039;s experience that
+did not work as expected (tested in 17, though). Note that in this guide, we will be using
+only ipv4 (not ipv6).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;mwan3 install using filesystem (not luci)&quot;,&quot;hid&quot;:&quot;mwan3_install_using_filesystem_not_luci&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-587&quot;} -->
+<h3 class="sectionedit2" id="mwan3_on_wiki">mwan3 on wiki</h3>
+<div class="level3">
+
+<p>
+Mwan3 is covered on the wiki in two other documents (en).
+For example:
+<a href="/docs/guide-user/routing/examples/dual-wan" class="wikilink1" title="docs:guide-user:routing:examples:dual-wan" data-wiki-id="docs:guide-user:routing:examples:dual-wan">dual-wan</a>
+and the main guide which is here:
+<a href="/docs/guide-user/network/wan/multiwan/mwan3" class="wikilink1" title="docs:guide-user:network:wan:multiwan:mwan3" data-wiki-id="docs:guide-user:network:wan:multiwan:mwan3">mwan3</a>
+</p>
+
+<p>
+This tutorial will simply be a walkthrough for installing mwan3 and some notes on usage. 
+For more details, refer to the latter page above.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;mwan3 on wiki&quot;,&quot;hid&quot;:&quot;mwan3_on_wiki&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;588-953&quot;} -->
+<h2 class="sectionedit3" id="installation">Installation</h2>
+<div class="level2">
+
+<p>
+For 21:
+</p>
+<pre class="code">opkg install mwan3</pre>
+
+<p>
+For 22:
+</p>
+<pre class="code">opkg install mwan3 iptables-nft</pre>
+
+<p>
+Due to the iptables to nft changeover in 22, iptables-nft is required. There is more discussion on this in the main mwan3 page and on the forum. You shouldn&#039;t have to make any further changes regarding iptables or nft. Simply install iptables-nft and it should work.
+</p>
+
+</div>
+
+<h4 id="configuration_ofetcconfignetwork">Configuration of /etc/config/network</h4>
+<div class="level4">
+
+<p>
+Since we are using this as a failover, we will need a 2nd wan interface. 
+That may look something like this:
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-user/network/wan/multiwan/mwan3_install_without_luci?codeblock=2" title="Download Snippet" class="mediafile mf_">/etc/config/network</a></dt>
+<dd><pre class="code bash">config interface <span class="st_h">'wan'</span>
+    option ifname <span class="st_h">'eth1'</span>
+    option proto <span class="st_h">'static'</span>
+    option ipaddr <span class="st_h">'myipaddress'</span>
+    option netmask <span class="st_h">'255.255.255.248'</span>
+    option gateway <span class="st_h">'mygateway'</span>
+    option dns <span class="st_h">'8.8.8.8'</span>
+    option metric <span class="st_h">'10'</span>
+&nbsp;
+config interface <span class="st_h">'wanb'</span>
+    option ifname <span class="st_h">'eth2'</span>
+    option proto <span class="st_h">'static'</span>
+    option ipaddr <span class="st_h">'myipaddress'</span>
+    option netmask <span class="st_h">'255.255.255.248'</span>
+    option gateway <span class="st_h">'mygateway'</span>
+    option dns <span class="st_h">'8.8.8.8'</span>
+    option metric <span class="st_h">'20'</span></pre>
+</dd></dl>
+
+<p>
+There&#039;s two things you need to pay attention to here. 1) The metric is set for each interface. The metric has a weight, and the lower the weight, the higher the priority. So in the example above, wan has 10 (high priority) and wanb has 20 (low priority).  2) You must name the second wan interface appropriately. It can be anything, but you will need to know what it is to add it to the firewall zone next.
+</p>
+
+<p>
+With the two interfaces configured, you should be able to ping out of each one. So now is a good time to test that each interface is working properly.
+</p>
+<pre class="code">ping -I eth1 www.google.com
+ping -I eth2 www.google.com</pre>
+
+<p>
+If either of these fail, then double check your interfaces are configured correct, the cables are plugged in, etc...
+Note that it is common in 21 and 22 for the 2nd interface to delay the first 3 packets w/mwan3 installed. This is a bug, but can be ignored for now. See <a href="https://github.com/openwrt/openwrt/issues/12278" class="urlextern" title="https://github.com/openwrt/openwrt/issues/12278" rel="ugc nofollow">https://github.com/openwrt/openwrt/issues/12278</a> for more details.
+</p>
+
+</div>
+
+<h4 id="configuration_ofetcconfigfirewall">Configuration of /etc/config/firewall</h4>
+<div class="level4">
+
+<p>
+The next step is to add your newly created wanb to the firewall
+</p>
+<pre class="code etcconfigfirewall">config zone
+    option name    wan
+    list network   'wan'
+    list network   'wanb'
+    list network   'wan6'
+    option input   REJECT
+    option output  ACCEPT
+    option forward REJECT
+    option masq    1
+    option mtu_fix 1</pre>
+
+<p>
+If you fail to do this, you will get everything else in mwan3 working, but when you 
+pull a cable to test the 2nd interface working as a backup, it will not properly change
+mwan3 over. The failover will not work. Perhaps some config checking would be in order 
+for mwan3 so it detects if the user forgets to include the 2nd wan interface and notifies 
+them appropriately. Note that the syntax utilizing <strong>list network</strong> is a newer syntax. Owrt from 17 and earlier
+used:
+</p>
+<pre class="code">option network &#039;wan wanb wan6&#039;</pre>
+
+</div>
+
+<h4 id="configuration_ofetcconfigmwan3">Configuration of /etc/config/mwan3</h4>
+<div class="level4">
+
+<p>
+The final step is to choose wan_wanb (failover) as the
+policy of /etc/config/mwan3 instead of the balanced, which
+is the default. 
+</p>
+<pre class="code etcconfigmwan3">config rule 'https'
+        option sticky '1'
+        option dest_port '443'
+        option proto 'tcp'
+        option use_policy 'wan_wanb'
+&nbsp;
+config rule 'default_rule_v4'
+        option dest_ip '0.0.0.0/0'
+        option use_policy 'wan_wanb'
+        option family 'ipv4'
+&nbsp;
+config rule 'default_rule_v6'
+        option dest_ip '::/0'
+        option use_policy 'wan_wanb'
+        option family 'ipv6'</pre>
+
+<p>
+The default has wan6 and wanb6 disabled. If you are using ipv6, you may need to enable those in /etc/config/mwan3.
+</p>
+
+<p>
+That should be all that is required. At this point you may need to run 
+</p>
+<pre class="code">mwan3 restart</pre>
+
+<p>
+Or you can alternatively reboot. Finally, test pulling each network cable, running <strong>logread</strong>, and testing w/ping to make sure the internet fails over appropriately.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation&quot;,&quot;hid&quot;:&quot;installation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;954-4844&quot;} -->
+<h2 class="sectionedit4" id="troubleshooting">Troubleshooting</h2>
+<div class="level2">
+
+<p>
+There is some discussion on the forum, and on the main mwan3 page. These commands may be valuable:
+</p>
+<pre class="code">logread | grep mwan3
+mwan3 status</pre>
+
+</div>
+
+<h4 id="learning_more_about_mwan3">Learning more about mwan3</h4>
+<div class="level4">
+
+<p>
+See the source tree for mwan3: <a href="https://github.com/openwrt/packages/tree/master/net/mwan3" class="urlextern" title="https://github.com/openwrt/packages/tree/master/net/mwan3" rel="ugc nofollow">https://github.com/openwrt/packages/tree/master/net/mwan3</a>
+</p>
+<pre class="code">mwan3 (without any arguments)
+iptables -t mangle -L
+less /etc/mwan3.user</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Troubleshooting&quot;,&quot;hid&quot;:&quot;troubleshooting&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:4,&quot;range&quot;:&quot;4845-&quot;} -->

@@ -1,0 +1,122 @@
+
+<h1 class="sectionedit1" id="stubby">Stubby</h1>
+<div class="level1">
+
+<p>
+Stubby is an application that acts as a local <abbr title="Domain Name System">DNS</abbr> stub resolver using <a href="https://en.wikipedia.org/wiki/DNS_over_TLS" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/DNS_over_TLS">DNS over TLS</a>.
+Stubby encrypts <abbr title="Domain Name System">DNS</abbr> queries sent from a client machine to a <abbr title="DNS over TLS">DoT</abbr>-provider increasing end user privacy.
+Follow <a href="/docs/guide-user/services/dns/start#encryption" class="wikilink1" title="docs:guide-user:services:dns:start" data-wiki-id="docs:guide-user:services:dns:start">DNS encryption</a> to utilize <abbr title="DNS over TLS">DoT</abbr> via Stubby.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Stubby&quot;,&quot;hid&quot;:&quot;stubby&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-298&quot;} -->
+<h2 class="sectionedit2" id="overview">Overview</h2>
+<div class="level2">
+
+<p>
+An unprotected setup without Stubby might look like this:
+</p>
+<div class="table sectionedit3"><table class="inline">
+	<tr class="row0">
+		<td class="col0"><strong>local</strong></td><td class="col1">→</td><td class="col2"><strong>internet</strong></td>
+	</tr>
+	<tr class="row1">
+		<td class="col0">dnsmasq on 53</td><td class="col1">→</td><td class="col2">unencrypted dns on 53</td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;379-447&quot;} -->
+<p>
+A setup protected with Stubby will then look like this:
+</p>
+<div class="table sectionedit4"><table class="inline">
+	<tr class="row0">
+		<td class="col0"><strong>local</strong></td><td class="col1">→</td><td class="col2"><strong>local</strong></td><td class="col3">→</td><td class="col4"><strong>internet</strong></td>
+	</tr>
+	<tr class="row1">
+		<td class="col0">dnsmasq on 53</td><td class="col1">→</td><td class="col2">stubby on 5453</td><td class="col3">→</td><td class="col4">encrypted dns on 853</td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table1&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;506-604&quot;} -->
+<p>
+We&#039;ll basically be putting Stubby in between dnsmasq and the internet, leaving most things untouched so that dnsmasq will continue to work in OpenWrt.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Overview&quot;,&quot;hid&quot;:&quot;overview&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;299-757&quot;} -->
+<h2 class="sectionedit5" id="installation">Installation</h2>
+<div class="level2">
+<pre class="code bash">opkg update
+opkg <span class="kw2">install</span> stubby</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation&quot;,&quot;hid&quot;:&quot;installation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;758-835&quot;} -->
+<h2 class="sectionedit6" id="configuration">Configuration</h2>
+<div class="level2">
+
+<p>
+Stubby can be configured directly via <code>/etc/stubby/stubby.yml</code> or via <code>/etc/config/stubby</code> when using uci. The <a href="https://github.com/openwrt/packages/blob/master/net/stubby/files/README.md" class="urlextern" title="https://github.com/openwrt/packages/blob/master/net/stubby/files/README.md" rel="ugc nofollow">README</a> within the packages repository contains further information.
+</p>
+
+<p>
+The default listening port for stubby is 5453 (<abbr title="Internet Protocol version 4">IPv4</abbr> and <abbr title="Internet Protocol version 6">IPv6</abbr> on localhost).
+</p>
+
+<p>
+You can add <code>127.0.0.1#5453</code> to the list of <abbr title="Domain Name System">DNS</abbr> servers to forward requests to, so that requests will be forwarded to stubby.
+</p>
+
+<p>
+Make sure your router advertises itself as <abbr title="Domain Name System">DNS</abbr> server through <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> so that clients will benefit from Stubby.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Note that this does not prevent clients in <abbr title="Local Area Network">LAN</abbr> to access unencrypted <abbr title="Domain Name System">DNS</abbr> directly (for example if they ignore the advertised router <abbr title="Domain Name System">DNS</abbr> through <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr>, because of a static <abbr title="Domain Name System">DNS</abbr> setting).
+</p>
+
+<p>
+To prevent local leaks or delays, make sure stubby is the only server that is being forwarded to, and block <abbr title="Transmission Control Protocol">TCP</abbr> and <abbr title="User Datagram Protocol">UDP</abbr> output to port 53 in wan.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> You might want to add <code>/etc/stubby/</code> to the list of config files that should be preserved on upgrade / backup!
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:6,&quot;range&quot;:&quot;836-1894&quot;} -->
+<h2 class="sectionedit7" id="troubleshooting">Troubleshooting</h2>
+<div class="level2">
+
+<p>
+Make sure the trigger option matches the name of your <abbr title="Wide Area Network">WAN</abbr> interface.
+</p>
+<pre class="code bash">. <span class="sy0">/</span>lib<span class="sy0">/</span>functions<span class="sy0">/</span>network.sh
+network_flush_cache
+network_find_wan NET_IF
+uci <span class="kw1">set</span> stubby.global.trigger=<span class="st0">&quot;<span class="es3">${NET_IF}</span>&quot;</span>
+uci commit stubby</pre>
+
+<p>
+Verify the user/group and owner/permissions are set up properly.
+</p>
+<pre class="code bash"><span class="kw2">chown</span> <span class="re5">-R</span> stubby:stubby <span class="sy0">/</span>var<span class="sy0">/</span>etc<span class="sy0">/</span>stubby
+&nbsp;
+<span class="co0"># grep stubby /etc/passwd /etc/group</span>
+<span class="sy0">/</span>etc<span class="sy0">/</span>passwd:stubby:x:<span class="nu0">410</span>:<span class="nu0">410</span>:stubby:<span class="sy0">/</span>var<span class="sy0">/</span>run<span class="sy0">/</span>stubby:<span class="sy0">/</span>bin<span class="sy0">/</span><span class="kw2">false</span>
+<span class="sy0">/</span>etc<span class="sy0">/</span>group:stubby:x:<span class="nu0">410</span>:stubby
+&nbsp;
+<span class="co0"># ls -l /var/etc/stubby</span>
+<span class="re5">-r--------</span>    <span class="nu0">1</span> stubby   stubby         <span class="nu0">721</span> Jun <span class="nu0">15</span> <span class="nu0">11</span>:<span class="nu0">31</span> stubby.yml</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Troubleshooting&quot;,&quot;hid&quot;:&quot;troubleshooting&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:7,&quot;range&quot;:&quot;1895-2496&quot;} -->
+<h2 class="sectionedit8" id="external_links">External Links</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <a href="https://dnsprivacy.org/wiki/display/DP/DNS+Privacy+Daemon+-+Stubby" class="urlextern" title="https://dnsprivacy.org/wiki/display/DP/DNS+Privacy+Daemon+-+Stubby" rel="ugc nofollow">Stubby&#039;s Website</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/getdnsapi/stubby" class="urlextern" title="https://github.com/getdnsapi/stubby" rel="ugc nofollow">Stubby&#039;s GitHub repo</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;External Links&quot;,&quot;hid&quot;:&quot;external_links&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:8,&quot;range&quot;:&quot;2497-&quot;} -->

@@ -1,0 +1,329 @@
+
+<h1 class="sectionedit1" id="how_to_load_balance_openwrt">How to Load Balance OpenWrt</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;How to Load Balance OpenWrt&quot;,&quot;hid&quot;:&quot;how_to_load_balance_openwrt&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-44&quot;} -->
+<h2 class="sectionedit2" id="introduction">Introduction</h2>
+<div class="level2">
+
+<p>
+This guide explains about how to manually load balance OpenWrt by fixing IRQs for specific ethernet ports and assigning one or more CPU cores for the networking queues.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Introduction&quot;,&quot;hid&quot;:&quot;introduction&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;45-241&quot;} -->
+<h2 class="sectionedit3" id="smp_irq_affinity_and_bitmask_setting">SMP IRQ affinity and bitmask setting</h2>
+<div class="level2">
+
+<p>
+From : <a href="https://www.kernel.org/doc/html/latest/core-api/irq/irq-affinity.html" class="urlextern" title="https://www.kernel.org/doc/html/latest/core-api/irq/irq-affinity.html" rel="ugc nofollow">https://www.kernel.org/doc/html/latest/core-api/irq/irq-affinity.html</a>
+</p>
+<blockquote><div class="no">
+/proc/irq/IRQ#/smp_affinity and /proc/irq/IRQ#/smp_affinity_list specify which target CPUs are permitted for a given IRQ source. It’s a bitmask (smp_affinity) or CPU list (smp_affinity_list) of allowed CPUs. It’s not allowed to turn off all CPUs, and if an IRQ controller does not support IRQ affinity then the value will not change from the default of all CPUs.</div></blockquote>
+<blockquote><div class="no">
+/proc/irq/default_smp_affinity specifies default affinity mask that applies to all non-active IRQs. Once IRQ is allocated/activated its affinity bitmask will be set to the default mask. It can then be changed as described above. Default mask is 0xffffffff.</div></blockquote>
+
+<p>
+To set an IRQ to a specific CPU or group of CPU&#039;s requires a bit mask. So using binary we enable each CPU as required and then convert to hex to get the bitmask setting. This way we can restrict IRQs to specific CPUs to aid in load balancing or for heterogeneous SOCs use high/low power cores instead.
+</p>
+
+<p>
+<strong>Bitmasks for CPUs</strong>
+</p>
+<div class="table sectionedit4"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign"> Binary     </th><th class="col1 leftalign"> Hex   </th><th class="col2 leftalign"> CPU       </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> 00000001   </td><td class="col1 leftalign"> 1     </td><td class="col2 leftalign"> 0         </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> 00000010   </td><td class="col1 leftalign"> 2     </td><td class="col2 leftalign"> 1         </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> 00000011   </td><td class="col1 leftalign"> 3     </td><td class="col2 leftalign"> 0,1       </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"> 00000100   </td><td class="col1 leftalign"> 4     </td><td class="col2 leftalign"> 2         </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 leftalign"> 00000101   </td><td class="col1 leftalign"> 5     </td><td class="col2 leftalign"> 0,2       </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0 leftalign"> 00000110   </td><td class="col1 leftalign"> 6     </td><td class="col2 leftalign"> 1,2       </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0 leftalign"> 00000111   </td><td class="col1 leftalign"> 7     </td><td class="col2 leftalign"> 0,1,2     </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0 leftalign"> 00001000   </td><td class="col1 leftalign"> 8     </td><td class="col2 leftalign"> 3         </td>
+	</tr>
+	<tr class="row9">
+		<td class="col0 leftalign"> 00001001   </td><td class="col1 leftalign"> 9     </td><td class="col2 leftalign"> 0,3       </td>
+	</tr>
+	<tr class="row10">
+		<td class="col0 leftalign"> 00001010   </td><td class="col1 leftalign"> A     </td><td class="col2 leftalign"> 1,3       </td>
+	</tr>
+	<tr class="row11">
+		<td class="col0 leftalign"> 00001011   </td><td class="col1 leftalign"> B     </td><td class="col2 leftalign"> 0,1,3     </td>
+	</tr>
+	<tr class="row12">
+		<td class="col0 leftalign"> 00001100   </td><td class="col1 leftalign"> C     </td><td class="col2 leftalign"> 2,3       </td>
+	</tr>
+	<tr class="row13">
+		<td class="col0 leftalign"> 00001101   </td><td class="col1 leftalign"> D     </td><td class="col2 leftalign"> 0,2,3     </td>
+	</tr>
+	<tr class="row14">
+		<td class="col0 leftalign"> 00001110   </td><td class="col1 leftalign"> E     </td><td class="col2 leftalign"> 1,2,3     </td>
+	</tr>
+	<tr class="row15">
+		<td class="col0 leftalign"> 00001111   </td><td class="col1 leftalign"> F     </td><td class="col2 leftalign"> 0,1,2,3   </td>
+	</tr>
+	<tr class="row16">
+		<td class="col0 leftalign"> ...        </td><td class="col1 leftalign"> ...   </td><td class="col2 leftalign"> ...       </td>
+	</tr>
+	<tr class="row17">
+		<td class="col0 leftalign"> 00110000   </td><td class="col1 leftalign"> 30    </td><td class="col2 leftalign"> 4,5       </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;1328-1957&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;SMP IRQ affinity and bitmask setting&quot;,&quot;hid&quot;:&quot;smp_irq_affinity_and_bitmask_setting&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;242-1958&quot;} -->
+<h2 class="sectionedit5" id="openwrt_defaults">OpenWrt Defaults</h2>
+<div class="level2">
+
+<p>
+OpenWrt routers have set defaults for multi CPU usage. 
+</p>
+
+<p>
+The following scripts are responsible for setting these up.
+</p>
+<pre class="code"> cat /etc/hotplug.d/net/20-smp-packet-steering </pre>
+<pre class="code"> cat /etc/hotplug.d/net/40-net-smp-affinity </pre>
+
+<p>
+A more automated solution is to use <a href="/docs/guide-user/services/irqbalance" class="wikilink1" title="docs:guide-user:services:irqbalance" data-wiki-id="docs:guide-user:services:irqbalance">irqbalance</a> to help spread the load. 
+</p>
+<blockquote><div class="no">
+Irqbalance is a Linux daemon that distributes interrupts over multiple logical CPUs. This design intent being to improve overall performance which can result in a balanced load and power consumption.</div></blockquote>
+
+<p>
+However this does not always produce a predictable load distribution. Instead we can use manual tuning to improve load distribution.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;OpenWrt Defaults&quot;,&quot;hid&quot;:&quot;openwrt_defaults&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;1959-2667&quot;} -->
+<h2 class="sectionedit6" id="interrupts">Interrupts</h2>
+<div class="level2">
+
+<p>
+First of all we need to find and identify the interrupts.
+</p>
+
+<p>
+In order to monitor settings or changes :
+</p>
+<pre class="code">cat /proc/interrupts</pre>
+
+<p>
+The code below is from an <a href="/toh/friendlyarm/nanopi_r4s_v1" class="wikilink1" title="toh:friendlyarm:nanopi_r4s_v1" data-wiki-id="toh:friendlyarm:nanopi_r4s_v1">NanoPi R4S</a> which has 4 A53 cores (CPU 0-3) and 2 A72 cores (CPU 4 and 5)
+</p>
+<pre class="code">root@OpenWrt:~# cat /proc/interrupts
+           CPU0       CPU1       CPU2       CPU3       CPU4       CPU5
+ 23:   27142318   12185540    5391618    2352924  137831569  145154023     GICv3  30 Level     arch_timer
+ 25:   67873664   61308794   11619382    2662637   16876546   43550490     GICv3 113 Level     rk_timer
+ 26:          0          0          0          0          0          0  GICv3-23   0 Level     arm-pmu
+ 27:          0          0          0          0          0          0  GICv3-23   1 Level     arm-pmu
+ 28:          0          0          0          0          0          0     GICv3  37 Level     ff6d0000.dma-controller
+ 29:          0          0          0          0          0          0     GICv3  38 Level     ff6d0000.dma-controller
+ 30:          0          0          0          0          0          0     GICv3  39 Level     ff6e0000.dma-controller
+ 31:          0          0          0          0          0          0     GICv3  40 Level     ff6e0000.dma-controller
+ 32:          1          0          0          0          0          0     GICv3  81 Level     pcie-sys
+ 34:          0          0          0          0          0          0     GICv3  83 Level     pcie-client
+ 35:          0          0          0          0  165575364          0     GICv3  44 Level     eth0
+ 36:   20438175          0          0          0          0          0     GICv3  97 Level     dw-mci
+ 37:          0          0          0          0          0          0     GICv3  58 Level     ehci_hcd:usb1
+ 38:          0          0          0          0          0          0     GICv3  60 Level     ohci_hcd:usb3
+ 39:          0          0          0          0          0          0     GICv3  62 Level     ehci_hcd:usb2
+ 40:          0          0          0          0          0          0     GICv3  64 Level     ohci_hcd:usb4
+ 42:          0          0          0          0          0          0     GICv3  91 Level     ff110000.i2c
+ 43:          6          0          0          0          0          0     GICv3  67 Level     ff120000.i2c
+ 44:          0          0          0          0          0          0     GICv3  68 Level     ff160000.i2c
+ 45:          6          0          0          0          0          0     GICv3 132 Level     ttyS2
+ 46:          0          0          0          0          0          0     GICv3 129 Level     rockchip_thermal
+ 47:    6393498          0          0          0          0          0     GICv3  89 Level     ff3c0000.i2c
+ 50:          0          0          0          0          0          0     GICv3 147 Level     ff650800.iommu
+ 52:          0          0          0          0          0          0     GICv3 149 Level     ff660480.iommu
+ 56:          0          0          0          0          0          0     GICv3 151 Level     ff8f3f00.iommu
+ 57:          0          0          0          0          0          0     GICv3 150 Level     ff903f00.iommu
+ 58:          0          0          0          0          0          0     GICv3  75 Level     ff914000.iommu
+ 59:          0          0          0          0          0          0     GICv3  76 Level     ff924000.iommu
+ 69:          0          0          0          0          0          0     GICv3  59 Level     rockchip_usb2phy
+ 70:          0          0          0          0          0          0     GICv3 137 Level     xhci-hcd:usb5
+ 71:          0          0          0          0          0          0     GICv3 142 Level     xhci-hcd:usb7
+ 72:          0          0          0          0          0          0  rockchip_gpio_irq  21 Level     rk808
+ 78:          0          0          0          0          0          0     rk808   5 Edge      RTC alarm
+ 82:          0          0          0          0          0          0  rockchip_gpio_irq   7 Edge      fe320000.mmc cd
+ 84:          0          0          0          0          0          0   ITS-MSI   0 Edge      PCIe PME, aerdrv
+ 85:         10          0          0          0          0          0  rockchip_gpio_irq  10 Level     stmmac-0:01
+ 86:          0          0          0          0          0          0  rockchip_gpio_irq  22 Edge      gpio-keys
+ 87:          0          0          0          0          0 1156859750   ITS-MSI 524288 Edge      eth1
+IPI0:   7085496   10371429    7027071    6124604     310818     114897       Rescheduling interrupts
+IPI1:   2817025    2457651     882759     515246    2752519     543745       Function call interrupts
+IPI2:         0          0          0          0          0          0       CPU stop interrupts
+IPI3:         0          0          0          0          0          0       CPU stop (for crash dump) interrupts
+IPI4:   5558568    4633615    2762056    1122565     763629    3435183       Timer broadcast interrupts
+IPI5:    413711     300799     161541     117511     109020      76881       IRQ work interrupts
+IPI6:         0          0          0          0          0          0       CPU wake-up interrupts
+Err:          0</pre>
+
+<p>
+To find the IRQs for your ethernet ports : 
+</p>
+<pre class="code">grep eth /proc/interrupts</pre>
+<pre class="code">root@OpenWrt:~# grep eth /proc/interrupts
+ 35:          0          0          0          0  165661665          0     GICv3  44 Level     eth0
+ 87:          0          0          0          0          0 1157284700   ITS-MSI 524288 Edge      eth1</pre>
+
+<p>
+So here eth0 is IRQ 35 and eth1 is 87.
+</p>
+
+<p>
+Interrupts can only be set one per core.
+</p>
+
+<p>
+Set eth0 interrupt to core 0
+</p>
+<pre class="code"> echo 1 &gt; /proc/irq/35/smp_affinity </pre>
+
+<p>
+Set eth1 interrupt to core 1
+</p>
+<pre class="code"> echo 2 &gt; /proc/irq/87/smp_affinity </pre>
+
+<p>
+You could get the IRQ with a command instead of hard coding it:
+</p>
+<pre class="code">#eth0 IRQ
+echo f &gt; /proc/irq/`grep eth0 /proc/interrupts|awk -F &#039;:&#039; &#039;{print $1}&#039;|xargs`/smp_affinity
+#eth1 IRQ
+echo f &gt; /proc/irq/`grep eth1 /proc/interrupts|awk -F &#039;:&#039; &#039;{print $1}&#039;|xargs`/smp_affinity</pre>
+
+<p>
+The grep command prints the line from /proc/interrupts, awk prints the first column which is the IRQ number, and xargs trims the whitespace.
+</p>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:7,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_center wrap_round wrap_info plugin_wrap" style="width: 60%;">
+<p>
+For kernel 5.15 need to use: 
+</p>
+<pre class="code"> echo -n #HEX# &gt; /proc/irq/#IRQ-NUMBER#/smp_affinity </pre>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:8,&quot;range&quot;:&quot;0-&quot;} --><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:9,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_center wrap_round wrap_important plugin_wrap" style="width: 60%;">
+<p>
+If you restart <a href="/docs/guide-user/network/traffic-shaping/sqm" class="wikilink1" title="docs:guide-user:network:traffic-shaping:sqm" data-wiki-id="docs:guide-user:network:traffic-shaping:sqm">Smart Queue Management</a> or change SQM settings, it will <strong>reset</strong> the CPU affinity and you will <strong>need</strong> to  reset your settings or re-apply them.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:10,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Interrupts&quot;,&quot;hid&quot;:&quot;interrupts&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:6,&quot;range&quot;:&quot;2668-9372&quot;} -->
+<h2 class="sectionedit11" id="network_queues">Network Queues</h2>
+<div class="level2">
+
+<p>
+Reference: <a href="https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/performance_tuning_guide/network-rps" class="urlextern" title="https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/performance_tuning_guide/network-rps" rel="ugc nofollow">Receive Packet Steering (RPS)</a>
+</p>
+<blockquote><div class="no">
+Receive Packet Steering (RPS) is similar to RSS in that it is used to direct packets to specific CPUs for processing. However, RPS is implemented at the software level, and helps to prevent the hardware queue of a single network interface card from becoming a bottleneck in network traffic.</div></blockquote>
+
+<p>
+Network Queues can be spread across all CPUs if required or fixed to just one.
+</p>
+
+<p>
+Set eth0 queue to core 3
+</p>
+<pre class="code"> echo 4 &gt; /sys/class/net/eth0/queues/rx-0/rps_cpus </pre>
+
+<p>
+Set eth1 queue to core 4
+</p>
+<pre class="code"> echo 8 &gt; /sys/class/net/eth1/queues/rx-0/rps_cpus </pre>
+
+<p>
+Set eth0 and eth1 to use all 6 cores
+</p>
+<pre class="code">echo 3f &gt; /sys/class/net/eth0/queues/rx-0/rps_cpus
+echo 3f &gt; /sys/class/net/eth1/queues/rx-0/rps_cpus</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Network Queues&quot;,&quot;hid&quot;:&quot;network_queues&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:11,&quot;range&quot;:&quot;9373-10270&quot;} -->
+<h2 class="sectionedit12" id="making_it_permanent">Making it permanent</h2>
+<div class="level2">
+
+<p>
+Either edit 
+</p>
+<pre class="code"> cat /etc/hotplug.d/net/40-net-smp-affinity </pre>
+
+<p>
+ or create your own script to run with your new values and insert that in 
+</p>
+<pre class="code">/etc/hotplug.d/net/</pre>
+
+<p>
+ to run after the default script.
+</p>
+
+<p>
+eg:
+</p>
+<pre class="code"> /etc/hotplug.d/net/50-mysettings-for-net-smp-affinity </pre>
+<pre class="code">#eth0 core 0
+echo 1 &gt; /proc/irq/35/smp_affinity
+
+#eth1 core 2
+echo 2 &gt; /proc/irq/87/smp_affinity
+
+#queues on all cores
+echo 3f &gt; /sys/class/net/eth0/queues/rx-0/rps_cpus
+echo 3f &gt; /sys/class/net/eth1/queues/rx-0/rps_cpus</pre>
+
+<p>
+Now reboot and check to ensure the settings have taken.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Making it permanent&quot;,&quot;hid&quot;:&quot;making_it_permanent&quot;,&quot;codeblockOffset&quot;:13,&quot;secid&quot;:12,&quot;range&quot;:&quot;10271-10880&quot;} -->
+<h2 class="sectionedit13" id="notes">Notes</h2>
+<div class="level2">
+
+<p>
+<strong>Thanks to the following for discussions/contributions</strong> :
+</p>
+<ul>
+<li class="level1"><div class="li"> mercygroundabyss</div>
+</li>
+<li class="level1"><div class="li"> moeller0</div>
+</li>
+<li class="level1"><div class="li"> walmartshopper</div>
+</li>
+<li class="level1"><div class="li"> xShARkx</div>
+</li>
+</ul>
+
+<p>
+<strong>Reference threads</strong> :
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="https://forum.openwrt.org/t/load-balancing-smp-irqs/129031" class="urlextern" title="https://forum.openwrt.org/t/load-balancing-smp-irqs/129031" rel="ugc nofollow">https://forum.openwrt.org/t/load-balancing-smp-irqs/129031</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://forum.openwrt.org/t/nanopi-r4s-rk3399-4g-is-a-great-new-openwrt-device/79143" class="urlextern" title="https://forum.openwrt.org/t/nanopi-r4s-rk3399-4g-is-a-great-new-openwrt-device/79143" rel="ugc nofollow">https://forum.openwrt.org/t/nanopi-r4s-rk3399-4g-is-a-great-new-openwrt-device/79143</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Notes&quot;,&quot;hid&quot;:&quot;notes&quot;,&quot;codeblockOffset&quot;:17,&quot;secid&quot;:13,&quot;range&quot;:&quot;10881-&quot;} -->

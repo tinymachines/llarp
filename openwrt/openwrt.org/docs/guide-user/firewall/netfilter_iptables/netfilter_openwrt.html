@@ -1,0 +1,356 @@
+
+<h1 class="sectionedit1" id="netfilter_in_openwrt">Netfilter In OpenWrt</h1>
+<div class="level1">
+
+<p>
+The purpose of this section is to briefly describe the netfilter/iptables
+subsystem and then delve into OpenWrt specifics.
+</p>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_center wrap_round wrap_alert plugin_wrap" style="width: 60%;">
+<p>
+netfilter rules require a fine level of granularity to tune packet filtering.  This <strong>can</strong> cause undesirable scenarios when
+many rules are matching on similar packets.  Be careful using the iptable application!
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Netfilter In OpenWrt&quot;,&quot;hid&quot;:&quot;netfilter_in_openwrt&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-411&quot;} -->
+<h2 class="sectionedit4" id="netfilter_and_iptables_overview">Netfilter and iptables Overview</h2>
+<div class="level2">
+
+<p>
+<a href="https://www.netfilter.org/" class="urlextern" title="https://www.netfilter.org/" rel="ugc nofollow">Netfilter</a> is the packet filtering framework
+inside the <a href="https://en.wikipedia.org/wiki/Linux kernel" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Linux kernel">Linux kernel</a>. It allows for packet filtering, network address
+[and port] translation (NA[P]T) and other packet manipulations. It is far more
+than a simple firewall and very powerful!
+</p>
+
+<p>
+Netfilter has code hooks in the kernel networking stacks (<code>NF_HOOK_</code> which
+are a set of <code>#define</code> to one of the <code>nf_hook</code> netfilter calls) and a set
+of netfilter kernel modules (mostly starting with <code>nf_</code>, <code>ipt_</code> or <code>xt_</code>)
+</p>
+
+<p>
+<a href="https://netfilter.org/projects/iptables" class="urlextern" title="https://netfilter.org/projects/iptables" rel="ugc nofollow">iptables</a> is the user interface to the kernel
+netfilter subsystem.  The iptables application uses
+the netfilter <code>libiptc</code> library to communicate between with the netfilter
+kernel modules.  <code>libiptc</code>, like the networking stacks, uses a BSD socket interface to 
+communicate between user-space and kernel-space.  
+</p>
+
+<p>
+There are many netfilter/iptables references so we will not repeat here, mainly because
+this would be almost purely a cut-and-paste effort with marginal levels of
+accuracy. Some good references are:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="http://netfilter.org/" class="urlextern" title="http://netfilter.org/" rel="ugc nofollow">Netfilter Home</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://www.netfilter.org/documentation/HOWTO/" class="urlextern" title="https://www.netfilter.org/documentation/HOWTO/" rel="ugc nofollow">Netfilter HOWTO documents</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://en.wikipedia.org/wiki/Netfilter" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Netfilter">Wikipedia:netfilter</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://en.wikipedia.org/wiki/Iptables" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Iptables">Wikipedia:iptables</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://www.linuxhomenetworking.com/wiki/index.php/Quick_HOWTO_:_Ch14_:_Linux_Firewalls_Using_iptables" class="urlextern" title="http://www.linuxhomenetworking.com/wiki/index.php/Quick_HOWTO_:_Ch14_:_Linux_Firewalls_Using_iptables" rel="ugc nofollow">LHN:Linux Firewalls</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://www.frozentux.net/iptables-tutorial/iptables-tutorial.html" class="urlextern" title="https://www.frozentux.net/iptables-tutorial/iptables-tutorial.html" rel="ugc nofollow">iptables Tutorial</a></div>
+</li>
+<li class="level1"><div class="li"> Linux man pages: <code>iptables</code> and <code>iptables-extensions</code></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Netfilter and iptables Overview&quot;,&quot;hid&quot;:&quot;netfilter_and_iptables_overview&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;412-2019&quot;} -->
+<h2 class="sectionedit5" id="netfilter_functionality_in_openwrt">Netfilter Functionality in OpenWrt</h2>
+<div class="level2">
+
+<p>
+This section contains a high-level view of netfilter provided by OpenWrt.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Netfilter Functionality in OpenWrt&quot;,&quot;hid&quot;:&quot;netfilter_functionality_in_openwrt&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;2020-2141&quot;} -->
+<h3 class="sectionedit6" id="netfilter_capabilities">Netfilter Capabilities</h3>
+<div class="level3">
+
+<p>
+The netfilter capabilities exist in the kernel, either in the
+monolith or as loadable kernel modules.  By default, OpenWrt builds the kernel
+with a useful set of netfilter capabilities for a robust router.
+</p>
+<ul>
+<li class="level1"><div class="li"> <abbr title="Network Address Translation">NAT</abbr></div>
+</li>
+<li class="level1"><div class="li"> REJECT</div>
+</li>
+<li class="level1"><div class="li"> REDIRECT</div>
+</li>
+<li class="level1"><div class="li"> CONNTRACK</div>
+</li>
+<li class="level1"><div class="li"> LOG</div>
+</li>
+<li class="level1"><div class="li"> TCPMSS</div>
+</li>
+<li class="level1"><div class="li"> COMMENT</div>
+</li>
+<li class="level1"><div class="li"> MATCH: MAC, STATE (connection state), TIME, MULTIPORT (one or more <abbr title="Internet Protocol">IP</abbr> ports), LIMIT...</div>
+</li>
+<li class="level1"><div class="li"> MARK</div>
+</li>
+<li class="level1"><div class="li"> MASQUERADE</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Netfilter Capabilities&quot;,&quot;hid&quot;:&quot;netfilter_capabilities&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;2142-2574&quot;} -->
+<h3 class="sectionedit7" id="netfilter_user_interfaces">Netfilter User Interfaces</h3>
+<div class="level3">
+
+<p>
+<code>iptables</code> and <code>ip6tables</code> user interfaces exist.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> <code>ebtables</code> is no longer available in official versions due to performance implications
+(<a href="https://forum.openwrt.org/viewtopic.php?pid=94379#p94379" class="urlextern" title="https://forum.openwrt.org/viewtopic.php?pid=94379#p94379" rel="ugc nofollow">https://forum.openwrt.org/viewtopic.php?pid=94379#p94379</a>). Please employ OpenWrt Buildroot
+if you need ebtables support.  The kernel Kconfig settings are <code>BRIDGE_NF_EBTABLES</code>.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> <code>arptables</code> is not built, probably same reason as <code>ebtables</code>. This is
+an ipv4 function.  The kernel Kconfig settings are <code><abbr title="Internet Protocol">IP</abbr>_NF_ARPTABLES</code>.
+</p>
+
+<p>
+<img src="/lib/images/smileys/fixme.svg" class="icon smiley" alt="FIXME" /> <code>ebtables</code> has returned. Were fore-mentioned performance issues fixed?
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Netfilter User Interfaces&quot;,&quot;hid&quot;:&quot;netfilter_user_interfaces&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;2575-3168&quot;} -->
+<h3 class="sectionedit8" id="netfilter_tables">Netfilter Tables</h3>
+<div class="level3">
+
+<p>
+By default, OpenWrt uses three netfilter tables: <code>filter</code>, <code>nat</code>,
+<code>mangle</code>.  These are sufficient to provide the desired netfilter functionality.
+</p>
+
+<p>
+Two other netfilter tables are: <code>raw</code>, <code>security</code>.
+</p>
+
+<p>
+The <code>raw</code> table can be added to the kernel via <code>make menuconfig</code>
+<em> Kernel modules → Netfilter Extensions → kmod-ipt-raw </em>.  This will enable
+the netfilter <code><abbr title="Internet Protocol">IP</abbr>_NF_RAW</code> config:
+</p>
+<pre class="file">config IP_NF_RAW
+	tristate  &#039;raw table support (required for NOTRACK/TRACE)&#039;
+	help
+	  This option adds a `raw&#039; table to iptables. This table is the very
+	  first in the netfilter framework and hooks in at the PREROUTING
+	  and OUTPUT chains.
+	
+	  If you want to compile it as a module, say M here and read
+	  &lt;file:Documentation/kbuild/modules.txt&gt;.  If unsure, say `N&#039;.</pre>
+
+<p>
+The <code>security</code> table does not seem to be in the OpenWrt menuconfig.  There is
+a reference in the kernel <code>ipv4/netfilter/Kconfig</code> to it but it is unclear
+how to enable kernel support for it.
+</p>
+<pre class="file">config IP_NF_SECURITY
+	tristate &quot;Security table&quot;
+	depends on SECURITY
+	depends on NETFILTER_ADVANCED
+	help
+	  This option adds a `security&#039; table to iptables, for use
+	  with Mandatory Access Control (MAC) policy.
+	 
+	  If unsure, say N.</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Netfilter Tables&quot;,&quot;hid&quot;:&quot;netfilter_tables&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:8,&quot;range&quot;:&quot;3169-4424&quot;} -->
+<h3 class="sectionedit9" id="fw3_and_netfilter_detailed_example">fw3 and netfilter Detailed Example</h3>
+<div class="level3">
+
+<p>
+As was previously mentioned, there are a large number of netfilter references
+and examples.  However, I find it helpful (to myself) to track each step of a specific
+fw3 rule from definition to packet processing (“<a href="https://en.wikipedia.org/wiki/Soup_to_nuts" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Soup_to_nuts">Soup_to_nuts</a>”).
+</p>
+
+<p>
+This example <a href="/docs/guide-user/firewall/overview" class="wikilink1" title="docs:guide-user:firewall:overview" data-wiki-id="docs:guide-user:firewall:overview">fw3 application</a>
+configuration rule allows <abbr title="Secure Shell">SSH</abbr> access from any station on the
+<abbr title="Wide Area Network">WAN</abbr>-side of the router to any station on the <abbr title="Local Area Network">LAN</abbr>-side.
+</p>
+<pre class="file">config rule
+	option src &#039;wan&#039;
+	option dest &#039;lan&#039;
+	option proto &#039;tcp&#039;
+	option dest_port &#039;22&#039;
+	option target &#039;ACCEPT&#039;
+	option name &#039;ACCEPT-SSH-WAN-LAN&#039;</pre>
+
+<p>
+fw3 UCI parses the rule to the following iptables rule (with some others for context, implicitly created).
+The rules are listed as they appear in the <code>fw3 print</code> listing.
+</p>
+<pre class="file">...
+iptables -t filter -N zone_lan_dest_ACCEPT
+iptables -t filter -N zone_lan_dest_REJECT
+...
+iptables -t filter -N zone_wan_forward
+...
+# TCP/22 from WAN jumps to zone_lan_dest_ACCEPT chain
+iptables -t filter -A zone_wan_forward -p tcp -m tcp --dport 22 -m comment --comment &quot;!fw3: ACCEPT-SSH-WAN-LAN&quot; -j zone_lan_dest_ACCEPT
+...
+# All TCP from WAN jumps to zone_lan_dest_REJECT
+iptables -t filter -A zone_wan_forward -p tcp -m comment --comment &quot;!fw3: REJECT-ALL-WAN-LAN&quot; -j zone_lan_dest_REJECT
+...
+# zone_lan_dest_ACCEPT jumps to final ACCEPT target
+iptables -t filter -A zone_lan_dest_ACCEPT -o br-lan -m comment --comment &quot;!fw3&quot; -j ACCEPT
+...
+# All traffic jumps to final reject target
+iptables -t filter -A zone_lan_dest_REJECT -o br-lan -m comment --comment &quot;!fw3&quot; -j reject
+...
+# FORWARD hook, jump to chain zone_wan_forward
+iptables -t filter -A FORWARD -i eth1 -m comment --comment &quot;!fw3&quot; -j zone_wan_forward</pre>
+
+<p>
+The <code>zone_lan_dest_ACCEPT</code>, <code>zone_lan_dest_REJECT</code> and <code>zone_wan_forward</code>
+chains are created, primarily for convenience so they can be added and removed
+easily.
+</p>
+
+<p>
+The first rule added to the <code>zone_wan_forward</code> chain performs a packet match
+for tcp/22 (<abbr title="Secure Shell">SSH</abbr>) and, if it passes, jumps to the <code>zone_lan_dest_ACCEPT</code>
+chain.  Farther down the rules, this chain matches on the output interface
+<code>br-lan</code> (the lan-bridge) and jumps to the final <code>ACCEPT</code> target.
+One nuance to consider: the netfilter output interface does not provide any
+routing routing information; IFF the network stack decides to route the packet
+to the <abbr title="Local Area Network">LAN</abbr> then this rule will be invoked.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Generally each match and target is a unique kernel module. <abbr title="Transmission Control Protocol">TCP</abbr>/22 uses the
+<code>xt_tcpudp</code> module, comment uses the <code>xt_comment</code> module (always returns
+success). The mangle TCPMSS target uses <code>xt_TCPMSS</code>;
+the <code>reject</code> target uses <code>ipt_REJECT</code>.  The <code>ACCEPT</code> and <code>DROP</code> targets
+are essentially no-ops: <code>ACCEPT</code> allows the network stack to continue
+processing and <code>DROP</code> immediately discards the packet.
+</p>
+
+<p>
+If the &#039;<abbr title="Transmission Control Protocol">TCP</abbr>/22&#039; rule does not match, netfilter continues to the next rule which
+matches all <abbr title="Transmission Control Protocol">TCP</abbr> traffic (other than <abbr title="Secure Shell">SSH</abbr>) and jumps to <code>zone_lan_dest_REJECT</code>.
+The next rule chain jumps to the final <code>reject</code> target which sends back an
+<abbr title="Internet Control Message Protocol">ICMP</abbr> packet to the originator.
+</p>
+
+<p>
+Finally, the <code>zone_wan_forward</code> chain is appended to the FORWARD hook
+matching input from the <code>eth1</code>, the <abbr title="Wide Area Network">WAN</abbr> interface.  This hook is statically
+called in the kernel ipv4 network stack (see the <code>NF_HOOK</code> call in
+<code>./net/ipv4/ip_forward.c:ip_forward</code>.)
+</p>
+
+<p>
+So that covers a single conceptual rule: <abbr title="Transmission Control Protocol">TCP</abbr>/<abbr title="Secure Shell">SSH</abbr> traffic allowed from the <abbr title="Wide Area Network">WAN</abbr>
+to the <abbr title="Local Area Network">LAN</abbr>.  <abbr title="Network Address Translation">NAT</abbr> is a little more tricky <img src="/lib/images/smileys/wink.svg" class="icon smiley" alt=";-)" />
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;fw3 and netfilter Detailed Example&quot;,&quot;hid&quot;:&quot;fw3_and_netfilter_detailed_example&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:9,&quot;range&quot;:&quot;4425-7906&quot;} -->
+<h3 class="sectionedit10" id="fw3_and_netfilter_additional_capabilities">fw3 and netfilter Additional Capabilities</h3>
+<div class="level3">
+
+<p>
+Beyond the standard netfilter capabilities provided in the OpenWrt release,
+these are useful (but not necessary.)
+</p>
+
+</div>
+
+<h4 id="ipset">ipset</h4>
+<div class="level4">
+
+<p>
+<a href="http://ipset.netfilter.org" class="urlextern" title="http://ipset.netfilter.org" rel="ugc nofollow">ipset</a> is a netfilter mechanism to quickly manage
+lists of similar entities.
+</p>
+
+<p>
+One powerful use is blocking spam. Typically one adds a rule to reject/drop
+traffic from each source. In the standard firewall, the following rules block a
+single source from sending a large amount of email spam to the mail server
+(<abbr title="Simple Mail Transfer Protocol">SMTP</abbr> is port 25).
+</p>
+
+<p>
+Currently, the <strong>most maintainable</strong> mechanism in OpenWrt is to add rules to a
+new chain in the <abbr title="Wide Area Network">WAN</abbr> zone in <code>/etc/firewall.user</code>
+</p>
+<pre class="file">iptables -N spam_block
+iptables -A forwarding_rule -j spam_block
+iptables -t filter -A spam_block -s 103.110.144.0/22 -p tcp -m tcp --dport 25 -j DROP
+iptables -t filter -A spam_block -s 114.67.64.0/18 -p tcp -m tcp --dport 25 -j DROP
+...</pre>
+
+<p>
+There are thousands of spam sources so the number of rules in the (custom)
+spam_block chain can be quite large.
+</p>
+
+<p>
+In order to use <a href="http://ipset.netfilter.org" class="urlextern" title="http://ipset.netfilter.org" rel="ugc nofollow">ipset</a>, it must be added to the
+kernel and application package.
+</p>
+
+<p>
+In the OpenWrt image build directory, set it in the menu
+<em> Kernel Modules → Netfilter Extensions → kmod-ipt-ipset </em>
+</p>
+
+<p>
+Once the kernel is running, add the package using <code>opkg install ipset</code>.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> the <code>ipset</code> package install will fail if the kernel has not been built to
+support it.  DO NOT force install!!!!
+</p>
+
+<p>
+<img src="/lib/images/smileys/fixme.svg" class="icon smiley" alt="FIXME" /> There is probably a better way to add custom firewall capabilities.
+</p>
+
+</div>
+
+<h5 id="using_ipset">Using ipset</h5>
+<div class="level5">
+
+<p>
+This example shows how to use <code>ipset</code> to block a large number of spammers!
+</p>
+
+<p>
+<img src="/lib/images/smileys/fixme.svg" class="icon smiley" alt="FIXME" /> not tested yet...
+</p>
+<pre class="file">config ipset
+	option external         spam_block
+	option match            &#039;dest_ip dest_port&#039;
+	option family           ipv4
+	option storage          hash</pre>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Adding each rule to ipset will make <code>/etc/config/firewall</code> unmanageable.  Put
+the iptable rules in <code>/etc/firewall.user</code>.  And there is no point to using
+ipset for a small number of rules.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;fw3 and netfilter Additional Capabilities&quot;,&quot;hid&quot;:&quot;fw3_and_netfilter_additional_capabilities&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:10,&quot;range&quot;:&quot;7907-&quot;} -->

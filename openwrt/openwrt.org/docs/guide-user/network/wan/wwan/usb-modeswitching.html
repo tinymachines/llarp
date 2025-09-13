@@ -1,0 +1,142 @@
+
+<h1 class="sectionedit1" id="usb_mode_switch">USB mode switch</h1>
+<div class="level1">
+
+<p>
+It&#039;s common for 3G/4G USB modems or <em>dongles</em> (and some smartphones) to initially appear as a virtual CD-ROM drive offering drivers and utilities to use them on Windows/Mac, so some action is typically needed to switch them to a proper working mode.<br/>
+
+Some USB modems may also need to be switched to another <em>composition</em> in order to expose different interfaces.
+</p>
+
+<p>
+The <a href="/packages/pkgdata/usb-modeswitch" class="wikilink1" title="packages:pkgdata:usb-modeswitch" data-wiki-id="packages:pkgdata:usb-modeswitch">usb-modeswitch</a> package includes <code>usbmode</code> tool with json-based configuration in contrast to a standard Linux <code>usb_modeswitch</code> binary, and a Procd service running to automatically switch USB devices once they are plugged in.
+</p>
+
+<p>
+The <code>/etc/usb-mode.json</code> configuration file looks partially like shown below:
+</p>
+<pre class="code json">{
+	&quot;messages&quot; : [
+		&quot;555342431234567800000000000006d0000000000000000000000000000000&quot;,
+		&quot;5553424312345678000000000000061b004600000000000000000000000000&quot;
+],
+	&quot;devices&quot; : {
+		&quot;03f0:002a&quot;: {
+			&quot;*&quot;: {
+				&quot;t_class&quot;: 7,
+				&quot;msg&quot;: [ 0 ],
+				&quot;response&quot;: true
+			}
+		},
+		&quot;0408:f000&quot;: {
+			&quot;*&quot;: {
+				&quot;t_vendor&quot;: 1032,
+				&quot;t_product&quot;: [ 53257 ],
+				&quot;msg&quot;: [ 1 ]
+			}
+		}
+	}
+}</pre>
+
+<p>
+<code>03f0:002a</code> is a <em>default vendor</em> and <em>product</em> in hexadecimal notation, as it appears in <code>lsusb</code> output or in kernel usb debug, while “msg” is a reference to a specific control message in the “messages” array at the beginning of the file. These messages acting as commands, that will either tell the device to eject the <em>media</em> (virtual CD-ROM, etc.) or to switch into another working mode or <em>composition</em>. <code>t_vendor</code> is a <em>target vendor</em> in decimal notation, <code>t_product</code> is a <em>target product</em> in decimal notation. 
+If you want to know more, look at the content of <code>/etc/usb-mode.json</code> file.
+</p>
+
+<p>
+In the example above <code>usbmode</code> will send a control <em>message</em> <code>555342431234567800000000000006d0000000000000000000000000000000</code> to USB device with the vendor id <code>03f0</code> and product id <code>002a</code>. After <em>modeswitching</em> this device will stay with the same vendor id and product id, but with target device class number of 7.
+</p>
+
+<p>
+Similarly, if USB device with the vendor id and the product id of <code>0408:f000</code> is connected to the system, the tool will send a <em>message</em> <code>5553424312345678000000000000061b004600000000000000000000000000</code> to this device.
+After <em>modeswitching</em> the USB device will change its vendor id and product id to <code>1032:53257</code> (in decimal format), that can be converted to hexadecimal as <code>0408:D009</code>. Windows <em>Calculator</em> application in programmer&#039;s mode can be used to perform such conversion. Once <em>modeswitched</em> the device should appear in <code>lsusb</code> output as <code>0408:D009</code>.
+</p>
+
+<p>
+Note: the json configuration file is generated automatically from <code>usb_modeswitch</code> data files during build process using perl script named <code>convert-modeswitch.pl</code>.
+For diagnostics purposes you can create your own <code>usb-mode-custom.json</code> with defined message and devices part and launch the commands:
+</p>
+<pre class="code">usbmode -l
+usbmode -s -v -c /path/to/usb-mode-custom.json</pre>
+
+<p>
+Converting the standard usb-modeswitch file to json format can be done in a simple way.
+The standard usb-modeswitch file (0408:f000) content:
+</p>
+<pre class="code shell"># Yota Router (Quanta 1QDLZZZ0ST2)
+TargetVendor=0x0408
+TargetProduct=0xd009
+MessageContent=&quot;5553424312345678000000000000061b004600000000000000000000000000&quot;</pre>
+
+<p>
+Target vendor (0x0408) is converted to decimal notation to set <em>t_vendor</em> value (1032) and target product (0xd009) is converted to decimal notation to set <em>t_product</em> (53257). There is only one line present in “messages”, so the message index - “msg” - is zero (0). The resulting <code>usb-mode-custom.json</code> should look as follows:
+</p>
+<pre class="code json">{
+	&quot;messages&quot; : [
+		&quot;5553424312345678000000000000061b004600000000000000000000000000&quot;
+],
+	&quot;devices&quot; : {
+		&quot;0408:f000&quot;: {
+			&quot;*&quot;: {
+				&quot;t_vendor&quot;: 1032,
+				&quot;t_product&quot;: [ 53257 ],
+				&quot;msg&quot;: [ 0 ]
+			}
+		}
+	}
+}</pre>
+
+<p>
+Based on this example, you can create your own <code>usb-mode-custom.json</code> file to perform <em>modeswitching</em> on unsupported devices for diagnostic purposes.
+</p>
+
+<p>
+Also see this thread about <a href="https://forum.openwrt.org/t/3g-4g-usb-dongle-not-showing-up/33926" class="urlextern" title="https://forum.openwrt.org/t/3g-4g-usb-dongle-not-showing-up/33926" rel="ugc nofollow">3g/4g USB dongle not showing up</a> where you can see another example of troubleshooting and creating a new setup for usb-modeswitch.
+</p>
+
+<p>
+<br/>
+
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;USB mode switch&quot;,&quot;hid&quot;:&quot;usb_mode_switch&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-4305&quot;} -->
+<h3 class="sectionedit2" id="sdparm_method">sdparm method</h3>
+<div class="level3">
+
+<p>
+This tool is no longer available in OpenWrt, but the same approach can be used to compare configurations pre- and post-switching with <code>usb-modeswitch</code>.
+</p>
+
+<p>
+<del>This method uses <code>sdparm</code> to issue SCSI eject command to the emulated CDROM device. This is enough to put some modems into modem mode (tested on Ovation MC935D).</del>
+</p>
+
+<p>
+Before you start, make a note of your modem&#039;s Vendor and Product IDs:
+</p>
+<pre class="code"># cat /proc/bus/usb/devices
+...
+P:  Vendor=1410 ProdID=5020 Rev= 0.00
+S:  Manufacturer=Novatel Wireless, Inc.
+...</pre>
+
+<p>
+First, find out your device address - in this example it&#039;s going to be <code>sg0</code>. Then issue the following:
+</p>
+<pre class="code">sdparm --eject /dev/sg0</pre>
+
+<p>
+Then, check for changes of your Product ID:
+</p>
+<pre class="code"># cat /proc/bus/usb/devices
+...
+P:  Vendor=1410 ProdID=7001 Rev= 0.00
+S:  Manufacturer=Novatel Wireless, Inc.
+S:  Product=Qualcomm Configuration
+...
+I:* If#= 0 Alt= 0 #EPs= 3 Cls=ff(vend.) Sub=ff Prot=ff Driver=(none)
+...</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;sdparm method&quot;,&quot;hid&quot;:&quot;sdparm_method&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:2,&quot;range&quot;:&quot;4306-&quot;} -->

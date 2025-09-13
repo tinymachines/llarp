@@ -1,0 +1,295 @@
+
+<h1 class="sectionedit1" id="openwrt_on_vmware_fusion_on_apple_silicon_howto">OpenWrt on VMware Fusion on Apple Silicon HowTo</h1>
+<div class="level1">
+
+<p>
+This document describes how to run the <code>armsr/armv8</code> OpenWrt images in a <abbr title="Virtual Machine">VM</abbr> hosted on macOS (Apple Silicon hardware) using <a href="https://www.vmware.com/products/fusion.html" class="urlextern" title="https://www.vmware.com/products/fusion.html" rel="ugc nofollow">VMware Fusion</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;OpenWrt on VMware Fusion on Apple Silicon HowTo&quot;,&quot;hid&quot;:&quot;openwrt_on_vmware_fusion_on_apple_silicon_howto&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-282&quot;} -->
+<h2 class="sectionedit2" id="prerequisites">Prerequisites</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <a href="https://www.vmware.com/products/fusion.html" class="urlextern" title="https://www.vmware.com/products/fusion.html" rel="ugc nofollow">VMware Fusion</a> installed</div>
+</li>
+<li class="level1"><div class="li"> qemu installed (via <a href="http://brew.sh" class="urlextern" title="http://brew.sh" rel="ugc nofollow">Homebrew</a>)</div>
+</li>
+<li class="level1"><div class="li"> Familiarity with the command line on macOS (Terminal window)</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__meta:infobox:howto_links">
+<div class="level2">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_info plugin_wrap">
+<p>
+This article relies on the following:
+</p>
+<ul>
+<li class="level1"><div class="li"> Accessing <a href="/docs/guide-quick-start/walkthrough_login" class="wikilink1" title="docs:guide-quick-start:walkthrough_login" data-wiki-id="docs:guide-quick-start:walkthrough_login">web interface</a> / <a href="/docs/guide-quick-start/sshadministration" class="wikilink1" title="docs:guide-quick-start:sshadministration" data-wiki-id="docs:guide-quick-start:sshadministration">command-line interface</a></div>
+</li>
+<li class="level1"><div class="li"> Managing <a href="/docs/guide-user/base-system/uci" class="wikilink1" title="docs:guide-user:base-system:uci" data-wiki-id="docs:guide-user:base-system:uci">configs</a> / <a href="/docs/guide-user/additional-software/managing_packages" class="wikilink1" title="docs:guide-user:additional-software:managing_packages" data-wiki-id="docs:guide-user:additional-software:managing_packages">packages</a> / <a href="/docs/guide-user/base-system/managing_services" class="wikilink1" title="docs:guide-user:base-system:managing_services" data-wiki-id="docs:guide-user:base-system:managing_services">services</a> / <a href="/docs/guide-user/base-system/log.essentials" class="wikilink1" title="docs:guide-user:base-system:log.essentials" data-wiki-id="docs:guide-user:base-system:log.essentials">logs</a></div>
+</li>
+</ul>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:6,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:7,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__meta:infobox:howto_links">
+<div class="level2">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:9,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap">
+<p>
+This article may contain network configuration that depends on migration to DSA in OpenWrt 21.02
+</p>
+<ul>
+<li class="level1"><div class="li"> Check if your device uses DSA or swconfig as not all devices have been migrated</div>
+</li>
+<li class="level1"><div class="li"> ifname@interface has been moved to device sections</div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/network/dsa/start" class="wikilink1" title="docs:guide-user:network:dsa:start" data-wiki-id="docs:guide-user:network:dsa:start">DSA Networking</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://forum.openwrt.org/t/mini-tutorial-for-dsa-network-config/96998" class="urlextern" title="https://forum.openwrt.org/t/mini-tutorial-for-dsa-network-config/96998" rel="ugc nofollow">Mini tutorial for DSA network config</a> on the forum</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://openwrt.org/releases/21.02/notes-21.02.0#new_network_configuration_syntax_and_boardjson_change" class="urlextern" title="https://openwrt.org/releases/21.02/notes-21.02.0#new_network_configuration_syntax_and_boardjson_change" rel="ugc nofollow">DSA in the 21.02 release notes</a></div>
+</li>
+</ul>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:10,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:8,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Prerequisites&quot;,&quot;hid&quot;:&quot;prerequisites&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;283-675&quot;} -->
+<h3 class="sectionedit11" id="select_an_openwrt_image">Select an OpenWrt image</h3>
+<div class="level3">
+
+<p>
+You need an ARM system-ready 64-bit version of OpenWrt.
+There are two versions:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>combined-squashfs.img.gz</code>: This edition, as of release 23.05.0, does not work correctly with sysupgrade.  </div>
+</li>
+<li class="level1"><div class="li"> <code>combined-ext4.img.gz</code> This disk image uses a single read-write ext4 partition with no read-only squashfs root filesystem.  Features like Failsafe Mode or Factory Reset won&#039;t be available as they need a read-only squashfs partition to function.</div>
+</li>
+</ul>
+
+<p>
+In the guide we&#039;ll use <em>openwrt-armsr-armv8-generic-ext4-combined.img.gz</em> because it supports sysupgrade.
+</p>
+<ul>
+<li class="level1"><div class="li"> Download a stable release of the <em>generic-ext4-combined.img.gz</em> image from <a href="https://downloads.openwrt.org/releases/" class="urlextern" title="https://downloads.openwrt.org/releases/" rel="ugc nofollow">targets/armsr/arvm8/ folder</a>, e.g. <a href="https://downloads.openwrt.org/releases/23.05.0/targets/armsr/armv8/openwrt-23.05.0-armsr-armv8-generic-ext4-combined.img.gz" class="urlextern" title="https://downloads.openwrt.org/releases/23.05.0/targets/armsr/armv8/openwrt-23.05.0-armsr-armv8-generic-ext4-combined.img.gz" rel="ugc nofollow">23.05.0</a>.</div>
+</li>
+<li class="level1"><div class="li"> Or you can try the fresher but unstable <a href="https://downloads.openwrt.org/snapshots/targets/armsr/armv8/openwrt-armsr-armv8-generic-ext4-combined.img.gz" class="urlextern" title="https://downloads.openwrt.org/snapshots/targets/armsr/armv8/openwrt-armsr-armv8-generic-ext4-combined.img.gz" rel="ugc nofollow">snapshot</a> image.</div>
+</li>
+<li class="level1"><div class="li"> Uncompress the gzip&#039;ed img file. On macOS in a Terminal window use the command <code>gzcat openwrt-*ext4-combined.img.gz &gt; openwrt.img</code>.   As a result you get the raw <code>openwrt.img</code> image  file.</div>
+</li>
+<li class="level1"><div class="li"> Convert the raw image to a VMDK-formatted disk image: <code>qemu-img convert -O vmdk openwrt.img openwrt.vmdk</code></div>
+</li>
+<li class="level1"><div class="li"> Check your VMware Fusion networking configuration.  You need to know the subnet used by the host-only networking:<pre class="code">user@host demo % grep VNET_1_HOSTONLY_SUBNET &#039;/Library/Preferences/VMware Fusion/networking&#039;
+answer VNET_1_HOSTONLY_SUBNET 172.16.132.0</pre>
+</div>
+</li>
+</ul>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Tip: keep a copy of the original gzip&#039;ed image file, it can be used as an image for sysupgrade.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Select an OpenWrt image&quot;,&quot;hid&quot;:&quot;select_an_openwrt_image&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:11,&quot;range&quot;:&quot;676-2411&quot;} -->
+<h2 class="sectionedit12" id="vm_setup_in_vmware_fusion">VM Setup in VMware Fusion</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;VM Setup in VMware Fusion&quot;,&quot;hid&quot;:&quot;vm_setup_in_vmware_fusion&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:12,&quot;range&quot;:&quot;2412-2449&quot;} -->
+<h3 class="sectionedit13" id="vm_creation">VM creation</h3>
+<div class="level3">
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Tutorial and screenshots from VMware Fusion 13.5.0 on Apple Silicon
+</p>
+
+<p>
+<a href="/_media/media/virtualization/fusion/1-custom.png" class="media" title="media:virtualization:fusion:1-custom.png"><img src="/_media/media/virtualization/fusion/1-custom.png?w=70&amp;tok=70b82c" class="media" loading="lazy" alt="" width="70" /></a> Start VMware fusion and use the <em>File→New</em> menu.  Select <em>Create a custom virtual machine</em>
+</p>
+<hr />
+
+<p>
+<a href="/_media/media/virtualization/fusion/2-linux-5.png" class="media" title="media:virtualization:fusion:2-linux-5.png"><img src="/_media/media/virtualization/fusion/2-linux-5.png?w=70&amp;tok=039123" class="media" loading="lazy" alt="" width="70" /></a> Select the appropriate Linux kernel version (OpenWrt 23.05.0 for armsr/armv8 uses Linux kernel 5.x).
+</p>
+<hr />
+
+<p>
+<a href="/_media/media/virtualization/fusion/3-existing.png" class="media" title="media:virtualization:fusion:3-existing.png"><img src="/_media/media/virtualization/fusion/3-existing.png?w=70&amp;tok=2475e8" class="media" loading="lazy" alt="" width="70" /></a> Select <em>Use an existing virtual disk</em> and <em>Choose virtual disk...</em>
+</p>
+<hr />
+
+<p>
+<a href="/_media/media/virtualization/fusion/4-select-vmdk.png" class="media" title="media:virtualization:fusion:4-select-vmdk.png"><img src="/_media/media/virtualization/fusion/4-select-vmdk.png?w=70&amp;tok=bc1ca7" class="media" loading="lazy" alt="" width="70" /></a> Select the <code>openwrt.vmdk</code> you created earlier, and <em>Make a separate copy of the virtual disk</em>.
+</p>
+<hr />
+
+<p>
+<a href="/_media/media/virtualization/fusion/5-finish.png" class="media" title="media:virtualization:fusion:5-finish.png"><img src="/_media/media/virtualization/fusion/5-finish.png?w=70&amp;tok=457b79" class="media" loading="lazy" alt="" width="70" /></a> On the <em>Finish</em> page, click Customize Settings.
+</p>
+<hr />
+
+<p>
+<a href="/_media/media/virtualization/fusion/6-saveit.png" class="media" title="media:virtualization:fusion:6-saveit.png"><img src="/_media/media/virtualization/fusion/6-saveit.png?w=70&amp;tok=01c521" class="media" loading="lazy" alt="" width="70" /></a> Select a location to save the VM.  After saving, edit the configuration.
+</p>
+<hr />
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;VM creation&quot;,&quot;hid&quot;:&quot;vm_creation&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:13,&quot;range&quot;:&quot;2450-3402&quot;} -->
+<h3 class="sectionedit14" id="vm_configuration">VM configuration</h3>
+<div class="level3">
+
+<p>
+The configuration you will set up by following this tutorial is:
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong>br-lan</strong> of the VM on <strong>lan</strong> interface, fixed address 172.16.132.2 (or whatever subnet VMware Fusion is using for VNET_1), set in VMware Fusion as <strong>Private to my Mac</strong>.  This interface will <em class="u">always</em> be available to the host even if host or VM are disconnected from any network.</div>
+</li>
+<li class="level1"><div class="li"> <strong>eth1</strong> of the VM on <strong>wan</strong> interface, dynamic address, set in VMware Fusion as <strong>Share with my Mac</strong> (<abbr title="Network Address Translation">NAT</abbr>). This interface will be used to access the Internet through whatever setup the host also uses.</div>
+</li>
+</ul>
+
+<p>
+Note that the <em>order</em> of the “Private to my Mac” and “Share with my Mac” networks is important for turn-key operation of OpenWrt in the VM.
+</p>
+
+</div>
+
+<h4 id="vm_settings">VM settings</h4>
+<div class="level4">
+
+<p>
+<a href="/_media/media/virtualization/fusion/7-settings.png" class="media" title="media:virtualization:fusion:7-settings.png"><img src="/_media/media/virtualization/fusion/7-settings.png?w=70&amp;tok=b42c7d" class="media" loading="lazy" alt="" width="70" /></a> Reconfigure some of the devices shown on the configuration page.
+</p>
+<hr />
+
+</div>
+
+<h5 id="remove_unused_devices">Remove unused devices</h5>
+<div class="level5">
+
+<p>
+<a href="/_media/media/virtualization/fusion/8-remove-sound.png" class="media" title="media:virtualization:fusion:8-remove-sound.png"><img src="/_media/media/virtualization/fusion/8-remove-sound.png?w=70&amp;tok=942e4e" class="media" loading="lazy" alt="" width="70" /></a> Click on the sound card.  Remove the sound card.
+</p>
+<hr />
+
+<p>
+<a href="/_media/media/virtualization/fusion/9-remove-camera.png" class="media" title="media:virtualization:fusion:9-remove-camera.png"><img src="/_media/media/virtualization/fusion/9-remove-camera.png?w=70&amp;tok=20f85f" class="media" loading="lazy" alt="" width="70" /></a> Click on the camera.  Remove the camera.
+</p>
+<hr />
+
+<p>
+<a href="/_media/media/virtualization/fusion/10-remove-dvd.png" class="media" title="media:virtualization:fusion:10-remove-dvd.png"><img src="/_media/media/virtualization/fusion/10-remove-dvd.png?w=70&amp;tok=89ba7f" class="media" loading="lazy" alt="" width="70" /></a> Click on the CD/DVD. Open the advanced options section.  Remove the CD/DVD drive.
+</p>
+<hr />
+
+</div>
+
+<h5 id="network_settings">Network Settings</h5>
+<div class="level5">
+
+<p>
+<a href="/_media/media/virtualization/fusion/11-network-private.png" class="media" title="media:virtualization:fusion:11-network-private.png"><img src="/_media/media/virtualization/fusion/11-network-private.png?w=70&amp;tok=e85b5f" class="media" loading="lazy" alt="" width="70" /></a> Click on the existing Network.  Change it to <em>Private to my Mac</em>.
+</p>
+<hr />
+
+<p>
+<a href="/_media/media/virtualization/fusion/12-add-network.png" class="media" title="media:virtualization:fusion:12-add-network.png"><img src="/_media/media/virtualization/fusion/12-add-network.png?w=70&amp;tok=934bab" class="media" loading="lazy" alt="" width="70" /></a> Click on the <em>Add Device...</em> button on the main settings panel.  Click on <em>Network Adapter</em>.  (This will add the network for the <abbr title="Wide Area Network">WAN</abbr>.)
+</p>
+<hr />
+
+<p>
+<a href="/_media/media/virtualization/fusion/13-shared-network.png" class="media" title="media:virtualization:fusion:13-shared-network.png"><img src="/_media/media/virtualization/fusion/13-shared-network.png?w=70&amp;tok=325db5" class="media" loading="lazy" alt="" width="70" /></a> Configure it to <em>Share with my Mac</em>.
+</p>
+<hr />
+
+</div>
+
+<h5 id="other_device_settings">Other Device Settings</h5>
+<div class="level5">
+
+<p>
+Optional: check the <em>USB &amp; Bluetooth</em> settings and choose your desired options.
+</p>
+<hr />
+
+<p>
+<a href="/_media/media/virtualization/fusion/14-memory.png" class="media" title="media:virtualization:fusion:14-memory.png"><img src="/_media/media/virtualization/fusion/14-memory.png?w=70&amp;tok=fa5879" class="media" loading="lazy" alt="" width="70" /></a> Click on the <em>Processors and Memory</em> icon.  Configure the system for 512MB and 2 processor cores.
+</p>
+<hr />
+
+<p>
+Close the settings panel.
+</p>
+<hr />
+
+<p>
+Optional: make a snapshot to capture the original unconfigured state, using the application menu Virtual Machine→Snapshots→Take Snapshot
+</p>
+
+</div>
+
+<h4 id="virtual_machine_openwrt_settings">Virtual Machine OpenWrt Settings</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> Start your Virtual Machine (click the Play icon button)</div>
+</li>
+<li class="level1"><div class="li"> Wait 4 seconds for GRUB to boot automatically</div>
+</li>
+<li class="level1"><div class="li"> Press Enter to activate the console when the boot messages have finished scrolling by.</div>
+</li>
+</ul>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> <a href="/_media/media/virtualization/fusion/15-allow-network.png" class="media" title="media:virtualization:fusion:15-allow-network.png"><img src="/_media/media/virtualization/fusion/15-allow-network.png?w=70&amp;tok=4f2bf7" class="media" loading="lazy" alt="" width="70" /></a> OpenWrt by default configures the <abbr title="Local Area Network">LAN</abbr> into a bridge.  This sets the virtual network adapter into promiscuous mode, which requires approval from VMware for the host-only network it uses.  Promiscuous access is not required, so you can either approve or cancel the request.
+</p>
+<ul>
+<li class="level1"><div class="li"> Display the current <abbr title="Local Area Network">LAN</abbr> network configuration.  Note that the default <abbr title="Local Area Network">LAN</abbr> address of 192.168.1.1 is present on first boot.  Type the <code>uci show network.lan</code> command into the virtual console window to see:<pre class="code">root@openwrt:~# uci show network.lan
+network.lan=interface
+network.lan.device=&#039;br-lan&#039;
+network.lan.proto=&#039;static&#039;
+network.lan.ipaddr=&#039;192.168.1.1&#039;
+network.lan.netmask=&#039;255.255.255.0&#039;
+network.lan.ip6assign=&#039;60&#039;</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Edit the network configuration to allow <abbr title="Secure Shell">SSH</abbr> access.  Use the VNET_1_HOSTONLY_SUBNET value from above, replacing the last octet with <code>2</code>, and restart the network.  An example to type into the console:<pre class="code">uci set network.lan.ipaddr=172.16.132.2
+uci commit
+service network restart</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Now your VM is accessible from <abbr title="Secure Shell">SSH</abbr>, user <strong>root</strong> (no password) address <strong>10.0.2.2</strong></div>
+</li>
+<li class="level1"><div class="li"> If you installed a release image such as 23.05.0, the LuCi web interface is available at your chosen <abbr title="Internet Protocol">IP</abbr> address (such as <a href="http://172.16.132.2/" class="urlextern" title="http://172.16.132.2/" rel="ugc nofollow">http://172.16.132.2/</a>).</div>
+</li>
+<li class="level1"><div class="li"> If you installed a snapshot that doesn&#039;t include LuCi, install it with <pre class="code">opkg update &amp;&amp; opkg install luci</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> You should have both internet access (try a <strong>opkg update</strong>) <strong>and</strong> a <abbr title="Local Area Network">LAN</abbr> interface with a static address you can connect your <abbr title="Secure Shell">SSH</abbr> client program to even if your PC is disconnected from a local network.</div>
+</li>
+<li class="level1"><div class="li"> If you have more complex requirements you will have to set that up on your own by reading the documentation, or through LuCi.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;VM configuration&quot;,&quot;hid&quot;:&quot;vm_configuration&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:14,&quot;range&quot;:&quot;3403-7611&quot;} -->
+<h2 class="sectionedit15" id="see_also">See also</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/virtualization/start" class="wikilink1" title="docs:guide-user:virtualization:start" data-wiki-id="docs:guide-user:virtualization:start">Other virtualization options</a>: Docker, VMware etc.</div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/virtualization/utm" class="wikilink1" title="docs:guide-user:virtualization:utm" data-wiki-id="docs:guide-user:virtualization:utm">UTM on Apple Silicon</a>: Configuring using the open-source UTM virtual machine <abbr title="Graphical User Interface">GUI</abbr></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;See also&quot;,&quot;hid&quot;:&quot;see_also&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:15,&quot;range&quot;:&quot;7612-&quot;} -->

@@ -1,0 +1,258 @@
+
+<h1 class="sectionedit1" id="opkg_to_apk_cheat_sheet">opkg to apk cheat sheet</h1>
+<div class="level1">
+
+<p>
+This is a cheat sheet which aims to help with a seamless transition from the previous <a href="/docs/guide-user/additional-software/opkg" class="wikilink1" title="docs:guide-user:additional-software:opkg" data-wiki-id="docs:guide-user:additional-software:opkg">opkg</a> package manager to the new <a href="/docs/guide-user/additional-software/apk" class="wikilink1" title="docs:guide-user:additional-software:apk" data-wiki-id="docs:guide-user:additional-software:apk">apk</a>.
+</p>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_round wrap_alert plugin_wrap" style="width: 100%;">
+<p>
+DO NOT USE <code>apk upgrade</code> to update your packages!
+</p>
+
+<p>
+Doing so will sooner or later brick your device.  Several library packages have as-yet unhandled ABI versioned names, which will cause a misconfiguration if you blindly upgrade them (<code>libubus</code>, <code>libustream</code> and many others).
+</p>
+
+<p>
+The safe way to upgrade all packages is to use one of the ASU clients: LuCI Attended Sysupgrade, <code>owut</code> or Firmware Selector.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;opkg to apk cheat sheet&quot;,&quot;hid&quot;:&quot;opkg_to_apk_cheat_sheet&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-689&quot;} -->
+<h3 class="sectionedit4" id="general_information">General information</h3>
+<div class="level3">
+
+<p>
+Just as with <code>opkg</code>, most commands allow an optional package name pattern (denoted <code>[P]</code> in commands below). And, like <code>opkg</code>,
+the patterns are file globs, e.g., <code>*dns*</code> matches every package with <code>dns</code> somewhere in its name.
+</p>
+<div class="table sectionedit5"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign"> Command              </th><th class="col1"> Description </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> <code>apk -h</code>           </td><td class="col1"> Show commands and summaries </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> <code>apk subcmd -h</code>    </td><td class="col1"> Help specific to “subcmd” (called “applets” in the <code>apk-tools</code> documentation) </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> <code>apk update</code>       </td><td class="col1"> Force update of local indexes, same as in <code>opkg</code> </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> <code>apk adbdump file</code> </td><td class="col1"> Dump the contents of an APK v3 file, which includes package index files (usually named <code>packages.adb</code>) and package files (i.e., <code>*.apk</code>) </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;958-1404&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;General information&quot;,&quot;hid&quot;:&quot;general_information&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;690-1406&quot;} -->
+<h3 class="sectionedit6" id="add_and_remove_packages">Add and remove packages</h3>
+<div class="level3">
+<div class="table sectionedit7"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign"> apk              </th><th class="col1 leftalign"> opkg                  </th><th class="col2 leftalign"> Description                </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> <code>apk update</code>   </td><td class="col1 leftalign"> <code>opkg update</code>       </td><td class="col2 leftalign"> Refresh the package feeds  </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> <code>apk add pkg</code>  </td><td class="col1 leftalign"> <code>opkg install pkg</code>  </td><td class="col2 leftalign"> Install package <code>pkg</code>    </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> <code>apk del pkg</code>  </td><td class="col1 leftalign"> <code>opkg remove pkg</code>   </td><td class="col2 leftalign"> Uninstall package <code>pkg</code>  </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table1&quot;,&quot;secid&quot;:7,&quot;range&quot;:&quot;1442-1737&quot;} -->
+<p>
+Adding is substantially the same with both package managers.
+One difference is that <code>apk</code> wants you to provide valid signatures for all packages, while <code>opkg</code> ignores this on local ones,
+so if you&#039;re installing a non-standard (self-built) package, use the <code>--allow-untrusted</code> option:
+</p>
+<pre class="code">$ apk add ./owut_2024.07.01~189b2721-r1.apk
+ERROR: ./owut_2024.07.01~189b2721-r1.apk: UNTRUSTED signature
+
+$ apk add --allow-untrusted ./owut_2024.07.01~189b2721-r1.apk
+OK: 2313 MiB in 569 packages</pre>
+
+</div>
+
+<h4 id="interesting_variants">Interesting variants</h4>
+<div class="level4">
+
+<p>
+The <code>--update-cache</code> option of <code>apk</code> allows you to perform an <code>update</code> at the same time you do the <code>add</code>, so you can now replace the traditional chained <code>opkg</code> commands with a single <code>apk</code> one.
+</p>
+<pre class="code">opkg update &amp;&amp; opkg install dnsmasq-full</pre>
+
+<p>
+becomes
+</p>
+<pre class="code">apk --update-cache add dnsmasq-full</pre>
+
+<p>
+The <code>--simulate</code> option allows you to do a dry run of a command, to see its effect before you actually execute it.
+</p>
+<pre class="code">$ apk del --simulate nmap
+(1/1) Purging nmap (7.95-r1)
+OK: 47 MiB in 288 packages</pre>
+
+</div>
+
+<h4 id="default_repositories_handling">Default repositories handling</h4>
+<div class="level4">
+
+<p>
+The <code>apk</code> is by default configured to update the package repositories defined in <code>/etc/apk/repositories.d/</code> when <code>apk add</code> is used for the first time.
+This might be unwanted in some off-line (or air-gapped) scenarios, where <code>apk</code> is going to reach possibly remote package repositories to update its local package database before allowing to install the local package.
+</p>
+<pre class="code">$ apk add ./owut_2024.07.01~189b2721-r1.apk 
+fetch https://downloads.openwrt.org/snapshots/targets/x86/64/packages/packages.adb
+Failed to send request: Operation not permitted
+WARNING: updating and opening https://downloads.openwrt.org/snapshots/targets/x86/64/packages/packages.adb: network error (check Internet connection and firewall)
+...snip...
+OK: 2313 MiB in 569 packages</pre>
+
+<p>
+If you don&#039;t want that default behavior, you can disable it with <code>--repositories-file /dev/null</code> option
+</p>
+<pre class="code">$ apk add --repositories-file /dev/null ./owut_2024.07.01~189b2721-r1.apk
+...snip...
+OK: 2313 MiB in 569 packages</pre>
+
+<p>
+If you want this a permanent, simply remove <code>/etc/apk/repositories.d</code>, thus running <code>mv /etc/apk/repositories.d /etc/apk/repositories.d-disabled</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Add and remove packages&quot;,&quot;hid&quot;:&quot;add_and_remove_packages&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;1407-4013&quot;} -->
+<h3 class="sectionedit8" id="commands_for_list_of_packages">Commands for list of packages</h3>
+<div class="level3">
+
+<p>
+To reiterate, <code>[P]</code> is a file glob in the following.
+</p>
+<div class="table sectionedit9"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> apk </th><th class="col1"> opkg </th><th class="col2"> Description </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> <code>apk list</code> </td><td class="col1"> <code>opkg list</code> </td><td class="col2"> Show everything available </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> <code>apk list P</code> </td><td class="col1"> <code>opkg list P</code> </td><td class="col2"> Show matches for <code>P</code>, or if you prefer regex then pipe through <code>grep</code> </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> <code>apk list --installed [P]</code> </td><td class="col1"> <code>opkg list-installed</code> </td><td class="col2"> Show all installed or those matching <code>P</code> </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> <code>apk list --upgradeable [P]</code> </td><td class="col1"> <code>opkg list-upgradable</code> </td><td class="col2"> Show upgradeable packages </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0"> <code>apk list --providers [P]</code> </td><td class="col1"> <code>opkg -A whatprovides P</code> </td><td class="col2"> Show all packages that provide <code>P</code> </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table2&quot;,&quot;secid&quot;:9,&quot;range&quot;:&quot;4111-4608&quot;} -->
+<p>
+<strong>Interesting variants</strong>
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>apk list --installed --manifest</code> - produces a simple list of “package-name version” pairs that are easily parsed with <code>awk</code> or <code>sed</code></div>
+</li>
+<li class="level1"><div class="li"> <code>apk info</code> - <em>without any parameters</em> lists only the installed package names, so no parsing needed</div>
+</li>
+<li class="level1"><div class="li"> <code>apk list --orphaned</code> - shows any dependencies that may have been orphaned, i.e., packages that have no declared top-level dependents.  This may indicate that they are left over from an error in removing another package, but it may show packages that are required, but simply have incorrect dependencies.  If you wish to remove an orphaned package, first make absolutely sure that it is not required for your system to function correctly.</div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="comparative_examples_of_package_listings">Comparative examples of package listings</h4>
+<div class="level4">
+
+<p>
+Show all candidates via <code>opkg</code>:
+</p>
+<pre class="code">$ opkg -A whatprovides dnsmasq  
+What provides dnsmasq
+    dnsmasq-dhcpv6
+    dnsmasq
+    dnsmasq-full</pre>
+
+<p>
+Show all candidates via <code>apk</code>:
+</p>
+<pre class="code">$ apk list --providers dnsmasq
+&lt;dnsmasq&gt; dnsmasq-2.90-r3 x86_64 {feeds/base/package/network/services/dnsmasq} (GPL-2.0)
+&lt;dnsmasq&gt; dnsmasq-dhcpv6-2.90-r3 x86_64 {feeds/base/package/network/services/dnsmasq} (GPL-2.0)
+&lt;dnsmasq&gt; dnsmasq-full-2.90-r3 x86_64 {feeds/base/package/network/services/dnsmasq} (GPL-2.0) [installed]</pre>
+
+<p>
+Show the installed provider for <code>dnsmasq</code> package via <code>opkg</code>:
+</p>
+<pre class="code">$ opkg whatprovides dnsmasq
+What provides dnsmasq
+    dnsmasq-full</pre>
+
+<p>
+Show the installed provider for <code>dnsmasq</code> package via <code>apk</code>:
+</p>
+<pre class="code">$ apk list --installed --providers dnsmasq
+&lt;dnsmasq&gt; dnsmasq-full-2.90-r3 x86_64 {feeds/base/package/network/services/dnsmasq} (GPL-2.0) [installed]</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Commands for list of packages&quot;,&quot;hid&quot;:&quot;commands_for_list_of_packages&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:8,&quot;range&quot;:&quot;4014-6288&quot;} -->
+<h3 class="sectionedit10" id="package_info">Package Info</h3>
+<div class="level3">
+<div class="table sectionedit11"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign"> apk                                  </th><th class="col1 leftalign"> opkg                   </th><th class="col2 leftalign"> Description                                    </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> <code>apk info</code>                         </td><td class="col1 leftalign"> no equivalent          </td><td class="col2 leftalign"> Show only installed package names              </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> <code>apk info P</code>                       </td><td class="col1 leftalign"> <code>opkg info P</code>        </td><td class="col2"> Show summary information for the package <code>P</code> </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> <code>apk info --all P</code>                 </td><td class="col1 leftalign"> no equivalent          </td><td class="col2 leftalign"> Show extensive information                     </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"> <code>apk info --contents P</code>            </td><td class="col1 leftalign"> <code>opkg files P</code>       </td><td class="col2 leftalign"> Show files contained in the package            </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 leftalign"> <code>apk info --who-owns &lt;file&gt;</code>       </td><td class="col1"> <code>opkg search &lt;file&gt;</code> </td><td class="col2"> Find the package that installed the <code>&lt;file&gt;</code> </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0 leftalign"> <code>apk info --depends P</code>             </td><td class="col1 leftalign"> <code>opkg depends P</code>     </td><td class="col2 leftalign"> Show all packages that P depends upon          </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0 leftalign"> <code>apk info --rdepends P</code>            </td><td class="col1"> <code>opkg whatdepends P</code> </td><td class="col2 leftalign"> Show all packages that depend upon P           </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table3&quot;,&quot;secid&quot;:11,&quot;range&quot;:&quot;6313-7232&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Package Info&quot;,&quot;hid&quot;:&quot;package_info&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:10,&quot;range&quot;:&quot;6289-7233&quot;} -->
+<h3 class="sectionedit12" id="other_operations">Other operations</h3>
+<div class="level3">
+<div class="table sectionedit13"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign"> apk                                  </th><th class="col1 leftalign"> opkg              </th><th class="col2 leftalign"> Description                     </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> <code>apk extract --allow-untrusted P</code>  </td><td class="col1 leftalign"> <code>tar -xvf P</code>    </td><td class="col2"> Extract contents of the package </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table4&quot;,&quot;secid&quot;:13,&quot;range&quot;:&quot;7262-7451&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Other operations&quot;,&quot;hid&quot;:&quot;other_operations&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:12,&quot;range&quot;:&quot;7234-&quot;} -->

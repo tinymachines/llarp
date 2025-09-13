@@ -1,0 +1,137 @@
+
+<h1 class="sectionedit1" id="bind">Bind</h1>
+<div class="level1">
+
+</div>
+
+<h5 id="before_you_start">Before you start</h5>
+<div class="level5">
+
+<p>
+This will deactivate dnsmasq which will also disable automatic creation of your internal hostnames (with a suffix of “lan” or “intra” or whatever you chose to use). You will need to manage the zone files yourself.
+</p>
+
+<p>
+This allows you to manage your local <abbr title="Domain Name System">DNS</abbr> using bind and also provide a public <abbr title="Domain Name System">DNS</abbr> server at the same time. Your local lan can still use your router as a <abbr title="Domain Name System">DNS</abbr> server for public and local <abbr title="Domain Name System">DNS</abbr> queries.
+</p>
+
+<p>
+This tutorial used “.intra” as the internal hostname suffix and 172.20.0.0/16 as the internal network. Also the tutorial assumes you have some experience with bind.
+</p>
+
+</div>
+
+<h5 id="installation">Installation</h5>
+<div class="level5">
+
+<p>
+Install at least the following packages:
+</p>
+<ul>
+<li class="level1"><div class="li"> bind-server</div>
+</li>
+<li class="level1"><div class="li"> bind-tools</div>
+</li>
+</ul>
+
+<p>
+Deactivate the <abbr title="Domain Name System">DNS</abbr> functionality of dnsmasq by setting “port” to “0”.
+</p>
+
+<p>
+From this point on you will need “bind” for <abbr title="Domain Name System">DNS</abbr> forwarding and internal hostnames.
+</p>
+
+<p>
+Copy the file “/etc/named.conf.example” to “/etc/named.conf” and perform the following steps:
+</p>
+<ul>
+<li class="level1"><div class="li"> Add your ISPs name servers to the “forwarders section” if you want to use them. Bind can also work without these since it can perform lookups using the global <abbr title="Domain Name System">DNS</abbr> servers.</div>
+</li>
+<li class="level1"><div class="li"> Add two zone files (for “.intra” and “.172.in-addr.arpa”)</div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="local_zone_files">Local Zone Files</h4>
+<div class="level4">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Bind&quot;,&quot;hid&quot;:&quot;bind&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1231&quot;} -->
+<h3 class="sectionedit2" id="etcbindnamedconf">/etc/bind/named.conf</h3>
+<div class="level3">
+
+<p>
+add:
+</p>
+<pre class="code"> zone &quot;intra&quot; {
+        type master;
+        file &quot;/etc/bind/zone.intra&quot;;
+ };                       
+
+ zone &quot;172.in-addr.arpa&quot; {
+        type master;
+        file &quot;/etc/bind/zone.172&quot;;
+ }; </pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;\/etc\/bind\/named.conf&quot;,&quot;hid&quot;:&quot;etcbindnamedconf&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;1232-1472&quot;} -->
+<h3 class="sectionedit3" id="etcbindzoneintra">/etc/bind/zone.intra</h3>
+<div class="level3">
+<pre class="code">;
+$TTL	604800
+@	IN	SOA	intra. root.intra. (
+			      1		; Serial
+			 604800		; Refresh
+			  86400		; Retry
+			2419200		; Expire
+			 604800 )	; Negative Cache TTL
+;
+@		IN	NS	router.intra.
+@		IN	A	172.20.1.1
+router		IN	A	172.20.1.1
+host2		IN	A	172.20.1.2</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;\/etc\/bind\/zone.intra&quot;,&quot;hid&quot;:&quot;etcbindzoneintra&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;1473-1773&quot;} -->
+<h3 class="sectionedit4" id="etcbindzone172">/etc/bind/zone.172</h3>
+<div class="level3">
+<pre class="code">;
+$TTL	604800
+@	IN	SOA	intra. root.intra. (
+			      1		; Serial
+			 604800		; Refresh
+			  86400		; Retry
+			2419200		; Expire
+			 604800 )	; Negative Cache TTL
+;
+@		IN	NS	router.intra.
+1.1.20		IN	PTR	router.intra.
+2.1.20		IN	PTR	host2.intra.</pre>
+
+<p>
+Note that the <abbr title="Internet Protocol">IP</abbr> addresses must be reversed when creating PTR records.
+</p>
+
+</div>
+
+<h5 id="test">Test</h5>
+<div class="level5">
+<pre class="code">dig @localhost intra ANY</pre>
+
+<p>
+should provide you with a valid response for your domain “intra”.
+</p>
+
+</div>
+
+<h5 id="finally">Finally</h5>
+<div class="level5">
+
+<p>
+“enable” and “start” /etc/init.d/named.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;\/etc\/bind\/zone.172&quot;,&quot;hid&quot;:&quot;etcbindzone172&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:4,&quot;range&quot;:&quot;1774-&quot;} -->

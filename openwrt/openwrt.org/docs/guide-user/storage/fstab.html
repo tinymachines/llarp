@@ -1,0 +1,173 @@
+
+<h1 class="sectionedit1" id="fstab_configuration">Fstab Configuration</h1>
+<div class="level1">
+
+<p>
+The Fstab, or <strong>f</strong>ile <strong>s</strong>ystems <strong>tab</strong>le, is a central configuration that defines how file systems (usually on block devices) should be mounted if requested (such as on booting the device or connecting it physically). This way, you don’t have to manually mount your devices when you want to access them. The mounting configuration can consist of static file systems but also swap partitions.<br/>
+
+The fstab UCI subsystem is where all the options for all devices and file systems to be mounted are defined, the actual file is located at <strong><em>/etc/config/fstab</em></strong>.<br/>
+
+By default this subsystem and its configuration file do not exist, as for the average OpenWrt usecase (network devices) it&#039;s not needed.<br/>
+
+So if you need to configure this, you must first create it.
+</p>
+
+<p>
+Since the tool dealing with mounts is <strong>block</strong>, all current options can be found in its <a href="https://git.openwrt.org/?p=project/fstools.git;a=blob;f=block.c;hb=HEAD" class="urlextern" title="https://git.openwrt.org/?p=project/fstools.git;a=blob;f=block.c;hb=HEAD" rel="ugc nofollow">source code</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Fstab Configuration&quot;,&quot;hid&quot;:&quot;fstab_configuration&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-982&quot;} -->
+<h2 class="sectionedit2" id="creating_fstab">Creating fstab</h2>
+<div class="level2">
+
+<p>
+You should use the <em>block</em> utility.
+Install the package <em>block-mount</em>:
+</p>
+<pre class="code bash">opkg update
+opkg <span class="kw2">install</span> block-mount</pre>
+
+<p>
+If you&#039;re dealing with USB storage, install <em>kmod-usb-storage</em> as well:
+</p>
+<pre class="code bash">opkg <span class="kw2">install</span> kmod-usb-storage</pre>
+
+<p>
+Get a sample fstab UCI subsystem configuration file. 
+</p>
+<pre class="code bash">block detect <span class="sy0">|</span> uci import fstab</pre>
+
+<p>
+Now there is a UCI subsystem, you can use UCI command line to change it or just edit the file <code>/etc/config/fstab</code> itself.
+</p>
+
+<p>
+It is possible to set on other devices, but the process is a bit more involved, see <a href="/docs/guide-user/additional-software/extroot_configuration" class="wikilink1" title="docs:guide-user:additional-software:extroot_configuration" data-wiki-id="docs:guide-user:additional-software:extroot_configuration">Extroot configuration</a> for details.<br/>
+
+Also see <a href="/docs/techref/block_mount" class="wikilink1" title="docs:techref:block_mount" data-wiki-id="docs:techref:block_mount">Mounting Block Devices</a> for technical details of the mounting process and scripts involved.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Creating fstab&quot;,&quot;hid&quot;:&quot;creating_fstab&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;983-1814&quot;} -->
+<h2 class="sectionedit3" id="configuration">Configuration</h2>
+<div class="level2">
+
+<p>
+The configuration file consists of a <em>global</em> section defining defaults, <em>mount</em> sections defining file systems to be mounted and <em>swap</em> sections defining partitions to be activated.
+Whenever you change your fstab configuration, run this command to mount everything in the new way:
+</p>
+<pre class="code bash">block <span class="kw2">umount</span>
+block <span class="kw2">mount</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:3,&quot;range&quot;:&quot;1815-2175&quot;} -->
+<h3 class="sectionedit4" id="the_global_section">The Global section</h3>
+<div class="level3">
+<div class="table sectionedit5"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign">Name          </th><th class="col1 leftalign">Type   </th><th class="col2">Required</th><th class="col3">Default</th><th class="col4 leftalign">Description                                                 </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"><em>anon_swap</em> </td><td class="col1">boolean</td><td class="col2 leftalign">no      </td><td class="col3 leftalign">0      </td><td class="col4">mount swap devices that don’t have their own config section </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"><em>anon_mount</em></td><td class="col1">boolean</td><td class="col2 leftalign">no      </td><td class="col3 leftalign">0      </td><td class="col4">mount block devices that don’t have their own config section</td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"><em>auto_swap</em> </td><td class="col1">boolean</td><td class="col2 leftalign">no      </td><td class="col3 leftalign">1      </td><td class="col4 leftalign">automatically mount swap devices when they appear           </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"><em>auto_mount</em></td><td class="col1">boolean</td><td class="col2 leftalign">no      </td><td class="col3 leftalign">1      </td><td class="col4 leftalign">automatically mount block devices when they appear          </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0"><em>delay_root</em></td><td class="col1">integer</td><td class="col2 leftalign">no      </td><td class="col3 leftalign">0      </td><td class="col4 leftalign">wait X seconds before trying to mount root devices on boot  </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0 leftalign"><em>check_fs</em>  </td><td class="col1">boolean</td><td class="col2 leftalign">no      </td><td class="col3 leftalign">0      </td><td class="col4 leftalign">run e2fsck on device prior to a mount                       </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;2205-2929&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;The Global section&quot;,&quot;hid&quot;:&quot;the_global_section&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:4,&quot;range&quot;:&quot;2176-2930&quot;} -->
+<h3 class="sectionedit6" id="the_swap_sections">The Swap sections</h3>
+<div class="level3">
+<div class="table sectionedit7"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign"> Name          </th><th class="col1 leftalign"> Type     </th><th class="col2 leftalign"> Required  </th><th class="col3 leftalign"> Default  </th><th class="col4 leftalign"> Description                                                  </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> <em>enabled</em>   </td><td class="col1 leftalign"> boolean  </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> 1        </td><td class="col4 leftalign"> Enables/disables using UCI section                           </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> <em>device</em>    </td><td class="col1 leftalign"> string   </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> -        </td><td class="col4 leftalign"> The swap partition’s device node (e.g. sda1)                 </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> <em>uuid</em>      </td><td class="col1 leftalign"> string   </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> -        </td><td class="col4 leftalign"> The swap partition’s UUID                                    </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"> <em>label</em>     </td><td class="col1 leftalign"> string   </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> -        </td><td class="col4 leftalign"> The swap partition’s label (e.g. mkswap -L label /dev/sdb2)  </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 leftalign"> <em>priority</em>  </td><td class="col1 leftalign"> integer  </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> -1       </td><td class="col4 leftalign"> The swap partition’s priority                                </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table1&quot;,&quot;secid&quot;:7,&quot;range&quot;:&quot;2959-3656&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;The Swap sections&quot;,&quot;hid&quot;:&quot;the_swap_sections&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:6,&quot;range&quot;:&quot;2931-3657&quot;} -->
+<h3 class="sectionedit8" id="the_mount_sections">The Mount sections</h3>
+<div class="level3">
+<div class="table sectionedit9"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign">Name       </th><th class="col1 leftalign">Type   </th><th class="col2">Required </th><th class="col3">Default</th><th class="col4 leftalign">Description                                                                                        </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"><em>enabled</em></td><td class="col1">boolean</td><td class="col2 leftalign">no       </td><td class="col3 leftalign">1      </td><td class="col4 leftalign">Enables/disables using UCI section                                                                 </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"><em>uuid</em>   </td><td class="col1">string </td><td class="col2" rowspan="3">yes (one)</td><td class="col3 leftalign">-      </td><td class="col4 leftalign">The data partition’s file system UUID (not GPT partition UUIDs, aka PARTUUID)                      </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"><em>label</em>  </td><td class="col1">string </td><td class="col2 leftalign">-      </td><td class="col3 leftalign">The data partition’s label                                                                         </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"><em>device</em> </td><td class="col1">string </td><td class="col2 leftalign">-      </td><td class="col3 leftalign">The data partition’s device node (e.g. sda1)                                                       </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0"><em>autofs</em> </td><td class="col1">boolean</td><td class="col2 leftalign">no       </td><td class="col3 leftalign">0      </td><td class="col4 leftalign">Should autofs (on-demand mounting) be used                                                         </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0"><em>target</em> </td><td class="col1">string </td><td class="col2 leftalign">no       </td><td class="col3 leftalign">-      </td><td class="col4">The data partition’s mount point. Some values have special meanings, see the Extroot section below.</td>
+	</tr>
+	<tr class="row7">
+		<td class="col0"><em>options</em></td><td class="col1">string </td><td class="col2 leftalign">no       </td><td class="col3 leftalign">-      </td><td class="col4 leftalign">The data partition&#039;s mount options, e.g. noexec,noatime,nodiratim.                                 </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table2&quot;,&quot;secid&quot;:9,&quot;range&quot;:&quot;3687-4814&quot;} --><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:10,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap">
+<p>
+Managing <em>autofs</em> as well as mount notifications (for procd triggers) is taken care of by <code>blockd</code>. Hence <code>blockd</code> needs to be installed for those features to work.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:11,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;The Mount sections&quot;,&quot;hid&quot;:&quot;the_mount_sections&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:8,&quot;range&quot;:&quot;3658-5012&quot;} -->
+<h2 class="sectionedit12" id="the_right_amount_of_swap">The right amount of SWAP</h2>
+<div class="level2">
+
+<p>
+If you ask people or search the net, you will find as a general rule of thumb <em>double RAM</em> for machines with 512MiB of RAM or less than, and <em>same amount as RAM</em> for machines with more. This very rough estimate does apply for your embedded device.<br/>
+
+Be aware that <strong>access time</strong> of swap is absymal if compared to real RAM, so having swap may not help much in your specific case.<br/>
+
+A CUPS spooling server will run just fine when only SWAP is available, whereas some applications may perform very poorly when their data it stored on the SWAP rather then being kept in the “real” RAM.<br/>
+
+The decision which data is kept in the RAM and which is stored on the SWAP is made by the system. In contrast to other operating systems, Linux makes ample use of memory, so that your system runs smoother and more efficiently. If memory is then needed by an application, the system will unload stuff again, and make memory available.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;The right amount of SWAP&quot;,&quot;hid&quot;:&quot;the_right_amount_of_swap&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:12,&quot;range&quot;:&quot;5013-&quot;} -->

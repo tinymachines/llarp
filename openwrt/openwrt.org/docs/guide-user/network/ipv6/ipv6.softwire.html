@@ -1,0 +1,244 @@
+
+<h1 class="sectionedit1" id="ipv6_on_l2tp_softwire">IPv6 on L2TP softwire</h1>
+<div class="level1">
+
+<p>
+This page documents how to configure <abbr title="Internet Protocol version 6">IPv6</abbr> over a L2TP softwire, which is a method used by some <abbr title="Internet Service Provider">ISP</abbr> to provide <abbr title="Internet Protocol version 6">IPv6</abbr> connectivity.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;IPv6 on L2TP softwire&quot;,&quot;hid&quot;:&quot;ipv6_on_l2tp_softwire&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-166&quot;} -->
+<h2 class="sectionedit2" id="about_softwires">About softwires</h2>
+<div class="level2">
+
+<p>
+Softwire is the new fancy term for network tunnels, aka encapsulation.
+Reasonably accurate definitions about softwires are given in <a href="http://tools.ietf.org/html/rfc4925" class="urlextern" title="http://tools.ietf.org/html/rfc4925" rel="ugc nofollow">RFC 4925</a>, and <a href="http://tools.ietf.org/html/rfc5571" class="urlextern" title="http://tools.ietf.org/html/rfc5571" rel="ugc nofollow">RFC 5571</a> describes an implementation using L2TPv2.
+</p>
+
+<p>
+Softwires are used as basic blocks to transport newer protocols (typically <abbr title="Internet Protocol version 6">IPv6</abbr>) over an older network (typically, the <abbr title="Internet Protocol version 4">IPv4</abbr> core network of an <abbr title="Internet Service Provider">ISP</abbr>).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;About softwires&quot;,&quot;hid&quot;:&quot;about_softwires&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;167-620&quot;} -->
+<h2 class="sectionedit3" id="isp_using_softwires_to_provide_ipv6">ISP using softwires to provide IPv6</h2>
+<div class="level2">
+
+<p>
+SFR, in France, is known to use softwires to provide <abbr title="Internet Protocol version 6">IPv6</abbr> to its residential customers.
+See some <a href="http://bitsofnetworks.org/utiliser-ipv6-chez-sfr-sans-la-neufbox-fr.html" class="urlextern" title="http://bitsofnetworks.org/utiliser-ipv6-chez-sfr-sans-la-neufbox-fr.html" rel="ugc nofollow">documentation (in French)</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;ISP using softwires to provide IPv6&quot;,&quot;hid&quot;:&quot;isp_using_softwires_to_provide_ipv6&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;621-870&quot;} -->
+<h2 class="sectionedit4" id="overview">Overview</h2>
+<div class="level2">
+
+<p>
+This howto is derived from an experience with SFR, in France (FTTH residential access).
+It might applies to other ISPs as well, but you&#039;ll need to adapt <abbr title="Internet Protocol">IP</abbr> addresses, PPP login and passwords, and so on.
+</p>
+
+<p>
+The high-level description of the tunneling is the following:
+</p>
+<ol>
+<li class="level1"><div class="li"> a L2TP tunnel is created, encapsulated in <abbr title="User Datagram Protocol">UDP</abbr> packets over <abbr title="Internet Protocol version 4">IPv4</abbr></div>
+</li>
+<li class="level1"><div class="li"> a PPP session is established inside the tunnel</div>
+</li>
+<li class="level1"><div class="li"> IPv6CP (see <a href="http://tools.ietf.org/html/rfc5072" class="urlextern" title="http://tools.ietf.org/html/rfc5072" rel="ugc nofollow">RFC 5072</a>) is used to negotiate link-local <abbr title="Internet Protocol version 6">IPv6</abbr> addresses </div>
+</li>
+<li class="level1"><div class="li"> an <abbr title="Internet Protocol version 6">IPv6</abbr> prefix is obtained thanks to DHCPv6</div>
+</li>
+</ol>
+
+<p>
+In the case of SFR, steps 1 and 2 require an authentication.
+Fortunately, the L2TP password is hardcoded.
+The PPP password is not, but it&#039;s sent as cleartext, so a simple sniffing is enough to recover it.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Overview&quot;,&quot;hid&quot;:&quot;overview&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;871-1645&quot;} -->
+<h3 class="sectionedit5" id="installation">Installation</h3>
+<div class="level3">
+
+<p>
+You need to install <a href="/packages/pkgdata/xl2tpd" class="wikilink1" title="packages:pkgdata:xl2tpd" data-wiki-id="packages:pkgdata:xl2tpd">xl2tpd</a>, which will handle the L2TP tunnel and PPP session.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation&quot;,&quot;hid&quot;:&quot;installation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;1646-1769&quot;} -->
+<h3 class="sectionedit6" id="configuration">Configuration</h3>
+<div class="level3">
+<pre class="code bash"><span class="co0"># /etc/config/network</span>
+config interface 6pe
+        option proto l2tp
+        option server <span class="sy0">&lt;</span>LNS address<span class="sy0">&gt;</span>
+        option username <span class="st_h">'&lt;PPP username&gt;'</span>
+        option password <span class="st_h">'&lt;PPP password&gt;'</span>
+        option keepalive <span class="st_h">'6'</span>
+        option ipv6 <span class="st_h">'1'</span>
+&nbsp;
+config interface <span class="st_h">'wan6'</span>
+        option ifname <span class="st_h">'@6pe'</span>
+        option proto <span class="st_h">'dhcpv6'</span></pre>
+
+<p>
+If you need authentication at the L2TP level (before PPP):
+</p>
+<pre class="code bash"><span class="co0"># /etc/xl2tpd/xl2tp-secrets</span>
+<span class="sy0">*</span> <span class="sy0">*</span> my_l2tp_password</pre>
+
+<p>
+At this point, rebooting or simply running <code>ifup wan6</code> should give you a fully working <abbr title="Internet Protocol version 6">IPv6</abbr> setup.
+To debug, look at the logs (<code>logread</code>) and the interfaces status (<code>ifstatus 6pe</code> and <code>ifstatus wan6</code>).
+</p>
+
+<p>
+Note that SFR&#039;s CPE, the Neufbox, is running a modified version of OpenWrt.
+Since they publish their firmware (I used the <a href="http://download.nb6thd.neufbox.neuf.fr/nb6thd_Vers%203.3.4_ter/NB6-MAIN-R3.3.4" class="urlextern" title="http://download.nb6thd.neufbox.neuf.fr/nb6thd_Vers%203.3.4_ter/NB6-MAIN-R3.3.4" rel="ugc nofollow">NB6-MAIN-R3.3.4</a> firmware), it&#039;s possible to look at their config files (and hardcoded passwords), which greatly simplifies the task.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;1770-2818&quot;} -->
+<h3 class="sectionedit7" id="l2tp_tunnel_using_xl2tpd">L2TP tunnel using xl2tpd</h3>
+<div class="level3">
+<pre class="code bash"><span class="co0"># /etc/x2ltpd/x2ltpd.conf</span>
+<span class="br0">&#91;</span>global<span class="br0">&#93;</span>
+port = <span class="nu0">1701</span>
+auth <span class="kw2">file</span> = <span class="sy0">/</span>etc<span class="sy0">/</span>xl2tpd<span class="sy0">/</span>xl2tp-secrets
+access control = no
+&nbsp;
+<span class="br0">&#91;</span>lac 6pe<span class="br0">&#93;</span>
+lns = 109.6.3.95 ; address of the LNS <span class="br0">&#40;</span>L2TP Network Server<span class="br0">&#41;</span>
+ppp debug = <span class="kw2">yes</span>
+<span class="kw2">hostname</span> = XX.XX.XX.XX ; your public IP address
+hidden bit = no
+; ppp debug = <span class="kw2">yes</span>
+pppoptfile = <span class="sy0">/</span>etc<span class="sy0">/</span>ppp<span class="sy0">/</span>options.xl2tpd
+require authentication = no
+refuse authentication = no
+refuse chap = no
+flow bit = <span class="kw2">yes</span>
+length bit = <span class="kw2">yes</span>
+&nbsp;
+<span class="co0"># /etc/xl2tpd/xl2tp-secrets</span>
+<span class="sy0">*</span>	<span class="sy0">*</span>	6pe</pre>
+
+</div>
+
+<h4 id="starting_the_l2tp_tunnel">Starting the L2TP tunnel</h4>
+<div class="level4">
+
+<p>
+You need to start <code>xl2tpd</code>, and connect the profile we defined:
+</p>
+<pre class="code bash"><span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>xl2tpd start
+<span class="kw3">echo</span> <span class="st0">&quot;c 6pe&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>var<span class="sy0">/</span>run<span class="sy0">/</span>xl2tpd<span class="sy0">/</span>l2tp-control</pre>
+
+<p>
+There doesn&#039;t seem to be an easy way to start a profile automatically at startup.
+Quick &amp; dirty:
+</p>
+<pre class="code bash"><span class="co0"># /etc/rc.d/S60xl2tpd</span>
+...
+<span class="br0">&#40;</span><span class="kw2">sleep</span> <span class="nu0">10</span> <span class="sy0">&amp;&amp;</span> <span class="kw3">echo</span> <span class="st0">&quot;c 6pe&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>var<span class="sy0">/</span>run<span class="sy0">/</span>xl2tpd<span class="sy0">/</span>l2tp-control<span class="br0">&#41;</span> <span class="sy0">&amp;</span>
+<span class="re1">$BIN</span> <span class="re1">$OPTIONS</span>
+...</pre>
+
+</div>
+
+<h4 id="troubleshooting">Troubleshooting</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> look at the logs (<code>logread</code>)</div>
+</li>
+<li class="level1"><div class="li"> try to activate some <code>xl2tpd</code> debug options</div>
+</li>
+<li class="level1"><div class="li"> use <code>tcpdump</code> to see what&#039;s going on with the LNS</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;L2TP tunnel using xl2tpd&quot;,&quot;hid&quot;:&quot;l2tp_tunnel_using_xl2tpd&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:7,&quot;range&quot;:&quot;2819-3905&quot;} -->
+<h3 class="sectionedit8" id="ppp_configuration">PPP configuration</h3>
+<div class="level3">
+
+<p>
+Last, you need to set PPP options for <abbr title="Internet Protocol version 6">IPv6</abbr> negotiation.
+</p>
+<pre class="code bash"><span class="co0"># /etc/ppp/options.xl2tpd</span>
+<span class="co0"># From the official firmware</span>
+ipv6 ,
++ipv6
+ipv6cp-use-persistent
+lock
+child-timeout <span class="nu0">20</span>
+lcp-echo-failure <span class="nu0">3</span>
+lcp-echo-interval <span class="nu0">20</span>
+name <span class="sy0">&lt;</span>your PPP <span class="kw2">login</span><span class="sy0">&gt;</span></pre>
+
+<p>
+For SFR, the PPP login seems to be <code>dhcp/XX.XX.XX.XX@YYYYYYYYYYYY</code>, where <code>XX.XX.XX.XX</code> is your public <abbr title="Internet Protocol">IP</abbr> address, and <code>YYYYYYYYYYYY</code> is the MAC address of the <abbr title="Wide Area Network">WAN</abbr> interface of the official box, without the colons.
+</p>
+
+<p>
+You then need to define the PPP password in <code>/etc/ppp/chap-secrets</code>:
+</p>
+<pre class="code bash"><span class="co0">#USERNAME  PROVIDER  PASSWORD  IPADDRESS</span>
+dhcp<span class="sy0">/</span>XX.XX.XX.XX<span class="sy0">@</span>YYYYYYYYYYYY <span class="sy0">*</span> <span class="sy0">&lt;</span>PPP password<span class="sy0">&gt;</span></pre>
+
+<p>
+For SFR, the password is not obvious.
+It&#039;s sent in cleartext, thus recoverable by sniffing the <abbr title="Wide Area Network">WAN</abbr> port of the official box.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;PPP configuration&quot;,&quot;hid&quot;:&quot;ppp_configuration&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:8,&quot;range&quot;:&quot;3906-4714&quot;} -->
+<h3 class="sectionedit9" id="prefix_delegation_through_dhcpv6">Prefix delegation through DHCPv6</h3>
+<div class="level3">
+
+<p>
+Once the PPP session is established inside the L2TP tunnel, a new interface <code>ppp0</code> should appear.
+</p>
+
+<p>
+The only remaining step is to request an <abbr title="Internet Protocol version 6">IPv6</abbr> prefix to the <abbr title="Internet Service Provider">ISP</abbr>, by using for instance the <code>wide-dhcp6c</code> client.
+</p>
+
+</div>
+
+<h4 id="openwrt_integration">OpenWrt integration</h4>
+<div class="level4">
+
+<p>
+Note that this is specific to Attitude Adjustment, as <abbr title="Internet Protocol version 6">IPv6</abbr> support is expected to changed a lot in the upcoming Barrier Breaker release.
+</p>
+
+</div>
+
+<h4 id="interface_declaration">Interface declaration</h4>
+<div class="level4">
+
+<p>
+We need to tell OpenWrt about the new interface:
+</p>
+<pre class="code bash"><span class="co0"># /etc/config/network</span>
+config interface wan6
+        option ifname   ppp0
+        option proto    none</pre>
+
+<p>
+If, at some point, you don&#039;t get a default route for <abbr title="Internet Protocol version 6">IPv6</abbr>, you could try to add the route yourself, where the gateway is the link-local address of the router at the other end of the softwire:
+</p>
+<pre class="code bash"><span class="co0"># /etc/config/network</span>
+config route6                           
+        option interface wan6          
+        option target <span class="st_h">'::/0'</span>            
+        option gateway <span class="st_h">'fe80::XXXX:XXff:feXX:XXXX'</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Prefix delegation through DHCPv6&quot;,&quot;hid&quot;:&quot;prefix_delegation_through_dhcpv6&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:9,&quot;range&quot;:&quot;4715-&quot;} -->

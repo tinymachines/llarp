@@ -1,0 +1,181 @@
+
+<h1 class="sectionedit1" id="chan-lantiq_for_asterisk">chan-lantiq for Asterisk</h1>
+<div class="level1">
+
+<p>
+<strong>Note: This wiki entry is not finished and not complete yet.</strong>
+</p>
+
+<p>
+The Asterisk channel chan-lantiq provides support for FXS ports from routers using lantiq based SoCs.
+The channel should usable with most routers using DANUBE, VRX200 (VR9) SoC and probably ARX100 (AR9).
+VRX200 (VR9) devices need a special firmware using a reserved CPU core and reserved RAM (see section 2.)
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;chan-lantiq for Asterisk&quot;,&quot;hid&quot;:&quot;chan-lantiq_for_asterisk&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-415&quot;} -->
+<h2 class="sectionedit2" id="install_chan-lantiq">1. Install chan-lantiq</h2>
+<div class="level2">
+
+<p>
+To install chan-lantiq for usage with a SIP carrier like sipgate.de the following packages are recommended to install.
+</p>
+<pre class="code">opkg install asterisk asterisk-chan-lantiq asterisk-chan-sip asterisk-codec-a-mu asterisk-codec-alaw asterisk-codec-resample asterisk-codec-ulaw asterisk-res-rtp-asterisk</pre>
+
+<p>
+Before release of openwrt-18.06 you could build OpenWrt manually and select the listed packages manually. Self building is supported since OpenWrt master commit 49acec5b5f4b2040c307aebb1a258cf8c1ade278 at 2017-03-24.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;1. Install chan-lantiq&quot;,&quot;hid&quot;:&quot;install_chan-lantiq&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;416-976&quot;} -->
+<h2 class="sectionedit3" id="compatible_socs_and_routers">2. Compatible SoCs and routers</h2>
+<div class="level2">
+
+<p>
+To use chan-lantiq with DANUBE SoC based routers only chan-lantiq needs to be installed. A special easy-to-use firmware should installed automatically by ltq-vmmc and ltq-tapi packages.
+For VRX200 (VR9) based routers a special lantiq firmware must be loaded to a reserved CPU core that is able to access a amount of 2MB reserved RAM. Reserved core and RAM is not needed with DANUBE based devices.
+</p>
+
+<p>
+The channel was tested on the following DANUBE SoC based devices:
+</p>
+<ul>
+<li class="level1"><div class="li"> ARV752DPW22 (EasyBox 803A)</div>
+</li>
+</ul>
+
+<p>
+The channel should run out of the box with the following VRX200 (VR9) SoC based devices:
+</p>
+<ul>
+<li class="level1"><div class="li"> VGV7510KW22 (o2 Box 6431)</div>
+</li>
+<li class="level1"><div class="li"> VGV7519 (KPN Experia Box v8)</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;2. Compatible SoCs and routers&quot;,&quot;hid&quot;:&quot;compatible_socs_and_routers&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;977-1669&quot;} -->
+<h2 class="sectionedit4" id="add_support_for_new_devices">3. Add support for new devices</h2>
+<div class="level2">
+
+<p>
+If chan-lantiq is not working with a specific DANUBE based SoC router, check if the routers DTS file have specified GPIOs within a vmmc section. Give a look to ARV752DPW22 DTS file.
+To support a new VRX200 (VR9) based router give a look to VGV7519 DTSI file (<a href="https://github.com/openwrt/openwrt/commit/0ce929228a63cc23f0deb52a72cc99b21c1c9bf9#diff-6c090f56b029513115c56a335129a3e2" class="urlextern" title="https://github.com/openwrt/openwrt/commit/0ce929228a63cc23f0deb52a72cc99b21c1c9bf9#diff-6c090f56b029513115c56a335129a3e2" rel="ugc nofollow">https://github.com/openwrt/openwrt/commit/0ce929228a63cc23f0deb52a72cc99b21c1c9bf9#diff-6c090f56b029513115c56a335129a3e2</a>).
+</p>
+
+<p>
+Most important part is to add the following arguments to the kernel command line (bootargs). This line is valid for VGV7519 with 64 <abbr title="Megabyte">MB</abbr> RAM.
+</p>
+<pre class="code">mem=62M vpe1_load_addr=0x83e00000 vpe1_mem=2M maxvpes=1 maxtcs=1 nosmp</pre>
+
+<p>
+You may need to change the mem parameter and vpe1_load_addr. 
+The reserved memory for firmware (vpe1_mem) uses 2M, that means remaining memory is 64M-2M=62M. So the parameter mem=62M is valid. The vpe1_load_addr should point to begin of 62th <abbr title="Megabyte">MB</abbr> of RAM.
+You should adopt parameters maxvpes and maxtcs unchanged.
+The parameter nosmp is needed to disable SMP. That means if you want using chan-lantiq you can only use one CPU core. The second CPU core is reserved for the special firmware for supporting FXS.
+The firmware might support DECT devices, too. But actually there is no utility/service that does maintain DECT telephones (e. g. register, key management).
+</p>
+
+<p>
+To use FXS ports with e. g. Archer VR200v the kernel command line (bootargs) needs to be edited and a vmmc section must added to DTS file. Then FXS might probably work with chan-lantiq (not tested).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;3. Add support for new devices&quot;,&quot;hid&quot;:&quot;add_support_for_new_devices&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:4,&quot;range&quot;:&quot;1670-3186&quot;} -->
+<h2 class="sectionedit5" id="example_minimal_configuration_for_asterisk">4. Example minimal configuration for Asterisk</h2>
+<div class="level2">
+
+<p>
+The minimal configuration allows to take and receive calls via a SIP carrier like sipgate.de
+</p>
+
+<p>
+<strong>asterisk/lantiq.conf</strong>
+</p>
+<pre class="code">[interfaces]
+channels = 2
+per_channel_context = on</pre>
+
+<p>
+<strong>asterisk/sip.conf</strong>
+</p>
+<pre class="code">nat=yes
+directmedia=no
+qualify=yes</pre>
+<pre class="code">register =&gt; SIPID:PASSWORD@sipgate.de/SIPID</pre>
+<pre class="code">[sipgate]
+type=peer
+host=sipgate.de
+fromdomain=sipgate.de
+dtmfmode=rfc2833
+insecure=port,invite
+directmedia=no
+transport=udp,tcp
+context=in_sipgate
+disallow=all
+allow=alaw,ulaw
+username=SIPID
+fromuser=SIPID
+secret=PASSWORD</pre>
+<pre class="code">add to [sipgate] context
+context=in_sipgate</pre>
+
+<p>
+<strong>asterisk/extensions.conf</strong>
+</p>
+<pre class="code">[out_sipgate]
+exten =&gt; _[+0-9].,1,Set(CALLERID(num)=NUMBER)
+exten =&gt; _[+0-9].,2,Dial(SIP/sipgate/${EXTEN},30,Trg)
+exten =&gt; _[+0-9].,3,Hangup
+
+[in_sipgate]
+exten =&gt; SIPID,1,Goto(tel1_in,s,1)
+
+[tel1_out]
+exten =&gt; _Z,1,Goto(out_internal,${EXTEN},1)
+exten =&gt; _[+0-9].,1,Gosub(out_sipgate,${EXTEN})
+
+[tel2_out]
+exten =&gt; _Z,1,Goto(out_internal,${EXTEN},1)
+exten =&gt; _[+0-9].,1,Gosub(out_sipgate,${EXTEN})
+
+[ltq1_out]
+;exten =&gt; _[+0-9]!,1,Goto(tel1_out,${EXTEN},1)
+exten =&gt; _[+0-9]!,1,Dial(local/${EXTEN}@tel1_out/n)
+
+[ltq2_out]
+;exten =&gt; _[+0-9]!,1,Goto(tel2_out,${EXTEN},1)
+exten =&gt; _[+0-9]!,1,Dial(local/${EXTEN}@tel2_out/n)
+
+[ltq1_in]
+exten =&gt; s,1,Dial(TAPI/1,30,t)
+
+[ltq2_in]
+exten =&gt; s,1,Dial(TAPI/2,30,t)
+
+[tel1_in]
+;exten =&gt; s,1,Goto(ltq1_in,s,1)
+exten =&gt; s,1,Dial(local/s@ltq1_in/n)
+
+[tel2_in]
+;exten =&gt; s,1,Goto(ltq2_in,s,1)
+exten =&gt; s,1,Dial(local/s@ltq2_in/n)
+
+[lantiq1]
+include =&gt; ltq1_out
+
+[lantiq2]
+include =&gt; ltq2_out</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;4. Example minimal configuration for Asterisk&quot;,&quot;hid&quot;:&quot;example_minimal_configuration_for_asterisk&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:5,&quot;range&quot;:&quot;3187-4835&quot;} -->
+<h2 class="sectionedit6" id="see_also">5. See also</h2>
+<div class="level2">
+
+<p>
+<a href="https://forum.openwrt.org/viewtopic.php?id=62696" class="urlextern" title="https://forum.openwrt.org/viewtopic.php?id=62696" rel="ugc nofollow">https://forum.openwrt.org/viewtopic.php?id=62696</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;5. See also&quot;,&quot;hid&quot;:&quot;see_also&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:6,&quot;range&quot;:&quot;4836-&quot;} -->

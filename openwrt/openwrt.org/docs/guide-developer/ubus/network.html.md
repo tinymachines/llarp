@@ -1,0 +1,7 @@
+# ubus network
+
+**Package: netifd**
+
+[DESIGN document at repo of netifd](https://git.openwrt.org/?p=project%2Fnetifd.git%3Ba%3Dblob%3Bf%3DDESIGN%3Bhb%3DHEAD "https://git.openwrt.org/?p=project/netifd.git;a=blob;f=DESIGN;hb=HEAD")
+
+Path Procedure Signature Description `network` `restart` `{ }` Restart the network, reconfigures all interfaces `network` `reload` `{ }` Reload the network, reconfigure as needed `network.device` `status` `{ “name”: “ifname” }` Dump status of given network device `ifname` or all network devices if none given `network.device` `set_state` `{ “name”: “ifname”, “defer”: deferred }` Defer or ready the given network device `ifname`, depending on the boolean value *deferred* `network.interface.name` `up` `{ }` Bring interface `name` up `network.interface.name` `down` `{ }` Bring interface `name` down `network.interface.name` `status` `{ }` Dump status of interface `name` `network.interface.name` `prepare` `{ }` Prepare setup of interface `name` `network.interface.name` `add_device` `{ “name”: “ifname” }` Add network device `ifname` to interface `name` (e.g. for bridges: `brctl addif br-name ifname`) `network.interface.name` `remove_device` `{ “name”: “ifname” }` Remove network device `ifname` from interface `name` (e.g. for bridges: `brctl delif br-name ifname`) `network.interface.name` `remove` `{ }` Remove interface `name` (?) `network.wireless` `status` `{ }`

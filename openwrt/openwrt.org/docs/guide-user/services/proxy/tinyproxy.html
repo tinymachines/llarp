@@ -1,0 +1,178 @@
+
+<h1 class="sectionedit1" id="tinyproxy">Tinyproxy</h1>
+<div class="level1">
+
+<p>
+<a href="https://en.wikipedia.org/wiki/Tinyproxy" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Tinyproxy">Tinyproxy</a> is a light-weight <abbr title="Hypertext Transfer Protocol">HTTP</abbr>/<abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> proxy daemon for POSIX operating systems. Designed from the ground up to be fast and yet small, it is an ideal solution for use cases such as embedded deployments where a full featured <abbr title="Hypertext Transfer Protocol">HTTP</abbr> proxy is required, but the system resources for a larger proxy are unavailable. In a typical scenario it consumes 5-10M RAM and when installed to an OpenWRT enabled router.
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="https://tinyproxy.github.io/" class="urlextern" title="https://tinyproxy.github.io/" rel="ugc nofollow">https://tinyproxy.github.io/</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Tinyproxy&quot;,&quot;hid&quot;:&quot;tinyproxy&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-467&quot;} -->
+<h3 class="sectionedit2" id="installing">Installing</h3>
+<div class="level3">
+
+<p>
+To install tinyproxy follow these steps:
+</p>
+
+<p>
+Install software packages:
+</p>
+<pre class="code bash">opkg update
+opkg <span class="kw2">install</span> tinyproxy luci-app-tinyproxy</pre>
+
+<p>
+Configure Tinyproxy:
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> tinyproxy.<span class="sy0">@</span>tinyproxy<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.enabled=<span class="nu0">1</span>
+uci commit
+service tinyproxy <span class="kw3">enable</span>
+service tinyproxy restart</pre>
+
+</div>
+
+<h4 id="detailed_configuration">Detailed configuration</h4>
+<div class="level4">
+
+<p>
+If you like to finetune the other options you can also use an editor like VI or nano to edit <code>/etc/config/tinyproxy</code>. The following configuration example blocks per default, a whitelist-file <code>/etc/config/tinyproxy_whitelist.txt</code> can contain <abbr title="Fully Qualified Domain Name">FQDN</abbr> / Hostnames as regular expression:
+</p>
+<pre class="code bash">config tinyproxy
+	option User <span class="st_h">'nobody'</span>
+	option Group <span class="st_h">'nogroup'</span>
+	option Port <span class="st_h">'8888'</span>
+	option Timeout <span class="st_h">'600'</span>
+	option DefaultErrorFile <span class="st_h">'/usr/share/tinyproxy/default.html'</span>
+	option StatFile <span class="st_h">'/usr/share/tinyproxy/stats.html'</span>
+	option LogFile <span class="st_h">'/var/log/tinyproxy.log'</span>
+	option LogLevel <span class="st_h">'Info'</span>
+	option MaxClients <span class="st_h">'100'</span>
+	option MinSpareServers <span class="st_h">'5'</span>
+	option MaxSpareServers <span class="st_h">'20'</span>
+	option StartServers <span class="st_h">'10'</span>
+	option MaxRequestsPerChild <span class="st_h">'0'</span>
+	option ViaProxyName <span class="st_h">'tinyproxy'</span>
+	list ConnectPort <span class="st_h">'443'</span>
+	list ConnectPort <span class="st_h">'563'</span>
+	option enabled <span class="st_h">'1'</span>
+	list Allow <span class="st_h">'192.168.1.0/24'</span>
+	list Allow <span class="st_h">'127.0.0.1'</span>
+	option Filter <span class="st_h">'/etc/config/tinyproxy_whitelist.txt'</span>
+	option FilterDefaultDeny <span class="st_h">'1'</span></pre>
+
+<p>
+The whitelist file <code>/etc/config/tinyproxy_whitelist.txt</code> can whitelist OpenWRT website like this:
+</p>
+<pre class="code bash"><span class="co0"># filter exactly cnn.com</span>
+<span class="co0"># ^cnn\.com$</span>
+&nbsp;
+<span class="co0"># filter all subdomains of cnn.com, but not cnn.com itself</span>
+<span class="co0"># .*\.cnn.com$</span>
+&nbsp;
+<span class="co0"># filter any domain that has cnn.com in it, like xcnn.comfy.org</span>
+<span class="co0"># cnn\.com</span>
+&nbsp;
+<span class="co0"># filter any domain that ends in cnn.com</span>
+<span class="co0"># cnn\.com$</span>
+&nbsp;
+<span class="co0"># filter any domain that starts with adserver</span>
+<span class="co0"># ^adserver</span>
+&nbsp;
+^openwrt\.org$
+.<span class="sy0">*</span>\.openwrt\.org$
+&nbsp;
+^<span class="nu0">127</span>\.0\.0\.1$
+^localhost$</pre>
+
+<p>
+Please note that only the <abbr title="Fully Qualified Domain Name">FQDN</abbr> / hostname can be filtered for <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> and <abbr title="Hypertext Transfer Protocol">HTTP</abbr>.
+<abbr title="Uniform Resource Locator">URL</abbr> filtering with tinyproxy only works for unencrypted <abbr title="Hypertext Transfer Protocol">HTTP</abbr> traffic because <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr>-traffic is opaque to the proxy.
+It controls if the <code>CONNECT</code> command to a <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> server is accepted or rejected.
+The content of the transmission between client and server remains opaque and encrypted.
+</p>
+
+</div>
+
+<h4 id="configure_firewall">Configure firewall</h4>
+<div class="level4">
+
+<p>
+Configure the firewall to filter/block client traffic aimed directly to the <abbr title="Wide Area Network">WAN</abbr>.
+Clients must still be able to reach the proxy from the <abbr title="Local Area Network">LAN</abbr> side, but not the <abbr title="Wide Area Network">WAN</abbr>.
+If this step is omitted clients can reconfigure their proxy settings to not use a proxy and bypass the proxy without any effort.
+</p>
+
+</div>
+
+<h4 id="configure_the_clients">Configure the clients</h4>
+<div class="level4">
+
+<p>
+Configure the clients to use the proxy.
+Browsers like Firefox / Chromium / Brave need the <abbr title="Internet Protocol">IP</abbr> or hostname of the device where <code>tinyproxy</code> is installed to and the port.
+The proxy is the same for <abbr title="Hypertext Transfer Protocol">HTTP</abbr> and <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> traffic.
+Many commands line clients like <code>opkg</code>, <code>wget</code> or <code>curl</code> make use of the environment variable <code>https_proxy=<a href="http://IP:8888" class="urlextern" title="http://IP:8888" rel="ugc nofollow">http://IP:8888</a></code>.
+</p>
+
+</div>
+
+<h4 id="transparent_http_proxy">Transparent HTTP proxy</h4>
+<div class="level4">
+
+<p>
+This steps is optional and nowadays, that most websites use encryption, it is not as useful as it was anymore.
+Prefer configuring the proxy at the client side, most browsers allow configuring the proxy manually for <abbr title="Hypertext Transfer Protocol">HTTP</abbr> and <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr>.
+For unencrypted <abbr title="Hypertext Transfer Protocol">HTTP</abbr> connections the firewall can redirect traffic to the proxy.
+Client devices do not need to be configured to make use of the proxy server, but it only works for <abbr title="Hypertext Transfer Protocol">HTTP</abbr> traffic.
+Encrypted <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> traffic cannot be handled this way.
+</p>
+
+<p>
+Configure transparent proxy redirection:
+</p>
+<pre class="code bash">uci add firewall redirect
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>redirect<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.name=<span class="st_h">'Transparent Proxy Redirect'</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>redirect<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.src=lan
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>redirect<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.proto=tcp
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>redirect<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.dest_port=<span class="nu0">8888</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>redirect<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.src_dport=<span class="nu0">80</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>redirect<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.src_dip=<span class="st_h">'!192.168.1.1'</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>redirect<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.dest_ip=192.168.1.1
+uci commit firewall
+service firewall restart</pre>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Note that the <strong><code>firewall.@redirect[0].src_dip=!192.168.1.1</code></strong> option is important, if you missed this option you may not connect to LuCI. I can&#039;t find this option in the <strong>LuCI → Network → Firewall → Traffic Redirection</strong> page, so be careful if you&#039;re using LuCI.
+</p>
+
+<p>
+Note also that by default tinyproxy does not allow connections from other hosts so you will need to enable this. One way is to comment out the “Allow” line from the config.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installing&quot;,&quot;hid&quot;:&quot;installing&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;468-4758&quot;} -->
+<h3 class="sectionedit3" id="notes_on_attitude_adjustment_1209_and_maybe_ipv6">Notes on Attitude Adjustment 12.09 and maybe IPv6</h3>
+<div class="level3">
+
+<p>
+If you&#039;re using Attitude Adjustment 12.09 and maybe setup <abbr title="Internet Protocol version 6">IPv6</abbr> on your OpenWrt box then this may be helpful. These notes only have a few hours of testing; second opinions, better advice welcomed:
+</p>
+<ul>
+<li class="level1"><div class="li"> The “Traffic Redirection” page can be found at <strong>Network → Firewall → Port Forwards</strong> on 12.09</div>
+</li>
+<li class="level1"><div class="li"> The <strong><code>firewall.@redirect[0].src_dip=!192.168.1.1</code></strong> LuCI option is called “External <abbr title="Internet Protocol">IP</abbr> address” in 12.09 and you&#039;ll have to enter a --custom-- value to enter the leading ! </div>
+</li>
+<li class="level1"><div class="li"> Add “<a href="http://en.wikipedia.org/wiki/IPv6_address#Transition_from_IPv4" class="urlextern" title="http://en.wikipedia.org/wiki/IPv6_address#Transition_from_IPv4" rel="ugc nofollow">::ffff:0:0/96</a>” so the “Allowed Clients” conaints both “127.0.0.1” and “::ffff:0:0/96” . Find at <strong>Services → Tinyproxy → Configuration → Filtering and ACLs</strong>.</div>
+</li>
+</ul>
+
+<p>
+Some help with tinyproxy logging and log analysis here: <a href="http://www.farville.com/?p=314" class="urlextern" title="http://www.farville.com/?p=314" rel="ugc nofollow">http://www.farville.com/?p=314</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Notes on Attitude Adjustment 12.09 and maybe IPv6&quot;,&quot;hid&quot;:&quot;notes_on_attitude_adjustment_1209_and_maybe_ipv6&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:3,&quot;range&quot;:&quot;4759-&quot;} -->

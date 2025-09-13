@@ -1,0 +1,775 @@
+
+<h1 class="sectionedit1" id="openwrt_in_qemu">OpenWrt in QEMU</h1>
+<div class="level1">
+
+<p>
+QEMU is an an open source processor emulator (and virtualizer).
+This document describes how to run OpenWrt in QEMU.
+If you are looking to use OpenWrt as a QEMU host, see <a href="/docs/guide-user/virtualization/qemu_host" class="wikilink1" title="docs:guide-user:virtualization:qemu_host" data-wiki-id="docs:guide-user:virtualization:qemu_host">Running QEMU guests on OpenWrt</a>.
+</p>
+
+<p>
+It is mixed descriptions from Windows and Linux, so please read through all of it before starting.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Choosing different emulation settings can affect performance greatly.
+</p>
+
+<p>
+Example: 30s iperf-s@openwrt (QEMU running on host) to host
+</p>
+<pre class="code bash">ne2k_pci:<span class="nu0">0.0</span>-<span class="nu0">31.3</span> sec  <span class="nu0">14.6</span> MBytes  <span class="nu0">3.92</span> Mbits<span class="sy0">/</span>sec
+pcnet: <span class="nu0">0.0</span>-<span class="nu0">30.0</span> sec  <span class="nu0">2.38</span> GBytes   <span class="nu0">682</span> Mbits<span class="sy0">/</span>sec
+e1000: <span class="nu0">0.0</span>-<span class="nu0">30.0</span> sec  <span class="nu0">6.23</span> GBytes  <span class="nu0">1.79</span> Gbits<span class="sy0">/</span>sec
+vmxnet3: <span class="nu0">0.0</span>-<span class="nu0">30.0</span> sec  <span class="nu0">8.67</span> GBytes  <span class="nu0">2.48</span> Gbits<span class="sy0">/</span>sec
+virtio-net-pci:  <span class="nu0">0.0</span>-<span class="nu0">30.0</span> sec  <span class="nu0">44.6</span> GBytes  <span class="nu0">12.8</span> Gbits<span class="sy0">/</span>sec</pre>
+<ul>
+<li class="level1"><div class="li"> <img src="/lib/images/smileys/fixme.svg" class="icon smiley" alt="FIXME" /> Trunk: test kernel image with rootfs</div>
+</li>
+<li class="level1"><div class="li"> <img src="/lib/images/smileys/fixme.svg" class="icon smiley" alt="FIXME" /> Trunk: use SD card with rootfs, NFS rootfs, NBD rootfs</div>
+</li>
+<li class="level1"><div class="li"> <img src="/lib/images/smileys/fixme.svg" class="icon smiley" alt="FIXME" /> Trunk: no sound, pcibus, USB emulation in QEMU possible?</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;OpenWrt in QEMU&quot;,&quot;hid&quot;:&quot;openwrt_in_qemu&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-974&quot;} -->
+<h2 class="sectionedit2" id="getting_qemu">Getting QEMU</h2>
+<div class="level2">
+
+<p>
+QEMU runs on many different systems.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Getting QEMU&quot;,&quot;hid&quot;:&quot;getting_qemu&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:2,&quot;range&quot;:&quot;975-1037&quot;} -->
+<h3 class="sectionedit3" id="ubuntu_linux">Ubuntu Linux</h3>
+<div class="level3">
+
+<p>
+Many Linux distributions like Debian, Ubuntu, SUSE, and Fedora provide a QEMU package in their package repositories.
+</p>
+
+<p>
+Example for Debian 9 (Stretch):
+</p>
+<pre class="code bash"><span class="kw2">sudo</span> <span class="kw2">apt-get install</span> qemu</pre>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> QEMU is rapidly developing so features and syntax might change between versions.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Ubuntu Linux&quot;,&quot;hid&quot;:&quot;ubuntu_linux&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;1038-1344&quot;} -->
+<h3 class="sectionedit4" id="windows_version">Windows version</h3>
+<div class="level3">
+
+<p>
+The <a href="http://wiki.qemu.org/Links" class="urlextern" title="http://wiki.qemu.org/Links" rel="ugc nofollow">QEMU Wiki Links</a> page provides you with several unofficial download links of Windows builds.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Windows version&quot;,&quot;hid&quot;:&quot;windows_version&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:4,&quot;range&quot;:&quot;1345-1498&quot;} -->
+<h3 class="sectionedit5" id="macos_version">MacOS version</h3>
+<div class="level3">
+
+<p>
+Use homebrew. The <a href="https://formulae.brew.sh/formula/qemu" class="urlextern" title="https://formulae.brew.sh/formula/qemu" rel="ugc nofollow">homebrew qemu</a> page provides variants for different hardware and MacOS versions.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;MacOS version&quot;,&quot;hid&quot;:&quot;macos_version&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:5,&quot;range&quot;:&quot;1499-1663&quot;} -->
+<h2 class="sectionedit6" id="openwrt_in_qemu_arm">OpenWrt in QEMU ARM</h2>
+<div class="level2">
+
+<p>
+For OpenWrt releases 22 and older, use the <a href="https://archive.openwrt.org/releases/22.03.7/targets/armvirt/" class="urlextern" title="https://archive.openwrt.org/releases/22.03.7/targets/armvirt/" rel="ugc nofollow">armvirt</a> target with QEMU to emulate an ARM system.  For releases 23 and newer (including snapshots), use the <a href="https://https://downloads.openwrt.org/releases/24.10.1/targets/armsr/" class="urlextern" title="https://https://downloads.openwrt.org/releases/24.10.1/targets/armsr/" rel="ugc nofollow">armsr</a> target instead.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;OpenWrt in QEMU ARM&quot;,&quot;hid&quot;:&quot;openwrt_in_qemu_arm&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:6,&quot;range&quot;:&quot;1664-2012&quot;} -->
+<h3 class="sectionedit7" id="boot_with_initramfs">Boot with initramfs</h3>
+<div class="level3">
+
+<p>
+This is the simplest method that can be used to test an image.
+However, it runs entirely in RAM: any modification made is lost upon reboot.
+</p>
+
+<p>
+To use this boot method, here with 64 <abbr title="Megabyte">MB</abbr> of RAM, run:
+</p>
+<pre class="code bash">qemu-system-arm <span class="re5">-nographic</span> <span class="re5">-M</span> virt <span class="re5">-m</span> <span class="nu0">64</span> <span class="re5">-kernel</span> openwrt-armvirt-zImage-initramfs</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Boot with initramfs&quot;,&quot;hid&quot;:&quot;boot_with_initramfs&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:7,&quot;range&quot;:&quot;2013-2341&quot;} -->
+<h2 class="sectionedit8" id="openwrt_in_qemu_aarch64">OpenWrt in QEMU aarch64</h2>
+<div class="level2">
+
+<p>
+aarch64 is used by many modern Arm CPUs.
+The instruction set is called armv8.
+The target is <a href="https://https://downloads.openwrt.org/releases/24.10.1/targets/armsr/" class="urlextern" title="https://https://downloads.openwrt.org/releases/24.10.1/targets/armsr/" rel="ugc nofollow">armsr armv8 variant</a>.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Needs steps update from 22.03 to current: armvirt-64 to armsr-armv8 <img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" />
+</p>
+<pre class="code bash">qemu-system-aarch64 <span class="re5">-m</span> <span class="nu0">1024</span> <span class="re5">-smp</span> <span class="nu0">2</span> <span class="re5">-cpu</span> cortex-a57 <span class="re5">-M</span> virt <span class="re5">-nographic</span> \
+<span class="re5">-kernel</span> openwrt-19.07.3-armvirt-<span class="nu0">64</span>-Image-initramfs \
+<span class="re5">-drive</span> <span class="re2">if</span>=none,<span class="re2">file</span>=disk.img,<span class="re2">id</span>=hd0 <span class="re5">-device</span> virtio-blk-device,<span class="re2">drive</span>=hd0</pre>
+
+<p>
+Here&#039;s an example with network interface and persistent storage:
+</p>
+<pre class="code bash">qemu-system-aarch64 <span class="re5">--enable-kvm</span> <span class="re5">-M</span> virt <span class="re5">-nographic</span> <span class="re5">-nodefaults</span> \
+<span class="re5">-m</span> <span class="nu0">128</span> \
+<span class="re5">-cpu</span> host <span class="re5">-smp</span> <span class="nu0">2</span> \
+<span class="re5">-kernel</span> openwrt-armvirt-<span class="nu0">64</span>-Image <span class="re5">-append</span> <span class="st0">&quot;root=fe00&quot;</span> \
+<span class="re5">-blockdev</span> <span class="re2">driver</span>=raw,node-name=hd0,cache.direct=on,file.driver=<span class="kw2">file</span>,file.filename=openwrt-armvirt-<span class="nu0">64</span>-root.ext4 \
+<span class="re5">-device</span> virtio-blk-pci,<span class="re2">drive</span>=hd0 \
+<span class="re5">-netdev</span> <span class="re2">type</span>=tap,<span class="re2">id</span>=nic1,<span class="re2">ifname</span>=kvm0,<span class="re2">script</span>=no,<span class="re2">downscript</span>=no \
+<span class="re5">-device</span> virtio-net-pci,disable-legacy=on,disable-modern=off,<span class="re2">netdev</span>=nic1,<span class="re2">mac</span>=ba:ad:1d:ea:01:02 \
+<span class="re5">-device</span> qemu-xhci,<span class="re2">id</span>=xhci,<span class="re2">p2</span>=<span class="nu0">8</span>,<span class="re2">p3</span>=<span class="nu0">8</span> \
+<span class="re5">-device</span> usb-host,<span class="re2">vendorid</span>=0x7392,<span class="re2">productid</span>=0x7822</pre>
+<ul>
+<li class="level1"><div class="li"> kernel without initrd will automatically attempt to mount ext4 partition, but it has to be told where it is with the <code>-append “root=fe00”</code> parameter (if you don&#039;t specify this, the kernel will list available block devices and reboot)</div>
+</li>
+<li class="level1"><div class="li"> <code>-blockdev</code> followed by <code>-device</code> is the new way of specifying block devices in qemu - I could&#039;ve used -drive, but I copied most of the config from elsewhere</div>
+</li>
+<li class="level1"><div class="li"> <code>-netdev</code> binds a virtual NIC to host tap interface kvm0, which should be created before starting qemu; if you need multiple NICs, just copy the <code>-netdev</code> and <code>-device virtion-net-pci</code> lines and adjust ifname (tap device on host), id (device id, ties -netdev and -device together) and mac address</div>
+</li>
+<li class="level1"><div class="li"> last two lines add a USB3 controller and attach a physical USB WiFi dongle to the VM</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;OpenWrt in QEMU aarch64&quot;,&quot;hid&quot;:&quot;openwrt_in_qemu_aarch64&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:8,&quot;range&quot;:&quot;2342-4295&quot;} -->
+<h3 class="sectionedit9" id="openwrt_in_qemu_aarch64_on_apple_silicon_macos_m1_hardware_native">OpenWrt in QEMU aarch64 on Apple Silicon (MacOS, M1+ hardware, Native)</h3>
+<div class="level3">
+
+<p>
+It is possible to use native virtualisation on Apple arm64 hardware under MacOS (high performance variant)
+</p>
+
+<p>
+The target is <a href="https://downloads.openwrt.org/snapshots/targets/armsr/armv8/" class="urlextern" title="https://downloads.openwrt.org/snapshots/targets/armsr/armv8/" rel="ugc nofollow">armsr armv8 variant</a>
+</p>
+
+<p>
+Non-persistent variant (with <strong>openwrt-armvirt-64-Image-initramfs</strong>):
+</p>
+<pre class="code bash">qemu-system-aarch64 <span class="re5">-m</span> <span class="nu0">1024</span> <span class="re5">-smp</span> <span class="nu0">2</span> <span class="re5">-cpu</span> host <span class="re5">-M</span> virt,<span class="re2">highmem</span>=off \
+<span class="re5">-nographic</span> \
+<span class="re5">-accel</span> hvf \
+<span class="re5">-kernel</span> openwrt-armvirt-<span class="nu0">64</span>-Image-initramfs \
+<span class="re5">-device</span> virtio-net,<span class="re2">netdev</span>=net0 <span class="re5">-netdev</span> user,<span class="re2">id</span>=net0,<span class="re2">net</span>=192.168.1.0<span class="sy0">/</span><span class="nu0">24</span>,<span class="re2">hostfwd</span>=tcp:127.0.0.1:<span class="nu0">1122</span>-192.168.1.1:<span class="nu0">22</span> \
+<span class="re5">-device</span> virtio-net,<span class="re2">netdev</span>=net1 <span class="re5">-netdev</span> user,<span class="re2">id</span>=net1,<span class="re2">net</span>=192.0.2.0<span class="sy0">/</span><span class="nu0">24</span></pre>
+
+<p>
+Persistent (squashfs) variant (with <strong>openwrt-armvirt-64-Image</strong> and <strong>openwrt-armvirt-64-rootfs-squashfs.img</strong>):
+</p>
+<pre class="code bash">qemu-system-aarch64 <span class="re5">-m</span> <span class="nu0">1024</span> <span class="re5">-smp</span> <span class="nu0">2</span> <span class="re5">-cpu</span> host <span class="re5">-M</span> virt,<span class="re2">highmem</span>=off \
+<span class="re5">-nographic</span> \
+<span class="re5">-accel</span> hvf \
+<span class="re5">-kernel</span> openwrt-armvirt-<span class="nu0">64</span>-Image \
+<span class="re5">-drive</span> <span class="re2">file</span>=openwrt-armvirt-<span class="nu0">64</span>-rootfs-squashfs.img,<span class="re2">format</span>=raw,<span class="re2">if</span>=virtio \
+<span class="re5">-append</span> <span class="re2">root</span>=<span class="sy0">/</span>dev<span class="sy0">/</span>vda \
+<span class="re5">-device</span> virtio-net,<span class="re2">netdev</span>=net0 <span class="re5">-netdev</span> user,<span class="re2">id</span>=net0,<span class="re2">net</span>=192.168.1.0<span class="sy0">/</span><span class="nu0">24</span>,<span class="re2">hostfwd</span>=tcp:127.0.0.1:<span class="nu0">1122</span>-192.168.1.1:<span class="nu0">22</span> \
+<span class="re5">-device</span> virtio-net,<span class="re2">netdev</span>=net1 <span class="re5">-netdev</span> user,<span class="re2">id</span>=net1,<span class="re2">net</span>=192.0.2.0<span class="sy0">/</span><span class="nu0">24</span></pre>
+
+<p>
+Both variants provide two network interfaces to OpenWrt:
+</p>
+<ol>
+<li class="level1"><div class="li"> eth0 (<abbr title="Local Area Network">LAN</abbr>)</div>
+</li>
+<li class="level1"><div class="li"> eth1 (<abbr title="Wide Area Network">WAN</abbr>). qemu dhcp-server will allocate 192.0.2.15 <abbr title="Internet Protocol">IP</abbr> address for OpenWrt host and provide <abbr title="Internet Protocol version 4">IPv4</abbr> Internet access</div>
+</li>
+</ol>
+
+<p>
+To access OpenWrt via <abbr title="Secure Shell">SSH</abbr> from host:
+</p>
+<pre class="code bash"><span class="kw2">ssh</span> <span class="re5">-p1122</span> root<span class="sy0">@</span>127.0.0.1</pre>
+
+<p>
+It is possible to connect from OpenWrt guest to host by <abbr title="Internet Protocol">IP</abbr> 192.168.1.2 (via eth0) or 192.0.2.2 (via eth1)
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;OpenWrt in QEMU aarch64 on Apple Silicon (MacOS, M1+ hardware, Native)&quot;,&quot;hid&quot;:&quot;openwrt_in_qemu_aarch64_on_apple_silicon_macos_m1_hardware_native&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:9,&quot;range&quot;:&quot;4296-5926&quot;} -->
+<h2 class="sectionedit10" id="openwrt_in_qemu_mips">OpenWrt in QEMU MIPS</h2>
+<div class="level2">
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Use QEMU &gt;= 2.2 (earlier versions can have bugs with MIPS16) <a href="https://dev.openwrt.org/ticket/16881" class="urlextern" title="https://dev.openwrt.org/ticket/16881" rel="ugc nofollow">ticket 16881</a>
+- Ubuntu 14.03.x LTS uses QEMU 2.0 which is has this bug.
+</p>
+
+<p>
+The “<a href="/docs/techref/targets/malta" class="wikilink1" title="docs:techref:targets:malta" data-wiki-id="docs:techref:targets:malta">malta</a>” platform is meant for use with QEMU for emulating a MIPS system.
+</p>
+
+<p>
+The <code>malta</code> target supports both big and little-endian variants, pick the matching files and qemu version (<code>qemu-system-mips</code>, or <code>qemu-system-mipsel</code>).
+</p>
+<pre class="code bash">qemu-system-mipsel \
+<span class="re5">-kernel</span> openwrt-malta-le-vmlinux-initramfs.elf \
+<span class="re5">-nographic</span> <span class="re5">-m</span> <span class="nu0">256</span></pre>
+
+<p>
+In recent enough versions one can enable ext4 root filesystem image building, and since <a href="https://dev.openwrt.org/changeset/46269" class="urlextern" title="https://dev.openwrt.org/changeset/46269" rel="ugc nofollow">r46269</a> (<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> only in trunk, it&#039;s not part of the 15.05 CC release) it&#039;s possible to boot straight from that image (without an initramfs):
+</p>
+<pre class="code">qemu-system-mipsel -M malta \
+-hda openwrt-malta-le-root.ext4 \
+-kernel openwrt-malta-le-vmlinux.elf \
+-nographic -append &quot;root=/dev/sda console=ttyS0&quot;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;OpenWrt in QEMU MIPS&quot;,&quot;hid&quot;:&quot;openwrt_in_qemu_mips&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:10,&quot;range&quot;:&quot;5927-6949&quot;} -->
+<h2 class="sectionedit11" id="openwrt_in_qemu_risc-v">OpenWrt in QEMU RISC-V</h2>
+<div class="level2">
+
+<p>
+Use the build documentation found on the HiFive Unleashed page.
+The process described there will generate the bbl.qemu (BBL+vmlinux) image required to boot with QEMU.
+For reference, use <a href="https://git.openwrt.org/?p=openwrt/staging/wigyori.git;a=shortlog;h=refs/heads/riscv-201810" class="urlextern" title="https://git.openwrt.org/?p=openwrt/staging/wigyori.git;a=shortlog;h=refs/heads/riscv-201810" rel="ugc nofollow">https://git.openwrt.org/?p=openwrt/staging/wigyori.git;a=shortlog;h=refs/heads/riscv-201810</a>
+</p>
+
+<p>
+Until 4.19 support is merged into openwrt/trunk, the port itself cannot be merged into trunk, and manual builds are required.
+</p>
+
+<p>
+RISC-V support is in mainline qemu, refer to <a href="https://wiki.qemu.org/Documentation/Platforms/RISCV" class="urlextern" title="https://wiki.qemu.org/Documentation/Platforms/RISCV" rel="ugc nofollow">https://wiki.qemu.org/Documentation/Platforms/RISCV</a>
+</p>
+
+<p>
+The suggested QEMU startup is:
+</p>
+<pre class="code bash">$ qemu-system-riscv64 <span class="re5">-nographic</span> <span class="re5">-machine</span> virt \
+  <span class="re5">-kernel</span> bbl.qemu <span class="re5">-append</span> <span class="st0">&quot;root=/dev/vda2 ro console=ttyS0&quot;</span> \
+  <span class="re5">-drive</span> <span class="re2">file</span>=sdcard.img,<span class="re2">format</span>=raw,<span class="re2">id</span>=hd0 \
+  <span class="re5">-device</span> virtio-blk-device,<span class="re2">drive</span>=hd0 \
+  <span class="re5">-device</span> virtio-net-device,<span class="re2">netdev</span>=net0 <span class="re5">-netdev</span> user,<span class="re2">id</span>=net0 \
+  <span class="re5">-smp</span> <span class="nu0">2</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;OpenWrt in QEMU RISC-V&quot;,&quot;hid&quot;:&quot;openwrt_in_qemu_risc-v&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:11,&quot;range&quot;:&quot;6950-7811&quot;} -->
+<h2 class="sectionedit12" id="openwrt_in_qemu_x86-64">OpenWrt in QEMU x86-64</h2>
+<div class="level2">
+
+<p>
+The x86-64 target has support for ESXi images by default.
+Booting the VMDK / VDI images might not work with newer QEMU versions.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> IMG/VDI/VMDK with “-hda” switch do not work with QEMU 2.x.
+</p>
+
+<p>
+pc-q35-2.0 / q35 emulates a different machine.
+With new syntax (no -hda , -net) the IMG / VDI / VMDK works here.
+Some emulated network cards might have performance issues.
+</p>
+
+<p>
+Features:
+</p>
+<ul>
+<li class="level1"><div class="li"> 2 HDDs (1 OpenWrt image, 1 data)</div>
+</li>
+<li class="level1"><div class="li"> 1 drive per bus, 6 bus available (until ide.5)</div>
+</li>
+<li class="level1"><div class="li"> 2 Network cards : 1 bridged to host (need higher permission) and 1 “user” (default, <abbr title="Network Address Translation">NAT</abbr> 10.x.x.x)</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;OpenWrt in QEMU x86-64&quot;,&quot;hid&quot;:&quot;openwrt_in_qemu_x86-64&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:12,&quot;range&quot;:&quot;7812-8414&quot;} -->
+<h3 class="sectionedit13" id="preparation">Preparation</h3>
+<div class="level3">
+
+<p>
+Unpack the archive and expand the F2FS data partition if necessary.
+This partition is generated on first boot and needs the drive to have free space available.
+Perform <a href="/docs/guide-user/troubleshooting/failsafe_and_factory_reset#hard_factory_reset" class="wikilink1" title="docs:guide-user:troubleshooting:failsafe_and_factory_reset" data-wiki-id="docs:guide-user:troubleshooting:failsafe_and_factory_reset">hard factory reset</a> if F2FS is corrupted or failed to set up properly.
+The exact expanding method depends on your virtualization system.
+</p>
+
+</div>
+
+<h4 id="kvmqemu">KVM/QEMU</h4>
+<div class="level4">
+
+<p>
+If you are using KVM/QEMU virtualization.
+</p>
+<pre class="code bash"><span class="kw2">gunzip</span> openwrt-<span class="sy0">*</span>.img.gz
+qemu-img resize <span class="re5">-f</span> raw openwrt-<span class="sy0">*</span>.img 300M</pre>
+
+</div>
+
+<h4 id="resizing_rootfs_on_combined_efi_image">Resizing rootfs on combined EFI image</h4>
+<div class="level4">
+
+<p>
+Increase base image size to 512M: 
+</p>
+<pre class="code bash">qemu-img resize <span class="re5">-f</span> raw openwrt-x86-<span class="nu0">64</span>-generic-squashfs-combined-efi.img 512M</pre>
+
+<p>
+Loop mount the base image so it can be modified:
+</p>
+<pre class="code bash"><span class="re2">loop_device</span>=$<span class="br0">&#40;</span>losetup -f<span class="br0">&#41;</span>
+<span class="kw2">sudo</span> losetup <span class="re1">$loop_device</span> openwrt-x86-<span class="nu0">64</span>-generic-squashfs-combined-efi.img</pre>
+
+<p>
+Fix the GPT partition and increase the root partition size to 100% (512M):
+</p>
+<pre class="code bash"><span class="kw3">echo</span> <span class="re5">-e</span> <span class="st0">&quot;OK<span class="es1">\n</span>Fix&quot;</span> <span class="sy0">|</span> <span class="kw2">sudo</span> parted <span class="re5">---pretend-input-tty</span> <span class="st0">&quot;<span class="es2">$loop_device</span>&quot;</span> print
+<span class="kw2">sudo</span> parted <span class="st0">&quot;<span class="es2">$loop_device</span>&quot;</span> resizepart <span class="nu0">2</span> <span class="nu0">100</span><span class="sy0">%</span>
+<span class="kw2">sudo</span> parted <span class="st0">&quot;<span class="es2">$loop_device</span>&quot;</span> print</pre>
+
+<p>
+Remove the loop mount device
+</p>
+<pre class="code bash"><span class="kw2">sudo</span> losetup <span class="re5">-d</span> <span class="re1">$loop_device</span></pre>
+
+</div>
+
+<h4 id="libvirt_kvmqemu">libvirt + KVM/QEMU</h4>
+<div class="level4">
+
+<p>
+If you are using KVM/QEMU with libvirt management framework.
+Import the image as-is and stop the first boot on the GRUB screen.
+Then expand the block device online as follows and continue the boot.
+</p>
+<pre class="code bash">virsh blockresize openwrt vda 300M
+virsh vol-resize openwrt 300M default</pre>
+
+</div>
+
+<h4 id="other_virtualization_systems">Other virtualization systems</h4>
+<div class="level4">
+
+<p>
+If you are using other virtualization systems like Proxmox, VMWare ESXi/Workstation, VirtualBox, XenServer/XCP-ng, and any other self-respecting virtualization software it is also possible to expand the drive but you will have to look at its own documentation for guidance.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Preparation&quot;,&quot;hid&quot;:&quot;preparation&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:13,&quot;range&quot;:&quot;8415-10284&quot;} -->
+<h3 class="sectionedit14" id="configuration_examples">Configuration examples</h3>
+<div class="level3">
+<pre class="code bash">qemu-system-x86_64 \
+<span class="re5">-enable-kvm</span> \
+<span class="re5">-M</span> pc-q35-<span class="nu0">2.0</span> \
+<span class="re5">-drive</span> <span class="re2">file</span>=openwrt-x86_64-combined-ext4.vdi,<span class="re2">id</span>=d0,<span class="re2">if</span>=none \
+<span class="re5">-device</span> ide-hd,<span class="re2">drive</span>=d0,<span class="re2">bus</span>=ide.0 \
+<span class="re5">-drive</span> <span class="re2">file</span>=data.qcow2,<span class="re2">id</span>=d1,<span class="re2">if</span>=none \
+<span class="re5">-device</span> ide-hd,<span class="re2">drive</span>=d1,<span class="re2">bus</span>=ide.1 \
+<span class="re5">-soundhw</span> ac97 \
+<span class="re5">-netdev</span> bridge,<span class="re2">br</span>=virbr0,<span class="re2">id</span>=hn0 \
+<span class="re5">-device</span> e1000,<span class="re2">netdev</span>=hn0,<span class="re2">id</span>=nic1 \
+<span class="re5">-netdev</span> user,<span class="re2">id</span>=hn1 \
+<span class="re5">-device</span> e1000,<span class="re2">netdev</span>=hn1,<span class="re2">id</span>=nic2
+&nbsp;
+qemu-system-x86_64 <span class="re5">-M</span> q35 \
+<span class="re5">-drive</span> <span class="re2">file</span>=openwrt-x86_64-combined-ext4.img,<span class="re2">id</span>=d0,<span class="re2">if</span>=none,<span class="re2">bus</span>=<span class="nu0">0</span>,<span class="re2">unit</span>=<span class="nu0">0</span> \
+<span class="re5">-device</span> ide-hd,<span class="re2">drive</span>=d0,<span class="re2">bus</span>=ide.0</pre>
+
+<p>
+UEFI firmware requires ovmf package installed.
+</p>
+<pre class="code bash">qemu-system-x86_64 \
+<span class="re5">-enable-kvm</span> <span class="re5">-m</span> 1G <span class="re5">-drive</span> <span class="re2">if</span>=pflash,<span class="re2">format</span>=raw,<span class="kw3">readonly</span>,<span class="re2">file</span>=<span class="sy0">/</span>usr<span class="sy0">/</span>share<span class="sy0">/</span>edk2-ovmf<span class="sy0">/</span>x64<span class="sy0">/</span>OVMF_CODE.fd \
+<span class="re5">-drive</span> <span class="re2">if</span>=pflash,<span class="re2">format</span>=raw,<span class="re2">file</span>=my_uefi_vars.fd</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration examples&quot;,&quot;hid&quot;:&quot;configuration_examples&quot;,&quot;codeblockOffset&quot;:17,&quot;secid&quot;:14,&quot;range&quot;:&quot;10285-11077&quot;} -->
+<h3 class="sectionedit15" id="network_configuration">Network configuration</h3>
+<div class="level3">
+
+<p>
+QEMU has several options to provide network connectivity to emulated images, see all <code>-net</code> options in qemu(1).
+Although this option is considered obsolete since QEMU 0.12, it continues to work although it is.
+The new syntax uses either <code>-nic</code> for emulating a particular embedded board, or it uses the two options <code>-netdev</code> and <code>-device</code>, see the <a href="https://wiki.qemu.org/Documentation/Networking" class="urlextern" title="https://wiki.qemu.org/Documentation/Networking" rel="ugc nofollow">official documentation</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Network configuration&quot;,&quot;hid&quot;:&quot;network_configuration&quot;,&quot;codeblockOffset&quot;:19,&quot;secid&quot;:15,&quot;range&quot;:&quot;11078-11540&quot;} -->
+<h3 class="sectionedit16" id="provide_internet_access_to_openwrt">Provide Internet access to OpenWrt</h3>
+<div class="level3">
+
+<p>
+The default networking mode for QEMU is “user mode network stack”.
+</p>
+
+<p>
+In this mode, <code>qemu</code> acts as a proxy for outbound <abbr title="Transmission Control Protocol">TCP</abbr>/<abbr title="User Datagram Protocol">UDP</abbr> connections.
+It also provides <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> and <abbr title="Domain Name System">DNS</abbr> service to the emulated system.
+</p>
+
+<p>
+To provide Internet access to the emulated OpenWrt system, use (the example uses an armvirt system, adjust for your setup):
+</p>
+<pre class="code bash">qemu-system-arm <span class="re5">-net</span> nic,<span class="re2">vlan</span>=<span class="nu0">0</span> <span class="re5">-net</span> nic,<span class="re2">vlan</span>=<span class="nu0">1</span> <span class="re5">-net</span> user,<span class="re2">vlan</span>=<span class="nu0">1</span> \
+<span class="re5">-nographic</span> <span class="re5">-M</span> virt <span class="re5">-m</span> <span class="nu0">64</span> <span class="re5">-kernel</span> lede-17.01.0-r3205-59508e3-armvirt-zImage-initramfs</pre>
+
+<p>
+Here, we set up two network cards inside the emulated OpenWrt system:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>eth0</code>, used as <abbr title="Local Area Network">LAN</abbr> in OpenWrt (not connected to anything here)</div>
+</li>
+<li class="level1"><div class="li"> <code>eth1</code>, used as <abbr title="Wide Area Network">WAN</abbr> in OpenWrt, and connected to qemu that will proxy all <abbr title="Transmission Control Protocol">TCP</abbr>/<abbr title="User Datagram Protocol">UDP</abbr> connections towards the Internet</div>
+</li>
+</ul>
+
+<p>
+The OpenWrt system should get both an <abbr title="Internet Protocol version 4">IPv4</abbr> and an <abbr title="Internet Protocol version 6">IPv6</abbr> on <code>eth1</code> (via <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr>/DHCPv6).
+The ranges will be 10.0.2.0/24 and fec0::/64 (qemu defaults, see qemu(1) to configure other ranges).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Provide Internet access to OpenWrt&quot;,&quot;hid&quot;:&quot;provide_internet_access_to_openwrt&quot;,&quot;codeblockOffset&quot;:19,&quot;secid&quot;:16,&quot;range&quot;:&quot;11541-12537&quot;} -->
+<h3 class="sectionedit17" id="provide_access_to_luci_inside_openwrt">Provide access to LuCI inside OpenWrt</h3>
+<div class="level3">
+
+<p>
+LuCI is the web UI used by OpenWrt.
+If you want to check how LuCI works or to poke around with LuCI-apps this setup is for you.
+(the example uses an armvirt system, adjust for your setup)
+</p>
+
+<p>
+<strong>Note</strong>: This setup requires some privileges (<code>CAP_NET_ADMIN</code> and <code>CAP_MKNOD</code> under Linux) so it&#039;s easier to run it under <code>sudo</code>
+</p>
+
+<p>
+Save the script and edit <code>IMAGE</code> variable to reflect your OpenWrt version, then run it under <code>sudo</code>
+</p>
+<pre class="code bash"><span class="co0">#!/bin/sh</span>
+<span class="re2">IMAGE</span>=lede-17.01.0-r3205-59508e3-armvirt-zImage-initramfs
+<span class="re2">LAN</span>=ledetap0
+<span class="co0"># create tap interface which will be connected to OpenWrt LAN NIC</span>
+<span class="kw2">ip</span> tuntap add mode tap <span class="re1">$LAN</span>
+<span class="kw2">ip link</span> <span class="kw1">set</span> dev <span class="re1">$LAN</span> up
+<span class="co0"># configure interface with static ip to avoid overlapping routes</span>
+<span class="kw2">ip addr</span> add 192.168.1.101<span class="sy0">/</span><span class="nu0">24</span> dev <span class="re1">$LAN</span>
+qemu-system-arm \
+<span class="re5">-device</span> virtio-net-pci,<span class="re2">netdev</span>=lan \
+<span class="re5">-netdev</span> tap,<span class="re2">id</span>=lan,<span class="re2">ifname</span>=<span class="re1">$LAN</span>,<span class="re2">script</span>=no,<span class="re2">downscript</span>=no \
+<span class="re5">-device</span> virtio-net-pci,<span class="re2">netdev</span>=wan \
+<span class="re5">-netdev</span> user,<span class="re2">id</span>=wan \
+<span class="re5">-M</span> virt <span class="re5">-nographic</span> <span class="re5">-m</span> <span class="nu0">64</span> <span class="re5">-kernel</span> <span class="re1">$IMAGE</span>
+<span class="co0"># cleanup, delete tap interface created earlier</span>
+<span class="kw2">ip addr</span> flush dev <span class="re1">$LAN</span>
+<span class="kw2">ip link</span> <span class="kw1">set</span> dev <span class="re1">$LAN</span> down
+<span class="kw2">ip</span> tuntap del mode tap dev <span class="re1">$LAN</span></pre>
+
+<p>
+How networking works:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>eth0</code>, used as <abbr title="Local Area Network">LAN</abbr> in OpenWrt, and connected to <code>ledetap0</code> in host system(static address <code>192.168.1.101/24</code>), providing access to LuCI at <code><a href="http://192.168.1.1" class="urlextern" title="http://192.168.1.1" rel="ugc nofollow">http://192.168.1.1</a></code></div>
+</li>
+<li class="level1"><div class="li"> <code>eth1</code>, used as <abbr title="Wide Area Network">WAN</abbr> in OpenWrt, and connected to qemu that will proxy all <abbr title="Transmission Control Protocol">TCP</abbr>/<abbr title="User Datagram Protocol">UDP</abbr> connections towards the Internet</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Provide access to LuCI inside OpenWrt&quot;,&quot;hid&quot;:&quot;provide_access_to_luci_inside_openwrt&quot;,&quot;codeblockOffset&quot;:20,&quot;secid&quot;:17,&quot;range&quot;:&quot;12538-13994&quot;} -->
+<h3 class="sectionedit18" id="forward_ports_of_the_host">Forward ports of the host</h3>
+<div class="level3">
+
+<p>
+If you configure NICs on embedded systems, which cannot be used via <code>-device</code>, you can access them from the host by forwarding a (high) port in the <code>-nic</code> option using <code>hostfwd=hostip:hostport-guestip:guestport</code>.
+</p>
+
+<p>
+For example, to <a href="https://wiki.qemu.org/Documentation/Networking#How_to_get_SSH_access_to_a_guest" class="urlextern" title="https://wiki.qemu.org/Documentation/Networking#How_to_get_SSH_access_to_a_guest" rel="ugc nofollow">access SSH</a> by <code>ssh root@127.1 -p 1122</code> from the host on the guest system <code>malta-be</code>, you can use:
+</p>
+<pre class="code bash">qemu-system-mips <span class="re5">-M</span> malta <span class="re5">-nographic</span> <span class="re5">-hda</span> openwrt-malta-be-rootfs-ext4.img \
+<span class="re5">-kernel</span> openwrt-malta-be-vmlinux.elf <span class="re5">-append</span> <span class="st_h">'root=/dev/sda console=ttyS0'</span> \
+<span class="re5">-nic</span> <span class="re2">hostfwd</span>=tcp::<span class="nu0">1122</span>-:<span class="nu0">22</span></pre>
+
+<p>
+If the network adapter is a <abbr title="Wide Area Network">WAN</abbr> interface, you have to add firewall rules in the guest to allow <abbr title="Secure Shell">SSH</abbr>:
+</p>
+<pre class="code bash">uci <span class="re5">-q</span> delete firewall.ssh
+uci <span class="kw1">set</span> firewall.ssh=<span class="st0">&quot;rule&quot;</span>
+uci <span class="kw1">set</span> firewall.ssh.name=<span class="st0">&quot;Allow-SSH&quot;</span>
+uci <span class="kw1">set</span> firewall.ssh.src=<span class="st0">&quot;wan&quot;</span>
+uci <span class="kw1">set</span> firewall.ssh.dest_port=<span class="st0">&quot;22&quot;</span>
+uci <span class="kw1">set</span> firewall.ssh.proto=<span class="st0">&quot;tcp&quot;</span>
+uci <span class="kw1">set</span> firewall.ssh.target=<span class="st0">&quot;ACCEPT&quot;</span>
+uci commit firewall
+<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>firewall restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Forward ports of the host&quot;,&quot;hid&quot;:&quot;forward_ports_of_the_host&quot;,&quot;codeblockOffset&quot;:21,&quot;secid&quot;:18,&quot;range&quot;:&quot;13995-15057&quot;} -->
+<h3 class="sectionedit19" id="use_kvm_igb_network_interfaces">Use KVM igb network interfaces</h3>
+<div class="level3">
+
+<p>
+(taken from mailing list post by Philip Prindeville)
+</p>
+
+<p>
+On my Centos 7.4 KVM host, I did:
+</p>
+
+<p>
+To provision 10 VFs per NIC:
+</p>
+<pre class="code bash"><span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> EOF <span class="sy0">&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>modprobe.d<span class="sy0">/</span>sr-iov.conf
+<span class="co0"># for SR-IOV support</span>
+options igb <span class="re2">max_vfs</span>=<span class="nu0">10</span>
+EOF</pre>
+
+<p>
+This will take effect after the next reboot.
+Alternatively by unloading and reloading the IGB module.
+</p>
+
+<p>
+Create XML files for each NIC you want to support virtualization on:
+</p>
+<pre class="code bash"><span class="co0"># cat &lt;&lt; EOF &gt; /tmp/hostdev-net0.xml</span>
+<span class="sy0">&lt;</span>network<span class="sy0">&gt;</span>
+<span class="sy0">&lt;</span>name<span class="sy0">&gt;</span>hostdev-net0<span class="sy0">&lt;/</span>name<span class="sy0">&gt;</span>
+<span class="sy0">&lt;</span>uuid<span class="sy0">&gt;</span>$<span class="br0">&#40;</span><span class="kw2">uuidgen</span><span class="br0">&#41;</span><span class="sy0">&lt;/</span>uuid<span class="sy0">&gt;</span>
+<span class="sy0">&lt;</span>forward <span class="re2">mode</span>=<span class="st_h">'hostdev'</span> <span class="re2">managed</span>=<span class="st_h">'yes'</span><span class="sy0">&gt;</span>
+<span class="sy0">&lt;</span>pf <span class="re2">dev</span>=<span class="st_h">'eno1'</span><span class="sy0">/&gt;</span>
+<span class="sy0">&lt;/</span>forward<span class="sy0">&gt;</span>
+<span class="sy0">&lt;/</span>network<span class="sy0">&gt;</span>
+EOF
+&nbsp;
+<span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> EOF <span class="sy0">&gt;</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>hostdev-net1.xml
+<span class="sy0">&lt;</span>network<span class="sy0">&gt;</span>
+<span class="sy0">&lt;</span>name<span class="sy0">&gt;</span>hostdev-net1<span class="sy0">&lt;/</span>name<span class="sy0">&gt;</span>
+<span class="sy0">&lt;</span>uuid<span class="sy0">&gt;</span>$<span class="br0">&#40;</span><span class="kw2">uuidgen</span><span class="br0">&#41;</span><span class="sy0">&lt;/</span>uuid<span class="sy0">&gt;</span>
+<span class="sy0">&lt;</span>forward <span class="re2">mode</span>=<span class="st_h">'hostdev'</span> <span class="re2">managed</span>=<span class="st_h">'yes'</span><span class="sy0">&gt;</span>
+<span class="sy0">&lt;</span>pf <span class="re2">dev</span>=<span class="st_h">'eno2'</span><span class="sy0">/&gt;</span>
+<span class="sy0">&lt;/</span>forward<span class="sy0">&gt;</span>
+<span class="sy0">&lt;/</span>network<span class="sy0">&gt;</span>
+EOF
+&nbsp;
+virsh net-destroy default
+virsh net-define <span class="sy0">/</span>tmp<span class="sy0">/</span>hostdev-net0.xml
+virsh net-autostart hostdev-net0
+virsh net-define <span class="sy0">/</span>tmp<span class="sy0">/</span>hostdev-net1.xml
+virsh net-autostart hostdev-net1</pre>
+
+<p>
+To create the pool of VF interfaces.
+</p>
+
+<p>
+Then to add interfaces to VMs, I did:
+</p>
+<pre class="code bash"><span class="co0"># cat &lt;&lt; EOF &gt; /tmp/new-interface-0.1.xml</span>
+<span class="sy0">&lt;</span>interface <span class="re2">type</span>=<span class="st_h">'network'</span><span class="sy0">&gt;</span>
+<span class="sy0">&lt;</span>mac <span class="re2">address</span>=<span class="st_h">'52:54:00:0d:84:f4'</span><span class="sy0">/&gt;</span>
+<span class="sy0">&lt;</span><span class="kw3">source</span> <span class="re2">network</span>=<span class="st_h">'hostdev-net0'</span><span class="sy0">/&gt;</span>
+<span class="sy0">&lt;</span>address <span class="re2">type</span>=<span class="st_h">'pci'</span> <span class="re2">domain</span>=<span class="st_h">'0x0000'</span> <span class="re2">bus</span>=<span class="st_h">'0x07'</span> <span class="re2">slot</span>=<span class="st_h">'0x10'</span> <span class="re2">function</span>=<span class="st_h">'0x0'</span><span class="sy0">/&gt;</span>
+<span class="sy0">&lt;/</span>interface<span class="sy0">&gt;</span>
+EOF
+&nbsp;
+<span class="co0"># Where the ‘0d:84:f4’ is 3 unique bytes</span>
+<span class="kw2">dd</span> <span class="re2">status</span>=none <span class="re2">bs</span>=<span class="nu0">1</span> <span class="re2">count</span>=<span class="nu0">3</span> <span class="re2">if</span>=<span class="sy0">/</span>dev<span class="sy0">/</span>urandom <span class="sy0">|</span> <span class="kw2">hexdump</span> <span class="re5">-e</span> <span class="st_h">'/1 &quot;%x&quot;\n'</span>
+&nbsp;
+virsh attach-device my-machine-<span class="nu0">1</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>new-interface-<span class="nu0">0.1</span>.xml</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Use KVM igb network interfaces&quot;,&quot;hid&quot;:&quot;use_kvm_igb_network_interfaces&quot;,&quot;codeblockOffset&quot;:23,&quot;secid&quot;:19,&quot;range&quot;:&quot;15058-16553&quot;} -->
+<h2 class="sectionedit20" id="advanced_boot_methods">Advanced boot methods</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Advanced boot methods&quot;,&quot;hid&quot;:&quot;advanced_boot_methods&quot;,&quot;codeblockOffset&quot;:26,&quot;secid&quot;:20,&quot;range&quot;:&quot;16554-16587&quot;} -->
+<h3 class="sectionedit21" id="use_kvm_acceleration">Use KVM acceleration</h3>
+<div class="level3">
+
+<p>
+This will be much faster, but will only work if the architecture of your CPU is the same as the target image (here, ARM cortex-a15).
+</p>
+<pre class="code bash">qemu-system-arm <span class="re5">-nographic</span> <span class="re5">-M</span> virt,<span class="re2">accel</span>=kvm <span class="re5">-cpu</span> host <span class="re5">-m</span> <span class="nu0">64</span> <span class="re5">-kernel</span> openwrt-armvirt-zImage-initramfs</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Use KVM acceleration&quot;,&quot;hid&quot;:&quot;use_kvm_acceleration&quot;,&quot;codeblockOffset&quot;:26,&quot;secid&quot;:21,&quot;range&quot;:&quot;16588-16875&quot;} -->
+<h3 class="sectionedit22" id="boot_with_a_separate_rootfs">Boot with a separate rootfs</h3>
+<div class="level3">
+<pre class="code bash">qemu-system-arm <span class="re5">-nographic</span> <span class="re5">-M</span> virt <span class="re5">-m</span> <span class="nu0">64</span> \
+<span class="re5">-kernel</span> openwrt-armvirt-zImage \
+<span class="re5">-drive</span> <span class="re2">file</span>=openwrt-armvirt-root.ext4,<span class="re2">format</span>=raw,<span class="re2">if</span>=virtio \
+<span class="re5">-append</span> <span class="st_h">'root=/dev/vda rootwait'</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Boot with a separate rootfs&quot;,&quot;hid&quot;:&quot;boot_with_a_separate_rootfs&quot;,&quot;codeblockOffset&quot;:27,&quot;secid&quot;:22,&quot;range&quot;:&quot;16876-17104&quot;} -->
+<h3 class="sectionedit23" id="boot_with_local_directory_as_rootfs">Boot with local directory as rootfs</h3>
+<div class="level3">
+<pre class="code bash">qemu-system-arm <span class="re5">-nographic</span> <span class="re5">-M</span> virt <span class="re5">-m</span> <span class="nu0">64</span> <span class="re5">-kernel</span> openwrt-armvirt-zImage \
+<span class="re5">-fsdev</span> <span class="kw3">local</span>,<span class="re2">id</span>=rootdev,<span class="re2">path</span>=root-armvirt<span class="sy0">/</span>,<span class="re2">security_model</span>=none \
+<span class="re5">-device</span> virtio-9p-pci,<span class="re2">fsdev</span>=rootdev,<span class="re2">mount_tag</span>=<span class="sy0">/</span>dev<span class="sy0">/</span>root \
+<span class="re5">-append</span> <span class="st_h">'rootflags=trans=virtio,version=9p2000.L,cache=loose rootfstype=9p'</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Boot with local directory as rootfs&quot;,&quot;hid&quot;:&quot;boot_with_local_directory_as_rootfs&quot;,&quot;codeblockOffset&quot;:28,&quot;secid&quot;:23,&quot;range&quot;:&quot;17105-17444&quot;} -->
+<h3 class="sectionedit24" id="run_with_kvmtool">Run with kvmtool</h3>
+<div class="level3">
+<pre class="code bash"><span class="co0"># start a named machine</span>
+lkvm run <span class="re5">-k</span> openwrt-armvirt-zImage <span class="re5">-i</span> openwrt-armvirt-rootfs.cpio <span class="re5">--name</span> armvirt0
+&nbsp;
+<span class="co0"># start with virtio-9p rootfs</span>
+lkvm run <span class="re5">-k</span> openwrt-armvirt-zImage <span class="re5">-d</span> root-armvirt<span class="sy0">/</span>
+&nbsp;
+<span class="co0"># stop &quot;armvirt0&quot;</span>
+lkvm stop <span class="re5">--name</span> armvirt0
+&nbsp;
+<span class="co0"># stop all</span>
+lkvm stop <span class="re5">--all</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Run with kvmtool&quot;,&quot;hid&quot;:&quot;run_with_kvmtool&quot;,&quot;codeblockOffset&quot;:29,&quot;secid&quot;:24,&quot;range&quot;:&quot;17445-17754&quot;} -->
+<h2 class="sectionedit25" id="examples">Examples</h2>
+<div class="level2">
+
+<p>
+This example uses OpenWrt virtualized using Debian, QEMU with KVM and a Lex twitter system with Intel Atom D525 and ICH8M chipset.
+Normally OpenWrt works on most of the hardware mentioned in the table of hardware (search in this wiki), and also on most of the hardware that support <strong>Intel x86 ISA</strong> or <code>x86</code> in the address bar.
+</p>
+
+<p>
+Anyway some embedded x86 board have particular hardware that is not always well supported by the OpenWrt platform, even if all the <code>kmod</code> packages are included in the basic image.
+One of this x86 compatible hardware family are systems based on Intel Atom and ICH8M chipset (maybe also others), like the Lex twitter system 3I525U.
+</p>
+
+<p>
+OpenWrt is able to run on that system, but for example, is not able to manage the possibility of having two <abbr title="Wide Area Network">WAN</abbr> connections with different metric.
+The request will be always routed to the interface with higher metric also using <code>ping -I &lt;wan2_interface&gt; 8.8.8.8</code>.
+Moreover software like <code>Nmap</code> will fail to be bind to certain interfaces.
+Someone with more knowledge could explain why this happens but as workaround one can use a more complete linux system (for example Debian) as base and then virtualize (<code>virtualization OR qemu OR kvm OR hypervisor</code> in the address bar) openwrt, that in the end requires really a little resources most of the time, or one can assign plenty of resources because at the end the base system is quite powerful.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Examples&quot;,&quot;hid&quot;:&quot;examples&quot;,&quot;codeblockOffset&quot;:30,&quot;secid&quot;:25,&quot;range&quot;:&quot;17755-19190&quot;} -->
+<h3 class="sectionedit26" id="prepare_debian_71_in_the_test_for_virtualization">Prepare debian (7.1 in the test) for virtualization</h3>
+<div class="level3">
+
+<p>
+Debian was installed on a 2 <abbr title="Gigabyte">GB</abbr> CF card through a USB stick and netinstaller, having only the basic system utilities and ssh utilities.
+1.1 <abbr title="Gigabyte">GB</abbr> of space were used, 600 <abbr title="Megabyte">MB</abbr> free and the rest swap.
+</p>
+
+<p>
+Install the following packages: <code>apt-get install qemu-kvm bridge-utils libvirt-bin virtinst</code>
+</p>
+<ul>
+<li class="level1"><div class="li"> Qemu-kvm for QEMU and KVM additional software components.</div>
+</li>
+<li class="level1"><div class="li"> bridge-utils for managing bridges in debian</div>
+</li>
+<li class="level1"><div class="li"> libvirt-bin for additional virtualization packages</div>
+</li>
+<li class="level1"><div class="li"> virtinst for handy virtualization management</div>
+</li>
+</ul>
+
+<p>
+If you don&#039;t want to use any user but just work with root (the
+objective is to let OpenWrt run on the twitter system, not having a well
+set up Debian system):
+</p>
+<ul>
+<li class="level1"><div class="li"> Change /etc/libvirt/qemu.conf uncommenting user/group to work as root.</div>
+</li>
+<li class="level1"><div class="li"> restart /etc/init.d/libvirt* entries.</div>
+</li>
+</ul>
+
+<p>
+Then we have to prepare the network.
+Modify <code>/etc/network/interfaces</code> a follows (adapt according to your needs)
+</p>
+<pre class="code bash">auto br0 br1 br2 br3
+&nbsp;
+iface br0 inet dhcp
+  bridge_ports eth0
+&nbsp;
+iface br1 inet dhcp
+  bridge_ports eth1
+&nbsp;
+iface br2 inet dhcp
+  bridge_ports eth2
+&nbsp;
+iface br3 inet dhcp
+  bridge_ports eth3</pre>
+
+<p>
+The bridges ( <a href="https://wiki.debian.org/BridgeNetworkConnections" class="urlextern" title="https://wiki.debian.org/BridgeNetworkConnections" rel="ugc nofollow">https://wiki.debian.org/BridgeNetworkConnections</a> ) are helpful because they allows different network adapters, real or virtual ( <a href="/docs/guide-developer/networking/network.interfaces" class="wikilink1" title="docs:guide-developer:networking:network.interfaces" data-wiki-id="docs:guide-developer:networking:network.interfaces">network.interfaces</a> to exchange data (as the word &#039;bridge&#039; suggests) and not only, because the bridge will have a certain mac address but also the virtual interfaces attached to it can have different mac addresses.
+Here the marvels of the linux networking system have to be explained by someone with more knowledge.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Prepare debian (7.1 in the test) for virtualization&quot;,&quot;hid&quot;:&quot;prepare_debian_71_in_the_test_for_virtualization&quot;,&quot;codeblockOffset&quot;:30,&quot;secid&quot;:26,&quot;range&quot;:&quot;19191-20849&quot;} -->
+<h3 class="sectionedit27" id="virtualization_proper">Virtualization proper</h3>
+<div class="level3">
+
+<p>
+Then we need to create our virtual machine.
+The additional packages, apart from QEMU, will help here.
+We can issue the following command, using the x86 generic image placed in the folder <code>/root/openwrt_kvm/</code>:
+</p>
+<pre class="code bash">virt-install <span class="re5">--name</span>=openwrt <span class="re5">--ram</span>=<span class="nu0">256</span> <span class="re5">--vcpus</span>=<span class="nu0">1</span> <span class="re5">--os-type</span>=linux \
+<span class="re5">--disk</span> <span class="re2">path</span>=<span class="sy0">/</span>root<span class="sy0">/</span>openwrt_kvm<span class="sy0">/</span>openwrt-x86-generic-combined-ext4.img,<span class="re2">bus</span>=ide \
+<span class="re5">--network</span> <span class="re2">bridge</span>=br0,<span class="re2">model</span>=e1000 <span class="re5">--import</span>
+<span class="co0"># be careful to the model, e1000 let's openwrt recognize the interface.</span>
+<span class="co0"># http://manpages.ubuntu.com/manpages/lucid/man1/virt-install.1.html</span></pre>
+
+<p>
+If you want to interact with the system from command line, use <code>virsh</code>.
+For example to force the shutdown of a virtual machine <code>virsh destroy openwrt</code> or to delete the virtual machine (but not the disk file) <code>virsh undefine openwrt</code>.
+</p>
+
+<p>
+For having multiple interfaces
+</p>
+<pre class="code bash">virt-install <span class="re5">--name</span>=openwrt <span class="re5">--ram</span>=<span class="nu0">256</span> <span class="re5">--vcpus</span>=<span class="nu0">1</span> <span class="re5">--os-type</span>=linux \
+<span class="re5">--disk</span> <span class="re2">path</span>=<span class="sy0">/</span>root<span class="sy0">/</span>openwrt_kvm<span class="sy0">/</span>openwrt-x86-generic-combined-ext4.img,<span class="re2">bus</span>=ide \
+<span class="re5">--network</span> <span class="re2">bridge</span>=br0,<span class="re2">model</span>=e1000 <span class="re5">--network</span> <span class="re2">bridge</span>=br3,<span class="re2">model</span>=e1000 <span class="re5">--import</span></pre>
+
+<p>
+Remember that the console requires <code>ctrl+5</code> to exit.
+</p>
+
+<p>
+To mark a virtual machine for the autostart, type: <code>virsh autostart openwrt</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Virtualization proper&quot;,&quot;hid&quot;:&quot;virtualization_proper&quot;,&quot;codeblockOffset&quot;:31,&quot;secid&quot;:27,&quot;range&quot;:&quot;20850-22091&quot;} -->
+<h3 class="sectionedit28" id="known_issues">Known issues</h3>
+<div class="level3">
+
+<p>
+* Virtual interfaces with macvtap: <a href="https://bugzilla.redhat.com/show_bug.cgi?id=1035253#c15" class="urlextern" title="https://bugzilla.redhat.com/show_bug.cgi?id=1035253#c15" rel="ugc nofollow">problems with IPv6 because of multicast</a>
+* USB-host devices in qemu might not work like on bare metal, might be related to USB3 or driver issues (mt7601u); consider virtualizing whole USB controller via PCIe VFIO.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Known issues&quot;,&quot;hid&quot;:&quot;known_issues&quot;,&quot;codeblockOffset&quot;:33,&quot;secid&quot;:28,&quot;range&quot;:&quot;22092-22423&quot;} -->
+<h3 class="sectionedit29" id="notes">Notes</h3>
+<div class="level3">
+
+<p>
+In qemu x86_64 images you need to create a wan interface is not defined by default (you can forward port 80 if you want to use the web interface to do it) hostfwd=tcp:127.0.0.1:8080-192.168.1.1:80
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Notes&quot;,&quot;hid&quot;:&quot;notes&quot;,&quot;codeblockOffset&quot;:33,&quot;secid&quot;:29,&quot;range&quot;:&quot;22424-&quot;} -->

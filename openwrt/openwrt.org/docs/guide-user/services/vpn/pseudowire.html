@@ -1,0 +1,412 @@
+
+<h1 class="sectionedit1" id="pseudowire">Pseudowire</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__meta:infobox:howto_links">
+<div class="level1">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap">
+<p>
+This article may contain network configuration that depends on migration to DSA in OpenWrt 21.02
+</p>
+<ul>
+<li class="level1"><div class="li"> Check if your device uses DSA or swconfig as not all devices have been migrated</div>
+</li>
+<li class="level1"><div class="li"> ifname@interface has been moved to device sections</div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/network/dsa/start" class="wikilink1" title="docs:guide-user:network:dsa:start" data-wiki-id="docs:guide-user:network:dsa:start">DSA Networking</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://forum.openwrt.org/t/mini-tutorial-for-dsa-network-config/96998" class="urlextern" title="https://forum.openwrt.org/t/mini-tutorial-for-dsa-network-config/96998" rel="ugc nofollow">Mini tutorial for DSA network config</a> on the forum</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://openwrt.org/releases/21.02/notes-21.02.0#new_network_configuration_syntax_and_boardjson_change" class="urlextern" title="https://openwrt.org/releases/21.02/notes-21.02.0#new_network_configuration_syntax_and_boardjson_change" rel="ugc nofollow">DSA in the 21.02 release notes</a></div>
+</li>
+</ul>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level1">
+
+<p>
+<a href="https://en.wikipedia.org/wiki/Pseudo-wire" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Pseudo-wire">Pseudo-wire</a>
+In today&#039;s data center an important question is: How to react on server outages?
+One of the possible answer to this question is a second data center in another location with a symmetric internet connection.
+This second data center can be run on cheap servers.
+With this setup, data from the primary data center can continuously be transmitted to the secondary one.
+If one or more server in the primary data center fail (e.g. because of hardware defect) the second data center can be used as fallback.
+This would be possible, if both of the data centers could be connected on layer 2 so they both share the same address range simultaneously.
+With expensive, proprietary hardware (e.g. Cisco) this is easily possible.
+For exactly this problem pseudowire switching can be used as seen in the following picture.
+</p>
+
+<p>
+Proprietary setup: <a href="http://isc.sans.edu/diary.html?storyid=8704" class="media" title="http://isc.sans.edu/diary.html?storyid=8704" rel="ugc nofollow"><img src="/_media/doc/howto/l2tpv3_1.png" class="media" loading="lazy" alt="" /></a>
+</p>
+
+<p>
+Linux also supports Layer 2 coupling with VPN1 or unencrypted via the Internet.
+Examples therefor are:
+</p>
+
+<p>
+OpenVPN in bridged to bridged mode.
+To achieve this the following options are used on the server side:
+</p>
+<pre class="code bash">server-bridge ....
+up <span class="st0">&quot;/etc/openvpn/bridge-start&quot;</span>
+dev tap0</pre>
+
+<p>
+In the remote data center one client is provided with two VLANs.
+The first is used to connect to the vpn server.
+The second one is used later on when routing the layer 2 traffic of the first data center.
+In this example this is <abbr title="Virtual Local Area Network">VLAN</abbr> 111, which is available on the client as bridge.
+</p>
+<pre class="code bash">up <span class="st0">&quot;/etc/openvpn/bridge-start&quot;</span>
+client
+<span class="co0">#</span>
+<span class="sy0">/</span>etc<span class="sy0">/</span>openvpn<span class="sy0">/</span>bridge-start
+<span class="co0">#!/bin/bash</span>
+<span class="co0">#################################</span>
+<span class="co0"># Set up Ethernet bridge on Linux</span>
+<span class="co0"># Requires: bridge-utils</span>
+<span class="co0">#################################</span>
+<span class="co0"># Define Bridge Interface</span>
+<span class="re2">br</span>=<span class="st0">&quot;vlan111&quot;</span>
+<span class="co0"># Define list of TAP interfaces to be bridged,</span>
+<span class="co0"># for example tap=&quot;tap0 tap1 tap2&quot;.</span>
+<span class="re2">tap</span>=<span class="st0">&quot;$1&quot;</span>
+<span class="kw1">for</span> t <span class="kw1">in</span> <span class="re1">$tap</span>; <span class="kw1">do</span>
+<span class="sy0">/</span>usr<span class="sy0">/</span>sbin<span class="sy0">/</span>openvpn <span class="re5">--mktun</span> <span class="re5">--dev</span> <span class="re1">$t</span>
+<span class="kw1">done</span>
+<span class="kw1">for</span> t <span class="kw1">in</span> <span class="re1">$tap</span>; <span class="kw1">do</span>
+<span class="sy0">/</span>usr<span class="sy0">/</span>sbin<span class="sy0">/</span>brctl addif <span class="re1">$br</span> <span class="re1">$t</span>
+<span class="kw1">done</span>
+<span class="kw1">for</span> t <span class="kw1">in</span> <span class="re1">$tap</span>; <span class="kw1">do</span>
+<span class="sy0">/</span>sbin<span class="sy0">/</span><span class="kw2">ifconfig</span> <span class="re1">$t</span> 0.0.0.0 promisc up
+<span class="kw1">done</span></pre>
+
+<p>
+The advantage of routing the layer 2 traffic in the unused <abbr title="Virtual Local Area Network">VLAN</abbr> 111 has the advantage that local traffic does not mix with the traffic of the remote data center.
+A disadvantage hereby is the somewhat smaller throughput due to the architecture of openvpn, as to many interrupts are required to copy the data vom kernel space to user space and back.
+This has a significant role when working with embedded hardware.
+</p>
+
+<p>
+<a href="/_detail/doc/howto/rbridge.jpg?id=docs%3Aguide-user%3Aservices%3Avpn%3Apseudowire" class="media" title="doc:howto:rbridge.jpg"><img src="/_media/doc/howto/rbridge.jpg" class="media" loading="lazy" title="http://isc.sans.edu/diary.html?storyid=8704" alt="http://isc.sans.edu/diary.html?storyid=8704" /></a> See <a href="http://www.inlab.de/rbridge/index.html" class="urlextern" title="http://www.inlab.de/rbridge/index.html" rel="ugc nofollow">rbridge</a> and <a href="http://lwn.net/Articles/119535/" class="urlextern" title="http://lwn.net/Articles/119535/" rel="ugc nofollow">etherip</a>.
+</p>
+
+<p>
+Here an <abbr title="User Datagram Protocol">UDP</abbr> tunnel in both directions is created to connect two Ethernet segments.
+An encryption of this tunnel can be implemented by using IPsec on top of this tunnel.
+This program, however, is not available as source code and therefor its usage is limited.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Pseudowire&quot;,&quot;hid&quot;:&quot;pseudowire&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-2989&quot;} -->
+<h2 class="sectionedit6" id="l2tpv3_with_openwrt">L2TPv3 with OpenWrt</h2>
+<div class="level2">
+
+<p>
+L2TPv3 is <a href="http://kerneltrap.org/mailarchive/linux-netdev/2010/4/2/6273948" class="urlextern" title="http://kerneltrap.org/mailarchive/linux-netdev/2010/4/2/6273948" rel="ugc nofollow">available</a> since Kernel 2.6.35.
+</p>
+
+<p>
+So what else is to be done to get this working:
+</p>
+<ul>
+<li class="level1"><div class="li"> install Linux</div>
+</li>
+<li class="level1"><div class="li"> confgiure the firewall</div>
+</li>
+<li class="level1"><div class="li"> set up the IPSEC Tunnel</div>
+</li>
+<li class="level1"><div class="li"> monitor the IPSEC Tunnel</div>
+</li>
+<li class="level1"><div class="li"> start the L2TPv3 Tunnel and bridge it on both ends</div>
+</li>
+</ul>
+
+<p>
+No Linux distribution has included L2TPv3 in their network setup - but OpenWrt.
+With OpenWrt it can be configured in the network configuration in <code>/etc/config/network</code>.
+Have a look at <a href="/docs/guide-user/network/tunneling_interface_protocols#l2tpv3_pseudowire_bridged_to_lan" class="wikilink1" title="docs:guide-user:network:tunneling_interface_protocols" data-wiki-id="docs:guide-user:network:tunneling_interface_protocols">L2TPv3 Pseudowire bridged to LAN</a>.
+</p>
+
+<p>
+Openwrt can be used on many other hardware besides routers from Linksys.
+Even para virtual network devices are available to achieve performant network operations in virtualised environments:
+</p>
+<ul>
+<li class="level1"><div class="li"> KVM - Kernel Based Virtual Machine</div>
+</li>
+<li class="level1"><div class="li"> XEN - <a href="http://de.wikipedia.org/wiki/Xen" class="urlextern" title="http://de.wikipedia.org/wiki/Xen" rel="ugc nofollow">http://de.wikipedia.org/wiki/Xen</a></div>
+</li>
+<li class="level1"><div class="li"> ESX/ESXI - VMware</div>
+</li>
+<li class="level1"><div class="li"> Virtual Box - Oracle</div>
+</li>
+</ul>
+
+<p>
+Openwrt is small, can be easily adopted and has an excellent buildchain.
+With this buildchain personal modifications are simple to include.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;L2TPv3 with OpenWrt&quot;,&quot;hid&quot;:&quot;l2tpv3_with_openwrt&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:6,&quot;range&quot;:&quot;2990-4111&quot;} -->
+<h2 class="sectionedit7" id="implementation">Implementation</h2>
+<div class="level2">
+
+<p>
+After the theoretical depiction follows a practical implementation using an example network environment.
+The used network ranges are:
+</p>
+<ul>
+<li class="level1"><div class="li"> external <abbr title="Internet Protocol">IP</abbr> address in the primary data center (141.64.161.74), gateway (141.64.161.1), netmask (Class C)</div>
+</li>
+<li class="level1"><div class="li"> internal <abbr title="Internet Protocol">IP</abbr> range 10.1.0.0/24</div>
+</li>
+<li class="level1"><div class="li"> external <abbr title="Internet Protocol">IP</abbr> address in the secondary data center (192.166.120.139), gateway (192.166.120.1), netmask (Class C)</div>
+</li>
+<li class="level1"><div class="li"> unused <abbr title="Virtual Local Area Network">VLAN</abbr> 111 in the secondary data center</div>
+</li>
+</ul>
+
+<p>
+   <a href="/_detail/doc/howto/pseudowire-practical.jpeg?id=docs%3Aguide-user%3Aservices%3Avpn%3Apseudowire" class="media" title="doc:howto:pseudowire-practical.jpeg"><img src="/_media/doc/howto/pseudowire-practical.jpeg" class="media" loading="lazy" alt="" /></a>
+</p>
+
+<p>
+This shows the implementation of the Layer 2 coupling.
+First, the IPSEC tunnel between 141.64.161.75 to 192.166.120.139 is established.
+After succeeding, the IPs 192.168.202.5/32 and 192.168.202.9/32 are assigned to the tunnel endpoints.
+On top of this tunnel the L2TPv3 tunnel can be initialized.
+The IPSEC tunnel is needed as the connection between the data centers has to be cryptographically secure.
+This encryption is implemented in the kernel and can be implemented in hardware so latencies should be small and throughput should be huge.
+L2TPv3 is kernel based, too, which is one of the features that make it appealing in using to achieve the aspired goals.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Implementation&quot;,&quot;hid&quot;:&quot;implementation&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:7,&quot;range&quot;:&quot;4112-5291&quot;} -->
+<h2 class="sectionedit8" id="implementation_using_openwrt">Implementation using OpenWrt</h2>
+<div class="level2">
+
+<p>
+To implement this setup with OpenWrt in both data centers an instance (l-01 in the primary, l-02 in the secondary) has to be configured as follows.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Implementation using OpenWrt&quot;,&quot;hid&quot;:&quot;implementation_using_openwrt&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:8,&quot;range&quot;:&quot;5292-5481&quot;} -->
+<h3 class="sectionedit9" id="l-01">l-01</h3>
+<div class="level3">
+<pre class="code bash"><span class="co0"># /etc/config/network</span>
+config interface wan
+	option ifname eth0
+	option <span class="kw3">type</span> bridge
+	option proto static
+	option ipaddr 141.64.161.74
+	option netmask 255.255.255.0
+	option gateway 141.64.161.1
+&nbsp;
+config interface lan
+	option ifname eth1
+	option <span class="kw3">type</span> bridge
+	option proto l2tp
+	option ipaddr 10.1.0.1
+	option netmask 255.255.255.0
+	option encap udp
+	option sport <span class="nu0">1701</span>
+	option dport <span class="nu0">1702</span>
+	option localaddr 172.30.201.5
+	option peeraddr
+	172.30.201.9
+&nbsp;
+<span class="co0"># /etc/config/firewall</span>
+config rule
+	option src    wan
+	option proto    gre
+	option target ACCEPT
+&nbsp;
+config rule
+	option src    wan
+	option proto    esp
+	option target ACCEPT
+&nbsp;
+config rule
+	option src    wan
+	option proto    ah
+	option target ACCEPT
+&nbsp;
+config rule
+	option src    wan
+	option dest_port        <span class="nu0">500</span>
+	option proto    udp
+	option target ACCEPT
+&nbsp;
+config rule
+	option src    wan
+	option dest_port        <span class="nu0">4500</span>
+	option proto    udp
+	option target ACCEPT
+&nbsp;
+<span class="co0"># /etc/ipsec.conf</span>
+<span class="co0"># OpenSwan is being used</span>
+conn to-secondary
+	<span class="re2">type</span>=tunnel
+	<span class="re2">left</span>=141.64.161.74
+	<span class="re2">leftnexthop</span>=141.64.161.1
+	<span class="re2">leftsourceip</span>=192.168.201.5
+	<span class="re2">leftsubnet</span>=172.30.201.5<span class="sy0">/</span><span class="nu0">32</span>
+	<span class="re2">leftid</span>=<span class="st0">&quot;primary@rz&quot;</span>
+	<span class="re2">right</span>=192.166.120.139
+	<span class="re2">rightnexthop</span>=192.166.120.1
+	<span class="re2">rightsourceip</span>=192.168.201.9
+	<span class="re2">rightsubnet</span>=192.168.201.9<span class="sy0">/</span><span class="nu0">32</span>
+	<span class="re2">authby</span>=secret
+	<span class="re2">auto</span>=start
+	<span class="re2">ike</span>=aes128-sha-modp1024
+	<span class="re2">esp</span>=aes128-sha1
+&nbsp;
+<span class="co0"># /etc/monitrc</span>
+check process pluto with pidfile <span class="sy0">/</span>var<span class="sy0">/</span>run<span class="sy0">/</span>pluto<span class="sy0">/</span>pluto.pid
+start program = <span class="st0">&quot;/etc/init.d/ipsec restart&quot;</span>
+stop program = <span class="st0">&quot;/etc/init.d/ipsec restart&quot;</span>
+<span class="co0">#</span>
+check host secondary with address 10.1.0.2
+<span class="kw1">if</span> failed icmp <span class="kw3">type</span> <span class="kw3">echo</span> count <span class="nu0">5</span> with timeout <span class="nu0">30</span> seconds 
+<span class="kw1">then</span> <span class="kw3">exec</span> <span class="st0">&quot;/sbin/ifup lan&quot;</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;l-01&quot;,&quot;hid&quot;:&quot;l-01&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:9,&quot;range&quot;:&quot;5482-7086&quot;} -->
+<h3 class="sectionedit10" id="l-02">l-02</h3>
+<div class="level3">
+<pre class="code bash"><span class="co0"># /etc/config/network</span>
+ config interface wan
+	option ifname   eth0
+	option <span class="kw3">type</span>     bridge
+	option proto    static
+	option ipaddr   192.166.120.139
+	option netmask  255.255.255.0
+	option gateway  192.166.120.1
+&nbsp;
+config interface lan
+	option ifname   eth1
+	option <span class="kw3">type</span>     bridge
+	option proto    l2tp
+	option ipaddr   10.1.0.2
+	option netmask  255.255.255.0
+	option encap     udp
+	option sport     <span class="nu0">1702</span>
+	option dport     <span class="nu0">1701</span>
+	option localaddr 172.30.201.9
+	option peeraddr  172.30.201.5
+&nbsp;
+<span class="co0"># /etc/config/firewall</span>
+	<span class="co0"># same as l-01</span>
+&nbsp;
+<span class="co0"># /etc/ipsec.conf</span>
+<span class="co0"># OpenSwan is being used</span>
+conn to-primary
+	<span class="re2">type</span>=tunnel
+	<span class="re2">left</span>=141.64.161.74
+	<span class="re2">leftnexthop</span>=141.64.161.1
+	<span class="re2">leftsourceip</span>=192.168.201.5
+	<span class="re2">leftsubnet</span>=172.30.201.5<span class="sy0">/</span><span class="nu0">32</span>
+	<span class="re2">rightid</span>=<span class="st0">&quot;secondary@rz&quot;</span>
+	<span class="re2">right</span>=192.166.120.139
+	<span class="re2">rightnexthop</span>=192.166.120.1
+	<span class="re2">rightsourceip</span>=192.168.201.9
+	<span class="re2">rightsubnet</span>=192.168.201.9<span class="sy0">/</span><span class="nu0">32</span>
+	<span class="re2">authby</span>=secret
+	<span class="re2">auto</span>=start
+	<span class="re2">ike</span>=aes128-sha-modp1024
+	<span class="re2">esp</span>=aes128-sha1 
+&nbsp;
+<span class="co0"># /etc/monitrc</span>
+check process pluto with pidfile <span class="sy0">/</span>var<span class="sy0">/</span>run<span class="sy0">/</span>pluto<span class="sy0">/</span>pluto.pid
+start program = <span class="st0">&quot;/etc/init.d/ipsec restart&quot;</span>
+stop program = <span class="st0">&quot;/etc/init.d/ipsec restart&quot;</span>
+<span class="co0">#</span>
+check host secondary with address 10.1.0.1
+<span class="kw1">if</span> failed icmp <span class="kw3">type</span> <span class="kw3">echo</span> count <span class="nu0">5</span> with timeout <span class="nu0">30</span> seconds 
+<span class="kw1">then</span> <span class="kw3">exec</span> <span class="st0">&quot;/sbin/ifup lan&quot;</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;l-02&quot;,&quot;hid&quot;:&quot;l-02&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:10,&quot;range&quot;:&quot;7087-8318&quot;} -->
+<h2 class="sectionedit11" id="explanations">Explanations</h2>
+<div class="level2">
+
+<p>
+The functionality of both the IPSEC and the L2TPv3 tunnel are assured by the use of the daemon monit on both ends.
+If one of the tunnels is destroyed an ifup lan is triggered to restart the connection.
+In the secondary data center eth1 has to be in <abbr title="Virtual Local Area Network">VLAN</abbr> 111.
+Because of this, the internal network of the primary data center can be used without the interference of layer 2 noise.
+This means the internal network of the primary data center is bridged in the <abbr title="Virtual Local Area Network">VLAN</abbr> 111 in the secondary data center.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Explanations&quot;,&quot;hid&quot;:&quot;explanations&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:11,&quot;range&quot;:&quot;8319-8839&quot;} -->
+<h2 class="sectionedit12" id="bridging_of_devices_with_varying_mtus">Bridging of devices with varying MTUs</h2>
+<div class="level2">
+
+<p>
+For now the setup works so both sides can ping each other.
+An ssh connection, however, is either not possible or freezes after a few seconds.
+</p>
+
+<p>
+The reason: The bridge for the L2TPv3 contains devices with different MTUs.
+Furthermore, as the connection is bridged no routing happens, the <abbr title="Maximum Transmission Unit">MTU</abbr> is not automatically adjusted by the router.
+All devices in the <abbr title="Local Area Network">LAN</abbr> usually use an <abbr title="Maximum Transmission Unit">MTU</abbr> of 1500.
+The <abbr title="Maximum Transmission Unit">MTU</abbr> of the L2TPv3 devices is about 1400.
+As the tunnel itself can not fragment packets all packets bigger than the <abbr title="Maximum Transmission Unit">MTU</abbr> are lost.
+This happens at longer <abbr title="Hypertext Transfer Protocol">HTTP</abbr> request, too.
+</p>
+
+<p>
+To solve the problem bridge firewalling and <abbr title="Transmission Control Protocol">TCP</abbr> MSS Clamping is used.
+Bridge firewalling means the iptables rules are used when a packet passes a bridge.
+Normally this should not work, as a bridge only works in Layer 2.
+However, if bridge firewalling is enabled in the kernel a bridge can work in Layer 2 as well as Layer 3.
+</p>
+
+<p>
+The following sysctl keys are used for this:
+</p>
+<ul>
+<li class="level1 node"><div class="li"> net.bridge.bridge-nf-call-iptables</div>
+<ul>
+<li class="level2"><div class="li"> 0 - do not send <abbr title="Internet Protocol version 4">IPv4</abbr> traffic through iptables</div>
+</li>
+<li class="level2"><div class="li"> 1 - do send <abbr title="Internet Protocol version 4">IPv4</abbr> traffic through iptables</div>
+</li>
+</ul>
+</li>
+<li class="level1 node"><div class="li"> net.bridge.bridge-nf-filter-vlan-tagged</div>
+<ul>
+<li class="level2"><div class="li"> 0 -  do not send vlan tagged  Ipv4 traffic through iptables</div>
+</li>
+<li class="level2"><div class="li"> 1 -  send vlan tagged  Ipv4 traffic through iptables</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+<abbr title="Internet Protocol version 6">IPv6</abbr> have to be configured separately.
+</p>
+
+<p>
+For the example setup the rules should be like this:
+</p>
+<pre class="code bash">iptables <span class="re5">-I</span> FORWARD <span class="re5">-s</span> 10.1.0.0<span class="sy0">/</span><span class="nu0">24</span> <span class="re5">-p</span> tcp <span class="re5">--tcp-flags</span> SYN,RST SYN <span class="re5">-j</span> TCPMSS <span class="re5">--set-mss</span> <span class="nu0">1400</span>
+iptables <span class="re5">-I</span> FORWARD <span class="re5">-d</span> 10.1.0.0<span class="sy0">/</span><span class="nu0">24</span> <span class="re5">-p</span> tcp <span class="re5">--tcp-flags</span> SYN,RST SYN <span class="re5">-j</span> TCPMSS <span class="re5">--set-mss</span> <span class="nu0">1400</span>
+iptables <span class="re5">-I</span> FORWARD <span class="re5">-s</span> 10.1.0.0<span class="sy0">/</span><span class="nu0">24</span> <span class="re5">-p</span> tcp <span class="re5">--tcp-flags</span> SYN,RST SYN <span class="re5">-j</span> TCPMSS <span class="re5">--clamp-mss-to-pmtu</span>
+iptables <span class="re5">-I</span> FORWARD <span class="re5">-d</span> 10.1.0.0<span class="sy0">/</span><span class="nu0">24</span> <span class="re5">-p</span> tcp <span class="re5">--tcp-flags</span> SYN,RST SYN <span class="re5">-j</span> TCPMSS <span class="re5">--clamp-mss-to-pmtu</span></pre>
+
+<p>
+These rules should be narrowed as good as possible to avoid unpleasant side affects.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Bridging of devices with varying MTUs&quot;,&quot;hid&quot;:&quot;bridging_of_devices_with_varying_mtus&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:12,&quot;range&quot;:&quot;8840-&quot;} -->

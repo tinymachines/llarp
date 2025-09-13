@@ -1,0 +1,277 @@
+
+<h1 class="sectionedit1" id="nfs_share_configuration">NFS share configuration</h1>
+<div class="level1">
+
+<p>
+The <a href="https://en.wikipedia.org/wiki/Network File System" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Network File System">Network File System</a> is a fast and light way to share files over an internal <abbr title="Local Area Network">LAN</abbr> with Linux (on PC or in embedded devices like smart TVs and media centers), Unix and macOS clients. Depending on your needs, you may want to use <a href="/docs/guide-user/services/nas/samba_configuration" class="wikilink1" title="docs:guide-user:services:nas:samba_configuration" data-wiki-id="docs:guide-user:services:nas:samba_configuration">Samba</a> or the <abbr title="Secure Shell">SSH</abbr> filesystem too or instead.
+</p>
+
+<p>
+In this tutorial we will create the following setup:
+NFS shares available to devices in <abbr title="Local Area Network">LAN</abbr>.
+NFS will create a “virtual” root on the exported filesystem, this prevents users from manipulating files outside of the shared folder. (fsid=root) 
+NFS won&#039;t be checking if accessed tree of dirs is in the NFS filesystem because above option makes sure they can&#039;t get out of it anyway (no_subtree_check, default option so we don&#039;t need to write this in the config)
+NFS treats all users who access this disk&#039;s contents (create, read, modify, delete) as anonymous. (all_squash)
+NFS replies to requests before any changes made by that requests have been committed to the storage (async)
+NFS allows access from clients that don&#039;t use a reserved port for NFS (insecure)
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;NFS share configuration&quot;,&quot;hid&quot;:&quot;nfs_share_configuration&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1130&quot;} -->
+<h2 class="sectionedit2" id="installation">Installation</h2>
+<div class="level2">
+
+<p>
+In the tutorial we assume that you have already set up the storage system with the folder you want to share with nfs, if you didn&#039;t do that yet, please do it before proceeding.<br/>
+
+Note that for this to work you will need to change read/write permissions to the folder you are sharing.<br/>
+
+<code>chmod -R a+rw /mnt/share</code>
+</p>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_todo plugin_wrap">
+<p>
+Optimal way would be to change the group of the folder to “users” and have r/w added only to the group, or anyway use the POSIX user/group ownerships.<br/>
+
+For most users a single free-for-all share like this is enough, so for now it will stay like this.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+We will now need to set up the firewall to open ports needed by this service.
+</p>
+
+<p>
+The <em>portmap</em> service uses port 111 on both <abbr title="Transmission Control Protocol">TCP</abbr> and <abbr title="User Datagram Protocol">UDP</abbr>, <em>nfsd</em> standard are ports between 32777 and 32780 on both <abbr title="Transmission Control Protocol">TCP</abbr> and <abbr title="User Datagram Protocol">UDP</abbr>.<br/>
+
+</p>
+
+<p>
+These ports are opened automatically on <abbr title="Local Area Network">LAN</abbr> when you install the packages. You can check yourself with <code>netstat -an</code>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation&quot;,&quot;hid&quot;:&quot;installation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;1131-2079&quot;} -->
+<h3 class="sectionedit5" id="openwrt_server">OpenWrt server</h3>
+<div class="level3">
+
+<p>
+Install <strong>nfs-kernel-server</strong> metapackage, it will pull down all other needed packages for you.
+</p>
+<pre class="code bash">opkg update
+opkg <span class="kw2">install</span> nfs-kernel-server</pre>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> <strong>NOTE:</strong> You may need to install <strong>kmod-loop</strong> to fix “mount: can&#039;t setup loop device: No such file or directory” errors. (see <a href="https://dev.openwrt.org/ticket/11541" class="urlextern" title="https://dev.openwrt.org/ticket/11541" rel="ugc nofollow">https://dev.openwrt.org/ticket/11541</a>)
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;OpenWrt server&quot;,&quot;hid&quot;:&quot;openwrt_server&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;2080-2436&quot;} -->
+<h3 class="sectionedit6" id="openwrt_client">OpenWrt client</h3>
+<div class="level3">
+
+<p>
+WIP (should work the same as with most linux, once you install the packages for the client)
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;OpenWrt client&quot;,&quot;hid&quot;:&quot;openwrt_client&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:6,&quot;range&quot;:&quot;2437-2554&quot;} -->
+<h3 class="sectionedit7" id="pc_client">PC client</h3>
+<div class="level3">
+
+<p>
+Most Linux distributions support NFS without need to install anything, or provide pre-configured NFS clients as installable packages.
+In case your distribution is missing support, you need to install the client software.
+Arch Linux wiki is a good starting point: <a href="https://wiki.archlinux.org/index.php/NFS" class="urlextern" title="https://wiki.archlinux.org/index.php/NFS" rel="ugc nofollow">https://wiki.archlinux.org/index.php/NFS</a>.
+macOS also supports NFS natively. 
+</p>
+
+<p>
+For Windows it&#039;s a bit more complex as you may or may not have it depending on Windows version and type, also the native one does not really perform that well.
+<a href="http://j-ftp.sourceforge.net" class="urlextern" title="http://j-ftp.sourceforge.net" rel="ugc nofollow">JFtp</a> is a third party client, but there are probably others too. Quite frankly, if you want to share files with Windows it&#039;s far better to set up Samba instead.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;PC client&quot;,&quot;hid&quot;:&quot;pc_client&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:7,&quot;range&quot;:&quot;2555-3274&quot;} -->
+<h2 class="sectionedit8" id="server_configuration">Server configuration</h2>
+<div class="level2">
+
+<p>
+Use the file <code>/etc/exports</code> to configure your shares. 
+These are the default contents:
+</p>
+<pre class="code">/mnt    *(ro,all_squash,insecure,sync)</pre>
+
+<p>
+This is what you should write in it if you have a shared folder in /mnt/share
+</p>
+<pre class="code">/mnt/share    *(rw,all_squash,insecure,sync)</pre>
+
+<p>
+First goes the path of the shared folder, (/mnt).<br/>
+
+Then goes the <abbr title="Internet Protocol">IP</abbr> list of clients (in this case * as any <abbr title="Internet Protocol">IP</abbr> is accepted)<br/>
+
+Then there is a list of options for this share, that are nfs options you can read in the <a href="https://linux.die.net/man/5/exports" class="urlextern" title="https://linux.die.net/man/5/exports" rel="ugc nofollow">nfs manpage</a>
+</p>
+
+<p>
+Here is another example, showing how you can write IPs and their netmasks:
+</p>
+<pre class="code">/mnt/sda2   192.168.1.2,192.168.1.3,192.168.1.4(ro,sync)
+/mnt/sda3   192.168.1.2(rw,sync)
+/mnt/sda4   192.168.1.0/255.255.255.0(rw,sync)
+/mnt/sda5 192.168.1.0/24(rw,sync)</pre>
+
+<p>
+If you set up extroot on an nfs share, use the path on /overlay/ partition, else you cannot export the mounted fs.
+</p>
+
+<p>
+When NFS services are already running, use the command <strong>service nfsd reload</strong> to reload and apply changes on the fly.
+</p>
+
+</div>
+
+<h4 id="start_on_boot">Start on boot</h4>
+<div class="level4">
+
+<p>
+NFS services are usually enabled and started on installation, verify with <code>top</code> or <code>ps</code> whether the services are running.<br/>
+
+The following entries should appear in the process list:
+</p>
+<pre class="code">/usr/sbin/rpc.mountd -p 32780    
+/usr/sbin/rpc.statd -p 32778 -o 32779
+/usr/sbin/portmap</pre>
+
+<p>
+in case they are not then you need to do this manually.
+</p>
+<pre class="code">root@LEDE:~# service portmap start &amp;&amp; service portmap enable
+root@LEDE:~# service nfsd start &amp;&amp; service nfsd enable</pre>
+
+<p>
+Use the <code>netstat -l</code> command to see whether <em>portmap</em> is listening on port 111 for both tcp and udp. The <em>nfsd</em> process may use varying ports.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Server configuration&quot;,&quot;hid&quot;:&quot;server_configuration&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:8,&quot;range&quot;:&quot;3275-5011&quot;} -->
+<h3 class="sectionedit9" id="client_configuration">Client configuration</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="linux_client">Linux client</h4>
+<div class="level4">
+
+<p>
+Mount manually:
+</p>
+<pre class="code bash"><span class="kw2">sudo</span> <span class="kw2">mount</span> 192.168.1.1:<span class="sy0">/</span>mnt<span class="sy0">/</span>share <span class="sy0">/</span>home<span class="sy0">/</span>alby<span class="sy0">/</span>nfs_share</pre>
+
+<p>
+Or mount permanently with entries in the <code>/etc/fstab</code> on each client PC:
+</p>
+<pre class="code">192.168.1.1:/mnt/sda2 /media/LEDE          nfs  ro,async,auto  0  0
+192.168.1.1:/mnt/sda4 /media/remote_stuff  nfs  rw,async,auto  0  0</pre>
+
+<p>
+Check the <a href="https://wiki.archlinux.org/index.php/NFS#Tips_and_tricks" class="urlextern" title="https://wiki.archlinux.org/index.php/NFS#Tips_and_tricks" rel="ugc nofollow">Arch Wiki</a> for more info.
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> <strong>WARNING:</strong> If you are using a Linux distro with <strong>systemd</strong> init system (Debian/Unbuntu/Arch/OpenSUSE/Fedora/CentOS and derivatives, most major distros use it) always place “nofail” in nfs mount options. This will tell systemd that this partition isn&#039;t critical for boot so your PC will start up fine even if the NFS share is unavailable. If you don&#039;t add this option and the NFS share isn&#039;t available on boot, your PC will not start up <em><strong>at all</strong></em> and you will have to use a Linux live-cd to go and fix the fstab entry.
+</p>
+
+<p>
+With portmap running on your OpenWrt-Machine you can use <code>rpcinfo -p 192.168.1.254</code> on clients side to see open ports. 
+</p>
+
+</div>
+
+<h4 id="macos_client">macOS client</h4>
+<div class="level4">
+
+<p>
+<a href="https://www.cyberciti.biz/faq/apple-mac-osx-nfs-mount-command-tutorial/" class="urlextern" title="https://www.cyberciti.biz/faq/apple-mac-osx-nfs-mount-command-tutorial/" rel="ugc nofollow">This is a tutorial</a>
+There are many other tutorials if you search on the net.
+</p>
+
+</div>
+
+<h4 id="windows_client">Windows client</h4>
+<div class="level4">
+
+<p>
+Java client: <a href="http://j-ftp.sourceforge.net" class="urlextern" title="http://j-ftp.sourceforge.net" rel="ugc nofollow">JFtp</a>.
+</p>
+
+<p>
+Native client is avalible only for some editions of windows, including:
+</p>
+<ul>
+<li class="level1"><div class="li"> Windows 7 Ultimate and Enterprise </div>
+</li>
+<li class="level1"><div class="li"> Windows 8 Enterprise</div>
+</li>
+<li class="level1"><div class="li"> Windows 10 Pro and Enterprise</div>
+</li>
+<li class="level1"><div class="li"> Windows Server 2008 R2 and up</div>
+</li>
+</ul>
+
+<p>
+The NFS Services is turned off by default. You have to enable them on <strong>Start &gt; Control Panel &gt; Programs &gt; Turn Windows features on or off &gt; Services for NFS</strong>. 
+Then you could map the network drives on My Computer. 
+</p>
+
+<p>
+Step by Step guide available <a href="https://graspingtech.com/mount-nfs-share-windows-10/" class="urlextern" title="https://graspingtech.com/mount-nfs-share-windows-10/" rel="ugc nofollow">here</a> or <a href="https://maprdocs.mapr.com/51/DevelopmentGuide/c-mounting-nfs-on-a-windows-client.html" class="urlextern" title="https://maprdocs.mapr.com/51/DevelopmentGuide/c-mounting-nfs-on-a-windows-client.html" rel="ugc nofollow">here</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Client configuration&quot;,&quot;hid&quot;:&quot;client_configuration&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:9,&quot;range&quot;:&quot;5012-6999&quot;} -->
+<h2 class="sectionedit10" id="problems">Problems</h2>
+<div class="level2">
+
+<p>
+If the loopback device support is missing, an error like “<em>Cannot register service: RPC: Timed out</em>” may appear.
+Installing the <strong>kmod-loop</strong> package should solve this issue.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Problems&quot;,&quot;hid&quot;:&quot;problems&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:10,&quot;range&quot;:&quot;7000-7198&quot;} -->
+<h2 class="sectionedit11" id="performancetuning">Performance / Tuning</h2>
+<div class="level2">
+
+<p>
+number of threads usable by nfsd can be increased by echo X &gt; /proc/fs/nfsd/threads
+</p>
+
+<p>
+Max block size can be changed similar way, it&#039;s here /proc/fs/nfsd/max_block_size
+</p>
+
+<p>
+Client-side you can add these mount options async,rsize=XXX,wsize=XXX,noatime 
+</p>
+
+<p>
+rsize and wsize specify the size of read and writes, increasing or decreasing them can make a difference, depending on network configuration. Max size is stated in /proc/fs/nfsd/max_block_size and is 16384 bytes (16 KiB) in a default install.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Performance \/ Tuning&quot;,&quot;hid&quot;:&quot;performancetuning&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:11,&quot;range&quot;:&quot;7199-7723&quot;} -->
+<h3 class="sectionedit12" id="throughput_issues">Throughput issues</h3>
+<div class="level3">
+
+<p>
+Since netfilter will track every connection, if you use MASQUERADING for example, you could disable con-tracking for data connections by adding this in your <em>/etc/firewall.user</em>:
+</p>
+<pre class="code bash"><span class="re2">IPT</span>=iptables
+<span class="re2">NET_LAN</span>=192.168.1.1<span class="sy0">/</span><span class="nu0">24</span>
+<span class="re2">IF_LAN</span>=eth0
+&nbsp;
+<span class="re1">$IPT</span> <span class="re5">-t</span> raw <span class="re5">-A</span> PREROUTING <span class="re5">-i</span> <span class="re1">$IF_LAN</span> <span class="re5">-s</span> <span class="re1">$NET_LAN</span> <span class="re5">-p</span> tcp <span class="re5">--dport</span> <span class="nu0">32777</span>:<span class="nu0">32780</span> <span class="re5">-j</span> CT <span class="re5">--notrack</span> <span class="co0">#---------- don't track nfs</span>
+<span class="re1">$IPT</span> <span class="re5">-t</span> raw <span class="re5">-A</span> PREROUTING <span class="re5">-i</span> <span class="re1">$IF_LAN</span> <span class="re5">-s</span> <span class="re1">$NET_LAN</span> <span class="re5">-p</span> udp <span class="re5">--dport</span> <span class="nu0">32777</span>:<span class="nu0">32780</span> <span class="re5">-j</span> CT <span class="re5">--notrack</span> <span class="co0">#---------- don't track nfs</span>
+<span class="re1">$IPT</span> <span class="re5">-t</span> raw <span class="re5">-A</span> OUTPUT <span class="re5">-o</span> <span class="re1">$IF_LAN</span> <span class="re5">-d</span> <span class="re1">$NET_LAN</span> <span class="re5">-p</span> tcp <span class="re5">--sport</span> <span class="nu0">32777</span>:<span class="nu0">32780</span> <span class="re5">-j</span> CT <span class="re5">--notrack</span> <span class="co0">#---------- don't track nfs</span>
+<span class="re1">$IPT</span> <span class="re5">-t</span> raw <span class="re5">-A</span> OUTPUT <span class="re5">-o</span> <span class="re1">$IF_LAN</span> <span class="re5">-d</span> <span class="re1">$NET_LAN</span> <span class="re5">-p</span> udp <span class="re5">--sport</span> <span class="nu0">32777</span>:<span class="nu0">32780</span> <span class="re5">-j</span> CT <span class="re5">--notrack</span> <span class="co0">#---------- don't track nfs</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Throughput issues&quot;,&quot;hid&quot;:&quot;throughput_issues&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:12,&quot;range&quot;:&quot;7724-&quot;} -->

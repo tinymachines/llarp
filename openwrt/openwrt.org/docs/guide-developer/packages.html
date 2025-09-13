@@ -1,0 +1,1314 @@
+
+<h1 class="sectionedit1" id="creating_packages">Creating packages</h1>
+<div class="level1">
+
+<p>
+<strong>See also → <a href="/docs/guide-developer/package-policies" class="wikilink1" title="docs:guide-developer:package-policies" data-wiki-id="docs:guide-developer:package-policies">Package Policy Guide</a></strong>, which contains a wealth of extra technical information not covered here.
+</p>
+
+<p>
+One of the things that we&#039;ve attempted to do with OpenWrt&#039;s template system is make it incredibly easy to port software to OpenWrt. If you look at a typical package directory in OpenWrt you&#039;ll find three things:
+</p>
+<ul>
+<li class="level1"><div class="li"> package/Makefile</div>
+</li>
+<li class="level1"><div class="li"> package/patches</div>
+</li>
+<li class="level1"><div class="li"> package/files </div>
+</li>
+</ul>
+
+<p>
+The patches directory is optional and typically contains bug fixes or optimizations to reduce the size of the executable. 
+The files directory is optional. It typically includes default config or init files.
+</p>
+
+<p>
+The package <code>Makefile</code> is the important item because it provides the steps actually needed to download and compile the package. 
+</p>
+
+<p>
+Looking at one of the package makefiles, you&#039;d hardly recognize it as a makefile. Through what can only be described as blatant disregard and abuse of the traditional make format, the <code>Makefile</code> has been transformed into an object oriented template which simplifies the entire ordeal.
+</p>
+
+<p>
+Here, for example, is package/bridge/Makefile:
+</p>
+<pre class="code make"><span class="kw1">include</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">TOPDIR</span><span class="br0">&#41;</span><span class="sy0">/</span>rules<span class="sy0">.</span>mk
+&nbsp;
+PKG_NAME<span class="sy0">:=</span>bridge
+PKG_VERSION<span class="sy0">:=</span>1<span class="sy0">.</span>0<span class="sy0">.</span>6
+PKG_RELEASE<span class="sy0">:=</span><span class="nu0">1</span>
+&nbsp;
+PKG_BUILD_DIR<span class="sy0">:=$</span><span class="br0">&#40;</span><span class="re2">BUILD_DIR</span><span class="br0">&#41;</span><span class="sy0">/</span>bridge<span class="sy0">-</span>utils<span class="sy0">-$</span><span class="br0">&#40;</span><span class="re2">PKG_VERSION</span><span class="br0">&#41;</span>
+PKG_SOURCE<span class="sy0">:=</span>bridge<span class="sy0">-</span>utils<span class="sy0">-$</span><span class="br0">&#40;</span><span class="re2">PKG_VERSION</span><span class="br0">&#41;</span><span class="sy0">.</span>tar<span class="sy0">.</span>gz
+PKG_SOURCE_URL<span class="sy0">:=@</span>SF<span class="sy0">/</span>bridge
+PKG_HASH<span class="sy0">:=</span>9b7dc52656f5cbec846a7ba3299f73bd
+&nbsp;
+<span class="kw1">include</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">INCLUDE_DIR</span><span class="br0">&#41;</span><span class="sy0">/</span>package<span class="sy0">.</span>mk
+&nbsp;
+define Package<span class="sy0">/</span>bridge
+  SECTION<span class="sy0">:=</span>base
+  CATEGORY<span class="sy0">:=</span>Network
+  TITLE<span class="sy0">:=</span>Ethernet bridging configuration utility
+  <span class="co1">#DESCRIPTION:=This variable is obsolete. use the Package/name/description define instead!</span>
+  URL<span class="sy0">:=</span>http<span class="sy0">://</span>bridge<span class="sy0">.</span>sourceforge<span class="sy0">.</span>net<span class="sy0">/</span>
+endef
+&nbsp;
+define Package<span class="sy0">/</span>bridge<span class="sy0">/</span>description
+ Ethernet bridging configuration utility
+ Manage ethernet bridging<span class="sy0">;</span> a way to connect networks together to
+ form a larger network<span class="sy0">.</span>
+endef
+&nbsp;
+define Build<span class="sy0">/</span>Configure
+  <span class="sy0">$</span><span class="br0">&#40;</span><span class="re1">call</span> Build<span class="sy0">/</span>Configure<span class="sy0">/</span>Default<span class="sy0">,--</span>with<span class="sy0">-</span>linux<span class="sy0">-</span>headers<span class="sy0">=$</span><span class="br0">&#40;</span><span class="re2">LINUX_DIR</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+endef
+&nbsp;
+define Package<span class="sy0">/</span>bridge<span class="sy0">/</span>install
+        <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">INSTALL_DIR</span><span class="br0">&#41;</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="nu0">1</span><span class="br0">&#41;</span><span class="sy0">/</span>usr<span class="sy0">/</span>sbin
+        <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">INSTALL_BIN</span><span class="br0">&#41;</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">PKG_BUILD_DIR</span><span class="br0">&#41;</span><span class="sy0">/</span>brctl<span class="sy0">/</span>brctl <span class="sy0">$</span><span class="br0">&#40;</span><span class="nu0">1</span><span class="br0">&#41;</span><span class="sy0">/</span>usr<span class="sy0">/</span>sbin<span class="sy0">/</span>
+endef
+&nbsp;
+<span class="sy0">$</span><span class="br0">&#40;</span><span class="re1">eval</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re1">call</span> BuildPackage<span class="sy0">,</span>bridge<span class="br0">&#41;</span><span class="br0">&#41;</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Creating packages&quot;,&quot;hid&quot;:&quot;creating_packages&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-2118&quot;} -->
+<h2 class="sectionedit2" id="buildpackage_variables">BuildPackage variables</h2>
+<div class="level2">
+
+<p>
+As you can see, there&#039;s not much work to be done; everything is hidden in other makefiles and abstracted to the point where you only need to specify a few variables.
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>PKG_NAME</code>        - The name of the package, as seen via menuconfig and ipkg. Avoid using underscores in the package name, to avoid build failures--for example, the underscore separates name from version information, and may confuse the build system in hard-to-spot places.</div>
+</li>
+<li class="level1"><div class="li"> <code>PKG_VERSION</code>     - The upstream version number that we&#039;re downloading</div>
+</li>
+<li class="level1"><div class="li"> <code>PKG_RELEASE</code>     - The version of this package Makefile.  Should be initially set to 1, and reset to 1 whenever the <code>PKG_VERSION</code> is changed.  Increment it when <code>PKG_VERSION</code> stays the same, but when there are functional changes to the installed artifacts.</div>
+</li>
+<li class="level1"><div class="li"> <code>PKG_LICENSE</code>     - The license(s) the package is available under, <a href="https://spdx.org/licenses/" class="urlextern" title="https://spdx.org/licenses/" rel="ugc nofollow">SPDX</a> form.</div>
+</li>
+<li class="level1"><div class="li"> <code>PKG_LICENSE_FILES</code>- file containing the license text</div>
+</li>
+<li class="level1"><div class="li"> <code>PKG_BUILD_DIR</code>   - Where to compile the package</div>
+</li>
+<li class="level1"><div class="li"> <code>PKG_SOURCE</code>      - The filename of the original sources</div>
+</li>
+<li class="level1"><div class="li"> <code>PKG_SOURCE_<abbr title="Uniform Resource Locator">URL</abbr></code>  - Where to download the sources from (directory)</div>
+</li>
+<li class="level1"><div class="li"> <code>PKG_HASH</code>      - A checksum to validate the download.  It can be either a MD5 or SHA256 checksum, but SHA256 should be used, see <a href="https://git.openwrt.org/?p=openwrt/openwrt.git;a=blob;f=scripts/download.pl;h=676c6e9e6b10b6a44ed2bbc03a7ba3c983aaf639;hb=HEAD#l66" class="interwiki iw_commit" title="https://git.openwrt.org/?p=openwrt/openwrt.git;a=blob;f=scripts/download.pl;h=676c6e9e6b10b6a44ed2bbc03a7ba3c983aaf639;hb=HEAD#l66">scripts/download.pl</a></div>
+</li>
+<li class="level1"><div class="li"> <code>PKG_CAT</code>         - How to decompress the sources (zcat, bzcat, unzip)</div>
+</li>
+<li class="level1"><div class="li"> <code>PKG_<abbr title="Uniform Resource Locator">URL</abbr></code>.        - Upstream project homepage</div>
+</li>
+<li class="level1"><div class="li"> <code>PKG_BUILD_DEPENDS</code> - Packages that need to be built before this package. Use this option if you need to make sure that your package has access to includes and/or libraries of another package at build time. Specify the directory name (i.e. openssl) rather than the binary package name (i.e. libopenssl). This build variable only establishes the build time dependency. Use <code>DEPENDS</code> to establish the runtime dependencies. This variable uses the same syntax as <code>DEPENDS</code> below.</div>
+</li>
+<li class="level1"><div class="li"> <code>PKG_CONFIG_DEPENDS</code> - specifies which config options influence the build configuration and should trigger a rerun of Build/Configure on change</div>
+</li>
+<li class="level1"><div class="li"> <code>PKG_INSTALL</code>     - Setting it to “1” will call the package&#039;s original “make install” with prefix set to <code>PKG_INSTALL_DIR</code></div>
+</li>
+<li class="level1"><div class="li"> <code>PKG_INSTALL_DIR</code> - Where “make install” copies the compiled files</div>
+</li>
+<li class="level1"><div class="li"> <code>PKG_FIXUP</code>       - See below</div>
+</li>
+<li class="level1"><div class="li"> <code>PKG_CPE_ID</code>      - Variable defining Common Platform Enumeration (CPE) identifier, which uniquely identifies application usually in vulnerability tracking. The CPE standard itself is maintained by NIST and documented at<a href="https://nvd.nist.gov/products/cpe" class="urlextern" title="https://nvd.nist.gov/products/cpe" rel="ugc nofollow">Official Common Platform Enumeration (CPE) Dictionary</a></div>
+</li>
+<li class="level1"><div class="li"> <code>PKG_CVE_IGNORE</code>  - Variable for defining CVEs that don&#039;t apply to this version of the package due to features not enabled, or affecting other platforms (e.g. Windows issues or features that are not used and so not relevant)</div>
+</li>
+<li class="level1"><div class="li"> <code>PKG_CVE_FIXED</code>   - Variable for defining CVEs that are patches in the current version, but aren&#039;t properly marked as fixed at cve.org in the current version</div>
+</li>
+</ul>
+
+<p>
+Optional support for fetching sources from a VCS (git, bzr, svn, etc), see <a href="#use_source_repository" title="docs:guide-developer:packages ↵" class="wikilink1">Use source repository</a> below for more information:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>PKG_SOURCE_PROTO</code> - the protocol to use for fetching the sources (git, svn, etc).</div>
+</li>
+<li class="level1"><div class="li"> <code>PKG_SOURCE_<abbr title="Uniform Resource Locator">URL</abbr></code>  - source repository to fetch from.  The <abbr title="Uniform Resource Locator">URL</abbr> scheme must be consistent with <code>PKG_SOURCE_PROTO</code> (e.g. <code>git://</code>), but most VCS accept <code>http://</code> or <code>https://</code> URLs nowadays.</div>
+</li>
+<li class="level1"><div class="li"> <code>PKG_SOURCE_VERSION</code> - must be specified, the commit hash or SVN revision to check out.</div>
+</li>
+<li class="level1"><div class="li"> <code>PKG_SOURCE_DATE</code> - a date like <code>2017-12-25</code>, will be used in the name of generated tarballs.</div>
+</li>
+<li class="level1"><div class="li"> <code>PKG_MIRROR_HASH</code> - SHA256 checksum of the tarball generated from the source repository checkout (previously named <code>PKG_MIRROR_MD5SUM</code>).  See <a href="#use_source_repository" title="docs:guide-developer:packages ↵" class="wikilink1">below</a> for details.</div>
+</li>
+<li class="level1"><div class="li"> <code>PKG_SOURCE_SUBDIR</code> - where the temporary source checkout should be stored, defaults to <code>$(PKG_NAME)-$(PKG_VERSION)</code></div>
+</li>
+</ul>
+
+<p>
+The <code>PKG_*</code> variables define where to download the package from; @SF is a special keyword for downloading packages from sourceforge. The md5sum is used to verify the package was downloaded correctly and PKG_BUILD_DIR defines where to find the package after the sources are uncompressed into $(BUILD_DIR). PKG_INSTALL_DIR defines where the files will be copied after calling “make install” (set with the PKG_INSTALL variable), and after that you can package them in the install section.
+</p>
+
+<p>
+At the bottom of the file is where the real magic happens, “BuildPackage” is a macro setup by the earlier include statements. BuildPackage only takes one argument directly -- the name of the package to be built, in this case “bridge”. All other information is taken from the define blocks. This is a way of providing a level of verbosity, it&#039;s inherently clear what the DESCRIPTION variable in Package/bridge is, which wouldn&#039;t be the case if we passed this information directly as the Nth argument to BuildPackage.
+</p>
+
+<p>
+Avoid reuse of PKG_NAME in call, define and eval lines for consistency and readability. Write the full name instead.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;BuildPackage variables&quot;,&quot;hid&quot;:&quot;buildpackage_variables&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:2,&quot;range&quot;:&quot;2119-7404&quot;} -->
+<h2 class="sectionedit3" id="testing_a_package_makefile">Testing a package Makefile</h2>
+<div class="level2">
+
+<p>
+There is <a href="https://git.openwrt.org/?p=openwrt/openwrt.git;a=commit;h=7a315b0b5d6aa91695853a8647383876e4b49a7a" class="interwiki iw_commit" title="https://git.openwrt.org/?p=openwrt/openwrt.git;a=commit;h=7a315b0b5d6aa91695853a8647383876e4b49a7a">support for a range of sanity checks</a> like mismatched checksums.
+</p>
+
+<p>
+To check your package:
+</p>
+<pre class="code">make package/nlbwmon/download
+make package/nlbwmon/check V=s</pre>
+
+<p>
+To automatically attempt to fix the Makefile:
+</p>
+<pre class="code">make package/nlbwmon/check V=s FIXUP=1</pre>
+
+<p>
+Note: despite the similar name, this has nothing to do with the <code>PKG_FIXUP</code> variable presented below.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Testing a package Makefile&quot;,&quot;hid&quot;:&quot;testing_a_package_makefile&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;7405-7913&quot;} -->
+<h2 class="sectionedit4" id="pkg_fixup">PKG_FIXUP</h2>
+<div class="level2">
+
+<p>
+Some packages that use autotools end up needing fixes to work around autotools using host tools instead of the build environment tools. OpenWrt defines some PKG_FIXUP rules to help work around this.
+</p>
+<pre class="code make">PKG_FIXUP<span class="sy0">:=</span>autoreconf
+PKG_FIXUP<span class="sy0">:=</span>patch<span class="sy0">-</span>libtool
+PKG_FIXUP<span class="sy0">:=</span>gettext<span class="sy0">-</span>version</pre>
+
+<p>
+Any variations of this you see in the wild are simply aliases for these.
+</p>
+
+</div>
+
+<h5 id="autoreconf">autoreconf</h5>
+<div class="level5">
+
+<p>
+This fixup performs
+</p>
+<ul>
+<li class="level1"><div class="li"> autoreconf -f -i</div>
+</li>
+<li class="level1"><div class="li"> touch required but maybe missing files</div>
+</li>
+<li class="level1"><div class="li"> ensures that openwrt-libtool is linked</div>
+</li>
+<li class="level1"><div class="li"> suppresses autopoint/gettext</div>
+</li>
+</ul>
+
+</div>
+
+<h5 id="patch-libtool">patch-libtool</h5>
+<div class="level5">
+
+<p>
+If the shipped automake recipes are broken beyond repair, then simply find instances of libtool, detect their version and apply OpenWrt fix patches to it.
+</p>
+
+</div>
+
+<h5 id="gettext-version">gettext-version</h5>
+<div class="level5">
+
+<p>
+This fixup suppresses version mismatch errors in automake&#039;s gettext support.
+</p>
+
+</div>
+
+<h4 id="tips">Tips</h4>
+<div class="level4">
+
+<p>
+Packages that are using Autotools should work with simply “PKG_FIXUP:=autoreconf”. However there might be issues with required versions.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Instead of patching <code>./configure</code>, one should fix the file from which <code>./configure</code> is generated in autotools: <code>configure.ac</code> (or <code>configure.in</code>, for very old packages). Another important file is <code>Makefile.am</code> from which <code>Makefile</code>s (with <code>configure</code> output) are generated.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;PKG_FIXUP&quot;,&quot;hid&quot;:&quot;pkg_fixup&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:4,&quot;range&quot;:&quot;7914-9213&quot;} -->
+<h2 class="sectionedit5" id="package_sourcecode">Package Sourcecode</h2>
+<div class="level2">
+
+<p>
+OpenWrt Buildroot supports many different ways to download external source code.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Package Sourcecode&quot;,&quot;hid&quot;:&quot;package_sourcecode&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:5,&quot;range&quot;:&quot;9214-9328&quot;} -->
+<h3 class="sectionedit6" id="use_packed_source_code_archive">Use packed source code archive</h3>
+<div class="level3">
+
+<p>
+Most packages use a packed .tar.gz, .tar.bz2, .tar.xz or similar source code file.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Use packed source code archive&quot;,&quot;hid&quot;:&quot;use_packed_source_code_archive&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:6,&quot;range&quot;:&quot;9329-9454&quot;} -->
+<h3 class="sectionedit7" id="use_source_repository">Use source repository</h3>
+<div class="level3">
+
+<p>
+<code>PKG_SOURCE_PROTO</code> supports download from various repositories to integrate development versions:
+</p>
+<pre class="code make">PKG_SOURCE_PROTO<span class="sy0">:=</span>bzr
+PKG_SOURCE_PROTO<span class="sy0">:=</span>cvs
+PKG_SOURCE_PROTO<span class="sy0">:=</span>darcs
+PKG_SOURCE_PROTO<span class="sy0">:=</span>git
+PKG_SOURCE_PROTO<span class="sy0">:=</span>hg
+PKG_SOURCE_PROTO<span class="sy0">:=</span>svn</pre>
+
+<p>
+Besides the source repository <code>PKG_SOURCE_<abbr title="Uniform Resource Locator">URL</abbr></code>, you also need to specify which exact version you are building using <code>PKG_SOURCE_VERSION</code> e.g. a commit hash for git, or a revision number for svn. The <code>PKG_SOURCE_VERSION</code> can be a git tag and specified like <code>PKG_SOURCE_VERSION:=v$(PKG_VERSION)</code>.
+</p>
+
+<p>
+Buildroot will first clone the source repository, and then generate a tarball from the source repository, with a name like <code>dl/odhcpd-2017-08-16-94e65ee0.tar.xz</code>.
+</p>
+
+<p>
+You should also define <code>PKG_MIRROR_HASH</code> with the SHA256 checksum of this generated tarball. This way, users building OpenWrt will directly download the generated tarball from a buildbot and verify its checksum, thus avoiding a clone of the source repository.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> The tarballs generated from svn checkouts are not reproducible, so you should avoid defining <code>PKG_MIRROR_HASH</code> when building from svn!
+</p>
+
+<p>
+To generate <code>PKG_MIRROR_HASH</code> automatically, use the following (replace <code>package/odhcpd</code> by your package):
+</p>
+<pre class="code"># First add &quot;PKG_MIRROR_HASH:=skip&quot; to the package Makefile and/or &quot;HASH:=skip&quot;, if required.
+make package/odhcpd/download V=s
+make package/odhcpd/check FIXUP=1 V=s</pre>
+
+<p>
+Complete git example:
+</p>
+<pre class="code make">PKG_SOURCE_PROTO<span class="sy0">:=</span>git
+PKG_SOURCE_URL<span class="sy0">:=</span>https<span class="sy0">://</span>github<span class="sy0">.</span>com<span class="sy0">/</span>jow<span class="sy0">-/</span>nlbwmon<span class="sy0">.</span>git
+PKG_SOURCE_DATE<span class="sy0">:=</span><span class="nu0">2017</span><span class="sy0">-</span>08<span class="sy0">-</span>02
+PKG_SOURCE_VERSION<span class="sy0">:=</span>32fc0925cbc30a4a8f71392e976aa94b586c4086
+PKG_MIRROR_HASH<span class="sy0">:=</span>caedb66cf6dcbdcee0d1525923e203d003ef15f34a13a328686794666f16171f</pre>
+
+<p>
+History: <code>PKG_MIRROR_MD5SUM</code> was <a href="https://git.openwrt.org/?p=openwrt/openwrt.git;a=commitdiff;h=b568a64f8c1f7c077c83d8c189d4c84ca270aeb4" class="interwiki iw_commit" title="https://git.openwrt.org/?p=openwrt/openwrt.git;a=commitdiff;h=b568a64f8c1f7c077c83d8c189d4c84ca270aeb4">introduced in 2011</a> and <a href="https://git.openwrt.org/?p=openwrt/openwrt.git;a=commitdiff;h=7416d2e046b87b262b407f8af70b8dd9b2927c70" class="interwiki iw_commit" title="https://git.openwrt.org/?p=openwrt/openwrt.git;a=commitdiff;h=7416d2e046b87b262b407f8af70b8dd9b2927c70">renamed to &#039;&#039;PKG_MIRROR_HASH&#039;&#039; in 2016</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Use source repository&quot;,&quot;hid&quot;:&quot;use_source_repository&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:7,&quot;range&quot;:&quot;9455-11478&quot;} -->
+<h3 class="sectionedit8" id="bundle_source_code_with_openwrt_makefile">Bundle source code with OpenWrt Makefile</h3>
+<div class="level3">
+
+<p>
+It is also possible to have the source code in the package/&lt;packagename&gt; directory. Often a ./src/ subdirectory is used.
+</p>
+<pre class="code">Examples: px5g , px5g-standalone</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Bundle source code with OpenWrt Makefile&quot;,&quot;hid&quot;:&quot;bundle_source_code_with_openwrt_makefile&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:8,&quot;range&quot;:&quot;11479-11688&quot;} -->
+<h3 class="sectionedit9" id="download_override">Download override</h3>
+<div class="level3">
+
+<p>
+Bundled source code does not need overriding.
+</p>
+
+<p>
+You can download additional data from external sources.
+</p>
+<pre class="code make">USB_IDS_VER<span class="sy0">:=</span><span class="nu0">0.321</span>
+USB_IDS_FILE<span class="sy0">:=</span>usb<span class="sy0">.</span>ids<span class="sy0">.$</span><span class="br0">&#40;</span><span class="re2">USB_IDS_VER</span><span class="br0">&#41;</span>
+define Download<span class="sy0">/</span>usb_ids
+  FILE<span class="sy0">:=$</span><span class="br0">&#40;</span><span class="re2">USB_IDS_FILE</span><span class="br0">&#41;</span>
+  URL_FILE<span class="sy0">:=</span>usb<span class="sy0">.</span>ids
+  URL<span class="sy0">:=@</span>GITHUB<span class="sy0">/</span>vcrhonek<span class="sy0">/</span>hwdata<span class="sy0">/</span>v<span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">USB_IDS_VER</span><span class="br0">&#41;</span>
+  HASH<span class="sy0">:=</span>00aa21766bb078186d2bc2cca9a2ae910aa2b787a810e97019b1b3f94c9453f2
+endef
+<span class="sy0">$</span><span class="br0">&#40;</span><span class="re1">eval</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re1">call</span> Download<span class="sy0">,</span>usb_ids<span class="br0">&#41;</span><span class="br0">&#41;</span></pre>
+
+<p>
+and unpack it or integrate it into the build process
+</p>
+<pre class="code make">define Build<span class="sy0">/</span>Prepare
+        <span class="sy0">$</span><span class="br0">&#40;</span>Build<span class="sy0">/</span>Prepare<span class="sy0">/</span>Default<span class="br0">&#41;</span>
+        <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">CP</span><span class="br0">&#41;</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">DL_DIR</span><span class="br0">&#41;</span><span class="sy0">/$</span><span class="br0">&#40;</span><span class="re2">USB_IDS_FILE</span><span class="br0">&#41;</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">PKG_BUILD_DIR</span><span class="br0">&#41;</span><span class="sy0">/</span>usb<span class="sy0">.</span>ids
+endef</pre>
+
+<p>
+You can modify UNPACK_CMD or call/modify PKG_UNPACK manually in your Build/Prepare section. 
+</p>
+<pre class="code make">UNPACK_CMD<span class="sy0">=</span>ar <span class="sy0">-</span>p <span class="st0">&quot;$(DL_DIR)/$(PKG_SOURCE)&quot;</span> data<span class="sy0">.</span>tar<span class="sy0">.</span>xz <span class="sy0">|</span> xzcat <span class="sy0">|</span> tar <span class="sy0">-</span>C <span class="sy0">$</span><span class="br0">&#40;</span><span class="nu0">1</span><span class="br0">&#41;</span> <span class="sy0">-</span>xf <span class="sy0">-</span></pre>
+<pre class="code make">define Build<span class="sy0">/</span>Prepare
+        <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">PKG_UNPACK</span><span class="br0">&#41;</span>
+<span class="co1">#       we have to download additional stuff before patching</span>
+        <span class="br0">&#40;</span>cd <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">PKG_BUILD_DIR</span><span class="br0">&#41;</span> <span class="sy0">&amp;&amp;</span> <span class="sy0">./</span>contrib<span class="sy0">/</span>download_prerequisites<span class="br0">&#41;</span>
+        <span class="sy0">$</span><span class="br0">&#40;</span>Build<span class="sy0">/</span>Patch<span class="br0">&#41;</span>
+endef</pre>
+<pre class="code">Examples: px5g, px5g-standalone, usbutils, debootstrap, gcc, </pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Download override&quot;,&quot;hid&quot;:&quot;download_override&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:9,&quot;range&quot;:&quot;11689-12804&quot;} -->
+<h2 class="sectionedit10" id="buildpackage_defines">BuildPackage defines</h2>
+<div class="level2">
+
+</div>
+
+<h5 id="package">Package/</h5>
+<div class="level5">
+
+<p>
+matches the argument passed to buildroot, this describes the package
+the menuconfig and ipkg entries. Within Package/ you can define the
+following variables:
+</p>
+<ul>
+<li class="level1"><div class="li">  SECTION     - The type of package (currently unused)</div>
+</li>
+<li class="level1"><div class="li">  CATEGORY    - Which menu it appears in menuconfig</div>
+</li>
+<li class="level1"><div class="li">  TITLE       - A short description of the package</div>
+</li>
+<li class="level1"><div class="li">  DESCRIPTION - (deprecated) A long description of the package</div>
+</li>
+<li class="level1"><div class="li">  <abbr title="Uniform Resource Locator">URL</abbr>         - Where to find the original software</div>
+</li>
+<li class="level1"><div class="li">  MAINTAINER  - (required for new packages) Who to contact concerning the package</div>
+</li>
+<li class="level1"><div class="li">  DEPENDS     - (optional) Which packages must be built/installed before this package. See <a href="#dependency_types" title="docs:guide-developer:packages ↵" class="wikilink1">below</a> for the syntax</div>
+</li>
+<li class="level1"><div class="li">  EXTRA_DEPENDS - (optional) Runtime dependencies, don&#039;t get built, only added to package <code>control</code> file</div>
+</li>
+<li class="level1"><div class="li">  PROVIDES    - (optional) allow to define a virtual package that might be provided by multiple real-packages</div>
+</li>
+<li class="level1"><div class="li">  PKGARCH     - (optional) Set this to “all” to produce a package with “Architecture: all” (See below)</div>
+</li>
+<li class="level1"><div class="li">  USERID      - (optional) a username:groupname pair to create at package installation time.</div>
+</li>
+</ul>
+
+</div>
+
+<h5 id="pkgarch_optional">PKGARCH (optional)</h5>
+<div class="level5">
+
+<p>
+By default, packages are built for the target architecture, and the ipk files generated are tagged that way.  This is normally correct, for any compiled code, but if a package only contains scripts or resources, marking it with PKGARCH:=all will make a single ipk file that can be installed on any target architecture.  (It will still be compiled into <code>bin/packages/arch/</code>, however.)
+</p>
+
+</div>
+
+<h5 id="packageconffiles_optional">Package/conffiles (optional)</h5>
+<div class="level5">
+
+<p>
+A list of config files installed by this package, one file per line. 
+The file list section should not be indented: no leading tabs or spaces in the section.
+</p>
+
+</div>
+
+<h5 id="packagedescription">Package/description</h5>
+<div class="level5">
+
+<p>
+A free text description of the package
+</p>
+
+</div>
+
+<h5 id="buildprepare_optional">Build/Prepare (optional)</h5>
+<div class="level5">
+
+<p>
+A set of commands to unpack and patch the sources. You may safely leave this
+undefined.
+</p>
+
+</div>
+
+<h5 id="buildconfigure_optional">Build/Configure (optional)</h5>
+<div class="level5">
+
+<p>
+You can leave this undefined if the source doesn&#039;t use configure or has a
+normal config script, otherwise you can put your own commands here or use
+“$(call Build/Configure/Default,)” as above to pass in additional
+arguments for a standard configure script.
+</p>
+
+</div>
+
+<h5 id="buildcompile_optional">Build/Compile (optional)</h5>
+<div class="level5">
+
+<p>
+How to compile the source; in most cases you should leave this undefined, because
+then the default is used, which calls make. If you want to pass special arguments
+to make, use e.g. “$(call Build/Compile/Default,FOO=bar)”
+</p>
+
+</div>
+
+<h5 id="buildinstall_optional">Build/Install (optional)</h5>
+<div class="level5">
+
+<p>
+How to install the compiled source. The default is to call “make install”.
+Again, to pass special arguments or targets, use “$(call Build/Install/Default,install install-foo)”.
+Note that you need put all the needed make arguments here. If you just need to add
+something to the “install” argument, don&#039;t forget the “install” itself.
+</p>
+
+</div>
+
+<h5 id="buildinstalldev_optional">Build/InstallDev (optional)</h5>
+<div class="level5">
+
+<p>
+For things needed to compile packages against it (static libs, header files), but that are of no use on the target device.
+</p>
+
+</div>
+
+<h5 id="buildclean_optional">Build/Clean (optional)</h5>
+<div class="level5">
+
+<p>
+For things needed to be wiped out during cleanup procedure.
+</p>
+
+</div>
+
+<h5 id="packageinstall">Package/install</h5>
+<div class="level5">
+
+<p>
+A set of commands to copy files into the ipkg which is represented by the $(1) directory.
+As source you can use relative paths which will install from the unpacked and compiled
+source, or $(PKG_INSTALL_DIR) which is where the files in the Build/Install step above end up.
+</p>
+
+</div>
+
+<h5 id="packagepreinst">Package/preinst</h5>
+<div class="level5">
+
+<p>
+The actual text of the script which is to be executed before installation.
+Don&#039;t forget to include the <code>#!/bin/sh</code>.
+If you need to abort installation, have the script return <code>false</code>.
+</p>
+
+</div>
+
+<h5 id="packagepostinst">Package/postinst</h5>
+<div class="level5">
+
+<p>
+The actual text of the script which is to be executed after installation.
+Don&#039;t forget to include the <code>#!/bin/sh</code>.
+Alternatively you can also use an <a href="/docs/guide-developer/uci-defaults" class="wikilink1" title="docs:guide-developer:uci-defaults" data-wiki-id="docs:guide-developer:uci-defaults">uci-default script</a> which will be executed automatically on runtime installations by opkg or embedding into an image.
+</p>
+
+</div>
+
+<h5 id="packageprerm">Package/prerm</h5>
+<div class="level5">
+
+<p>
+The actual text of the script which is to be executed before removal.
+Don&#039;t forget to include the <code>#!/bin/sh</code>.
+If you need to abort removal, have the script return <code>false</code>.
+</p>
+
+</div>
+
+<h5 id="packagepostrm">Package/postrm</h5>
+<div class="level5">
+
+<p>
+The actual text of the script which is to be executed after removal.
+Don&#039;t forget to include the <code>#!/bin/sh</code>.
+</p>
+
+<p>
+The reason that some of the defines are prefixed by “Package/” and others are simply “Build” is because of the possibility of generating multiple packages from a single source. OpenWrt works under the assumption of one source per package <code>Makefile</code>, but you can split that source into as many packages as
+desired. Since you only need to compile the sources once, there&#039;s one global set of “Build” defines, but you can add as many “Package/” defines as you want by adding extra calls to BuildPackage -- see the dropbear package for an example.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;BuildPackage defines&quot;,&quot;hid&quot;:&quot;buildpackage_defines&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:10,&quot;range&quot;:&quot;12805-17638&quot;} -->
+<h2 class="sectionedit11" id="building_in_a_subdirectory_of_the_source">Building in a subdirectory of the source</h2>
+<div class="level2">
+
+<p>
+Some software has no Makefile directly at the root of the tarball. For instance, it is common to have a <code>src/</code> directory with all source files and a Makefile. The problem is that OpenWRT&#039;s build system will try to run <code>make</code> in <code>PKG_BUILD_DIR</code>; this will fail if there is no Makefile there. To solve this problem, use the <code>MAKE_PATH</code> variable, for instance:
+</p>
+<pre class="code">MAKE_PATH:=src</pre>
+
+<p>
+This path is relative to <code>PKG_BUILD_DIR</code> and defaults to <code>.</code>. Alternatively, you can override <code>Build/Compile</code> (see above), though this is more work.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Building in a subdirectory of the source&quot;,&quot;hid&quot;:&quot;building_in_a_subdirectory_of_the_source&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:11,&quot;range&quot;:&quot;17639-18247&quot;} -->
+<h2 class="sectionedit12" id="dependency_types">Dependency Types</h2>
+<div class="level2">
+
+<p>
+Various types of dependencies can be specified, which require a bit of explanation for their differences.  More documentation is available at <a href="/docs/guide-developer/dependencies" class="wikilink1" title="docs:guide-developer:dependencies" data-wiki-id="docs:guide-developer:dependencies">Using Dependencies</a>
+</p>
+<div class="table sectionedit13"><table class="inline">
+	<tr class="row0">
+		<td class="col0 leftalign"> +&lt;foo&gt;    </td><td class="col1"> Package will depend on package &lt;foo&gt; and will select it when selected. </td>
+	</tr>
+	<tr class="row1">
+		<td class="col0 leftalign"> &lt;foo&gt;    </td><td class="col1 leftalign"> Package will depend on package &lt;foo&gt; and  will be invisible until &lt;foo&gt; is selected.   </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> @FOO </td><td class="col1"> Package depends on the config symbol CONFIG_FOO and will be invisible unless CONFIG_FOO is set. This usually used for depending on certain Linux versions or targets, e.g. @TARGET_foo will make a package only available for target foo. You can also use boolean expressions for complex dependencies, e.g. @(!TARGET_foo&amp;&amp;!TARGET_bar) will make the package unavailable for foo and bar. </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> +FOO:&lt;bar&gt; </td><td class="col1"> Package will depend on &lt;bar&gt; if CONFIG_FOO is set, and will select &lt;bar&gt; when it is selected itself. The typical use case would be if there are compile time options for this package toggling features that depend on external libraries. <img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Note that the + replaces the @. <img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> There is limited support for boolean operators here compared to the @ type above.  Negation ! is only supported to negate the whole condition.  Parentheses are ignored, so use them only for readability.  Like C, &amp;&amp; has a higher precedence than ||. So +(YYY||FOO&amp;&amp;BAR):package will select package if CONFIG_YYY is set or if both CONFIG_FOO and CONFIG_BAR are set. </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> @FOO:&lt;bar&gt; </td><td class="col1"> Package will depend on &lt;bar&gt; if CONFIG_FOO is set, and will be invisible until &lt;bar&gt; is selected when CONFIG_FOO is set. </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:13,&quot;range&quot;:&quot;18479-19864&quot;} -->
+<p>
+Some typical config symbols for (conditional) dependencies are:
+</p>
+<div class="table sectionedit14"><table class="inline">
+	<tr class="row0">
+		<td class="col0"> TARGET_&lt;foo&gt; </td><td class="col1"> Target &lt;foo&gt; is selected </td>
+	</tr>
+	<tr class="row1">
+		<td class="col0"> TARGET_&lt;foo&gt;_&lt;bar&gt; </td><td class="col1"> If the target &lt;foo&gt; has subtargets, subtarget &lt;foo&gt; is selected. If not, profile &lt;foo&gt; is selected. This is in addition to TARGET_&lt;foo&gt; </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> TARGET_&lt;foo&gt;_&lt;bar&gt;_&lt;baz&gt; </td><td class="col1"> Target &lt;foo&gt; with subtarget &lt;bar&gt; and profile &lt;baz&gt; is selected. </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> LINUX_3_X </td><td class="col1"> Linux version used is 3.x.* </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> LINUX_2_6_X </td><td class="col1"> Linux version used is 2.6.x.* (:1: only used for backfire and earlier) </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0"> LINUX_2_4 </td><td class="col1"> Linux version is 2.4 (<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> only used in backfire and earlier, and only for target brcm-2.4) </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0"> USE_UCLIBC, USE_GLIBC, USE_EGLIBC </td><td class="col1"> To (not) depend on a certain libc. </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0"> BROKEN </td><td class="col1"> Package doesn&#039;t build or work, and should only be visible if “Show broken targets/packages” is selected. Prevents the package from failing builds by accidentally selecting it. </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0"> IPV6 </td><td class="col1"> <abbr title="Internet Protocol version 6">IPv6</abbr> support in packages is selected. </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table1&quot;,&quot;secid&quot;:14,&quot;range&quot;:&quot;19931-20784&quot;} -->
+<p>
+Note that the syntax above applies to the <code>DEPENDS</code> field only.  
+</p>
+
+<p>
+<code>PKG_BUILD_DEPENDS</code> does not use <code>+</code> or <code>@</code>, but otherwise uses the same syntax.  You can write <code>FOO:bar</code> to build <code>bar</code> if <code>CONFIG_FOO</code> is defined (if you want to build bar if package FOO is selected, use <code>PACKAGE_FOO:bar</code>).  You may use <code>!</code>, <code>||</code> and <code>&amp;&amp;</code> as explained above.  <code>PKG_BUILD_DEPENDS</code> uses the name from the <code>PKG_NAME</code>, not the individual packages.  For example, if you want to have openssl to be a build-dependency, you would write <code>PKG_BUILD_DEPENDS:=openssl</code>, whereas if your package depends and selects the openssl library, you&#039;d have <code>DEPENDS:=+libopenssl</code>.  Notice that there&#039;s no installable package named <code>openssl</code>:  the library is <code>libopenssl</code>, the utility is <code>openssl-util</code>, but their <code>PKG_NAME</code> is <code>openssl</code>.  If you need a host-built package, append <code>/host</code> to the <code>PKG_NAME</code>, e.g. <code>PKG_BUILD_DEPENDS:=openssl/host</code>.  A package listed in <code>PKG_BUILD_DEPENDS</code> will be built even if it is not selected in <code>make menuconfig</code>.
+</p>
+
+<p>
+<code>EXTRA_DEPENDS</code> does not accept the conditional or select dependency syntax.  However, unlike <code>DEPENDS</code> and <code>PKG_BUILD_DEPENDS</code>, it is generated at package-build-time, so you may use Makefile functions to add them conditionally.  For example, to get the equivalent of <code>DEPENDS:=@SOMESYMBOL:foo +PACKAGE_somepkg:bar</code>, you can write <code>EXTRA_DEPENDS:=$(if $(CONFIG_SOMESYMBOL),foo) $(if $(CONFIG_PACKAGE_somepkg),bar)</code>.  <img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Note that neither <code>foo</code> or <code>bar</code> will be selected in menuconfig, or guaranteed to be built before your package, even if selected somewhere else.  For this reason, it is seldom used in packages.
+</p>
+
+<p>
+<code>EXTRA_DEPENDS</code> is more often used to depend on specific versions, by adding the desired version specification in parentheses, using &gt;=,&gt;,&lt;,&lt;=,=. Make sure you add the <code>PKG_RELEASE</code> number if you&#039;re using &#039;=&#039;, such as <code>EXTRA_DEPENDS:=foo (=2.0.0-1)</code>: where foo&#039;s <code>PKG_VERSION</code> is 2.0.0, and <code>PKG_RELEASE</code> is 1.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Dependency Types&quot;,&quot;hid&quot;:&quot;dependency_types&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:12,&quot;range&quot;:&quot;18248-22811&quot;} -->
+<h2 class="sectionedit15" id="configure_a_package_source">Configure a package source</h2>
+<div class="level2">
+
+<p>
+Example:
+</p>
+<pre class="code make">CONFIGURE_ARGS <span class="sy0">+=</span> \
+        <span class="sy0">--</span>disable<span class="sy0">-</span>native<span class="sy0">-</span>affinity \
+        <span class="sy0">--</span>disable<span class="sy0">-</span>unicode \
+        <span class="sy0">--</span>enable<span class="sy0">-</span>hwloc
+&nbsp;
+CONFIGURE_VARS <span class="sy0">+=</span> \
+        ac_cv_file__proc_stat<span class="sy0">=</span>yes \
+        ac_cv_file__proc_meminfo<span class="sy0">=</span>yes \
+        ac_cv_func_malloc_0_nonnull<span class="sy0">=</span>yes \
+        ac_cv_func_realloc_0_nonnull<span class="sy0">=</span>yes</pre>
+
+<p>
+To set variables (autoconfig internal ones or CPPFLAGS,CFLAGS, CXXFLAGS, LDFLAGS for example) or configure arguments.
+Setting configure arguments is common. Setting VARS is needed when the configure.ac autoconf source script does not work well on cross compilation or finding libraries.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> The article <a href="/docs/guide-developer/packages.flags" class="wikilink1" title="docs:guide-developer:packages.flags" data-wiki-id="docs:guide-developer:packages.flags">packages.flags</a> contains more information and examples about overriding and setting these.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configure a package source&quot;,&quot;hid&quot;:&quot;configure_a_package_source&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:15,&quot;range&quot;:&quot;22812-23588&quot;} -->
+<h3 class="sectionedit16" id="host_tools_required">Host tools required</h3>
+<div class="level3">
+
+<p>
+In order to build your package, you may require some extra build tools or libraries that are not already in the standard OpenWrt toolchain. These must be built as part of the OpenWrt build process ie. you cannot rely on them being installed via the build system&#039;s package manager (or manually by the user or administrator). This is so that OpenWrt can be built reliably and repeatably on a wide variety of machines. These are referred to as <em>host tools</em> because they run on (or are compiled for) the host, not the target.
+</p>
+
+<p>
+If your package requires host tools in order to be built for the target machine, these should go in <code>PKG_BUILD_DEPENDS</code> and will end with <code>/host</code>. For example, the <code>json-glib</code> package requires the <a href="https://mesonbuild.com/" class="urlextern" title="https://mesonbuild.com/" rel="ugc nofollow">Meson build system</a> to generate build files, as well as Glib2 on the host, so it has:
+</p>
+<pre class="code make">PKG_BUILD_DEPENDS<span class="sy0">:=</span>glib2<span class="sy0">/</span>host meson<span class="sy0">/</span>host</pre>
+
+<p>
+A package might itself provide host tools, and building or using <em>those</em> might require <em>other</em> host tools to be built first. These other tools go in <code>HOST_BUILD_DEPENDS</code>. For example, the host tool that the Meson package provides requires another build tool, <a href="https://ninja-build.org/" class="urlextern" title="https://ninja-build.org/" rel="ugc nofollow">Ninja</a>, so it has this line:
+</p>
+<pre class="code make">HOST_BUILD_DEPENDS<span class="sy0">:=</span>ninja<span class="sy0">/</span>host</pre>
+
+<p>
+The makefile for a package that provides host tools will:
+</p>
+<ul>
+<li class="level1"><div class="li"> Include <code>$(INCLUDE_DIR)/host-build.mk</code>. You can look at this makefile for the details of the host tool build process.</div>
+</li>
+<li class="level1"><div class="li"> Have sections similar to the <code>Build/...</code>  sections of other packages, but they will start with <code>Host/</code>. For example, <code>Host/Configure</code>, <code>Host/Compile</code> and <code>Host/Install</code> are common.</div>
+</li>
+<li class="level1"><div class="li"> Call <code>$(eval $(call HostBuild))</code> at the end.</div>
+</li>
+</ul>
+
+<p>
+Some examples of packages that <em>provide</em> host tools (and their makefiles):
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="https://github.com/openwrt/packages/blob/master/devel/meson/Makefile" class="urlextern" title="https://github.com/openwrt/packages/blob/master/devel/meson/Makefile" rel="ugc nofollow">Meson</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/openwrt/packages/blob/master/net/samba4/Makefile" class="urlextern" title="https://github.com/openwrt/packages/blob/master/net/samba4/Makefile" rel="ugc nofollow">Samba 4</a> - note that the Samba 4 <em>target</em> package actually depends on the Samba 4 <em>host</em> package provided in the same makefile</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/openwrt/packages/blob/master/lang/golang/golang/Makefile" class="urlextern" title="https://github.com/openwrt/packages/blob/master/lang/golang/golang/Makefile" rel="ugc nofollow">Go (golang)</a> - this is a much more complex example, and useful if you&#039;re thinking of adding support for a new language in OpenWrt.</div>
+</li>
+</ul>
+
+</div>
+
+<h5 id="build">BUILD</h5>
+<div class="level5">
+
+<p>
+If you want to build only the host tool to test or check a compilation error for host compilation, then you could also build only the host tool with the following command.
+</p>
+<ul>
+<li class="level1"><div class="li"> Compile:<br/>
+make ./package/&lt;package_name&gt;/<strong>host</strong>/compile</div>
+</li>
+<li class="level1"><div class="li"> Clean:<br/>
+make ./package/&lt;package_name&gt;/<strong>host</strong>/clean</div>
+</li>
+<li class="level1"><div class="li"> Update:<br/>
+make ./package/&lt;package_name&gt;/<strong>host</strong>/update</div>
+</li>
+</ul>
+
+<p>
+The make arguments <strong>QUILT=1</strong> and <strong>V=s</strong> are also valid.
+</p>
+
+</div>
+
+<h5 id="patches">PATCHES</h5>
+<div class="level5">
+
+<p>
+If you want to patch the host and target tool separately, then you have to add <code>HOST_PATCH_DIR:=./&lt;directory&gt;</code>.
+For example, add <code>HOST_PATCH_DIR:=./patches-host</code> to the <code>Makefile</code> so the host tool has its own patch directory.
+The target tool will still use the standard patch directory <code>./patches</code> in its package directory.
+</p>
+
+</div>
+
+<h5 id="notes">NOTES</h5>
+<div class="level5">
+
+<p>
+All variables in your pre/post install/removal scripts should have double ($$) instead of a single ($) string characters. This will inform “make” to not interpret the value as a variable, but rather just ignore the string and replace the double $$ by a single $ -- <a href="https://forum.openwrt.org/viewtopic.php?pid=85197#p85197" class="urlextern" title="https://forum.openwrt.org/viewtopic.php?pid=85197#p85197" rel="ugc nofollow">More Info</a>
+</p>
+
+<p>
+After you&#039;ve created your package Makefile, the new package will automatically show in the menu the next time you run “make menuconfig” and if selected will be built automatically the next time “make” is run.
+</p>
+
+<p>
+DESCRIPTION is obsolete, use Package/PKG_NAME/description.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Host tools required&quot;,&quot;hid&quot;:&quot;host_tools_required&quot;,&quot;codeblockOffset&quot;:13,&quot;secid&quot;:16,&quot;range&quot;:&quot;23589-27309&quot;} -->
+<h2 class="sectionedit17" id="adding_configuration_options">Adding configuration options</h2>
+<div class="level2">
+
+<p>
+If you would like to configure your package installation/compilation in the menuconfig you can do the following:
+Add MENU:=1 to your package definition like this:
+</p>
+<pre class="code make">define Package<span class="sy0">/</span>mjpg<span class="sy0">-</span>streamer
+  SECTION<span class="sy0">:=</span>multimedia
+  CATEGORY<span class="sy0">:=</span>Multimedia
+  TITLE<span class="sy0">:=</span>MJPG<span class="sy0">-</span>streamer
+  DEPENDS<span class="sy0">:=@!</span>LINUX_2_4 <span class="sy0">+</span>libpthread<span class="sy0">-</span>stubs <span class="sy0">+</span>jpeg
+  URL<span class="sy0">:=</span>http<span class="sy0">://</span>mjpg<span class="sy0">-</span>streamer<span class="sy0">.</span>wiki<span class="sy0">.</span>sourceforge<span class="sy0">.</span>net<span class="sy0">/</span>
+  MENU<span class="sy0">:=</span><span class="nu0">1</span>
+endef</pre>
+
+<p>
+Create a config key in the Makefile:
+</p>
+<pre class="code make">define Package<span class="sy0">/</span>mjpg<span class="sy0">-</span>streamer<span class="sy0">/</span>config
+	source <span class="st0">&quot;$(SOURCE)/Config.in&quot;</span>
+endef</pre>
+
+<p>
+Create a Config.in file directory where the Makefile is located with the content like this:
+</p>
+<pre class="code make">	<span class="co1"># Mjpg-streamer configuration</span>
+	menu <span class="st0">&quot;Configuration&quot;</span>
+		depends on PACKAGE_mjpg<span class="sy0">-</span>streamer
+&nbsp;
+	config MJPEG_STREAMER_AUTOSTART
+		bool <span class="st0">&quot;Autostart enabled&quot;</span>
+		default n
+&nbsp;
+		menu <span class="st0">&quot;Input plugins&quot;</span>
+			depends on PACKAGE_mjpg<span class="sy0">-</span>streamer
+			config MJPEG_STREAMER_INPUT_FILE
+				bool <span class="st0">&quot;File input plugin&quot;</span>
+				help 
+					You can stream pictures from jpg files on the filesystem
+				default n
+&nbsp;
+			config MJPEG_STREAMER_INPUT_UVC
+				bool <span class="st0">&quot;UVC input plugin&quot;</span>
+				help
+					You can stream pictures from an Universal Video Class compatible webcamera
+				default y
+&nbsp;
+			config MJPEG_STREAMER_FPS
+				depends MJPEG_STREAMER_INPUT_UVC
+				int <span class="st0">&quot;Maximum FPS&quot;</span>
+				default <span class="nu0">15</span>
+&nbsp;
+			config MJPEG_STREAMER_PICT_HEIGHT
+				depends MJPEG_STREAMER_INPUT_UVC
+				int <span class="st0">&quot;Picture height&quot;</span>
+				default <span class="nu0">640</span>
+&nbsp;
+			config MJPEG_STREAMER_PICT_WIDTH
+				depends MJPEG_STREAMER_INPUT_UVC
+				int <span class="st0">&quot;Picture width&quot;</span>
+				default <span class="nu0">480</span>
+&nbsp;
+&nbsp;
+			config MJPEG_STREAMER_DEVICE
+				depends MJPEG_STREAMER_INPUT_UVC
+				string <span class="st0">&quot;Device&quot;</span>
+				default <span class="sy0">/</span>dev<span class="sy0">/</span>video0
+&nbsp;
+			config MJPEG_STREAMER_INPUT_GSPCA
+				bool <span class="st0">&quot;GSPCA input plugin&quot;</span>
+				help
+					You can stream pictures from a gspca supported webcamera Note this module is deprecated<span class="sy0">,</span> use the UVVC plugin instead
+				default n
+		endmenu
+&nbsp;
+		<span class="co1"># ......</span>
+&nbsp;
+	endmenu</pre>
+
+<p>
+Above, you can see examples for various types of config parameters.
+Finally, you can check your configuration parameters in your Makefile in the following way
+(note that you can reference the parameter&#039;s value with its name prefixed with <code>CONFIG_</code>):
+</p>
+<pre class="code make"><span class="kw1">ifeq</span> <span class="br0">&#40;</span><span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">CONFIG_MJPEG_STREAMER_INPUT_UVC</span><span class="br0">&#41;</span><span class="sy0">,</span>y<span class="br0">&#41;</span>
+    <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">CP</span><span class="br0">&#41;</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">PKG_BUILD_DIR</span><span class="br0">&#41;</span><span class="sy0">/</span>input_uvc<span class="sy0">.</span>so <span class="sy0">$</span><span class="br0">&#40;</span><span class="nu0">1</span><span class="br0">&#41;</span><span class="sy0">/</span>usr<span class="sy0">/</span>lib
+<span class="kw1">endif</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Adding configuration options&quot;,&quot;hid&quot;:&quot;adding_configuration_options&quot;,&quot;codeblockOffset&quot;:15,&quot;secid&quot;:17,&quot;range&quot;:&quot;27310-29608&quot;} -->
+<h2 class="sectionedit18" id="working_on_local_application_source">Working on local application source</h2>
+<div class="level2">
+
+<p>
+If you are still working on the application, itself, at the same time as you are working on the packaging, it can be very useful to have OpenWrt build your work in progress code, rather than a specific version+md5sum combination checked out of revision control, or downloaded from your final “release” location.  There are a few ways of doing this.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Working on local application source&quot;,&quot;hid&quot;:&quot;working_on_local_application_source&quot;,&quot;codeblockOffset&quot;:19,&quot;secid&quot;:18,&quot;range&quot;:&quot;29609-30008&quot;} -->
+<h3 class="sectionedit19" id="config_src_tree_override">CONFIG_SRC_TREE_OVERRIDE</h3>
+<div class="level3">
+
+<p>
+This is an option in menuconfig. See “Advanced configuration options (for developers)” → “Enable package source tree override”
+</p>
+
+<p>
+This allows you to point to a local git tree.  (And only git)  Say your package is defined in my_cool_feed/awesome_app.
+</p>
+<pre class="code">ln -s /path/to/local/awesome_app_tree/.git feeds/my_cool_feed/awesome_app/git-src
+make package/awesome_app/{clean,compile} V=s</pre>
+
+<p>
+Benefits of this approach are that you don&#039;t need any special infrastructure in your package makefiles, they stay completely as they would be for a final build. The downside is that it only builds whatever is currently <strong>committed</strong> in HEAD of your local tree.
+(This could be a private testing branch, but everything you want to include in the package must be committed: uncommitted local changes will not be included in the build.)
+This will also use a <strong>separate</strong> directory for building and checking out the code.
+So, any built objects in your local git tree (for example, a build targeting a different architecture) will be left alone, but whichever <strong>branch</strong> is checked out in your tree determines where HEAD is.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;CONFIG_SRC_TREE_OVERRIDE&quot;,&quot;hid&quot;:&quot;config_src_tree_override&quot;,&quot;codeblockOffset&quot;:19,&quot;secid&quot;:19,&quot;range&quot;:&quot;30009-31157&quot;} -->
+<h3 class="sectionedit20" id="use_source_dir">USE_SOURCE_DIR</h3>
+<div class="level3">
+
+<p>
+As part of deprecating <code>package-version-override.mk</code> (below), a method to point directly to local source was introduced.
+</p>
+<pre class="code">make package/awesome_app/clean V=s
+make package/awesome_app/prepare USE_SOURCE_DIR=~/src/awesome_src V=s
+make package/awesome_app/clean V=s</pre>
+
+<p>
+(<code>V=s</code> is optional above)
+</p>
+
+<p>
+This doesn&#039;t require any config change to enable rules, doesn&#039;t require that you have a local git tree, and doesn&#039;t require any files to be committed. 
+</p>
+
+<p>
+At least at present, however, this has the following problems:
+</p>
+<ul>
+<li class="level1"><div class="li"> make clean doesn&#039;t clean the source link directory, but still seems to be removing a link</div>
+</li>
+<li class="level1"><div class="li"> make prepare needs to be run every time</div>
+</li>
+<li class="level1"><div class="li"> make package/awesome_app/{clean,compile} USE_SOURCE_DIR=~blah doesn&#039;t work</div>
+</li>
+<li class="level1"><div class="li"> Seems to have bad interactions with leaving USE_SOURCE_DIR set for other (dependent?) packages.</div>
+</li>
+</ul>
+
+<p>
+See <a href="http://www.mail-archive.com/openwrt-devel@lists.openwrt.org/msg23122.html" class="urlextern" title="http://www.mail-archive.com/openwrt-devel@lists.openwrt.org/msg23122.html" rel="ugc nofollow">http://www.mail-archive.com/openwrt-devel@lists.openwrt.org/msg23122.html</a> for the original discussion of this new feature
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Since OpenWrt 19.07.5, <code>USE_SOURCE_DIR</code> only works with packages that have a valid <code>PKG_MIRROR_HASH</code>. For packages under development, hash checking can be disabled by setting <code>PKG_MIRROR_HASH=skip</code>. This allows using <code>USE_SOURCE_DIR</code> for packages pulling sources from a developer branch (e.g. having <code>PKG_SOURCE_VERSION:=branchname</code>) without updating <code>PKG_MIRROR_HASH</code> every time.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;USE_SOURCE_DIR&quot;,&quot;hid&quot;:&quot;use_source_dir&quot;,&quot;codeblockOffset&quot;:20,&quot;secid&quot;:20,&quot;range&quot;:&quot;31158-32549&quot;} -->
+<h3 class="sectionedit21" id="deprecated_package-version-overridemk">(Deprecated) package-version-override.mk</h3>
+<div class="level3">
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> <strong> Don&#039;t use this anymore! </strong>
+</p>
+
+<p>
+Support for this style of local source building was removed. This style required a permanent modification to your package makefile, and then entering a path via menuconfig to where the source was found. It was fairly easy to use, and didn&#039;t care whether your local source was in git or svn or visual source safe even, but it had the major downside that the “clean” target simply didn&#039;t work (as it simply removed a symlink for cleaning).
+</p>
+
+<p>
+If you build a current OpenWrt tree, with packages that still attempt to use this style of local building, you <strong>will</strong> receive errors like so:
+ERROR: please fix package/feeds/feed_name/application_name/Makefile - see logs/package/feeds/feed_name/application_name/dump.txt for details
+</p>
+
+<p>
+If you need/want to keep using this style, where it&#039;s available, make sure you include without failing if it was missing:
+</p>
+<pre class="code">-include $(INCLUDE_DIR)/package-version-override.mk</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;(Deprecated) package-version-override.mk&quot;,&quot;hid&quot;:&quot;deprecated_package-version-overridemk&quot;,&quot;codeblockOffset&quot;:21,&quot;secid&quot;:21,&quot;range&quot;:&quot;32550-33552&quot;} -->
+<h2 class="sectionedit22" id="creating_packages_for_kernel_modules">Creating packages for kernel modules</h2>
+<div class="level2">
+
+<p>
+A <a href="https://wiki.archlinux.org/title/Kernel_module" class="urlextern" title="https://wiki.archlinux.org/title/Kernel_module" rel="ugc nofollow">kernel module</a> is an installable program which extends the behavior of the linux kernel. A kernel module gets loaded after the kernel itself, E.G. using <code>insmod</code>.
+</p>
+
+<p>
+Many kernel programs are included in the Linux source distribution; typically the kernel build may be configured to, for each program,
+</p>
+<ul>
+<li class="level1"><div class="li"> compile it into the kernel as a built-in, </div>
+</li>
+<li class="level1"><div class="li"> compile it as a loadable kernel module, or </div>
+</li>
+<li class="level1"><div class="li"> ignore it.</div>
+</li>
+</ul>
+
+<p>
+See <em><strong>FIX:Customizingthekerneloptions customizing the kernel options</strong></em> for including it in the kernel.
+</p>
+
+<p>
+To include one of these programs as a loadable module, select the corresponding kernel option in the OpenWrt configuration (see <a href="/docs/guide-developer/toolchain/use-buildsystem#image_configuration" class="wikilink1" title="docs:guide-developer:toolchain:use-buildsystem" data-wiki-id="docs:guide-developer:toolchain:use-buildsystem">Build Configuration</a>). If your favorite kernel module does not appear in the OpenWrt configuration menus, you must add a stanza to one of the files in the package/kernel/linux/modules directory. Here is an example extracted from .../modules/block.mk:
+</p>
+<pre class="code make">define KernelPackage<span class="sy0">/</span>loop
+  SUBMENU<span class="sy0">:=$</span><span class="br0">&#40;</span><span class="re2">BLOCK_MENU</span><span class="br0">&#41;</span>
+  TITLE<span class="sy0">:=</span>Loopback device support
+  KCONFIG<span class="sy0">:=</span> \
+        CONFIG_BLK_DEV_LOOP \
+        CONFIG_BLK_DEV_CRYPTOLOOP<span class="sy0">=</span>n
+  FILES<span class="sy0">:=$</span><span class="br0">&#40;</span><span class="re2">LINUX_DIR</span><span class="br0">&#41;</span><span class="sy0">/</span>drivers<span class="sy0">/</span>block<span class="sy0">/</span>loop<span class="sy0">.</span>ko
+  AUTOLOAD<span class="sy0">:=$</span><span class="br0">&#40;</span><span class="re1">call</span> AutoLoad<span class="sy0">,</span><span class="nu0">30</span><span class="sy0">,</span>loop<span class="br0">&#41;</span>
+endef
+&nbsp;
+define KernelPackage<span class="sy0">/</span>loop<span class="sy0">/</span>description
+ Kernel module for loopback device support
+endef
+&nbsp;
+<span class="sy0">$</span><span class="br0">&#40;</span><span class="re1">eval</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re1">call</span> KernelPackage<span class="sy0">,</span>loop<span class="br0">&#41;</span><span class="br0">&#41;</span></pre>
+
+<p>
+Changes to the *.mk files are not automatically picked up by the build system. To force re-reading the metadata, either touch the kernel package Makefile using <code>touch package/kernel/linux/Makefile</code> (on older revisions <code>touch package/kernel/Makefile</code>) or to delete the <code>tmp/</code> directory of the buildroot.
+</p>
+
+<p>
+You can also add kernel modules which are <em>not</em> part of the linux source distribution. In this case, a kernel module appears in the package/ directory, just as any other package does. The package/Makefile uses <code>KernelPackage/xxx</code> definitions in place of <code>Package/xxx</code>.
+</p>
+
+<p>
+For example, here is <code>package/madwifi/Makefile</code>:
+</p>
+<pre class="code make"><span class="co1">#</span>
+<span class="co1"># Copyright (C) 2006 OpenWrt.org</span>
+<span class="co1">#</span>
+<span class="co1"># This is free software, licensed under the GNU General Public License v2.</span>
+<span class="co1"># See /LICENSE for more information.</span>
+<span class="co1">#</span>
+<span class="co1"># $Id$</span>
+&nbsp;
+<span class="kw1">include</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">TOPDIR</span><span class="br0">&#41;</span><span class="sy0">/</span>rules<span class="sy0">.</span>mk
+<span class="kw1">include</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">INCLUDE_DIR</span><span class="br0">&#41;</span><span class="sy0">/</span>kernel<span class="sy0">.</span>mk
+&nbsp;
+PKG_NAME<span class="sy0">:=</span>madwifi
+PKG_VERSION<span class="sy0">:=</span>0<span class="sy0">.</span>9<span class="sy0">.</span>2
+PKG_RELEASE<span class="sy0">:=</span><span class="nu0">1</span>
+&nbsp;
+PKG_SOURCE<span class="sy0">:=$</span><span class="br0">&#40;</span><span class="re2">PKG_NAME</span><span class="br0">&#41;</span><span class="sy0">-$</span><span class="br0">&#40;</span><span class="re2">PKG_VERSION</span><span class="br0">&#41;</span><span class="sy0">.</span>tar<span class="sy0">.</span>bz2
+PKG_SOURCE_URL<span class="sy0">:=@</span>SF<span class="sy0">/$</span><span class="br0">&#40;</span><span class="re2">PKG_NAME</span><span class="br0">&#41;</span>
+PKG_HASH<span class="sy0">:=</span>a75baacbe07085ddc5cb28e1fb43edbb
+PKG_CAT<span class="sy0">:=</span>bzcat
+&nbsp;
+PKG_BUILD_DIR<span class="sy0">:=$</span><span class="br0">&#40;</span><span class="re2">KERNEL_BUILD_DIR</span><span class="br0">&#41;</span><span class="sy0">/$</span><span class="br0">&#40;</span><span class="re2">PKG_NAME</span><span class="br0">&#41;</span><span class="sy0">-$</span><span class="br0">&#40;</span><span class="re2">PKG_VERSION</span><span class="br0">&#41;</span>
+&nbsp;
+<span class="kw1">include</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">INCLUDE_DIR</span><span class="br0">&#41;</span><span class="sy0">/</span>package<span class="sy0">.</span>mk
+&nbsp;
+RATE_CONTROL<span class="sy0">:=</span>sample
+&nbsp;
+<span class="kw1">ifeq</span> <span class="br0">&#40;</span><span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">ARCH</span><span class="br0">&#41;</span><span class="sy0">,</span>mips<span class="br0">&#41;</span>
+  HAL_TARGET<span class="sy0">:=</span>mips<span class="sy0">-</span>be<span class="sy0">-</span>elf
+<span class="kw1">endif</span>
+<span class="kw1">ifeq</span> <span class="br0">&#40;</span><span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">ARCH</span><span class="br0">&#41;</span><span class="sy0">,</span>mipsel<span class="br0">&#41;</span>
+  HAL_TARGET<span class="sy0">:=</span>mips<span class="sy0">-</span>le<span class="sy0">-</span>elf
+<span class="kw1">endif</span>
+<span class="kw1">ifeq</span> <span class="br0">&#40;</span><span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">ARCH</span><span class="br0">&#41;</span><span class="sy0">,</span>i386<span class="br0">&#41;</span>
+  HAL_TARGET<span class="sy0">:=</span>i386<span class="sy0">-</span>elf
+<span class="kw1">endif</span>
+<span class="kw1">ifeq</span> <span class="br0">&#40;</span><span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">ARCH</span><span class="br0">&#41;</span><span class="sy0">,</span>armeb<span class="br0">&#41;</span>
+  HAL_TARGET<span class="sy0">:=</span>xscale<span class="sy0">-</span>be<span class="sy0">-</span>elf
+<span class="kw1">endif</span>
+<span class="kw1">ifeq</span> <span class="br0">&#40;</span><span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">ARCH</span><span class="br0">&#41;</span><span class="sy0">,</span>powerpc<span class="br0">&#41;</span>
+  HAL_TARGET<span class="sy0">:=</span>powerpc<span class="sy0">-</span>be<span class="sy0">-</span>elf
+<span class="kw1">endif</span>
+&nbsp;
+BUS<span class="sy0">:=</span>PCI
+<span class="kw1">ifneq</span> <span class="br0">&#40;</span><span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">CONFIG_LINUX_2_4_AR531X</span><span class="br0">&#41;</span><span class="sy0">,</span><span class="br0">&#41;</span>
+  BUS<span class="sy0">:=</span>AHB
+<span class="kw1">endif</span>
+<span class="kw1">ifneq</span> <span class="br0">&#40;</span><span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">CONFIG_LINUX_2_6_ARUBA</span><span class="br0">&#41;</span><span class="sy0">,</span><span class="br0">&#41;</span>
+  BUS<span class="sy0">:=</span>PCI AHB	<span class="co1"># no suitable HAL for AHB yet.</span>
+<span class="kw1">endif</span>
+&nbsp;
+BUS_MODULES<span class="sy0">:=</span>
+<span class="kw1">ifeq</span> <span class="br0">&#40;</span><span class="sy0">$</span><span class="br0">&#40;</span><span class="re1">findstring</span> AHB<span class="sy0">,$</span><span class="br0">&#40;</span><span class="re2">BUS</span><span class="br0">&#41;</span><span class="br0">&#41;</span><span class="sy0">,</span>AHB<span class="br0">&#41;</span>
+  BUS_MODULES<span class="sy0">+=$</span><span class="br0">&#40;</span><span class="re2">PKG_BUILD_DIR</span><span class="br0">&#41;</span><span class="sy0">/</span>ath<span class="sy0">/</span>ath_ahb<span class="sy0">.$</span><span class="br0">&#40;</span><span class="re2">LINUX_KMOD_SUFFIX</span><span class="br0">&#41;</span>
+<span class="kw1">endif</span>
+<span class="kw1">ifeq</span> <span class="br0">&#40;</span><span class="sy0">$</span><span class="br0">&#40;</span><span class="re1">findstring</span> PCI<span class="sy0">,$</span><span class="br0">&#40;</span><span class="re2">BUS</span><span class="br0">&#41;</span><span class="br0">&#41;</span><span class="sy0">,</span>PCI<span class="br0">&#41;</span>
+  BUS_MODULES<span class="sy0">+=$</span><span class="br0">&#40;</span><span class="re2">PKG_BUILD_DIR</span><span class="br0">&#41;</span><span class="sy0">/</span>ath<span class="sy0">/</span>ath_pci<span class="sy0">.$</span><span class="br0">&#40;</span><span class="re2">LINUX_KMOD_SUFFIX</span><span class="br0">&#41;</span>
+<span class="kw1">endif</span>
+&nbsp;
+MADWIFI_AUTOLOAD<span class="sy0">:=</span> \
+	wlan \
+	wlan_scan_ap \
+	wlan_scan_sta \
+	ath_hal \
+	ath_rate_<span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">RATE_CONTROL</span><span class="br0">&#41;</span> \
+	wlan_acl \
+	wlan_ccmp \
+	wlan_tkip \
+	wlan_wep \
+	wlan_xauth
+&nbsp;
+<span class="kw1">ifeq</span> <span class="br0">&#40;</span><span class="sy0">$</span><span class="br0">&#40;</span><span class="re1">findstring</span> AHB<span class="sy0">,$</span><span class="br0">&#40;</span><span class="re2">BUS</span><span class="br0">&#41;</span><span class="br0">&#41;</span><span class="sy0">,</span>AHB<span class="br0">&#41;</span>
+	MADWIFI_AUTOLOAD <span class="sy0">+=</span> ath_ahb
+<span class="kw1">endif</span>
+<span class="kw1">ifeq</span> <span class="br0">&#40;</span><span class="sy0">$</span><span class="br0">&#40;</span><span class="re1">findstring</span> PCI<span class="sy0">,$</span><span class="br0">&#40;</span><span class="re2">BUS</span><span class="br0">&#41;</span><span class="br0">&#41;</span><span class="sy0">,</span>PCI<span class="br0">&#41;</span>
+	MADWIFI_AUTOLOAD <span class="sy0">+=</span> ath_pci
+<span class="kw1">endif</span>
+&nbsp;
+define KernelPackage<span class="sy0">/</span>madwifi
+  SUBMENU<span class="sy0">:=</span>Wireless Drivers
+  DEFAULT<span class="sy0">:=</span>y if LINUX_2_6_BRCM <span class="sy0">|</span>  LINUX_2_6_ARUBA <span class="sy0">|</span>  LINUX_2_4_AR531X <span class="sy0">|</span>  LINUX_2_6_XSCALE<span class="sy0">,</span> m if ALL
+  TITLE<span class="sy0">:=</span>Driver for Atheros wireless chipsets
+  DESCRIPTION<span class="sy0">:=</span>\
+	This package contains a driver for Atheros 802<span class="sy0">.</span>11a<span class="sy0">/</span>b<span class="sy0">/</span>g chipsets<span class="sy0">.</span>
+  URL<span class="sy0">:=</span>http<span class="sy0">://</span>madwifi<span class="sy0">.</span>org<span class="sy0">/</span>
+  VERSION<span class="sy0">:=$</span><span class="br0">&#40;</span><span class="re2">LINUX_VERSION</span><span class="br0">&#41;</span><span class="sy0">+$</span><span class="br0">&#40;</span><span class="re2">PKG_VERSION</span><span class="br0">&#41;</span><span class="sy0">-$</span><span class="br0">&#40;</span><span class="re2">BOARD</span><span class="br0">&#41;</span><span class="sy0">-$</span><span class="br0">&#40;</span><span class="re2">PKG_RELEASE</span><span class="br0">&#41;</span>
+  FILES<span class="sy0">:=</span> \
+		<span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">PKG_BUILD_DIR</span><span class="br0">&#41;</span><span class="sy0">/</span>ath<span class="sy0">/</span>ath_hal<span class="sy0">.$</span><span class="br0">&#40;</span><span class="re2">LINUX_KMOD_SUFFIX</span><span class="br0">&#41;</span> \
+		<span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">BUS_MODULES</span><span class="br0">&#41;</span> \
+		<span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">PKG_BUILD_DIR</span><span class="br0">&#41;</span><span class="sy0">/</span>ath_rate<span class="sy0">/$</span><span class="br0">&#40;</span><span class="re2">RATE_CONTROL</span><span class="br0">&#41;</span><span class="sy0">/</span>ath_rate_<span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">RATE_CONTROL</span><span class="br0">&#41;</span><span class="sy0">.$</span><span class="br0">&#40;</span><span class="re2">LINUX_KMOD_SUFFIX</span><span class="br0">&#41;</span> \
+		<span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">PKG_BUILD_DIR</span><span class="br0">&#41;</span><span class="sy0">/</span>net80211<span class="sy0">/</span>wlan<span class="sy0">*.$</span><span class="br0">&#40;</span><span class="re2">LINUX_KMOD_SUFFIX</span><span class="br0">&#41;</span>
+  AUTOLOAD<span class="sy0">:=$</span><span class="br0">&#40;</span><span class="re1">call</span> AutoLoad<span class="sy0">,</span><span class="nu0">50</span><span class="sy0">,$</span><span class="br0">&#40;</span><span class="re2">MADWIFI_AUTOLOAD</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+endef
+&nbsp;
+MADWIFI_MAKEOPTS<span class="sy0">=</span> <span class="sy0">-</span>C <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">PKG_BUILD_DIR</span><span class="br0">&#41;</span> \
+		PATH<span class="sy0">=</span><span class="st0">&quot;$(TARGET_PATH)&quot;</span> \
+		ARCH<span class="sy0">=</span><span class="st0">&quot;$(LINUX_KARCH)&quot;</span> \
+		CROSS_COMPILE<span class="sy0">=</span><span class="st0">&quot;$(TARGET_CROSS)&quot;</span> \
+		TARGET<span class="sy0">=</span><span class="st0">&quot;$(HAL_TARGET)&quot;</span> \
+		TOOLPREFIX<span class="sy0">=</span><span class="st0">&quot;$(KERNEL_CROSS)&quot;</span> \
+		TOOLPATH<span class="sy0">=</span><span class="st0">&quot;$(KERNEL_CROSS)&quot;</span> \
+		KERNELPATH<span class="sy0">=</span><span class="st0">&quot;$(LINUX_DIR)&quot;</span> \
+		LDOPTS<span class="sy0">=</span><span class="st0">&quot; &quot;</span> \
+		ATH_RATE<span class="sy0">=</span><span class="st0">&quot;ath_rate/$(RATE_CONTROL)&quot;</span> \
+		DOMULTI<span class="sy0">=</span><span class="nu0">1</span>
+&nbsp;
+<span class="kw1">ifeq</span> <span class="br0">&#40;</span><span class="sy0">$</span><span class="br0">&#40;</span><span class="re1">findstring</span> AHB<span class="sy0">,$</span><span class="br0">&#40;</span><span class="re2">BUS</span><span class="br0">&#41;</span><span class="br0">&#41;</span><span class="sy0">,</span>AHB<span class="br0">&#41;</span>
+  define Build<span class="sy0">/</span>Compile<span class="sy0">/</span>ahb
+	<span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">MAKE</span><span class="br0">&#41;</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">MADWIFI_MAKEOPTS</span><span class="br0">&#41;</span> BUS<span class="sy0">=</span><span class="st0">&quot;AHB&quot;</span> all
+  endef
+<span class="kw1">endif</span>
+&nbsp;
+<span class="kw1">ifeq</span> <span class="br0">&#40;</span><span class="sy0">$</span><span class="br0">&#40;</span><span class="re1">findstring</span> PCI<span class="sy0">,$</span><span class="br0">&#40;</span><span class="re2">BUS</span><span class="br0">&#41;</span><span class="br0">&#41;</span><span class="sy0">,</span>PCI<span class="br0">&#41;</span>
+  define Build<span class="sy0">/</span>Compile<span class="sy0">/</span>pci
+	<span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">MAKE</span><span class="br0">&#41;</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">MADWIFI_MAKEOPTS</span><span class="br0">&#41;</span> BUS<span class="sy0">=</span><span class="st0">&quot;PCI&quot;</span> all
+  endef
+<span class="kw1">endif</span>
+&nbsp;
+define Build<span class="sy0">/</span>Compile
+	<span class="sy0">$</span><span class="br0">&#40;</span><span class="re1">call</span> Build<span class="sy0">/</span>Compile<span class="sy0">/</span>ahb<span class="br0">&#41;</span>
+	<span class="sy0">$</span><span class="br0">&#40;</span><span class="re1">call</span> Build<span class="sy0">/</span>Compile<span class="sy0">/</span>pci<span class="br0">&#41;</span>
+endef
+&nbsp;
+define Build<span class="sy0">/</span>InstallDev
+	<span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">INSTALL_DIR</span><span class="br0">&#41;</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">STAGING_DIR</span><span class="br0">&#41;</span><span class="sy0">/</span>usr<span class="sy0">/</span><span class="kw1">include</span><span class="sy0">/</span>madwifi
+	<span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">CP</span><span class="br0">&#41;</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">PKG_BUILD_DIR</span><span class="br0">&#41;</span><span class="sy0">/</span><span class="kw1">include</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">STAGING_DIR</span><span class="br0">&#41;</span><span class="sy0">/</span>usr<span class="sy0">/</span><span class="kw1">include</span><span class="sy0">/</span>madwifi<span class="sy0">/</span>
+	<span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">INSTALL_DIR</span><span class="br0">&#41;</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">STAGING_DIR</span><span class="br0">&#41;</span><span class="sy0">/</span>usr<span class="sy0">/</span><span class="kw1">include</span><span class="sy0">/</span>madwifi<span class="sy0">/</span>net80211
+	<span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">CP</span><span class="br0">&#41;</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">PKG_BUILD_DIR</span><span class="br0">&#41;</span><span class="sy0">/</span>net80211<span class="sy0">/*.</span>h <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">STAGING_DIR</span><span class="br0">&#41;</span><span class="sy0">/</span>usr<span class="sy0">/</span><span class="kw1">include</span><span class="sy0">/</span>madwifi<span class="sy0">/</span>net80211<span class="sy0">/</span>
+endef
+&nbsp;
+define KernelPackage<span class="sy0">/</span>madwifi<span class="sy0">/</span>install
+	<span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">INSTALL_DIR</span><span class="br0">&#41;</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="nu0">1</span><span class="br0">&#41;</span><span class="sy0">/</span>etc<span class="sy0">/</span>init<span class="sy0">.</span>d
+	<span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">INSTALL_DIR</span><span class="br0">&#41;</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="nu0">1</span><span class="br0">&#41;</span><span class="sy0">/</span>lib<span class="sy0">/</span>modules<span class="sy0">/$</span><span class="br0">&#40;</span><span class="re2">LINUX_VERSION</span><span class="br0">&#41;</span>
+	<span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">INSTALL_DIR</span><span class="br0">&#41;</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="nu0">1</span><span class="br0">&#41;</span><span class="sy0">/</span>usr<span class="sy0">/</span>sbin
+	<span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">INSTALL_BIN</span><span class="br0">&#41;</span> <span class="sy0">./</span>files<span class="sy0">/</span>madwifi<span class="sy0">.</span>init <span class="sy0">$</span><span class="br0">&#40;</span><span class="nu0">1</span><span class="br0">&#41;</span><span class="sy0">/</span>etc<span class="sy0">/</span>init<span class="sy0">.</span>d<span class="sy0">/</span>madwifi
+	<span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">CP</span><span class="br0">&#41;</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">PKG_BUILD_DIR</span><span class="br0">&#41;</span><span class="sy0">/</span>tools<span class="sy0">/</span><span class="br0">&#123;</span>madwifi_multi<span class="sy0">,</span>80211debug<span class="sy0">,</span>80211stats<span class="sy0">,</span>athchans<span class="sy0">,</span>athctrl<span class="sy0">,</span>athdebug<span class="sy0">,</span>athkey<span class="sy0">,</span>athstats<span class="sy0">,</span>wlanconfig<span class="br0">&#125;</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="nu0">1</span><span class="br0">&#41;</span><span class="sy0">/</span>usr<span class="sy0">/</span>sbin<span class="sy0">/</span>
+endef
+&nbsp;
+<span class="sy0">$</span><span class="br0">&#40;</span><span class="re1">eval</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re1">call</span> KernelPackage<span class="sy0">,</span>madwifi<span class="br0">&#41;</span><span class="br0">&#41;</span></pre>
+<hr />
+
+</div>
+
+<h4 id="the_use_of_modparams">The use of MODPARAMS</h4>
+<div class="level4">
+
+<p>
+If a module require some special param to be passed on Autoload, it&#039;s available MODPARAMS using the following syntax:
+</p>
+<pre class="code">MODPARAMS.module_ko:=example_param1=example_value example_param2=example_value2</pre>
+
+<p>
+For example here is <code>package/kernel/cryptodev-linux/Makefile</code>:
+</p>
+<pre class="code make">define KernelPackage<span class="sy0">/</span>cryptodev
+	SUBMENU<span class="sy0">:=</span>Cryptographic API modules
+	TITLE<span class="sy0">:=</span>Driver for cryptographic acceleration
+	URL<span class="sy0">:=</span>http<span class="sy0">://</span>cryptodev<span class="sy0">-</span>linux<span class="sy0">.</span>org<span class="sy0">/</span>
+	VERSION<span class="sy0">:=$</span><span class="br0">&#40;</span><span class="re2">LINUX_VERSION</span><span class="br0">&#41;</span><span class="sy0">+$</span><span class="br0">&#40;</span><span class="re2">PKG_VERSION</span><span class="br0">&#41;</span><span class="sy0">-$</span><span class="br0">&#40;</span><span class="re2">BOARD</span><span class="br0">&#41;</span><span class="sy0">-$</span><span class="br0">&#40;</span><span class="re2">PKG_RELEASE</span><span class="br0">&#41;</span>
+	DEPENDS<span class="sy0">:=+</span>kmod<span class="sy0">-</span>crypto<span class="sy0">-</span>authenc <span class="sy0">+</span>kmod<span class="sy0">-</span>crypto<span class="sy0">-</span>hash
+	FILES<span class="sy0">:=$</span><span class="br0">&#40;</span><span class="re2">PKG_BUILD_DIR</span><span class="br0">&#41;</span><span class="sy0">/</span>cryptodev<span class="sy0">.$</span><span class="br0">&#40;</span><span class="re2">LINUX_KMOD_SUFFIX</span><span class="br0">&#41;</span>
+	AUTOLOAD<span class="sy0">:=$</span><span class="br0">&#40;</span><span class="re1">call</span> AutoLoad<span class="sy0">,</span><span class="nu0">50</span><span class="sy0">,</span>cryptodev<span class="br0">&#41;</span>
+	MODPARAMS<span class="sy0">.</span>cryptodev<span class="sy0">:=</span>cryptodev_verbosity<span class="sy0">=-</span><span class="nu0">1</span>
+endef</pre>
+<hr />
+
+</div>
+
+<h4 id="make_a_kernel_module_required_for_boot">Make a Kernel Module required for boot</h4>
+<div class="level4">
+
+<p>
+Some modules may be required for the correct operation of the device. One example would be an ethernet driver required for the correct operation of the switch on the device.<br/>
+
+</p>
+
+<p>
+To flag a Kernel Module this way it&#039;s needed to append <code>1</code> to <code>AUTOLOAD</code> at the end.<br/>
+
+</p>
+
+<p>
+This cause the module file to get placed in /etc/modules-boot.d/ instead of /etc/modules.d/, modules-boot.d is processed by procd init before launching preinit and correctly works both in a normal boot and in a failsafe boot. All of this is with the assumption that the module is installed in the firmware and not with OPKG on a loaded system as <strong>it needs to be present before /overlay is mounted</strong>. (OPKG installed module are present only in after /overlay is mounted)
+</p>
+
+<p>
+For example here is <code>phy-realtek</code> in <code>package/kernel/linux/modules/netdevices.mk</code>:
+</p>
+<pre class="code make">define KernelPackage<span class="sy0">/</span>phy<span class="sy0">-</span>realtek
+   SUBMENU<span class="sy0">:=$</span><span class="br0">&#40;</span><span class="re2">NETWORK_DEVICES_MENU</span><span class="br0">&#41;</span>
+   TITLE<span class="sy0">:=</span>Realtek Ethernet PHY driver
+   KCONFIG<span class="sy0">:=</span>CONFIG_REALTEK_PHY
+   DEPENDS<span class="sy0">:=+</span>kmod<span class="sy0">-</span>libphy
+   FILES<span class="sy0">:=$</span><span class="br0">&#40;</span><span class="re2">LINUX_DIR</span><span class="br0">&#41;</span><span class="sy0">/</span>drivers<span class="sy0">/</span>net<span class="sy0">/</span>phy<span class="sy0">/</span>realtek<span class="sy0">.</span>ko
+   AUTOLOAD<span class="sy0">:=$</span><span class="br0">&#40;</span><span class="re1">call</span> AutoLoad<span class="sy0">,</span><span class="nu0">18</span><span class="sy0">,</span>realtek<span class="sy0">,</span><span class="nu0">1</span><span class="br0">&#41;</span>
+endef</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Creating packages for kernel modules&quot;,&quot;hid&quot;:&quot;creating_packages_for_kernel_modules&quot;,&quot;codeblockOffset&quot;:22,&quot;secid&quot;:22,&quot;range&quot;:&quot;33553-41062&quot;} -->
+<h2 class="sectionedit23" id="file_installation_macros">File installation macros</h2>
+<div class="level2">
+
+<p>
+INSTALL_DIR, INSTALL_BIN, INSTALL_DATA are used for creating a directory, copying an executable, or copying a data file. +x is set on the target file for INSTALL_BIN, independent of its mode on the host.
+</p>
+
+<p>
+From the big document:
+</p>
+
+<p>
+Package/&lt;name&gt;/install: 
+</p>
+
+<p>
+A set of commands to copy files out of the compiled source and into the ipkg which is represented by the $(1) directory. Note that there are currently 4 defined install macros:
+</p>
+<pre class="code">INSTALL_DIR 
+install -d -m0755
+INSTALL_BIN 
+install -m0755
+INSTALL_DATA 
+install -m0644
+INSTALL_CONF 
+install -m0600</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;File installation macros&quot;,&quot;hid&quot;:&quot;file_installation_macros&quot;,&quot;codeblockOffset&quot;:27,&quot;secid&quot;:23,&quot;range&quot;:&quot;41063-41667&quot;} -->
+<h2 class="sectionedit24" id="packaging_a_service">Packaging a service</h2>
+<div class="level2">
+
+<p>
+If you want to install a service (something that should start/stop at boot time, that has a /etc/init.d/blah script), read the <a href="/docs/techref/initscripts" class="wikilink1" title="docs:techref:initscripts" data-wiki-id="docs:techref:initscripts">Init Scripts</a> section of the Technical Reference and the <a href="/docs/guide-developer/procd-init-scripts" class="wikilink1" title="docs:guide-developer:procd-init-scripts" data-wiki-id="docs:guide-developer:procd-init-scripts">Procd init scripts</a> section of the Developer&#039;s Guide. A key point is to make sure that the init.d script can be run on the host.  At image build time, all init.d scripts found are run on the host, looking for the START=20/STOP=99 lines. This is what installs the symlinks in /etc/rc.d.
+</p>
+
+<p>
+Packages have default postinst/prerm scripts that will run <code>/etc/init.d/foo enable</code> (creating the symlinks) or <code>/etc/init.d/foo disable</code> (removing the symlinks) when they are installed/removed by opkg.
+</p>
+
+<p>
+Very basic example of a suitable init.d script. Please note that the newer style version does not work properly with interpreted executables (i.e. scripts). That is because start-stop-daemon is used by service_stop() in a way that it makes it confuse the script name with the interpreter name.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> <strong>procd</strong> style init is used in some init.d scripts since <a href="https://git.openwrt.org/?p=openwrt/openwrt.git;a=commit;h=f87409440298121ae1fbd718a17267cc180438e4" class="interwiki iw_commit" title="https://git.openwrt.org/?p=openwrt/openwrt.git;a=commit;h=f87409440298121ae1fbd718a17267cc180438e4">this commit</a>.
+See <a href="/docs/guide-developer/procd-init-scripts" class="wikilink1" title="docs:guide-developer:procd-init-scripts" data-wiki-id="docs:guide-developer:procd-init-scripts">procd-init-scripts</a> for more details on that.
+</p>
+<pre class="code bash"><span class="co0">#!/bin/sh /etc/rc.common</span>
+<span class="co0"># &quot;new(er)&quot; style init script</span>
+<span class="co0"># Look at /lib/functions/service.sh on a running system for explanations of what other SERVICE_</span>
+<span class="co0"># options you can use, and when you might want them.</span>
+&nbsp;
+<span class="re2">START</span>=<span class="nu0">80</span>
+<span class="re2">APP</span>=mrelay
+<span class="re2">SERVICE_WRITE_PID</span>=<span class="nu0">1</span>
+<span class="re2">SERVICE_DAEMONIZE</span>=<span class="nu0">1</span>
+&nbsp;
+start<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        service_start <span class="sy0">/</span>usr<span class="sy0">/</span>bin<span class="sy0">/</span><span class="re1">$APP</span>
+<span class="br0">&#125;</span>
+&nbsp;
+stop<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        service_stop <span class="sy0">/</span>usr<span class="sy0">/</span>bin<span class="sy0">/</span><span class="re1">$APP</span>
+<span class="br0">&#125;</span></pre>
+<pre class="code bash"><span class="co0">#!/bin/sh /etc/rc.common</span>
+<span class="co0">###########################################</span>
+<span class="co0"># NOTE - this is an old style init script #</span>
+<span class="co0">###########################################</span>
+&nbsp;
+<span class="re2">START</span>=<span class="nu0">80</span>
+<span class="re2">APP</span>=mrelay
+<span class="re2">PID_FILE</span>=<span class="sy0">/</span>var<span class="sy0">/</span>run<span class="sy0">/</span><span class="re1">$APP</span>.pid
+&nbsp;
+start<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        start-stop-daemon <span class="re5">-S</span> <span class="re5">-x</span> <span class="re1">$APP</span> <span class="re5">-p</span> <span class="re1">$PID_FILE</span> <span class="re5">-m</span> <span class="re5">-b</span>
+<span class="br0">&#125;</span>
+&nbsp;
+stop<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        start-stop-daemon <span class="re5">-K</span> <span class="re5">-n</span> <span class="re1">$APP</span> <span class="re5">-p</span> <span class="re1">$PID_FILE</span> <span class="re5">-s</span> TERM
+        <span class="kw2">rm</span> <span class="re5">-rf</span> <span class="re1">$PID_FILE</span>
+<span class="br0">&#125;</span></pre>
+
+<p>
+See <a href="/docs/guide-developer/config-scripting" class="wikilink1" title="docs:guide-developer:config-scripting" data-wiki-id="docs:guide-developer:config-scripting">Configuration in scripts</a> for details on how to access UCI configuration information from an init.d script, for instance to set command-line parameters or to generate a config file for your service.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Packaging a service&quot;,&quot;hid&quot;:&quot;packaging_a_service&quot;,&quot;codeblockOffset&quot;:28,&quot;secid&quot;:24,&quot;range&quot;:&quot;41668-43998&quot;} -->
+<h2 class="sectionedit25" id="how_to_submit_patches_to_openwrt">How To Submit Patches to OpenWrt</h2>
+<div class="level2">
+
+<p>
+Packages are maintained in a separate repository to reduce maintenance overhead.  The general guidelines for OpenWrt still apply, but see the README in the packages repository for latest information.
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="https://github.com/openwrt/packages" class="urlextern" title="https://github.com/openwrt/packages" rel="ugc nofollow">https://github.com/openwrt/packages</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="/submitting-patches" class="wikilink1" title="submitting-patches" data-wiki-id="submitting-patches">https://dev.openwrt.org/wiki/SubmittingPatches</a></div>
+</li>
+</ul>
+
+<p>
+See <a href="https://web.archive.org/web/20170629071358/https://lists.openwrt.org/pipermail/openwrt-devel/2014-June/025810.html" class="urlextern" title="https://web.archive.org/web/20170629071358/https://lists.openwrt.org/pipermail/openwrt-devel/2014-June/025810.html" rel="ugc nofollow">the original announcement</a> of this change.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;How To Submit Patches to OpenWrt&quot;,&quot;hid&quot;:&quot;how_to_submit_patches_to_openwrt&quot;,&quot;codeblockOffset&quot;:30,&quot;secid&quot;:25,&quot;range&quot;:&quot;43999-&quot;} -->

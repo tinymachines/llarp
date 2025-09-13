@@ -1,0 +1,306 @@
+
+<h1 class="sectionedit1" id="dot_with_dnsmasq_and_stubby">DoT with Dnsmasq and Stubby</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__meta:infobox:howto_links">
+<div class="level1">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_info plugin_wrap">
+<p>
+This article relies on the following:
+</p>
+<ul>
+<li class="level1"><div class="li"> Accessing <a href="/docs/guide-quick-start/walkthrough_login" class="wikilink1" title="docs:guide-quick-start:walkthrough_login" data-wiki-id="docs:guide-quick-start:walkthrough_login">web interface</a> / <a href="/docs/guide-quick-start/sshadministration" class="wikilink1" title="docs:guide-quick-start:sshadministration" data-wiki-id="docs:guide-quick-start:sshadministration">command-line interface</a></div>
+</li>
+<li class="level1"><div class="li"> Managing <a href="/docs/guide-user/base-system/uci" class="wikilink1" title="docs:guide-user:base-system:uci" data-wiki-id="docs:guide-user:base-system:uci">configs</a> / <a href="/docs/guide-user/additional-software/managing_packages" class="wikilink1" title="docs:guide-user:additional-software:managing_packages" data-wiki-id="docs:guide-user:additional-software:managing_packages">packages</a> / <a href="/docs/guide-user/base-system/managing_services" class="wikilink1" title="docs:guide-user:base-system:managing_services" data-wiki-id="docs:guide-user:base-system:managing_services">services</a> / <a href="/docs/guide-user/base-system/log.essentials" class="wikilink1" title="docs:guide-user:base-system:log.essentials" data-wiki-id="docs:guide-user:base-system:log.essentials">logs</a></div>
+</li>
+</ul>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;DoT with Dnsmasq and Stubby&quot;,&quot;hid&quot;:&quot;dot_with_dnsmasq_and_stubby&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-124&quot;} -->
+<h2 class="sectionedit6" id="introduction">Introduction</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> This how-to describes the method for setting up <a href="https://en.wikipedia.org/wiki/DNS_over_TLS" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/DNS_over_TLS">DNS over TLS</a> on OpenWrt.</div>
+</li>
+<li class="level1"><div class="li"> It relies on <a href="/docs/guide-user/base-system/dhcp.dnsmasq" class="wikilink1" title="docs:guide-user:base-system:dhcp.dnsmasq" data-wiki-id="docs:guide-user:base-system:dhcp.dnsmasq">Dnsmasq</a> and <a href="/docs/guide-user/services/dns/stubby" class="wikilink1" title="docs:guide-user:services:dns:stubby" data-wiki-id="docs:guide-user:services:dns:stubby">Stubby</a> for resource efficiency and performance.</div>
+</li>
+<li class="level1"><div class="li"> Follow <a href="/docs/guide-user/firewall/fw3_configurations/intercept_dns" class="wikilink1" title="docs:guide-user:firewall:fw3_configurations:intercept_dns" data-wiki-id="docs:guide-user:firewall:fw3_configurations:intercept_dns">DNS hijacking</a> to intercept <abbr title="Domain Name System">DNS</abbr> traffic or use <a href="/docs/guide-user/services/vpn/start" class="wikilink1" title="docs:guide-user:services:vpn:start" data-wiki-id="docs:guide-user:services:vpn:start">VPN</a> to protect all traffic.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Introduction&quot;,&quot;hid&quot;:&quot;introduction&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;125-595&quot;} -->
+<h2 class="sectionedit7" id="goals">Goals</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;docs:guide-user:services:dns:dnscrypt_dnsmasq_dnscrypt-proxy&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:8,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__docs:guide-user:services:dns:dnscrypt_dnsmasq_dnscrypt-proxy">
+<div class="level2">
+<ul>
+<li class="level1 node"><div class="li"> Encrypt your <abbr title="Domain Name System">DNS</abbr> traffic improving security and privacy.</div>
+<ul>
+<li class="level2"><div class="li"> Prevent <abbr title="Domain Name System">DNS</abbr> leaks and <abbr title="Domain Name System">DNS</abbr> hijacking.</div>
+</li>
+</ul>
+</li>
+<li class="level1 node"><div class="li"> Bypass regional restrictions using public <abbr title="Domain Name System">DNS</abbr> providers.</div>
+<ul>
+<li class="level2"><div class="li"> Escape <abbr title="Domain Name System">DNS</abbr>-based content filters and internet censorship.</div>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;docs:guide-user:services:dns:dnscrypt_dnsmasq_dnscrypt-proxy&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:9,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Goals&quot;,&quot;hid&quot;:&quot;goals&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;596-724&quot;} -->
+<h2 class="sectionedit10" id="luci_web-interface_instructions">Luci web-interface Instructions</h2>
+<div class="level2">
+
+<p>
+Navigate to System → Software. Tap &#039;Update Lists&#039;, and under &#039;Filter&#039; enter &#039;stubby&#039;. Tap the &#039;Install...&#039; button.
+There is no Luci plug-in for Stubby. Fortunately, it requires very little effort to simply get it running.
+</p>
+
+<p>
+Navigate to Network → Interfaces. Tap &#039;Edit&#039; next to <abbr title="Local Area Network">LAN</abbr>. &#039;Advanced Settings&#039;, &#039;Use custom <abbr title="Domain Name System">DNS</abbr> servers&#039;: &#039;127.0.0.1&#039;, tap &#039;+&#039;, and add &#039;0::1&#039; as a second one. &#039;<abbr title="Domain Name System">DNS</abbr> Weight&#039;: &#039;20&#039;. &#039;Save&#039;.
+</p>
+
+<p>
+Tap &#039;Edit&#039; next to <abbr title="Wide Area Network">WAN</abbr>. <em>If you want the router itself to use alternate <abbr title="Domain Name System">DNS</abbr>, uncheck &#039;Use <abbr title="Domain Name System">DNS</abbr> servers advertised by peer&#039;, and put in e.g. &#039;1.1.1.1&#039;. Otherwise, leave this to resolve to your provider&#039;s <abbr title="Domain Name System">DNS</abbr>. Trying to resolve through stubby, before stubby is running properly during boot, can cause problems.</em> Set the &#039;<abbr title="Domain Name System">DNS</abbr> Weight&#039; to some high number, low-priority, like &#039;50&#039;. &#039;Save&#039;. 
+</p>
+
+<p>
+Tap &#039;Edit&#039; next to WAN6. Do the same as for <abbr title="Wide Area Network">WAN</abbr>, but since this is the <abbr title="Internet Protocol version 6">IPv6</abbr> interface, use a <abbr title="Domain Name System">DNS</abbr> of e.g. &#039;2606:4700:4700::1111&#039;, if not using the provider&#039;s <abbr title="Domain Name System">DNS</abbr>, and similar low-priority &#039;<abbr title="Domain Name System">DNS</abbr> Weight&#039; of e.g. 55. &#039;Save&#039;
+</p>
+
+<p>
+Navigate to Network → <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> and <abbr title="Domain Name System">DNS</abbr> → Forwards. &#039;<abbr title="Domain Name System">DNS</abbr> Forwards&#039;: &#039;0::1#5453&#039; tap &#039;+&#039; and add &#039;127.0.0.1#5453&#039;, tap &#039;Save&#039;.
+Go to the &#039;Resolve &amp; Host File&#039; tab. Check &#039;Ignore resolv file&#039; &amp; &#039;Strict order&#039;, &#039;Save&#039;.
+</p>
+
+<p>
+&#039;Save &amp; Apply&#039;. Stubby should be running now.
+</p>
+
+<p>
+There are a few tweaks that can only be done by editing the /etc/config/stubby and /etc/config/dhcp. See below sections.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Luci web-interface Instructions&quot;,&quot;hid&quot;:&quot;luci_web-interface_instructions&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:10,&quot;range&quot;:&quot;725-2172&quot;} -->
+<h2 class="sectionedit11" id="command-line_instructions">Command-line instructions</h2>
+<div class="level2">
+
+<p>
+1.) Install the required packages:
+</p>
+<pre class="code bash">opkg update
+opkg <span class="kw2">install</span> stubby</pre>
+
+<p>
+2.) Enable <abbr title="Domain Name System">DNS</abbr> encryption:
+</p>
+<pre class="code bash">service dnsmasq stop
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.noresolv=<span class="st0">&quot;1&quot;</span>
+uci <span class="re5">-q</span> delete dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.server
+uci <span class="re5">-q</span> get stubby.global.listen_address \
+<span class="sy0">|</span> <span class="kw2">sed</span> <span class="re5">-e</span> <span class="st0">&quot;s/\s/<span class="es1">\n</span>/g;s/@/#/g&quot;</span> \
+<span class="sy0">|</span> <span class="kw1">while</span> <span class="kw3">read</span> <span class="re5">-r</span> STUBBY_SERV
+<span class="kw1">do</span> uci add_list dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.server=<span class="st0">&quot;<span class="es3">${STUBBY_SERV}</span>&quot;</span>
+<span class="kw1">done</span></pre>
+
+<p>
+3.) Disable local use of dnsmasq/stubby: 
+<em>It is not possible for Stubby to be UP during boot or just right after boot, without additional configuration, because of the race condition with SYSNTPd service. <a href="/docs/guide-user/base-system/dhcp_configuration#race_conditions_with_sysntpd" class="wikilink1" title="docs:guide-user:base-system:dhcp_configuration" data-wiki-id="docs:guide-user:base-system:dhcp_configuration">race_conditions_with_sysntpd</a>
+</em>
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.localuse=<span class="st0">&quot;0&quot;</span></pre>
+
+<p>
+4.) Commit changes:
+</p>
+<pre class="code bash">uci commit dhcp
+service dnsmasq start</pre>
+
+<p>
+<abbr title="Local Area Network">LAN</abbr> clients should use Dnsmasq as a primary resolver.
+Dnsmasq forwards <abbr title="Domain Name System">DNS</abbr> queries to Stubby which encrypts <abbr title="Domain Name System">DNS</abbr> traffic.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Command-line instructions&quot;,&quot;hid&quot;:&quot;command-line_instructions&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:11,&quot;range&quot;:&quot;2173-3157&quot;} -->
+<h2 class="sectionedit12" id="testing">Testing</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;docs:guide-user:services:dns:dnscrypt_dnsmasq_dnscrypt-proxy&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:13,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__docs:guide-user:services:dns:dnscrypt_dnsmasq_dnscrypt-proxy">
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;docs:guide-user:services:dns:dot_dnsmasq_dnsproxy&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:15,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__docs:guide-user:services:dns:dot_dnsmasq_dnsproxy">
+<div class="level4">
+
+<p>
+Verify domain name resolution with <a href="http://man.cx/nslookup%281%29" class="interwiki iw_man" title="http://man.cx/nslookup%281%29">nslookup</a>:
+</p>
+<pre class="code bash">nslookup openwrt.org localhost</pre>
+
+<p>
+To check your <abbr title="Domain Name System">DNS</abbr> provider, you can use:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="https://one.one.one.one/help/" class="urlextern" title="https://one.one.one.one/help/" rel="ugc nofollow">Cloudflare Test</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://adguard.com/en/test.html" class="urlextern" title="https://adguard.com/en/test.html" rel="ugc nofollow">AdGuard Test</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://test.nextdns.io/" class="urlextern" title="https://test.nextdns.io/" rel="ugc nofollow"> NextDNS Test</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://mullvad.net/en/check" class="urlextern" title="https://mullvad.net/en/check" rel="ugc nofollow">Mullvad Test</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://on.quad9.net/" class="urlextern" title="https://on.quad9.net/" rel="ugc nofollow">Quad9 Test</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://welcome.opendns.com/" class="urlextern" title="https://welcome.opendns.com/" rel="ugc nofollow">OpenDNS Test</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://www.cloudflare.com/ssl/encrypted-sni/" class="urlextern" title="https://www.cloudflare.com/ssl/encrypted-sni/" rel="ugc nofollow">Cloudflare Browser Check</a></div>
+</li>
+</ul>
+
+<p>
+<abbr title="Domain Name System">DNS</abbr> Leak Test and DNSSEC Test:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="https://dnsleaktest.com/" class="urlextern" title="https://dnsleaktest.com/" rel="ugc nofollow">DNS Leak Test #1</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dnscheck.tools/" class="urlextern" title="https://dnscheck.tools/" rel="ugc nofollow">DNS Leak Test #2</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://dnssec-or-not.com/" class="urlextern" title="http://dnssec-or-not.com/" rel="ugc nofollow">DNSSEC Test #1</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://wander.science/projects/dns/dnssec-resolver-test/" class="urlextern" title="https://wander.science/projects/dns/dnssec-resolver-test/" rel="ugc nofollow">DNSSEC Test #2</a></div>
+</li>
+</ul>
+
+<p>
+Alternative test via CLI:
+* check connection to Quad9 <abbr title="Domain Name System">DNS</abbr> (it require to use Quad9 <abbr title="Domain Name System">DNS</abbr> servers):
+</p>
+<pre class="code">dig +short txt proto.on.quad9.net.
+# should print: doh. or dot.</pre>
+
+<p>
+* check connection to NextDNS (it require to use NextDNS <abbr title="Domain Name System">DNS</abbr> servers):
+</p>
+<pre class="code">curl -SL https://test.nextdns.io/
+{
+        &quot;status&quot;: &quot;ok&quot;,
+        &quot;protocol&quot;: &quot;DOT&quot;,
+        &quot;profile&quot;: &quot;SOMEPROFILE&quot;,
+        &quot;client&quot;: &quot;80.XXX.XXX.XXX&quot;,
+        &quot;srcIP&quot;: &quot;80.XXX.XXX.XXX&quot;,
+        &quot;destIP&quot;: &quot;XX.XX.28.0&quot;,
+        &quot;anycast&quot;: true,
+        &quot;server&quot;: &quot;zepto-ber-1&quot;,
+        &quot;clientName&quot;: &quot;unknown-dot&quot;
+}</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;docs:guide-user:services:dns:dot_dnsmasq_dnsproxy&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:16,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level4">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;docs:guide-user:services:dns:dnscrypt_dnsmasq_dnscrypt-proxy&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:14,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Testing&quot;,&quot;hid&quot;:&quot;testing&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:12,&quot;range&quot;:&quot;3158-3290&quot;} -->
+<h2 class="sectionedit17" id="alternate_testing_sites">Alternate Testing sites</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <a href="https://www.cloudflare.com/ssl/encrypted-sni/" class="urlextern" title="https://www.cloudflare.com/ssl/encrypted-sni/" rel="ugc nofollow">https://www.cloudflare.com/ssl/encrypted-sni/</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://1.1.1.1/help" class="urlextern" title="https://1.1.1.1/help" rel="ugc nofollow">https://1.1.1.1/help</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Alternate Testing sites&quot;,&quot;hid&quot;:&quot;alternate_testing_sites&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:17,&quot;range&quot;:&quot;3291-3402&quot;} -->
+<h2 class="sectionedit18" id="troubleshooting">Troubleshooting</h2>
+<div class="level2">
+
+<p>
+Collect and analyze the following information.
+</p>
+<pre class="code bash"><span class="co0"># Restart services</span>
+service log restart; service dnsmasq restart; service stubby restart
+&nbsp;
+<span class="co0"># Log and status</span>
+logread <span class="re5">-e</span> dnsmasq; <span class="kw2">netstat</span> <span class="re5">-l</span> <span class="re5">-n</span> <span class="re5">-p</span> <span class="sy0">|</span> <span class="kw2">grep</span> <span class="re5">-e</span> dnsmasq
+logread <span class="re5">-e</span> stubby; <span class="kw2">netstat</span> <span class="re5">-l</span> <span class="re5">-n</span> <span class="re5">-p</span> <span class="sy0">|</span> <span class="kw2">grep</span> <span class="re5">-e</span> stubby
+&nbsp;
+<span class="co0"># Runtime configuration</span>
+pgrep <span class="re5">-f</span> <span class="re5">-a</span> dnsmasq; pgrep <span class="re5">-f</span> <span class="re5">-a</span> stubby
+<span class="kw2">head</span> <span class="re5">-v</span> <span class="re5">-n</span> <span class="re5">-0</span> <span class="sy0">/</span>etc<span class="sy0">/</span>resolv.<span class="sy0">*</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>resolv.<span class="sy0">*</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>resolv.<span class="sy0">*/*</span>
+&nbsp;
+<span class="co0"># Persistent configuration</span>
+uci show dhcp; uci show stubby</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Troubleshooting&quot;,&quot;hid&quot;:&quot;troubleshooting&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:18,&quot;range&quot;:&quot;3403-3895&quot;} -->
+<h2 class="sectionedit19" id="extras">Extras</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Extras&quot;,&quot;hid&quot;:&quot;extras&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:19,&quot;range&quot;:&quot;3896-3914&quot;} -->
+<h3 class="sectionedit20" id="dot_provider">DoT provider</h3>
+<div class="level3">
+
+<p>
+Stubby is configured with Cloudflare <abbr title="Domain Name System">DNS</abbr> by default.
+You can change it to Google <abbr title="Domain Name System">DNS</abbr> or any other <a href="https://en.wikipedia.org/wiki/Public_recursive_name_server" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Public_recursive_name_server">DoT provider</a> including your own <a href="/docs/guide-user/services/webserver/nginx#dns_over_tls" class="wikilink1" title="docs:guide-user:services:webserver:nginx" data-wiki-id="docs:guide-user:services:webserver:nginx">DoT server with Nginx</a>.
+Use resolvers supporting DNSSEC validation if necessary.
+Specify several resolvers to improve fault tolerance.
+</p>
+<pre class="code bash"><span class="co0"># Configure DoT provider</span>
+<span class="kw1">while</span> uci <span class="re5">-q</span> delete stubby.<span class="sy0">@</span>resolver<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>; <span class="kw1">do</span> :; <span class="kw1">done</span>
+uci add stubby resolver
+uci <span class="kw1">set</span> stubby.<span class="sy0">@</span>resolver<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.address=<span class="st0">&quot;2001:4860:4860::8888&quot;</span>
+uci <span class="kw1">set</span> stubby.<span class="sy0">@</span>resolver<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.tls_auth_name=<span class="st0">&quot;dns.google&quot;</span>
+uci add stubby resolver
+uci <span class="kw1">set</span> stubby.<span class="sy0">@</span>resolver<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.address=<span class="st0">&quot;2001:4860:4860::8844&quot;</span>
+uci <span class="kw1">set</span> stubby.<span class="sy0">@</span>resolver<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.tls_auth_name=<span class="st0">&quot;dns.google&quot;</span>
+uci add stubby resolver
+uci <span class="kw1">set</span> stubby.<span class="sy0">@</span>resolver<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.address=<span class="st0">&quot;8.8.8.8&quot;</span>
+uci <span class="kw1">set</span> stubby.<span class="sy0">@</span>resolver<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.tls_auth_name=<span class="st0">&quot;dns.google&quot;</span>
+uci add stubby resolver
+uci <span class="kw1">set</span> stubby.<span class="sy0">@</span>resolver<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.address=<span class="st0">&quot;8.8.4.4&quot;</span>
+uci <span class="kw1">set</span> stubby.<span class="sy0">@</span>resolver<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.tls_auth_name=<span class="st0">&quot;dns.google&quot;</span>
+uci commit stubby
+service stubby restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;DoT provider&quot;,&quot;hid&quot;:&quot;dot_provider&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:20,&quot;range&quot;:&quot;3915-4969&quot;} -->
+<h3 class="sectionedit21" id="dnssec_validation">DNSSEC validation</h3>
+<div class="level3">
+
+<p>
+Enforce <a href="https://en.wikipedia.org/wiki/Domain_Name_System_Security_Extensions" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Domain_Name_System_Security_Extensions">DNSSEC</a> validation if your <abbr title="Domain Name System">DNS</abbr> provider does not support it, or you want to perform the validation yourself.
+Beware of fault tolerance and performance issues.
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.proxydnssec=<span class="st0">&quot;1&quot;</span>
+uci commit dhcp
+service dnsmasq restart
+uci <span class="kw1">set</span> stubby.global.appdata_dir=<span class="st0">&quot;/tmp/stubby&quot;</span>
+uci <span class="kw1">set</span> stubby.global.dnssec_return_status=<span class="st0">&quot;1&quot;</span>
+uci commit stubby
+service stubby restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;DNSSEC validation&quot;,&quot;hid&quot;:&quot;dnssec_validation&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:21,&quot;range&quot;:&quot;4970-&quot;} -->

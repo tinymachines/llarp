@@ -1,0 +1,302 @@
+
+<h1 class="sectionedit1" id="devolo_streaming_radio">Devolo Streaming Radio</h1>
+<div class="level1">
+
+<p>
+The purpose of this howto is to convert a <a href="https://oldwiki.archive.openwrt.org/toh/devolo/dlan-usb-extender" class="urlextern" title="https://oldwiki.archive.openwrt.org/toh/devolo/dlan-usb-extender" rel="ugc nofollow">Devolo dLAN USB Extender</a> device into a standalone internet streaming radios music player.
+</p>
+
+<p>
+We&#039;ll need the Devolo dLAN USB Extender, an USB audiostick, and a Devolo power line for ethernet connectivity. 
+The audio output of the USB audiostick can be connected to:
+</p>
+<ul>
+<li class="level1"><div class="li"> Headphones</div>
+</li>
+<li class="level1"><div class="li"> Self-powered loudspeakers</div>
+</li>
+<li class="level1"><div class="li"> Sound input at our AV equipment.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Devolo Streaming Radio&quot;,&quot;hid&quot;:&quot;devolo_streaming_radio&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-494&quot;} -->
+<h2 class="sectionedit2" id="features">Features</h2>
+<div class="level2">
+
+<p>
+Since the dLAN USB Extender isn&#039;t powerful enough (only 16 <abbr title="Megabyte">MB</abbr> RAM) to just install packages in a generic firmware, we must build our own firmware stripped as much as possible without stuff we don&#039;t really need.
+</p>
+<ul>
+<li class="level1"><div class="li"> Without dropbear, we&#039;ll use telnet instead (this is just a streaming radio, there is no need to use an ultra-secure connection)</div>
+</li>
+<li class="level1"><div class="li"> Without syslog, there is no need to log any system messages.</div>
+</li>
+<li class="level1"><div class="li"> Only with kernel modules for usb audio, alsa support and USB HID support. Built in the kernel itself for faster loading.</div>
+</li>
+<li class="level1 node"><div class="li"> <strong>mpd</strong> for playing music, and <strong>mpc</strong> for controlling the daemon → <a href="http://www.musicpd.org/" class="urlextern" title="http://www.musicpd.org/" rel="ugc nofollow">http://www.musicpd.org/</a></div>
+<ul>
+<li class="level2"><div class="li"> version 0.13.2 since it&#039;s more responsive for powerless devices</div>
+</li>
+<li class="level2"><div class="li"> built only with mp3 audio support </div>
+</li>
+<li class="level2"><div class="li"> built with alsa output, it behaves better than <abbr title="Open Source Software">OSS</abbr></div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> <strong>triggerhappy</strong> for external control using the HID buttons at the USB audiostick</div>
+</li>
+<li class="level1"><div class="li"> <strong>lircd</strong> for using a IR remote, more comfortable control over our internet radio</div>
+</li>
+<li class="level1"><div class="li"> <strong>alsa-utils</strong></div>
+</li>
+<li class="level1"><div class="li"> <strong>nano</strong> for editing configuration files</div>
+</li>
+<li class="level1"><div class="li"> and other minor changes in the firmware</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Features&quot;,&quot;hid&quot;:&quot;features&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;495-1594&quot;} -->
+<h3 class="sectionedit3" id="no_display">No Display</h3>
+<div class="level3">
+
+<p>
+We won&#039;t have any display to show current playing info, but do we really need it? NO. You can use an <a href="http://mpd.wikia.com/wiki/Clients" class="urlextern" title="http://mpd.wikia.com/wiki/Clients" rel="ugc nofollow">mpd client</a> to show this info. Or better just use ssmtp to send a mail with our current playing info. I&#039;ve made a simple script located at:<br/>
+
+<em>/etc/streamradio/mailsend.sh</em><br/>
+
+It can be launched either with a HID button press or else with a infrared remote.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;No Display&quot;,&quot;hid&quot;:&quot;no_display&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;1595-2013&quot;} -->
+<h3 class="sectionedit4" id="ir_remote_controled">IR remote controled</h3>
+<div class="level3">
+
+<p>
+We can control our streaming radio with a infrared remote. No special hardware required, just any spare remote (don&#039;t you have dozens from broken hardware?), and a simple circuit connected to the microphone input. More details at<br/>
+
+<a href="/docs/guide-user/hardware/lirc-audio_alsa" class="wikilink1" title="docs:guide-user:hardware:lirc-audio_alsa" data-wiki-id="docs:guide-user:hardware:lirc-audio_alsa"> lirc audio-alsa</a><br/>
+
+However we&#039;ll use an improved circuit. With a low band pass filter to minimize power supply disturbances. Also we will put the 100 nF capacitor before the voltage divider, not after:
+</p>
+
+<p>
+<a href="/_detail/media/doc/howtos/lirc_alsa.png?id=docs%3Aguide-user%3Ahardware%3Adevolo-stream-radio" class="media" title="media:doc:howtos:lirc_alsa.png"><img src="/_media/media/doc/howtos/lirc_alsa.png?w=400&amp;tok=f14c4c" class="media" loading="lazy" title="image" alt="image" width="400" /></a>
+</p>
+
+<p>
+One drawback for keeping it simple is the power supply. We can just modify our USB audiostick isolating one minijack contact and bridging it to the +5V usb power supply. 
+</p>
+
+<p>
+<a href="/_detail/media/doc/howtos/lirc_alsa-audiostick.jpg?id=docs%3Aguide-user%3Ahardware%3Adevolo-stream-radio" class="media" title="media:doc:howtos:lirc_alsa-audiostick.jpg"><img src="/_media/media/doc/howtos/lirc_alsa-audiostick.jpg?w=400&amp;tok=1ab239" class="media" loading="lazy" alt="" width="400" /></a>
+</p>
+
+<p>
+The circuit then can be wired with a minijack cable. We need a little case for the circuit with the IR module receiver, an ADSL microfilter case is perfect for this purpose (you have for sure tons of them from ISPs).
+</p>
+
+<p>
+<a href="/_detail/media/doc/howtos/lirc_alsa-case1.jpg?id=docs%3Aguide-user%3Ahardware%3Adevolo-stream-radio" class="media" title="media:doc:howtos:lirc_alsa-case1.jpg"><img src="/_media/media/doc/howtos/lirc_alsa-case1.jpg?w=400&amp;tok=81446a" class="media" loading="lazy" alt="" width="400" /></a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;IR remote controled&quot;,&quot;hid&quot;:&quot;ir_remote_controled&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;2014-3063&quot;} -->
+<h2 class="sectionedit5" id="custom_firmware">Custom Firmware</h2>
+<div class="level2">
+
+<p>
+Here the custom firmware 
+</p>
+
+<p>
+→ <a href="https://docs.google.com/uc?export=download&amp;id=0B-EMoBe-_OdBeUJWdmtJRXhHcU0" class="urlextern" title="https://docs.google.com/uc?export=download&amp;id=0B-EMoBe-_OdBeUJWdmtJRXhHcU0" rel="ugc nofollow">openwrt-devolo-stream_radio-AA_mod.tar.gz</a>
+</p>
+
+<p>
+The idea is to provide a simple firmware, just plug&#039;n play.
+</p>
+<ul>
+<li class="level1"><div class="li"> Install the firmware as described in <a href="https://oldwiki.archive.openwrt.org/toh/devolo/dlan-usb-extender" class="urlextern" title="https://oldwiki.archive.openwrt.org/toh/devolo/dlan-usb-extender" rel="ugc nofollow">Devolo dLAN USB Extender</a></div>
+</li>
+<li class="level1"><div class="li"> Associate both the Devolo USB extender and Devolo the power line (must be connected to a router with <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> server and internet connectivity). Just use the button at both devices.</div>
+</li>
+<li class="level1"><div class="li"> Power off the Devolo USB extender, plug your USB audio stick, and wait. Once associated with the Power line, it starts playing music automatically from a preinstaled playlist with 11 internet stations.</div>
+</li>
+</ul>
+
+<p>
+Demo video
+</p>
+<iframe src="//www.youtube-nocookie.com/embed/aM4VrtBGuSU?" width="425" height="239" style="width:425px;height:239px;" class="vshare vshare__none" allowfullscreen="" frameborder="0" scrolling="no" data-domain="www.youtube-nocookie.com"><h3></h3></iframe>
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Custom Firmware&quot;,&quot;hid&quot;:&quot;custom_firmware&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;3064-3865&quot;} -->
+<h3 class="sectionedit6" id="configuration">Configuration</h3>
+<div class="level3">
+
+<p>
+We may want to configure some things in our fresh installed firmware. We need to login via telnet, but probably you don&#039;t know the address since the Devolo USB extender got it from a <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> server, but you can guess it. This firmware has a <abbr title="Local Area Network">LAN</abbr> alias with a static <abbr title="Internet Protocol">IP</abbr>
+</p>
+
+<p>
+<em>192.168.10.10</em>
+</p>
+
+<p>
+You can use it for login if you can&#039;t manage to use its dynamic <abbr title="Internet Protocol">IP</abbr>. Why this rare <abbr title="Internet Protocol">IP</abbr>? just for avoiding conflict with regular IPs used commonly by the ISPs routers such as 192.168.1.1.
+</p>
+
+</div>
+
+<h4 id="mpd">mpd</h4>
+<div class="level4">
+
+<p>
+This is the music player daemon. You shouln&#039;t need to configure anything else than the radiostations list. The list is located at<br/>
+
+<em>/etc/streamradio/playlists/radiostations.m3u</em>
+</p>
+
+<p>
+Look for some interesting radiostations. Choose only mp3 streams.
+</p>
+
+<p>
+<a href="http://vtuner.com/setupapp/guide/asp/BrowseStations/startpage.asp" class="urlextern" title="http://vtuner.com/setupapp/guide/asp/BrowseStations/startpage.asp" rel="ugc nofollow">vtuner.com</a>
+</p>
+
+<p>
+and add them to radiostations.m3u
+</p>
+
+<p>
+The mpd configuration file is at<br/>
+
+<em>/etc/mpd.conf</em>
+</p>
+
+</div>
+
+<h4 id="usb_audiostick_buttons">USB audiostick buttons</h4>
+<div class="level4">
+
+<p>
+They are used to control <strong>mpd</strong>.
+</p>
+<ul>
+<li class="level1"><div class="li"> Next radiostation</div>
+</li>
+<li class="level1"><div class="li"> Volume UP</div>
+</li>
+<li class="level1"><div class="li"> Volume DOWN</div>
+</li>
+<li class="level1"><div class="li"> Stop mpd</div>
+</li>
+<li class="level1"><div class="li"> Play mpd</div>
+</li>
+</ul>
+
+<p>
+Additionally can be configured to send mails with useful info.
+The configuration file is located at <br/>
+
+<em>/etc/triggerhappy/triggers.d/audiostick.conf</em>
+</p>
+
+</div>
+
+<h4 id="ssmtp">ssmtp</h4>
+<div class="level4">
+
+<p>
+Our mail sender. Can be used with a gmail account (pop3 enabled). This account is used to send mails to any other account.
+Can be configured editing the file:<br/>
+
+<em>/etc/ssmtp/ssmtp.conf</em>
+</p>
+
+</div>
+
+<h4 id="lirc">lirc</h4>
+<div class="level4">
+
+<p>
+This is the infrared daemon receiver. Has been built with the audio_alsa driver. It uses the microphone input for receiving signals from a remote. As described in <a href="/docs/guide-user/hardware/lirc-audio_alsa" class="wikilink1" title="docs:guide-user:hardware:lirc-audio_alsa" data-wiki-id="docs:guide-user:hardware:lirc-audio_alsa"> lirc audio-alsa</a>.
+Here we need to configure two files.
+</p>
+<ul>
+<li class="level1"><div class="li"> The codes for our remote<br/>
+<em>/etc/lircd.conf</em></div>
+</li>
+<li class="level1"><div class="li"> The commands associated with our remote<br/>
+<em>/etc/streamradio/lircrc</em></div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="rclocal">rc.local</h4>
+<div class="level4">
+
+<p>
+Once the system is fully loaded, it executes custom commands. We use it to start lircd, load playlist, play and so on.<br/>
+
+<em>/etc/rc.local</em>
+</p>
+
+</div>
+
+<h4 id="custom_scripts">Custom scripts</h4>
+<div class="level4">
+
+<p>
+There are two scripts for sending mails with useful info at /etc/streamradio/
+</p>
+<ul>
+<li class="level1"><div class="li"> mailsend.sh used to send a mail with the current playing info: <pre class="code bash"><span class="co0">#!/bin/sh</span>
+<span class="kw2">killall</span> <span class="re5">-s</span> STOP lircd
+mpc <span class="re5">--format</span> <span class="st0">&quot;From: Devolo streaming radio &lt;yoursenderaccount@gmail.com&gt;<span class="es1">\n</span>Subject: song info <span class="es1">\n</span><span class="es1">\n</span> Theme:<span class="es1">\n</span><span class="es1">\n</span> [[%artist% - ]%title%] <span class="es1">\n</span><span class="es1">\n</span><span class="es1">\n</span><span class="es1">\n</span><span class="es1">\n</span><span class="es1">\n</span><span class="es1">\n</span><span class="es1">\n</span> Playing from:<span class="es1">\n</span> %file% <span class="es1">\n</span> %name%&quot;</span><span class="sy0">|</span><span class="kw2">head</span> <span class="re5">-n</span> <span class="nu0">15</span><span class="sy0">|</span>ssmtp receiver<span class="sy0">@</span>anymail.com
+<span class="kw2">killall</span> <span class="re5">-s</span> CONT lircd</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> my_local_ip.sh used to send a mail with your <abbr title="Internet Protocol">IP</abbr> info (static and dynamic): <pre class="code bash"><span class="co0">#!/bin/sh</span>
+<span class="kw2">killall</span> <span class="re5">-s</span> STOP lircd
+<span class="re2">my_dhcp</span>=<span class="sy0">`</span>ifstatus lan <span class="sy0">|</span><span class="kw2">grep</span> <span class="re5">-m1</span> <span class="co3">\&quot;</span>address<span class="co3">\&quot;</span> <span class="sy0">|</span><span class="kw2">sed</span> <span class="re5">-e</span> <span class="st_h">'s/[^[:digit:]|.]//g'</span><span class="sy0">`</span>
+<span class="re2">my_static</span>=<span class="sy0">`</span>ifstatus lan2 <span class="sy0">|</span><span class="kw2">grep</span> <span class="re5">-m1</span> <span class="co3">\&quot;</span>address<span class="co3">\&quot;</span> <span class="sy0">|</span><span class="kw2">sed</span> <span class="re5">-e</span> <span class="st_h">'s/[^[:digit:]|.]//g'</span><span class="sy0">`</span>
+<span class="kw3">echo</span> <span class="st0">&quot;From: Devolo streaming radio &lt;yoursenderaccount@gmail.com&gt;
+Subject: my local IP
+My dynamic IP is
+<span class="es2">$my_dhcp</span>
+&nbsp;
+My static IP is
+<span class="es2">$my_static</span>&quot;</span><span class="sy0">|</span>ssmtp receiver<span class="sy0">@</span>anymail.com
+<span class="kw2">killall</span> <span class="re5">-s</span> CONT lircd</pre>
+</div>
+</li>
+</ul>
+
+<p>
+We need to modify yoursenderaccount@gmail.com and receiver@anymail.com
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;3866-6859&quot;} -->
+<h2 class="sectionedit7" id="build_root">Build root</h2>
+<div class="level2">
+
+<p>
+Here the complete modified build root used to build the custom firmware
+</p>
+
+<p>
+→ <a href="https://docs.google.com/uc?export=download&amp;id=0B-EMoBe-_OdBVTI1TVo1U0Uxbkk" class="urlextern" title="https://docs.google.com/uc?export=download&amp;id=0B-EMoBe-_OdBVTI1TVo1U0Uxbkk" rel="ugc nofollow">openwrt-devolo-build_root-mod_AA.tar.gz</a>
+</p>
+
+<p>
+Details about mods ←TODO
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Build root&quot;,&quot;hid&quot;:&quot;build_root&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:7,&quot;range&quot;:&quot;6860-&quot;} -->

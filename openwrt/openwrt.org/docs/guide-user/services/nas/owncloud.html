@@ -1,0 +1,503 @@
+
+<h1 class="sectionedit1" id="owncloud_or_nextcloud">ownCloud or NextCloud</h1>
+<div class="level1">
+
+<p>
+ownCloud/Nextcloud is very heavy and requires devices with relatively powerful processors, while it will run well even on weak PC and servers, it is too heavy for low-power devices like a router or a NAS.<br/>
+
+</p>
+
+<p>
+It&#039;s recommended to have at least a dualcore ARMv7 processor if you are not running OpenWrt on PC/server hardware.
+</p>
+
+<p>
+I&#039;ve installed ownCloud on an TP-Link <a href="/toh/tp-link/tl-wr2543nd" class="wikilink1" title="toh:tp-link:tl-wr2543nd" data-wiki-id="toh:tp-link:tl-wr2543nd">TL-WR2543ND</a>, using lighttpd and sorry, it&#039;s dead slow! <img src="/lib/images/smileys/sad.svg" class="icon smiley" alt=":-(" />
+</p>
+
+<p>
+ --- <em>unknown</em>
+</p>
+
+<p>
+I&#039;ve also installed it on a more powerful TP_Link <a href="/toh/tp-link/tl-wdr3500_v1" class="wikilink1" title="toh:tp-link:tl-wdr3500_v1" data-wiki-id="toh:tp-link:tl-wdr3500_v1">TL-WDR3500</a> but it&#039;s still very slow, 4-5 secs per page...
+</p>
+
+<p>
+ --- <em>motherjoker 2014/06/05 15:41</em>
+</p>
+
+<p>
+Internally both NextCloud and ownCloud are using a WebDAV protocol with some extensions for basic file operations and Web UI to it. For a better performance you can use just pure WebDAV  <a href="/docs/guide-user/services/nas/webdav" class="wikilink1" title="docs:guide-user:services:nas:webdav" data-wiki-id="docs:guide-user:services:nas:webdav">webdav</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;ownCloud or NextCloud&quot;,&quot;hid&quot;:&quot;owncloud_or_nextcloud&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-912&quot;} -->
+<h2 class="sectionedit2" id="get_usb-support">Get USB-support</h2>
+<div class="level2">
+
+<p>
+ownCloud is around 30 <abbr title="Megabyte">MB</abbr> and you will like to store your data somewhere. So best both is done on some external storage because small routers don&#039;t have that much.
+Have a look in the OpenWrt-Wiki at usb.essentials [1] and usb.storage[2], and figure out what USB-mode your device is using (ohci or uhci) and know what filesystem is on your storage (here: ext4).
+</p>
+
+<p>
+You have to run an update of the package-lists before you can install any software
+</p>
+<pre class="code">opkg update</pre>
+
+<p>
+Install USB-support (this is for USB 2.0, see usb.essentials for USB 1.1 support)
+</p>
+<pre class="code">opkg install kmod-usb2
+insmod ehci-hcd</pre>
+
+<p>
+If you see messages like “unresolved symbol usb_calc_bus_time” try loading usbcore and then try ehci-hcd again:
+</p>
+<pre class="code">insmod usbcore
+insmod ehci-hcd</pre>
+
+<p>
+Install USB-storage support
+</p>
+<pre class="code">opkg install kmod-usb-storage kmod-usb-storage-extras block-mount kmod-fs-ext4 kmod-scsi-generic</pre>
+
+<p>
+Create a mount-point like this
+</p>
+<pre class="code">mkdir /mnt/sda1</pre>
+
+<p>
+Figure out which device is your USB-stick/drive and mount it. It helps to list /dev with the USB-device and without - in this case its /dev/sda1.
+</p>
+<pre class="code">mount -t ext4 /dev/sda1 /mnt/sda1 -o rw,sync</pre>
+
+<p>
+Get fstab to auto-mount the usb-stick on startup, otherwise your webserver won&#039;t come up and you have to start it after mounting manually. ( <img src="/lib/images/smileys/fixme.svg" class="icon smiley" alt="FIXME" /> Insert how-to here)
+Even if auto-mounting on startup works, it probably ends too late when the webserver tries to start. To make sure the webserver is up after booting, insert this line into /etc/rc.local before “exit 0”:
+</p>
+<pre class="code">/etc/init.d/lighttpd start</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Get USB-support&quot;,&quot;hid&quot;:&quot;get_usb-support&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;913-2434&quot;} -->
+<h2 class="sectionedit3" id="if_8mb_flashget_extroot">If &lt;= 8MB flash: Get extroot</h2>
+<div class="level2">
+
+<p>
+If your device has only 8 <abbr title="Megabyte">MB</abbr> of flash-memory (or even less), it is too small to get all the dependencies on it. You&#039;ll need to put the operating-system on the USB-device as well. Have a look at <a href="/docs/guide-user/additional-software/extroot_configuration" class="wikilink1" title="docs:guide-user:additional-software:extroot_configuration" data-wiki-id="docs:guide-user:additional-software:extroot_configuration">extroot_configuration</a> and follow the instructions for trunk. The flavour “New external overlay variant (pivot overlay)” worked for me on a TP-Link WR1043ND quite well. Remember to use both steps while “Duplicate Data”: pivot overlay and pivot root.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;If &lt;= 8MB flash: Get extroot&quot;,&quot;hid&quot;:&quot;if_8mb_flashget_extroot&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;2435-2960&quot;} -->
+<h2 class="sectionedit4" id="install_configure_webserver">Install &amp; configure webserver</h2>
+<div class="level2">
+
+<p>
+ownCloud can&#039;t be installed on uhttpd (default web server on OpenWrt). You need to install and configure lighttpd.
+</p>
+
+<p>
+I had trouble moving Luci from uhttpd to lighttpd so I recommend keeping uhttpd running for Luci on a different port and assign port 80 to lighttpd for ownCloud.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Install &amp; configure webserver&quot;,&quot;hid&quot;:&quot;install_configure_webserver&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;2961-3282&quot;} -->
+<h3 class="sectionedit5" id="change_uhttpd_port">Change uhttpd port</h3>
+<div class="level3">
+
+<p>
+Edit <code>/etc/config/uhttpd</code> file and change http port to 81 and https port to 8443:
+</p>
+<pre class="code">config uhttpd main
+  list listen_http  0.0.0.0:81
+  list listen_http  [::]:81</pre>
+<pre class="code">  list listen_https  0.0.0.0:8443
+  list listen_https  [::]:8443</pre>
+
+<p>
+Restart uhhtpd.
+</p>
+<pre class="code">/etc/init.d/uhttpd restart</pre>
+
+<p>
+You should be able to reach luci under e.g. <a href="http://192.168.1.1:81" class="urlextern" title="http://192.168.1.1:81" rel="ugc nofollow">http://192.168.1.1:81</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Change uhttpd port&quot;,&quot;hid&quot;:&quot;change_uhttpd_port&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;3283-3665&quot;} -->
+<h3 class="sectionedit6" id="install_lighttpd">Install lighttpd</h3>
+<div class="level3">
+
+<p>
+Install <a href="/docs/guide-user/services/webserver/lighttpd" class="wikilink1" title="docs:guide-user:services:webserver:lighttpd" data-wiki-id="docs:guide-user:services:webserver:lighttpd">Lighttpd webserver</a> packages:
+</p>
+<pre class="code">opkg install lighttpd lighttpd-mod-cgi lighttpd-mod-fastcgi lighttpd-mod-access</pre>
+
+<p>
+Now configure lighttpd for ownCloud. Edit the config-file <code>/etc/lighttpd/lighttpd.conf</code>
+</p>
+
+<p>
+Set www-root for ownCloud: 
+</p>
+<pre class="code">server.document-root = &quot;/www/owncloud&quot;</pre>
+
+<p>
+see errors on syslog:
+</p>
+<pre class="code">server.error-log-use-syslog = &quot;enable&quot;</pre>
+
+<p>
+Uncomment the mod_cgi and add modules:
+</p>
+<pre class="code">server.modules = (
+	&quot;mod_access&quot;,
+        &quot;mod_cgi&quot;
+)</pre>
+
+<p>
+Assign port 80 for the ownCloud Server:
+</p>
+<pre class="code">server.port = 80</pre>
+
+<p>
+Add these lines to secure the access to the data according to ownCloud WebServer-notes[3], beware that in this example the ownCloud-folder is our www-root
+</p>
+<pre class="code">$HTTP[&quot;url&quot;] =~ &quot;^/data/&quot; {
+	url.access-deny = (&quot;&quot;)
+}</pre>
+<pre class="code">$HTTP[&quot;url&quot;] =~ &quot;^($|/)&quot; {
+	dir-listing.activate = &quot;disable&quot;
+}</pre>
+
+<p>
+Start the server:
+</p>
+<pre class="code">/etc/init.d/lighttpd start</pre>
+
+<p>
+Enable server for next boots:
+</p>
+<pre class="code">/etc/init.d/lighttpd enable</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Install lighttpd&quot;,&quot;hid&quot;:&quot;install_lighttpd&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;3666-4636&quot;} -->
+<h2 class="sectionedit7" id="install_configure_php">Install &amp; configure PHP</h2>
+<div class="level2">
+
+<p>
+Get the dirty part: php and sqlite. I am not sure if really all of these packages are necessary, but it seems so:
+</p>
+<pre class="code">opkg install php7 php7-cgi php7-fastcgi php7-mod-json php7-mod-session php7-mod-zip libsqlite3 zoneinfo-core php7-mod-pdo php7-mod-pdo-sqlite php7-mod-ctype php7-mod-mbstring php7-mod-gd sqlite3-cli php7-mod-sqlite3 php7-mod-curl curl php7-mod-xml php7-mod-simplexml php7-mod-hash php7-mod-dom php7-mod-iconv php7-mod-xmlwriter php7-mod-xmlreader php7-mod-intl</pre>
+
+<p>
+Those packages are also suggested:
+</p>
+<pre class="code">opkg install php7-mod-mcrypt php7-mod-openssl php7-mod-fileinfo php7-mod-exif</pre>
+
+<p>
+Configure /etc/php.ini to our needs and change the doc_root to our www-root:
+</p>
+<pre class="code">;open_basedir=</pre>
+<pre class="code">error_log = syslog</pre>
+<pre class="code">doc_root =
+cgi.fix_pathinfo=1</pre>
+<pre class="code">memory_limit = 32M</pre>
+
+<p>
+Check that the extensions are enabled:
+</p>
+
+<p>
+/etc/php5/&lt;extension&gt;.ini should contains extension=&lt;extension&gt;.ini
+</p>
+
+<p>
+Play around with memory_limit, I reduced the value form 8MB to 4MB ... but maybe 50MB might be better with 64MB RAM.
+</p>
+
+<p>
+Run php:
+</p>
+<pre class="code">/etc/init.d/php7-fastcgi enable
+/etc/init.d/php7-fastcgi start</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Install &amp; configure PHP&quot;,&quot;hid&quot;:&quot;install_configure_php&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;4637-5738&quot;} -->
+<h3 class="sectionedit8" id="activate_php_in_lighttpdconf">activate PHP in lighttpd.conf</h3>
+<div class="level3">
+
+<p>
+Uncomment to enable the fastcgi and access module
+</p>
+<pre class="code">server.modules = (
+	&quot;mod_access&quot;,
+	&quot;mod_fastcgi&quot;,
+	&quot;mod_cgi&quot;
+)</pre>
+
+<p>
+Add “index.php” to the list of index-file.names:
+</p>
+<pre class="code">index-file.names = ( &quot;index.php&quot;, &quot;index.html&quot;, &quot;default.html&quot;, &quot;index.htm&quot;, &quot;default.htm&quot; )</pre>
+<pre class="code">static-file.exclude-extensions = (&quot;.php, &quot;.pl&quot;, &quot;.fcgi&quot;)</pre>
+
+<p>
+Include php by using fast-cgi (gample against max-procs for performance):
+</p>
+<pre class="code">fastcgi.server = (
+	&quot;.php&quot; =&gt; ((
+		&quot;bin-path&quot; =&gt; &quot;/usr/bin/php-fcgi&quot;,
+		&quot;socket&quot; =&gt; &quot;/tmp/php.socket&quot;,
+		&quot;max-procs&quot; =&gt; 1
+	))
+)</pre>
+
+<p>
+Only if you are using normal cgi mode for PHP, you&#039;ll need the following line
+</p>
+<pre class="code">cgi.assign = (&quot;.php&quot; =&gt; &quot;/usr/bin/php-cgi&quot;)</pre>
+
+<p>
+Restart the webserver with
+</p>
+<pre class="code">/etc/init.d/lighttpd restart</pre>
+
+<p>
+Now point your browser to <a href="http://yourhost/index.php" class="urlextern" title="http://yourhost/index.php" rel="ugc nofollow">http://yourhost/index.php</a> (first create a helpful content to this file) and see if this manual missed something. If so, please contact the author (see details below) or get an account for this wiki and fix the how-to yourself.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;activate PHP in lighttpd.conf&quot;,&quot;hid&quot;:&quot;activate_php_in_lighttpdconf&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:8,&quot;range&quot;:&quot;5739-6749&quot;} -->
+<h2 class="sectionedit9" id="get_ssl_optional">Get SSL (optional)</h2>
+<div class="level2">
+
+<p>
+Probably you want to run lighttpd with <abbr title="Secure Socket Layer">SSL</abbr>/https to get your traffic crypted. These instructions are taken from [4]. For generating a key you need to install libopenssl and the openssl-util
+</p>
+<pre class="code">opkg install libopenssl openssl-util</pre>
+
+<p>
+Now you can create a folder for your key like this
+</p>
+<pre class="code">mkdir /etc/lighttpd/ssl/YOURDOMAIN -p</pre>
+
+<p>
+Within that you can create your key with the following command. You will be asked to provide some information for the certificate.
+</p>
+<pre class="code">openssl req -new -x509 -keyout server.pem -out server.pem -days 365 -nodes</pre>
+
+<p>
+Make the file only accessable to root
+</p>
+<pre class="code">chmod 0600 /etc/lighttpd/ssl/YOURDOMAIN
+chmod 0600 /etc/lighttpd/ssl/YOURDOMAIN/server.pem</pre>
+
+<p>
+Now we can uncomment the lines for <abbr title="Secure Socket Layer">SSL</abbr> in lighttp.conf and modify the path to the server.pem:
+</p>
+<pre class="code">ssl.engine = &quot;enable&quot;                             
+ssl.pemfile = &quot;/etc/lighttpd/ssl/YOURDOMAIN/server.pem&quot;</pre>
+
+<p>
+Restart the webserver afterwards - don&#039;t wonder if it isn&#039;t anymore reachable via http:
+</p>
+<pre class="code">/etc/init.d/lighttpd restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Get SSL (optional)&quot;,&quot;hid&quot;:&quot;get_ssl_optional&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:9,&quot;range&quot;:&quot;6750-7763&quot;} -->
+<h2 class="sectionedit10" id="mysql_installation_optional">MySQL Installation (Optional)</h2>
+<div class="level2">
+
+<p>
+ownCloud is installed with SQLite by default. However SQLite is only good for testing and lightweight single user setups. It has no client synchronisation support, so other devices will not be able to synchronise with the data stored in an ownCloud SQLite database. MariaDB is the ownCloud recommended database.
+</p>
+
+<p>
+Install the recommended MySQL/MariaDB database:
+</p>
+<pre class="code">opkg update
+opkg install mysql-server mariadb-client-extra php7-mod-pdo-mysql</pre>
+
+<p>
+Configure the database server:
+</p>
+<pre class="code">sed -i &#039;s,^datadir.*,datadir         = &quot;/srv/mysql&quot;,g&#039; /etc/my.cnf
+sed -i &#039;s,^tmpdir.*,tmpdir          = &quot;/tmp&quot;,g&#039; /etc/my.cnf
+
+mkdir -p /srv/mysql
+mysql_install_db --force</pre>
+
+<p>
+Start MySQL:
+</p>
+<pre class="code">/etc/init.d/mysqld start
+/etc/init.d/mysqld enable</pre>
+
+<p>
+Set password for root user:
+</p>
+<pre class="code">mysqladmin -u root password &#039;password&#039;</pre>
+
+<p>
+Connect to MySQL database:
+</p>
+<pre class="code">mysql -uroot -p</pre>
+
+<p>
+Create user for web server and set its password:
+</p>
+<pre class="code">CREATE USER &#039;http&#039;@&#039;localhost&#039; IDENTIFIED BY &#039;password&#039;;</pre>
+
+<p>
+Create database for ownCloud and set privileges:
+</p>
+<pre class="code">CREATE DATABASE IF NOT EXISTS owncloud;
+GRANT ALL PRIVILEGES ON owncloud.* TO &#039;http&#039;@&#039;localhost&#039; IDENTIFIED BY &#039;password&#039;;
+FLUSH PRIVILEGES;</pre>
+
+<p>
+For more information, please refer to the documentation: <a href="https://doc.owncloud.org/server/10.4/admin_manual/installation/installation_wizard.html#post-installation-steps-label" class="urlextern" title="https://doc.owncloud.org/server/10.4/admin_manual/installation/installation_wizard.html#post-installation-steps-label" rel="ugc nofollow">https://doc.owncloud.org/server/10.4/admin_manual/installation/installation_wizard.html#post-installation-steps-label</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;MySQL Installation (Optional)&quot;,&quot;hid&quot;:&quot;mysql_installation_optional&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:10,&quot;range&quot;:&quot;7764-9154&quot;} -->
+<h2 class="sectionedit11" id="unleash_owncloud">Unleash ownCloud</h2>
+<div class="level2">
+
+<p>
+Download and unpack the newest revision:
+</p>
+<pre class="code">cd /tmp
+wget https://download.owncloud.org/community/owncloud-X.X.X.tar.bz2
+opkg update
+opkg install tar
+cd /www
+tar -xjf /tmp/owncloud-X.X.X.tar.bz2</pre>
+
+<p>
+Now you should cleanup:
+</p>
+<pre class="code">rm /tmp/owncloud-X.X.X.tar.bz2
+opkg remove --autoremove tar</pre>
+
+<p>
+You have to configure the rights of the /www/owncloud in addition.
+</p>
+<pre class="code">chown -R root:root /www/owncloud
+chmod 770 -R /mnt/sda1/owncloud/data</pre>
+<pre class="code">cd /mnt/sda1
+mkdir owncloud
+cd owncloud
+mkdir data
+chown -hR http /mnt/sda1/owncloud
+chmod 770 -R /mnt/sda1/owncloud</pre>
+
+<p>
+create the following folder after installation and change its permissions:
+</p>
+<pre class="code">cd /www/owncloud
+mkdir apps-external
+chmod 777 apps-external</pre>
+
+<p>
+Open your Website <a href="http://192.168.1.1/" class="urlextern" title="http://192.168.1.1/" rel="ugc nofollow">http://192.168.1.1/</a> and configure your first steps, then wait for a loooonnnnngggg time and you&#039;ll see the result.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Unleash ownCloud&quot;,&quot;hid&quot;:&quot;unleash_owncloud&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:11,&quot;range&quot;:&quot;9155-10031&quot;} -->
+<h2 class="sectionedit12" id="enable_background_jobs">Enable Background Jobs</h2>
+<div class="level2">
+
+<p>
+ownCloud requires background jobs like database cleanup. For best performance, it is recommended to enable background jobs. 
+</p>
+
+<p>
+Enable Cron job:
+</p>
+<pre class="code">opkg install sudo
+crontab -u http -e
+* * * * * /usr/bin/php-cli /www/owncloud/occ system:cron</pre>
+
+<p>
+For more information, please refer to the documentation: <a href="https://doc.owncloud.com/server/admin_manual/configuration/server/background_jobs_configuration.html" class="urlextern" title="https://doc.owncloud.com/server/admin_manual/configuration/server/background_jobs_configuration.html" rel="ugc nofollow">https://doc.owncloud.com/server/admin_manual/configuration/server/background_jobs_configuration.html</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Enable Background Jobs&quot;,&quot;hid&quot;:&quot;enable_background_jobs&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:12,&quot;range&quot;:&quot;10032-10472&quot;} -->
+<h2 class="sectionedit13" id="owncloud_on_alternative_destination">ownCloud on alternative destination</h2>
+<div class="level2">
+
+<p>
+If you don&#039;t want to set up a extroot, you can install ownCloud on a different location <a href="/docs/guide-user/additional-software/opkg#non-standard_installation_destinations" class="wikilink1" title="docs:guide-user:additional-software:opkg" data-wiki-id="docs:guide-user:additional-software:opkg">Opkg Package Manager - Non-standard Installation Destinations</a>
+</p>
+
+<p>
+Install php on another location, then
+</p>
+<div class="table sectionedit14"><table class="inline">
+	<tr class="row0">
+		<td class="col0"> <code>ln -s /opt/etc/php.ini /etc/php.ini
+ln -s /opt/etc/php7 /etc/php7
+</code> </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:14,&quot;range&quot;:&quot;10795-10869&quot;} -->
+<p>
+If you still get errors related timezones and calls to undefined functions:
+</p>
+<div class="table sectionedit15"><table class="inline">
+	<tr class="row0">
+		<td class="col0"> <code>opkg -dest usb install zoneinfo-core zoneinfo-[your region]
+ln -s /opt/usr/lib/php /usr/lib/php
+ln -s /opt/usr/share/zoneinfo/ /usr/share/zoneinfo/
+</code> </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table1&quot;,&quot;secid&quot;:15,&quot;range&quot;:&quot;10947-11103&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;ownCloud on alternative destination&quot;,&quot;hid&quot;:&quot;owncloud_on_alternative_destination&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:13,&quot;range&quot;:&quot;10473-11104&quot;} -->
+<h2 class="sectionedit16" id="written_by">Written by</h2>
+<div class="level2">
+
+<p>
+Page was initiated by wetterfrosch
+</p>
+<ul>
+<li class="level1"><div class="li"> Mail: wetter_ät_netzpolitik.org</div>
+</li>
+<li class="level1"><div class="li"> Jabber: wetterfrosch_ät_jabber.berlin.ccc.de</div>
+</li>
+<li class="level1"><div class="li"> Diaspora: wetter_ät_diaspora.subsignal.org</div>
+</li>
+<li class="level1"><div class="li"> Twitter: @wetterfrosch</div>
+</li>
+</ul>
+
+<p>
+but a lot of modifications are done by others...
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Written by&quot;,&quot;hid&quot;:&quot;written_by&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:16,&quot;range&quot;:&quot;11105-11376&quot;} -->
+<h2 class="sectionedit17" id="resources">Resources</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> [0] <a href="http://downloads.openwrt.org/snapshots/" class="urlextern" title="http://downloads.openwrt.org/snapshots/" rel="ugc nofollow">http://downloads.openwrt.org/snapshots/</a></div>
+</li>
+<li class="level1"><div class="li"> [1] <a href="/docs/guide-user/storage/usb-installing" class="wikilink1" title="docs:guide-user:storage:usb-installing" data-wiki-id="docs:guide-user:storage:usb-installing">Installing and troubleshooting USB Drivers</a></div>
+</li>
+<li class="level1"><div class="li"> [2] <a href="/docs/guide-user/storage/usb-drives" class="wikilink1" title="docs:guide-user:storage:usb-drives" data-wiki-id="docs:guide-user:storage:usb-drives">Using storage devices</a></div>
+</li>
+<li class="level1"><div class="li"> [3] <a href="http://owncloud.org/support/webserver-notes/" class="urlextern" title="http://owncloud.org/support/webserver-notes/" rel="ugc nofollow">http://owncloud.org/support/webserver-notes/</a></div>
+</li>
+<li class="level1"><div class="li"> [4] <a href="http://www.cyberciti.biz/tips/howto-lighttpd-create-self-signed-ssl-certificates.html" class="urlextern" title="http://www.cyberciti.biz/tips/howto-lighttpd-create-self-signed-ssl-certificates.html" rel="ugc nofollow">http://www.cyberciti.biz/tips/howto-lighttpd-create-self-signed-ssl-certificates.html</a></div>
+</li>
+<li class="level1"><div class="li"> [5] <a href="http://www.gizfun.com/content/install-owncloud-your-openwrt-router-3-steps" class="urlextern" title="http://www.gizfun.com/content/install-owncloud-your-openwrt-router-3-steps" rel="ugc nofollow">http://www.gizfun.com/content/install-owncloud-your-openwrt-router-3-steps</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Resources&quot;,&quot;hid&quot;:&quot;resources&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:17,&quot;range&quot;:&quot;11377-&quot;} -->

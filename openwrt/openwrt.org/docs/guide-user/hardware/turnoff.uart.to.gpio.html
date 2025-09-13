@@ -1,0 +1,140 @@
+
+<h1 class="sectionedit1" id="how_to_turnoff_uart_to_free_gpio_only_on_ath79_processors">How to turnoff UART to free GPIO (only on ath79 processors)</h1>
+<div class="level1">
+
+<p>
+<strong>Related documentation:</strong>
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="http://wiki.openwrt.org/doc/hardware/port.serial" class="urlextern" title="http://wiki.openwrt.org/doc/hardware/port.serial" rel="ugc nofollow">http://wiki.openwrt.org/doc/hardware/port.serial</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/ticket/11243" class="urlextern" title="https://dev.openwrt.org/ticket/11243" rel="ugc nofollow">https://dev.openwrt.org/ticket/11243</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://web.cecs.pdx.edu/~jrb/ui/linux/driver4.txt" class="urlextern" title="http://web.cecs.pdx.edu/~jrb/ui/linux/driver4.txt" rel="ugc nofollow">http://web.cecs.pdx.edu/~jrb/ui/linux/driver4.txt</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://www.networksecuritytoolkit.org/nst/docs/user/ch11s02.html" class="urlextern" title="http://www.networksecuritytoolkit.org/nst/docs/user/ch11s02.html" rel="ugc nofollow">http://www.networksecuritytoolkit.org/nst/docs/user/ch11s02.html</a></div>
+</li>
+</ul>
+
+<p>
+You may need to disable the UART, to be able to use the TX and RX as GPIO-pin. The fact that the processors AR71xx/AR913x/AR724X/AR933X - UART default is locked
+and uses internal resources (buffer interrupt) for interaction with the driver.
+</p>
+
+<p>
+So, it is possible to turn off the built-in UART by simple script, without the NO need to patch/recompile firmware.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;How to turnoff UART to free GPIO (only on ath79 processors)&quot;,&quot;hid&quot;:&quot;how_to_turnoff_uart_to_free_gpio_only_on_ath79_processors&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-680&quot;} -->
+<h2 class="sectionedit2" id="method_no_need_re-build_the_kernel">Method (NO need re-build the Kernel):</h2>
+<div class="level2">
+
+<p>
+Install io:
+</p>
+<pre class="code">opkg update &amp;&amp; opkg install io</pre>
+
+<p>
+or use this installation method:
+</p>
+<pre class="code">cd /tmp
+wget http://downloads.openwrt.org/barrier_breaker/14.07/ar71xx/generic/packages/oldpackages/io_1_ar71xx.ipk
+opkg install io_1_ar71xx.ipk</pre>
+
+<p>
+Create an empty file (if it is from the console):
+</p>
+<pre class="code">touch /usr/sbin/uart_gpio</pre>
+
+<p>
+Paste the script in empty file:
+</p>
+<pre class="code bash"><span class="co0">#!/bin/sh</span>
+<span class="co0"># Bitwise operations: &amp; = And, | = Or, ^ = xOr, &lt;&lt; = Left Shift</span>
+&nbsp;
+<span class="re2">detect_addr</span>=<span class="st0">&quot;0x18060090&quot;</span>
+<span class="re2">rev_id_maj_msk</span>=<span class="st0">&quot;0xfff0&quot;</span>
+<span class="re2">func_addr</span>=<span class="st0">&quot;0x18040028&quot;</span>
+<span class="re2">bit1</span>=<span class="st0">&quot;1&lt;&lt;1&quot;</span>            <span class="co0"># using bit1 for AR724x/AR933x</span>
+<span class="re2">bit8</span>=<span class="st0">&quot;1&lt;&lt;8&quot;</span>            <span class="co0"># using bit8 for AR71xx/AR913x</span>
+&nbsp;
+<span class="re2">detect_value</span>=0x<span class="sy0">`</span>io <span class="re5">-4</span> <span class="re1">$detect_addr</span> <span class="sy0">|</span> <span class="kw2">cut</span> <span class="re5">-f3</span> <span class="re5">-d</span><span class="st_h">' '</span><span class="sy0">`</span>
+<span class="re2">detected_result</span>=$<span class="br0">&#40;</span><span class="kw3">printf</span> <span class="st0">&quot;0x%4.4x&quot;</span> $<span class="br0">&#40;</span><span class="br0">&#40;</span><span class="re1">$detect_value</span> <span class="sy0">&amp;</span> <span class="re1">$rev_id_maj_msk</span><span class="br0">&#41;</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+<span class="re2">func_value</span>=0x<span class="sy0">`</span>io <span class="re5">-4</span> <span class="re1">$func_addr</span> <span class="sy0">|</span> <span class="kw2">cut</span> <span class="re5">-f3</span> <span class="re5">-d</span><span class="st_h">' '</span><span class="sy0">`</span>
+&nbsp;
+<span class="co0"># depending on the detected rev_id of CPU -</span>
+<span class="co0"># it will be use specific bit# as case_bit variable, or exit</span>
+<span class="kw1">case</span> <span class="st0">&quot;<span class="es2">$detected_result</span>&quot;</span> <span class="kw1">in</span>
+<span class="co0"># AR7240/AR7241/AR7242/AR9330/AR9331</span>
+0x00c0 <span class="sy0">|</span> \
+0x0100 <span class="sy0">|</span> \
+0x1100 <span class="sy0">|</span> \
+0x0110 <span class="sy0">|</span> \
+0x1110 <span class="br0">&#41;</span>
+    <span class="re2">case_bit</span>=<span class="re1">$bit1</span>
+    <span class="sy0">;;</span>
+<span class="co0"># AR71xx/AR913x</span>
+0x00a0 <span class="sy0">|</span> \
+0x00b0 <span class="br0">&#41;</span>
+    <span class="re2">case_bit</span>=<span class="re1">$bit8</span>
+    <span class="sy0">;;</span>
+<span class="co0"># AR9341/AR9342/AR9344</span>
+0x0120 <span class="sy0">|</span> \
+0x1120 <span class="sy0">|</span> \
+0x2120 <span class="br0">&#41;</span>
+    <span class="kw3">echo</span> <span class="re5">-e</span> <span class="st0">&quot;No need to disable UART on AR934x processors,<span class="es1">\n</span> <span class="es1">\
+</span>    just use sysfs to reprogram GPIOs.&quot;</span>
+    <span class="kw3">break</span>
+    <span class="kw3">exit</span> <span class="nu0">0</span>
+    <span class="sy0">;;</span>
+<span class="sy0">*</span> <span class="br0">&#41;</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;Can't detect your CPU, must be Atheros!&quot;</span>
+    <span class="kw3">break</span>
+    <span class="kw3">exit</span> <span class="nu0">1</span>
+    <span class="sy0">;;</span>
+<span class="kw1">esac</span>
+&nbsp;
+<span class="co0"># we using Bitwise xOr operation to switching bit# state (0 or 1)</span>
+io <span class="re5">-4</span> <span class="re1">$func_addr</span> $<span class="br0">&#40;</span><span class="kw3">printf</span> <span class="st0">&quot;0x%8.8x&quot;</span> $<span class="br0">&#40;</span><span class="br0">&#40;</span><span class="re1">$func_value</span> ^ <span class="re1">$case_bit</span><span class="br0">&#41;</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+&nbsp;
+<span class="co0"># read bit# state and depending on the state - print some info</span>
+<span class="kw1">if</span> <span class="br0">&#91;</span> $<span class="br0">&#40;</span><span class="br0">&#40;</span><span class="re1">$func_value</span> <span class="sy0">&amp;</span> <span class="re1">$case_bit</span><span class="br0">&#41;</span><span class="br0">&#41;</span> = $<span class="br0">&#40;</span><span class="br0">&#40;</span><span class="re1">$case_bit</span><span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;Hardware UART is turned OFF&quot;</span>
+    <span class="co0"># You can use this line for automatic configuring GPIOs via sysfs</span>
+    <span class="co0"># or you can load other modules that use these GPIOs</span>
+<span class="kw1">else</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;Hardware UART is turned ON&quot;</span>
+<span class="kw1">fi</span></pre>
+
+<p>
+Assign the right execution:
+</p>
+<pre class="code">chmod +x /usr/sbin/uart_gpio</pre>
+
+<p>
+And actually the launch itself <strong>uart_gpio</strong> (if launch again it turn on UART back) ...
+</p>
+
+<p>
+Of course, it turn off UART until the next reboot the device, ie, you need to automate the process, for example by writing command in <strong>/etc/rc.local</strong>.
+After that you need and you can configure for yourself GPIO via <strong>/sys/class/gpio/export</strong>... well, I think it is not necessary to go into details, because who need to turn off the UART for some purposes - he will understand.
+</p>
+
+<p>
+Let me remind you, for AR724x/AR933x:
+</p>
+<pre class="code">UART_IN | UART_OUT
+ GPIO9  |  GPIO10</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Method (NO need re-build the Kernel):&quot;,&quot;hid&quot;:&quot;method_no_need_re-build_the_kernel&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;681-3238&quot;} -->
+<h2 class="sectionedit3" id="forum_discussion">Forum discussion:</h2>
+<div class="level2">
+
+<p>
+<a href="https://forum.openwrt.org/viewtopic.php?id=48063" class="urlextern" title="https://forum.openwrt.org/viewtopic.php?id=48063" rel="ugc nofollow">https://forum.openwrt.org/viewtopic.php?id=48063</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Forum discussion:&quot;,&quot;hid&quot;:&quot;forum_discussion&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:3,&quot;range&quot;:&quot;3239-&quot;} -->

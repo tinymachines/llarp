@@ -1,0 +1,218 @@
+
+<h1 class="sectionedit1" id="filtering_traffic_with_ip_sets_by_dns">Filtering traffic with IP sets by DNS</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__meta:infobox:howto_links">
+<div class="level1">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_info plugin_wrap">
+<p>
+This article relies on the following:
+</p>
+<ul>
+<li class="level1"><div class="li"> Accessing <a href="/docs/guide-quick-start/walkthrough_login" class="wikilink1" title="docs:guide-quick-start:walkthrough_login" data-wiki-id="docs:guide-quick-start:walkthrough_login">web interface</a> / <a href="/docs/guide-quick-start/sshadministration" class="wikilink1" title="docs:guide-quick-start:sshadministration" data-wiki-id="docs:guide-quick-start:sshadministration">command-line interface</a></div>
+</li>
+<li class="level1"><div class="li"> Managing <a href="/docs/guide-user/base-system/uci" class="wikilink1" title="docs:guide-user:base-system:uci" data-wiki-id="docs:guide-user:base-system:uci">configs</a> / <a href="/docs/guide-user/additional-software/managing_packages" class="wikilink1" title="docs:guide-user:additional-software:managing_packages" data-wiki-id="docs:guide-user:additional-software:managing_packages">packages</a> / <a href="/docs/guide-user/base-system/managing_services" class="wikilink1" title="docs:guide-user:base-system:managing_services" data-wiki-id="docs:guide-user:base-system:managing_services">services</a> / <a href="/docs/guide-user/base-system/log.essentials" class="wikilink1" title="docs:guide-user:base-system:log.essentials" data-wiki-id="docs:guide-user:base-system:log.essentials">logs</a></div>
+</li>
+</ul>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Filtering traffic with IP sets by DNS&quot;,&quot;hid&quot;:&quot;filtering_traffic_with_ip_sets_by_dns&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-134&quot;} -->
+<h2 class="sectionedit6" id="introduction">Introduction</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> This how-to configures traffic filtering with <a href="https://wiki.nftables.org/wiki-nftables/index.php/Sets" class="urlextern" title="https://wiki.nftables.org/wiki-nftables/index.php/Sets" rel="ugc nofollow">IP sets</a> by <abbr title="Domain Name System">DNS</abbr> on OpenWrt.</div>
+</li>
+<li class="level1"><div class="li"> It relies on <a href="/packages/pkgdata/resolveip" class="wikilink1" title="packages:pkgdata:resolveip" data-wiki-id="packages:pkgdata:resolveip">resolveip</a> and <a href="/docs/guide-user/firewall/overview" class="wikilink1" title="docs:guide-user:firewall:overview" data-wiki-id="docs:guide-user:firewall:overview">firewall</a> with <a href="/docs/guide-user/firewall/firewall_configuration#ip_sets" class="wikilink1" title="docs:guide-user:firewall:firewall_configuration" data-wiki-id="docs:guide-user:firewall:firewall_configuration">IP sets</a> to resolve and filter domains.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Introduction&quot;,&quot;hid&quot;:&quot;introduction&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;135-499&quot;} -->
+<h2 class="sectionedit7" id="goals">Goals</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Filter <abbr title="Local Area Network">LAN</abbr> client traffic with <abbr title="Internet Protocol">IP</abbr> sets by <abbr title="Domain Name System">DNS</abbr>.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Goals&quot;,&quot;hid&quot;:&quot;goals&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;500-569&quot;} -->
+<h2 class="sectionedit8" id="command-line_instructions">Command-line instructions</h2>
+<div class="level2">
+
+<p>
+Install the required packages.
+Filter <abbr title="Local Area Network">LAN</abbr> client traffic with firewall and <abbr title="Internet Protocol">IP</abbr> sets.
+Set up <a href="/docs/guide-user/advanced/ipset_extras" class="wikilink1" title="docs:guide-user:advanced:ipset_extras" data-wiki-id="docs:guide-user:advanced:ipset_extras">IP set extras</a> and <a href="/docs/guide-user/advanced/hotplug_extras" class="wikilink1" title="docs:guide-user:advanced:hotplug_extras" data-wiki-id="docs:guide-user:advanced:hotplug_extras">Hotplug extras</a> to automatically populate <abbr title="Internet Protocol">IP</abbr> sets.
+</p>
+<pre class="code bash"><span class="co0"># Install packages</span>
+opkg update
+opkg <span class="kw2">install</span> resolveip
+&nbsp;
+<span class="co0"># Configure IP sets</span>
+uci <span class="re5">-q</span> delete dhcp.filter
+uci <span class="kw1">set</span> dhcp.filter=<span class="st0">&quot;ipset&quot;</span>
+uci add_list dhcp.filter.name=<span class="st0">&quot;filter&quot;</span>
+uci add_list dhcp.filter.name=<span class="st0">&quot;filter6&quot;</span>
+uci add_list dhcp.filter.domain=<span class="st0">&quot;example.com&quot;</span>
+uci add_list dhcp.filter.domain=<span class="st0">&quot;example.net&quot;</span>
+uci commit dhcp
+&nbsp;
+<span class="co0"># Filter LAN client traffic with IP sets</span>
+<span class="kw1">for</span> IPV <span class="kw1">in</span> <span class="nu0">4</span> <span class="nu0">6</span>
+<span class="kw1">do</span>
+uci <span class="re5">-q</span> delete firewall.fwd_filter<span class="co1">${IPV%4}</span>
+uci <span class="kw1">set</span> firewall.fwd_filter<span class="co1">${IPV%4}</span>=<span class="st0">&quot;rule&quot;</span>
+uci <span class="kw1">set</span> firewall.fwd_filter<span class="co1">${IPV%4}</span>.name=<span class="st0">&quot;Filter-IPset-DNS-Forward&quot;</span>
+uci <span class="kw1">set</span> firewall.fwd_filter<span class="co1">${IPV%4}</span>.src=<span class="st0">&quot;lan&quot;</span>
+uci <span class="kw1">set</span> firewall.fwd_filter<span class="co1">${IPV%4}</span>.dest=<span class="st0">&quot;wan&quot;</span>
+uci <span class="kw1">set</span> firewall.fwd_filter<span class="co1">${IPV%4}</span>.proto=<span class="st0">&quot;all&quot;</span>
+uci <span class="kw1">set</span> firewall.fwd_filter<span class="co1">${IPV%4}</span>.family=<span class="st0">&quot;ipv<span class="es3">${IPV}</span>&quot;</span>
+uci <span class="kw1">set</span> firewall.fwd_filter<span class="co1">${IPV%4}</span>.ipset=<span class="st0">&quot;filter<span class="es3">${IPV%4}</span> dest&quot;</span>
+uci <span class="kw1">set</span> firewall.fwd_filter<span class="co1">${IPV%4}</span>.target=<span class="st0">&quot;REJECT&quot;</span>
+<span class="kw1">done</span>
+uci commit firewall
+&nbsp;
+<span class="co0"># Populate IP sets</span>
+ipset setup</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Command-line instructions&quot;,&quot;hid&quot;:&quot;command-line_instructions&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:8,&quot;range&quot;:&quot;570-1772&quot;} -->
+<h2 class="sectionedit9" id="testing">Testing</h2>
+<div class="level2">
+
+<p>
+Flush <abbr title="Domain Name System">DNS</abbr> cache on the clients and restart the client browser.
+Verify your client traffic is properly filtered on the router.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Testing&quot;,&quot;hid&quot;:&quot;testing&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:9,&quot;range&quot;:&quot;1773-1919&quot;} -->
+<h2 class="sectionedit10" id="troubleshooting">Troubleshooting</h2>
+<div class="level2">
+
+<p>
+Collect and analyze the following information.
+</p>
+<pre class="code bash"><span class="co0"># Restart services</span>
+service firewall restart
+&nbsp;
+<span class="co0"># Runtime configuration</span>
+nft list ruleset
+&nbsp;
+<span class="co0"># Persistent configuration</span>
+uci show firewall; crontab <span class="re5">-l</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Troubleshooting&quot;,&quot;hid&quot;:&quot;troubleshooting&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:10,&quot;range&quot;:&quot;1920-2160&quot;} -->
+<h2 class="sectionedit11" id="extras">Extras</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Extras&quot;,&quot;hid&quot;:&quot;extras&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:11,&quot;range&quot;:&quot;2161-2179&quot;} -->
+<h3 class="sectionedit12" id="web_interface">Web interface</h3>
+<div class="level3">
+
+<p>
+If you want to manage the settings using web interface.
+</p>
+<ul>
+<li class="level1"><div class="li"> Navigate to <strong>LuCI → Network → Firewall → Traffic Rules → Filter-IPset-<abbr title="Domain Name System">DNS</abbr>-Forward</strong> to manage firewall rules.</div>
+</li>
+<li class="level1"><div class="li"> Navigate to <strong>LuCI → Network → <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> and <abbr title="Domain Name System">DNS</abbr> → <abbr title="Internet Protocol">IP</abbr> sets</strong> to manage domains.</div>
+</li>
+</ul>
+
+<p>
+Reboot the router to apply the changes.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Web interface&quot;,&quot;hid&quot;:&quot;web_interface&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:12,&quot;range&quot;:&quot;2180-2501&quot;} -->
+<h3 class="sectionedit13" id="manage_domains">Manage domains</h3>
+<div class="level3">
+
+<p>
+Add/remove domains to/from the filtering list.
+</p>
+<pre class="code bash"><span class="co0"># Add domains</span>
+uci add_list dhcp.filter.domain=<span class="st0">&quot;example.com&quot;</span>
+uci add_list dhcp.filter.domain=<span class="st0">&quot;example.net&quot;</span>
+&nbsp;
+<span class="co0"># Remove domains</span>
+uci del_list dhcp.filter.domain=<span class="st0">&quot;example.com&quot;</span>
+uci del_list dhcp.filter.domain=<span class="st0">&quot;example.net&quot;</span>
+&nbsp;
+<span class="co0"># Save and apply</span>
+uci commit dhcp
+ipset setup</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Manage domains&quot;,&quot;hid&quot;:&quot;manage_domains&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:13,&quot;range&quot;:&quot;2502-2857&quot;} -->
+<h3 class="sectionedit14" id="source_restriction">Source restriction</h3>
+<div class="level3">
+
+<p>
+Limit the restriction scope to a specific source MAC address.
+</p>
+<pre class="code bash"><span class="co0"># Apply source restriction</span>
+<span class="kw1">for</span> IPV <span class="kw1">in</span> <span class="nu0">4</span> <span class="nu0">6</span>
+<span class="kw1">do</span>
+uci add_list firewall.fwd_filter<span class="co1">${IPV%4}</span>.src_mac=<span class="st0">&quot;11:22:33:44:55:66&quot;</span>
+uci add_list firewall.fwd_filter<span class="co1">${IPV%4}</span>.src_mac=<span class="st0">&quot;aa:bb:cc:dd:ee:ff&quot;</span>
+<span class="kw1">done</span>
+uci commit firewall
+service firewall restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Source restriction&quot;,&quot;hid&quot;:&quot;source_restriction&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:14,&quot;range&quot;:&quot;2858-3203&quot;} -->
+<h3 class="sectionedit15" id="time_restriction">Time restriction</h3>
+<div class="level3">
+
+<p>
+<a href="/docs/guide-user/firewall/fw3_configurations/dns_ipset#established_connections" class="wikilink1" title="docs:guide-user:firewall:fw3_configurations:dns_ipset" data-wiki-id="docs:guide-user:firewall:fw3_configurations:dns_ipset">Reorder firewall rules</a> and enable time restriction to keep the rules active.
+<a href="/docs/guide-user/base-system/system_configuration#daylight_saving_time" class="wikilink1" title="docs:guide-user:base-system:system_configuration" data-wiki-id="docs:guide-user:base-system:system_configuration">Reload kernel timezone</a> to properly apply DST.
+</p>
+<pre class="code bash"><span class="co0"># Apply time restriction</span>
+<span class="kw1">for</span> IPV <span class="kw1">in</span> <span class="nu0">4</span> <span class="nu0">6</span>
+<span class="kw1">do</span>
+uci <span class="kw1">set</span> firewall.fwd_filter<span class="co1">${IPV%4}</span>.start_time=<span class="st0">&quot;21:00:00&quot;</span>
+uci <span class="kw1">set</span> firewall.fwd_filter<span class="co1">${IPV%4}</span>.stop_time=<span class="st0">&quot;09:00:00&quot;</span>
+uci <span class="kw1">set</span> firewall.fwd_filter<span class="co1">${IPV%4}</span>.weekdays=<span class="st0">&quot;Mon Tue Wed Thu Fri&quot;</span>
+<span class="kw1">done</span>
+uci commit firewall
+service firewall restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Time restriction&quot;,&quot;hid&quot;:&quot;time_restriction&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:15,&quot;range&quot;:&quot;3204-3806&quot;} -->
+<h3 class="sectionedit16" id="established_connections">Established connections</h3>
+<div class="level3">
+
+<p>
+Reorder firewall rules to properly apply time restrictions.
+</p>
+<pre class="code bash"><span class="co0"># Reorder firewall rules</span>
+<span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>nftables.d<span class="sy0">/</span>estab.sh
+<span class="re2">ER_RULE</span>=<span class="st0">&quot;$(nft -a list chain inet fw4 forward <span class="es1">\
+</span>| sed -n -e &quot;</span><span class="sy0">/</span>\sestablished.<span class="sy0">*</span>related.<span class="sy0">*</span>accept\s<span class="sy0">/</span>p<span class="st0">&quot;)&quot;</span>
+<span class="re2">RJ_RULE</span>=<span class="st0">&quot;$(nft -a list chain inet fw4 forward <span class="es1">\
+</span>| sed -n -e &quot;</span><span class="sy0">/</span>\shandle_reject\s<span class="sy0">/</span>p<span class="st0">&quot;)&quot;</span>
+nft delete rule inet fw4 forward handle <span class="co1">${ER_RULE##* }</span>
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-n</span> <span class="st0">&quot;<span class="es3">${RJ_RULE}</span>&quot;</span> <span class="br0">&#93;</span>
+<span class="kw1">then</span> nft insert rule inet fw4 forward position <span class="co1">${RJ_RULE##* }</span> <span class="co1">${ER_RULE}</span>
+<span class="kw1">else</span> nft add rule inet fw4 forward <span class="co1">${ER_RULE}</span>
+<span class="kw1">fi</span>
+EOF
+uci <span class="re5">-q</span> delete firewall.estab
+uci <span class="kw1">set</span> firewall.estab=<span class="st0">&quot;include&quot;</span>
+uci <span class="kw1">set</span> firewall.estab.path=<span class="st0">&quot;/etc/nftables.d/estab.sh&quot;</span>
+uci commit firewall
+service firewall restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Established connections&quot;,&quot;hid&quot;:&quot;established_connections&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:16,&quot;range&quot;:&quot;3807-&quot;} -->

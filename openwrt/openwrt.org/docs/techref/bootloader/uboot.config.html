@@ -1,0 +1,597 @@
+
+<h1 class="sectionedit1" id="das_u-boot_environment">Das U-Boot Environment</h1>
+<div class="level1">
+
+<p>
+Das U-Boot uses a small amount of space on the flash storage usually on the same partition it is stored on to store some important configuration parameters. This can hardly be compared to NVRAM/TFFS-approach of other bootloaders. It is called the <em>u-boot environment</em>. It stores some values like the <abbr title="Internet Protocol">IP</abbr> address of the <abbr title="Trivial File Transfer Protocol">TFTP</abbr> server (on your PC) to which the the <abbr title="Trivial File Transfer Protocol">TFTP</abbr> client (part of U-Boot) will try to connect, etc.
+</p>
+
+<p>
+You can read and write these values when you are connected to the <em>U-Boot console</em> via <a href="/docs/techref/hardware/port.serial" class="wikilink1" title="docs:techref:hardware:port.serial" data-wiki-id="docs:techref:hardware:port.serial">Serial Port</a> and also from the CLI once you booted OpenWrt.
+</p>
+
+<p>
+One of the huge advantages of <a href="/docs/techref/bootloader/uboot" class="wikilink1" title="docs:techref:bootloader:uboot" data-wiki-id="docs:techref:bootloader:uboot">Das U-Boot</a> is its ability for run time configuration. This flexibility is based on being able to easily change environment variables. The environment is usually at the end of the uboot <a href="/docs/techref/flash.layout" class="wikilink1" title="docs:techref:flash.layout" data-wiki-id="docs:techref:flash.layout">partition</a>. The <em>environment variables</em> are set up in a board specific file, e.g. <code><a href="https://dev.openwrt.org/browser/trunk/package/uboot-ar71xx/files/include/configs/nbg460n.h" class="urlextern" title="https://dev.openwrt.org/browser/trunk/package/uboot-ar71xx/files/include/configs/nbg460n.h" rel="ugc nofollow">package/uboot-ar71xx/files/include/configs/nbg460n.h</a></code> for the <a href="/toh/zyxel/nbg460n" class="wikilink1" title="toh:zyxel:nbg460n" data-wiki-id="toh:zyxel:nbg460n">Zyxel NBG 460N/550N/550NH</a>.
+</p>
+
+<p>
+The location on the flash partition is predefined:
+</p>
+<pre class="code">#define CONFIG_ENV_OFFSET                 0x0000
+#define CONFIG_ENV_SIZE                   0x2000</pre>
+
+<p>
+and copied to RAM when U-Boot starts.
+</p>
+<div class="table sectionedit2"><table class="inline">
+	<tr class="row0">
+		<td class="col0"> <img src="/_media/meta/icons/tango/dialog-information.png" class="media" loading="lazy" alt="" /> </td><td class="col1"> The U-Boot Environment is protected by a <a href="https://en.wikipedia.org/wiki/Cyclic redundancy check" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Cyclic redundancy check">CRC32</a> checksum. <br/>
+See <a href="https://web.archive.org/web/20211024121026/http://www.denx.de/wiki/view/DULG/WarningBadCRCUsingDefaultEnvironment" class="urlextern" title="https://web.archive.org/web/20211024121026/http://www.denx.de/wiki/view/DULG/WarningBadCRCUsingDefaultEnvironment" rel="ugc nofollow">Warning - bad CRC, using default environment</a> <br/>
+</td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;1421-1739&quot;} --><p><a class="folder" href="#folded_5e79f269c60d0ea14f29ea1037efe181_1">Content of linked page &#039;Warning - bad CRC, using default environment&#039; </a></p><div class="folded hidden" id="folded_5e79f269c60d0ea14f29ea1037efe181_1">
+<p>
+ <strong>Question:</strong> <br/>
+
+<br/>
+
+I have ported U-Boot to a custom board. It seems to boot OK, but it prints: <br/>
+
+<code>Warning - bad CRC, using default environment</code> <br/>
+
+Why? <br/>
+
+<br/>
+
+<strong>Answer:</strong> <br/>
+
+<br/>
+
+Most probably everything is OK. The message is printed because the flash sector or ERPROM containing the environment variables has never been initialized yet. The message will go away as soon as you save the envrionment variables using the <code>saveenv</code> command. 
+</p>
+</div>
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Das U-Boot Environment&quot;,&quot;hid&quot;:&quot;das_u-boot_environment&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-2262&quot;} -->
+<h2 class="sectionedit3" id="common_variables">Common variables</h2>
+<div class="level2">
+
+<p>
+→ <a href="http://www.denx.de/wiki/view/DULG/UBootEnvVariables" class="urlextern" title="http://www.denx.de/wiki/view/DULG/UBootEnvVariables" rel="ugc nofollow">http://www.denx.de/wiki/view/DULG/UBootEnvVariables</a><br/>
+
+This lists the most important environment variables, all of which have a special meaning to U-Boot. 
+</p>
+<div class="table sectionedit4"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> <code>Variable</code> </th><th class="col1 leftalign"> Description  </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> <code>autoload</code> </td><td class="col1 leftalign"> if set to <code>no</code> (or any string beginning with &#039;n&#039;), the <code>rarpb</code>, <code>bootp</code> or <code>dhcp</code> commands will perform only a configuration lookup from the BOOTP / <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> server, but not try to load any image using <a href="https://en.wikipedia.org/wiki/Trivial File Transfer Protocol" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Trivial File Transfer Protocol">TFTP</a>.  </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> <code>autostart</code> </td><td class="col1 leftalign"> if set to <code>yes</code>, an image loaded using the <code>rarpb</code>, <code>bootp</code>, <code>dhcp</code>, <code>tftp</code>, <code>disk</code>, or <code>docb</code> commands will be automatically started (by internally calling the <code>bootm</code> command).  </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> <code>baudrate</code> </td><td class="col1 leftalign"> a decimal number that selects the console baudrate (in bps).  </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> <code>bootargs</code> </td><td class="col1 leftalign"> The contents of this variable are passed to the Linux kernel as boot arguments (aka “command line”).  </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0"> <code>bootcmd</code> </td><td class="col1 leftalign"> This variable defines a command string that is automatically executed when the initial countdown is not interrupted. This command is only executed when the variable bootdelay is also defined!  </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0"> <code>bootdelay</code> </td><td class="col1 leftalign"> After reset, U-Boot will wait this number of seconds before it executes the contents of the bootcmd variable. During this time a countdown is printed, which can be interrupted by pressing any key. <br/>
+Set this variable to 0 boot without delay. Be careful: depending on the contents of your <code>bootcmd</code> variable, this can prevent you from entering interactive commands again forever! <br/>
+Set this variable to -1 to disable autoboot.  </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0"> <code>bootfile</code> </td><td class="col1 leftalign"> name of the default image to load with <abbr title="Trivial File Transfer Protocol">TFTP</abbr>  </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0"> <code>ethaddr</code> </td><td class="col1 leftalign"> Ethernet MAC address for first/only ethernet interface (<code>eth0</code> in Linux). <br/>
+This variable can be set only once (usually during manufacturing of the board). U-Boot refuses to delete or overwrite this variable once it has been set.  </td>
+	</tr>
+	<tr class="row9">
+		<td class="col0"> <code>ipaddr</code> </td><td class="col1 leftalign"> <abbr title="Internet Protocol">IP</abbr> address; needed for <code>tftp</code> command  </td>
+	</tr>
+	<tr class="row10">
+		<td class="col0"> <code>loadaddr</code> </td><td class="col1 leftalign"> Default load address for commands like <code>tftp</code> or <code>loads</code>  </td>
+	</tr>
+	<tr class="row11">
+		<td class="col0"> <code>serverip</code> </td><td class="col1 leftalign"> <abbr title="Trivial File Transfer Protocol">TFTP</abbr> server <abbr title="Internet Protocol">IP</abbr> address; needed for <code>tftp</code> command.  </td>
+	</tr>
+	<tr class="row12">
+		<td class="col0"> <code>silent</code> </td><td class="col1 leftalign"> If the configuration option <code>CONFIG_SILENT_CONSOLE</code> has been enabled for your board, setting this variable to any value will suppress all console messages. Please see <a href="/silent_booting" class="wikilink2" title="silent_booting" rel="nofollow" data-wiki-id="silent_booting">silent_booting</a> for details.  </td>
+	</tr>
+	<tr class="row13">
+		<td class="col0"> <code>verify</code> </td><td class="col1 leftalign"> If set to <code>n</code> or <code>no</code> disables the checksum calculation over the complete image in the <code>bootm</code> command to trade speed for safety in the boot process. Note that the header checksum is still verified.  </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table1&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;2455-4807&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Common variables&quot;,&quot;hid&quot;:&quot;common_variables&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;2263-4809&quot;} -->
+<h2 class="sectionedit5" id="accessing_u-boot_environment_variables_in_serial_console">Accessing U-Boot environment variables in Serial Console</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <a href="/docs/techref/hardware/port.serial" class="wikilink1" title="docs:techref:hardware:port.serial" data-wiki-id="docs:techref:hardware:port.serial">Serial Console</a></div>
+</li>
+<li class="level1 node"><div class="li"> → <a href="http://www.denx.de/wiki/view/DULG/UBoot" class="urlextern" title="http://www.denx.de/wiki/view/DULG/UBoot" rel="ugc nofollow">http://www.denx.de/wiki/view/DULG/UBoot</a><br/>
+</div>
+<ul>
+<li class="level2"><div class="li"> → <a href="http://www.denx.de/wiki/view/DULG/UBootCommandLineInterface" class="urlextern" title="http://www.denx.de/wiki/view/DULG/UBootCommandLineInterface" rel="ugc nofollow">5.9. U-Boot Command Line Interface</a></div>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Accessing U-Boot environment variables in Serial Console&quot;,&quot;hid&quot;:&quot;accessing_u-boot_environment_variables_in_serial_console&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:5,&quot;range&quot;:&quot;4810-5097&quot;} -->
+<h3 class="sectionedit6" id="examining_env_var_in_u-boot">Examining env var in U-Boot</h3>
+<div class="level3">
+<pre class="code bash">printenv ipaddr <span class="kw2">hostname</span> netmask
+<span class="re2">ipaddr</span>=192.168.0.2
+<span class="re2">hostname</span>=openwrt
+<span class="re2">netmask</span>=255.255.255.0
+print bootdelay
+<span class="re2">bootdelay</span>=<span class="nu0">1</span>
+print serverip
+<span class="re2">serverip</span>=192.168.0.5</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Examining env var in U-Boot&quot;,&quot;hid&quot;:&quot;examining_env_var_in_u-boot&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:6,&quot;range&quot;:&quot;5098-5311&quot;} -->
+<h3 class="sectionedit7" id="setting_env_var_in_u-boot">Setting env var in U-Boot</h3>
+<div class="level3">
+<pre class="code bash"><span class="kw1">set</span> bootcmd <span class="st_h">'tftp 0x1000000 uImage548; bootm'</span>
+<span class="kw1">set</span> ipaddr 176.16.15.14
+print ipaddr
+<span class="re2">ipaddr</span>=176.16.15.14
+dhcp
+start Auto negotiation... <span class="br0">&#40;</span>take ~2sec<span class="br0">&#41;</span>
+Auto negotiation <span class="kw3">complete</span>, 1000BaseT, full duplex
+BOOTP broadcast <span class="nu0">1</span>
+DHCP client bound to address 176.16.15.14
+print serverip
+<span class="re2">serverip</span>=176.16.15.1
+<span class="kw1">set</span> serverip 176.16.15.254</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Setting env var in U-Boot&quot;,&quot;hid&quot;:&quot;setting_env_var_in_u-boot&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:7,&quot;range&quot;:&quot;5312-5688&quot;} -->
+<h3 class="sectionedit8" id="removing_an_env_var_in_u-boot">Removing an env var in U-Boot</h3>
+<div class="level3">
+<pre class="code bash"><span class="kw1">set</span> foo <span class="st_h">'tftp 0x1000000 uImage123; bootm'</span>
+print foo
+tftp 0x1000000 uImage123; bootm
+<span class="kw1">set</span> foo
+print foo
+<span class="co0">## Error: &quot;foo&quot; not defined</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Removing an env var in U-Boot&quot;,&quot;hid&quot;:&quot;removing_an_env_var_in_u-boot&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:8,&quot;range&quot;:&quot;5689-5879&quot;} -->
+<h3 class="sectionedit9" id="saving_changes_to_the_environment_back_to_flash_in_u-boot">Saving changes to the environment back to flash in U-Boot</h3>
+<div class="level3">
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> <a href="http://www.denx.de/wiki/view/DULG/UBootCmdGroupEnvironment" class="urlextern" title="http://www.denx.de/wiki/view/DULG/UBootCmdGroupEnvironment" rel="ugc nofollow">All changes you make to the U-Boot environment are made in RAM only</a>! If you want to additionally make your changes permanent you have to use the <code>saveenv</code> command to write a copy of the environment settings from RAM to persistent storage.
+</p>
+<pre class="code bash"><span class="kw1">set</span> foo <span class="st_h">'tftp 0x1000000 uImage123; bootm'</span>
+print foo
+saveenv
+reset
+<span class="br0">&#91;</span>...<span class="br0">&#93;</span>
+print foo
+tftp 0x1000000 uImage123; bootm
+<span class="kw1">set</span> foo
+saveenv
+reset
+<span class="br0">&#91;</span>...<span class="br0">&#93;</span>
+print foo
+<span class="co0">## Error: &quot;foo&quot; not defined</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Saving changes to the environment back to flash in U-Boot&quot;,&quot;hid&quot;:&quot;saving_changes_to_the_environment_back_to_flash_in_u-boot&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:9,&quot;range&quot;:&quot;5880-6456&quot;} -->
+<h2 class="sectionedit10" id="accessing_u-boot_environment_variables_in_net_console">Accessing U-Boot environment variables in Net Console</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <img src="/lib/images/smileys/fixme.svg" class="icon smiley" alt="FIXME" />  → <a href="https://forum.openwrt.org/viewtopic.php?pid=142707#p142707" class="urlextern" title="https://forum.openwrt.org/viewtopic.php?pid=142707#p142707" rel="ugc nofollow">https://forum.openwrt.org/viewtopic.php?pid=142707#p142707</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Accessing U-Boot environment variables in Net Console&quot;,&quot;hid&quot;:&quot;accessing_u-boot_environment_variables_in_net_console&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:10,&quot;range&quot;:&quot;6457-6600&quot;} -->
+<h2 class="sectionedit11" id="accessing_u-boot_environment_variables_in_openwrt">Accessing U-Boot environment variables in OpenWrt</h2>
+<div class="level2">
+
+<p>
+The relevant tools to manipulate the U-Boot environment are contained in the <code><a href="/docs/guide-user/additional-software/opkg" class="wikilink1" title="docs:guide-user:additional-software:opkg" data-wiki-id="docs:guide-user:additional-software:opkg">opkg</a></code>-package <code><a href="/packages/pkgdata_lede17_1/uboot-envtools" class="wikilink2" title="packages:pkgdata_lede17_1:uboot-envtools" rel="nofollow" data-wiki-id="packages:pkgdata_lede17_1:uboot-envtools">uboot-envtools</a></code>.
+</p>
+<div class="table sectionedit12"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Package </th><th class="col1"> Version </th><th class="col2"> Depends </th><th class="col3"> Size </th><th class="col4 leftalign"> Description  </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> uboot-envtools  </td><td class="col1 centeralign">  20081215-2  </td><td class="col2 leftalign"> zlib  </td><td class="col3 rightalign">   7843 </td><td class="col4 leftalign"> This package includes tools to read (<code>fw_printenv</code>) and modify (<code>fw_setenv</code>) U-Boot bootloader environment.  </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table2&quot;,&quot;secid&quot;:12,&quot;range&quot;:&quot;6862-7083&quot;} -->
+<p>
+However there are several steps to be able to use the above commands effectively. 
+First of all you must tell the <code>fw_*</code> tools where the U-Boot environment is located. 
+</p>
+
+<p>
+Also, the bootloader partition will likely be mounted read-only and one must change this somehow.
+An example on how to change this, is here: <a href="/toh/tp-link/tl-wr1043nd#making_bootloader_partition_writable" class="wikilink1" title="toh:tp-link:tl-wr1043nd" data-wiki-id="toh:tp-link:tl-wr1043nd">TL-WR1043ND - Making bootloader partition writable</a>
+</p>
+
+<p>
+You need to install and configure <code>uboot-envtools</code>:
+</p>
+<pre class="code">opkg install uboot-envtools
+vi /etc/fw_env.config</pre>
+<pre class="code bash"><span class="co0"># Configuration file for fw_(printenv/saveenv) utility.</span>
+<span class="co0"># Up to two entries are valid, in this case the redundant</span>
+<span class="co0"># environment sector is assumed present.</span>
+<span class="co0"># Notice, that the &quot;Number of sectors&quot; is ignored on NOR and SPI-dataflash.</span>
+<span class="co0"># Futhermore, if the Flash sector size is ommitted, this value is assumed to</span>
+<span class="co0"># be the same as the Environment size, which is valid for NOR and SPI-dataflash</span>
+&nbsp;
+<span class="co0"># NOR example</span>
+<span class="co0"># MTD device name	Device offset	Env. size	Flash sector size	Number of sectors</span>
+<span class="sy0">/</span>dev<span class="sy0">/</span>mtd1		0x0000		0x2000		0x10000
+<span class="sy0">/</span>dev<span class="sy0">/</span>mtd2 		0x0000		0x4000		0x4000
+&nbsp;
+<span class="co0"># MTD SPI-dataflash example</span>
+<span class="co0"># MTD device name	Device offset	Env. size	Flash sector size	Number of sectors</span>
+<span class="co0">#/dev/mtd5		0x4200		0x4200</span>
+<span class="co0">#/dev/mtd6		0x4200		0x4200</span>
+&nbsp;
+<span class="co0"># NAND example</span>
+<span class="co0">#/dev/mtd0		0x4000		0x4000		0x20000			2</span></pre>
+
+<p>
+To determine these values please read the documentation file in the U-boot Source Code: <a href="http://git.denx.de/?p=u-boot.git;a=blob_plain;f=tools/env/README;hb=HEAD" class="urlextern" title="http://git.denx.de/?p=u-boot.git;a=blob_plain;f=tools/env/README;hb=HEAD" rel="ugc nofollow">/tools/env/README</a>
+A tentative example of making such a configuration is in <a href="#example_of_configuring_uboot-envtools" title="docs:techref:bootloader:uboot.config ↵" class="wikilink1">Example of configuring uboot-envtools</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Accessing U-Boot environment variables in OpenWrt&quot;,&quot;hid&quot;:&quot;accessing_u-boot_environment_variables_in_openwrt&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:11,&quot;range&quot;:&quot;6601-8711&quot;} -->
+<h3 class="sectionedit13" id="examining_env_var_from_openwrt">Examining env var from OpenWrt</h3>
+<div class="level3">
+
+<p>
+Example:
+</p>
+<pre class="code bash"><span class="co4">root@openwrt:~# </span>fw_printenv
+<span class="re2">baudrate</span>=<span class="nu0">115200</span>
+<span class="re2">loads_echo</span>=<span class="nu0">0</span>
+<span class="re2">ipaddr</span>=169.254.123.123
+<span class="re2">serverip</span>=169.254.254.254
+<span class="re2">rootpath</span>=<span class="sy0">/</span>mnt<span class="sy0">/</span>ARM_FS<span class="sy0">/</span>
+<span class="re2">netmask</span>=255.255.0.0
+<span class="re2">run_diag</span>=<span class="kw2">yes</span>
+<span class="re2">console</span>=<span class="re2">console</span>=ttyS0,<span class="nu0">115200</span>
+<span class="re2">CASset</span>=min
+<span class="re2">MALLOC_len</span>=<span class="nu0">1</span>
+<span class="re2">ethprime</span>=egiga0
+<span class="re2">bootargs_root</span>=<span class="re2">root</span>=<span class="sy0">/</span>dev<span class="sy0">/</span>mtdblock2 ro
+<span class="re2">ethmtu</span>=<span class="nu0">1500</span>
+<span class="re2">usb0Mode</span>=host
+<span class="re2">nandEcc</span>=1bit
+<span class="re2">ethact</span>=egiga0
+<span class="re2">ethaddr</span>=00:<span class="nu0">10</span>:<span class="nu0">75</span>:xx:xx:xx
+<span class="re2">cesvcid</span>=6UQX37NNJL85RGNQ5RKCBM5DDN
+<span class="re2">ceserialno</span>=2GEP09HS
+<span class="re2">ceboardver</span>=REDSTONE:<span class="nu0">1.0</span>
+<span class="re2">bootcmd</span>=nand read.e 0x800000 0x100000 0x300000; setenv bootargs $<span class="br0">&#40;</span>console<span class="br0">&#41;</span> $<span class="br0">&#40;</span>bootargs_root<span class="br0">&#41;</span>; bootm 0x800000
+<span class="re2">arcNumber</span>=<span class="nu0">2097</span>
+<span class="re2">stdin</span>=serial
+<span class="re2">stdout</span>=serial
+<span class="re2">stderr</span>=serial
+<span class="re2">mainlineLinux</span>=<span class="kw2">yes</span>
+<span class="re2">enaMonExt</span>=no
+<span class="re2">enaCpuStream</span>=no
+<span class="re2">enaWrAllo</span>=no
+<span class="re2">pexMode</span>=RC
+<span class="re2">disL2Cache</span>=no
+<span class="re2">setL2CacheWT</span>=<span class="kw2">yes</span>
+<span class="re2">disL2Prefetch</span>=<span class="kw2">yes</span>
+<span class="re2">enaICPref</span>=<span class="kw2">yes</span>
+<span class="re2">enaDCPref</span>=<span class="kw2">yes</span>
+<span class="re2">sata_dma_mode</span>=<span class="kw2">yes</span>
+<span class="re2">netbsd_en</span>=no
+<span class="re2">vxworks_en</span>=no
+<span class="re2">bootdelay</span>=<span class="nu0">3</span>
+<span class="re2">disaMvPnp</span>=no
+Environment size: <span class="nu0">778</span><span class="sy0">/</span><span class="nu0">131068</span> bytes</pre>
+
+<p>
+In above example the boot partition is 2x64KiB ins size, but the booloader console only reports 131068 Bytes which is 4 Bytes short. How can this be? This could be CRC32 value. Furthermore we see, the environment occupies 778Bytes! Now we guess, the environment is located at the end of the partition and the CRC32 is again behind it. So it&#039;s offset should be, hmm, hmm, 131.068-778=130.290 and minus 1 because we count the zeros = 130.289 in hex 0x0001FCF1.
+Let&#039;s do a <a href="/docs/guide-user/installation/generic.backup" class="wikilink1" title="docs:guide-user:installation:generic.backup" data-wiki-id="docs:guide-user:installation:generic.backup">backup</a> and look at the content of the whole partition with help of a <a href="https://en.wikipedia.org/wiki/hex editor" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/hex editor">hex editor</a>. The assumption was obviously wrong. At the end, there is only FF data at the end.
+</p>
+<ul>
+<li class="level1"><div class="li"> <code><a href="http://git.denx.de/?p=u-boot.git;a=blob_plain;f=tools/env/README;hb=HEAD" class="urlextern" title="http://git.denx.de/?p=u-boot.git;a=blob_plain;f=tools/env/README;hb=HEAD" rel="ugc nofollow">/uboot.source.code/tools/env/README</a></code></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://plugcomputer.org/plugforum/index.php?PHPSESSID=6d6a1c88e56f31bea4a9d2415f1b820a&amp;topic=1290.msg8970#msg8970" class="urlextern" title="http://plugcomputer.org/plugforum/index.php?PHPSESSID=6d6a1c88e56f31bea4a9d2415f1b820a&amp;topic=1290.msg8970#msg8970" rel="ugc nofollow">Isues with ECC</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Examining env var from OpenWrt&quot;,&quot;hid&quot;:&quot;examining_env_var_from_openwrt&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:13,&quot;range&quot;:&quot;8712-10571&quot;} -->
+<h3 class="sectionedit14" id="setting_env_var_from_openwrt">Setting env var from OpenWrt</h3>
+<div class="level3">
+
+<p>
+Revert u-boot silent boot and add a bootdelay
+</p>
+<pre class="code bash">fw_setenv silent
+Unlocking flash...
+Done
+Erasing old environment...
+Done
+Writing environment to <span class="sy0">/</span>dev<span class="sy0">/</span>mtd0...
+Done
+Locking ...
+Done
+&nbsp;
+fw_setenv bootdelay <span class="nu0">1</span>
+Unlocking flash...
+Done
+Erasing old environment...
+Done
+Writing environment to <span class="sy0">/</span>dev<span class="sy0">/</span>mtd0...
+Done
+Locking ...
+Done</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Setting env var from OpenWrt&quot;,&quot;hid&quot;:&quot;setting_env_var_from_openwrt&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:14,&quot;range&quot;:&quot;10572-10946&quot;} -->
+<h3 class="sectionedit15" id="example_of_configuring_uboot-envtools">Example of configuring  uboot-envtools</h3>
+<div class="level3">
+
+<p>
+Inside a working system consult the file <code>/proc/mtd</code> that should contain the mapping of the flash of the router. We can thus determine the partition where the U-Boot environment is stored.
+</p>
+<pre class="code"># cat /proc/mtd</pre>
+<pre class="code">dev:    size   erasesize  name
+mtd0: 00030000 00010000 &quot;uboot&quot;
+mtd1: 00010000 00010000 &quot;uboot_env&quot;
+mtd2: 007b0000 00010000 &quot;firmware&quot;
+mtd3: 0018906c 00010000 &quot;kernel&quot;
+mtd4: 00626f94 00010000 &quot;rootfs&quot;
+mtd5: 000d0000 00010000 &quot;rootfs_data&quot;
+mtd6: 00010000 00010000 &quot;board_config&quot;</pre>
+
+<p>
+Here it is <code>/dev/mtd1</code>. Some devices seem not to have the <code>uboot_env</code> section and the environment appears with an offset in the section containing <code>uboot</code> (<code>/dev/mtd0</code>) here. In the latter case expect that the environment address (offset) is a multiple of Flash sector size.  
+</p>
+
+<p>
+We have determined that the <code>MTD device name</code> is <code>/dev/mtd1</code>. The offset in our case is <code>0x0000</code>. 
+</p>
+
+<p>
+Useful offset information can also be found by running dmesg on your device. This is taken from a modified arv752dpw22:
+</p>
+<pre class="code">[    0.505477] 0x000000000000-0x000000030000 : &quot;uboot&quot;
+[    0.512242] 0x000000030000-0x000000040000 : &quot;uboot_env&quot;
+[    0.518030] 0x000000040000-0x0000007f0000 : &quot;firmware&quot;
+[    0.563673] 0x000000040000-0x0000001c906c : &quot;kernel&quot;
+[    0.570525] 0x0000001c906c-0x0000007f0000 : &quot;rootfs&quot;
+[    0.586168] 0x000000720000-0x0000007f0000 : &quot;rootfs_data&quot;
+[    0.639581] 0x0000007f0000-0x000000800000 : &quot;board_config&quot;</pre>
+
+</div>
+
+<h4 id="determine_config_env_offset_config_env_size_and_config_env_sect_size">Determine CONFIG_ENV_OFFSET, CONFIG_ENV_SIZE, and CONFIG_ENV_SECT_SIZE</h4>
+<div class="level4">
+
+<p>
+Next we need to determine the <code>Env. size</code> and <code>Flash sector size</code> (the <code>Number of sectors</code> is ignored in the case of NOR flash). 
+The variables of interest are C macros in the OpenWrt source tree relative to your device 
+</p>
+<pre class="code c"><span class="co2">#define CONFIG_ENV_OFFSET              (192 * 1024)</span>
+<span class="co2">#define CONFIG_ENV_SECT_SIZE           (64 * 1024)</span>
+<span class="co2">#define CONFIG_ENV_SIZE                (8 * 1024)</span></pre>
+
+<p>
+You can search for it by issuing a <code>grep</code> search in the base directory of the OpenWrt tree. 
+</p>
+<pre class="code"># grep -R CONFIG_ENV_SIZE</pre>
+
+<p>
+There will be a lot of results and you can just page through the listed files to find one that is relevant for your device. 
+</p>
+
+<p>
+In the case of <a href="/toh/astoria/arv752dpw22" class="wikilink1" title="toh:astoria:arv752dpw22" data-wiki-id="toh:astoria:arv752dpw22">arv752dpw22</a> the data was found in 
+<code>package/boot/uboot-lantiq/patches/0038-MIPS-add-board-support-for-Arcadyan-ARV752DPW22.patch</code>
+</p>
+<pre class="code">/* Environment */
++#if defined(CONFIG_SYS_BOOT_NOR)
++#define CONFIG_ENV_IS_IN_FLASH
++#define CONFIG_ENV_OVERWRITE
++#define CONFIG_ENV_OFFSET              (192 * 1024)
++#define CONFIG_ENV_SECT_SIZE           (64 * 1024)
++#else
++#define CONFIG_ENV_IS_NOWHERE
++#endif
++
++#define CONFIG_ENV_SIZE                        (8 * 1024)
++#define CONFIG_LOADADDR                        CONFIG_SYS_LOAD_ADDR
++</pre>
+
+<p>
+Do not forget to convert the values to hex if they are in dec.
+</p>
+
+<p>
+However, maybe due to the historic version of uboot, the variable names may be different (in the case of WR1043ND one has <code>CFG_FLASH_SIZE</code>) and the file is: <code>include/configs/ap83.h</code> (in Source Code, obtain from manufacturer, not OpenWrt). Here are the values:
+</p>
+<pre class="code">/*-----------------------------------------------------------------------
+ * FLASH and environment organization
+ */
+#define CFG_MAX_FLASH_BANKS     1	    /* max number of memory banks */
+//#define CFG_MAX_FLASH_SECT      128    /* max number of sectors on one chip */
+#define CFG_MAX_FLASH_SECT      256    /* max number of sectors on one chip */
+#define CFG_FLASH_SECTOR_SIZE   (64*1024)
+#define CFG_FLASH_SIZE          0x00800000 /* Total flash size */
+
+#define CFG_FLASH_WORD_SIZE     unsigned short 
+#define CFG_FLASH_ADDR0         (0x5555)   /* 1st address for flash config cycles  */
+#define CFG_FLASH_ADDR1         (0x2AAA)   /* 2nd address for flash config cycles  */
+
+#define CFG_HOWL_1_2 1</pre>
+
+<p>
+You can check that the configuration is correct if <code>fw_printenv</code> gives you the correct output:
+</p>
+<pre class="code">root@OpenWrt:/# fw_printenv 
+addconsole=setenv bootargs $bootargs console=$consoledev,$baudrate
+addeth=setenv bootargs $bootargs ethaddr=$ethaddr
+addip=setenv bootargs $bootargs ip=$ipaddr:$serverip::::$netdev:off
+addmachtype=setenv bootargs $bootargs machtype=ARV752DPW22
+baudrate=115200
+bootcmd=run download_kernel_command; bootm ${kernel_addr}
+bootdelay=2
+consoledev=ttyLTQ1
+download_kernel=true
+download_kernel_command=test -n $download_kernel &amp;&amp; ping $serverip &amp;&amp; run load-kernel &amp;&amp; ping $serverip &amp;&amp; run write-kernel &amp;&amp; ping $serverip
+ethact=ltq-eth
+ethaddr=7C:4F:B5:BF:77:B7
+fileaddr=81000000
+filesize=680004
+ipaddr=192.168.1.1
+kernel_addr=0xB0040000
+load-kernel=tftpboot openwrt-lantiq-xway-ARV752DPW22-squashfs.image &amp;&amp; crc32 $fileaddr $filesize
+load-uboot-nor=tftpboot u-boot.bin
+load-uboot-norspl=tftpboot u-boot.ltq.norspl
+load-uboot-norspl-lzma=tftpboot u-boot.ltq.lzma.norspl
+load-uboot-norspl-lzo=tftpboot u-boot.ltq.lzo.norspl
+loadaddr=0x81000000
+netdev=eth0
+serverip=192.168.1.2
+stderr=serial
+stdin=serial
+stdout=serial
+update-uboot-nor=run load-uboot-nor write-uboot-nor
+write-kernel=erase $kernel_addr +$filesize &amp;&amp; cp.b $fileaddr $kernel_addr $filesize &amp;&amp; crc32 $kernel_addr $filesize
+write-uboot-nor=protect off 0xB0000000 +$filesize &amp;&amp; erase 0xB0000000 +$filesize &amp;&amp; cp.b $fileaddr 0xB0000000 $filesize
+root@OpenWrt:/# fw_printenv 
+addconsole=setenv bootargs $bootargs console=$consoledev,$baudrate
+addeth=setenv bootargs $bootargs ethaddr=$ethaddr
+addip=setenv bootargs $bootargs ip=$ipaddr:$serverip::::$netdev:off
+addmachtype=setenv bootargs $bootargs machtype=ARV752DPW22
+baudrate=115200
+bootcmd=run download_kernel_command; bootm ${kernel_addr}
+bootdelay=2
+consoledev=ttyLTQ1
+download_kernel=true
+download_kernel_command=test -n $download_kernel &amp;&amp; ping $serverip &amp;&amp; run load-kernel &amp;&amp; ping $serverip &amp;&amp; run write-kernel &amp;&amp; ping $serverip
+ethact=ltq-eth
+ethaddr=7C:4F:B5:BF:77:B7
+fileaddr=81000000
+filesize=680004
+ipaddr=192.168.1.1
+kernel_addr=0xB0040000
+load-kernel=tftpboot openwrt-lantiq-xway-ARV752DPW22-squashfs.image &amp;&amp; crc32 $fileaddr $filesize
+load-uboot-nor=tftpboot u-boot.bin
+load-uboot-norspl=tftpboot u-boot.ltq.norspl
+load-uboot-norspl-lzma=tftpboot u-boot.ltq.lzma.norspl
+load-uboot-norspl-lzo=tftpboot u-boot.ltq.lzo.norspl
+loadaddr=0x81000000
+netdev=eth0
+serverip=192.168.1.2
+stderr=serial
+stdin=serial
+stdout=serial
+update-uboot-nor=run load-uboot-nor write-uboot-nor
+write-kernel=erase $kernel_addr +$filesize &amp;&amp; cp.b $fileaddr $kernel_addr $filesize &amp;&amp; crc32 $kernel_addr $filesize
+write-uboot-nor=protect off 0xB0000000 +$filesize &amp;&amp; erase 0xB0000000 +$filesize &amp;&amp; cp.b $fileaddr 0xB0000000 $filesize</pre>
+
+<p>
+In case the configuration is incorrect you get
+</p>
+<pre class="code">root@OpenWrt:/# fw_printenv 
+Warning: Bad CRC, using default environment
+bootcmd=bootp; setenv bootargs root=/dev/nfs nfsroot=${serverip}:${rootpath} ip=${ipaddr}:${serverip}:${gatewayip}:${netmask}:${hostname}::off; bootm
+bootdelay=5
+baudrate=115200</pre>
+
+<p>
+DO NOT EVEN TRY to use <code>fw_setenv</code> if your configuration is incorrect. Who knows what you could mess up by writing to the wrong place!
+</p>
+
+</div>
+
+<h4 id="makingdevmtd_read-write">Making &#039;&#039;/dev/mtd#&#039;&#039; read-write</h4>
+<div class="level4">
+
+<p>
+As mentioned previously usually the <code>/dev/mtd#</code> are readonly under OpenWRT. If this is the case the you would get the following error when trying to write to flash
+</p>
+<pre class="code"># fw_setenv Status 0
+Can&#039;t open /dev/mtd1: Permission denied
+Error: can&#039;t write fw_env to flash</pre>
+
+<p>
+You must find a way to tell the linux system that it should access that part of flash in read-write mode. 
+There are lots of questions on how to do this but not many answers around because the u-boot people, who are the ones that get asked about it, say it is a Linux problem relating to the specifics of the kernel/system you have installed. Here are some examples about making the partition read-write.
+</p>
+
+<p>
+<a href="/toh/tp-link/tl-wr1043nd#making_bootloader_partition_writable" class="wikilink1" title="toh:tp-link:tl-wr1043nd" data-wiki-id="toh:tp-link:tl-wr1043nd">TL-WR1043ND - Making bootloader partition writable</a>
+</p>
+
+<p>
+The information about being <code>ro</code> or <code>rw</code> can also be in the <code>dts</code> files. For <a href="/toh/astoria/arv752dpw22" class="wikilink1" title="toh:astoria:arv752dpw22" data-wiki-id="toh:astoria:arv752dpw22">arv752dpw22</a> this file is in <code>./target/linux/lantiq/dts/ARV752DPW22.dts</code>
+and the relevant section is
+</p>
+<pre class="code">nor-boot@0 {
+                                compatible = &quot;lantiq,nor&quot;;
+                                bank-width = &lt;2&gt;;
+                                reg = &lt;0 0x0 0x800000&gt;;
+                                #address-cells = &lt;1&gt;;
+                                #size-cells = &lt;1&gt;;
+
+                                partition@0 {
+                                        label = &quot;uboot&quot;;
+                                        reg = &lt;0x00000 0x30000&gt;;
+                                        read-only;
+                                };
+
+                                partition@10000 {
+                                        label = &quot;uboot_env&quot;;
+                                        reg = &lt;0x30000 0x10000&gt;;
+                                        read-only;
+                                };
+
+                                partition@20000 {
+                                        label = &quot;firmware&quot;;
+                                        reg = &lt;0x40000 0x7b0000&gt;;
+                                };
+</pre>
+
+<p>
+Removing the <code>read-only</code> directive to have
+</p>
+<pre class="code">                                partition@10000 {
+                                        label = &quot;uboot_env&quot;;
+                                        reg = &lt;0x30000 0x10000&gt;;
+                                };</pre>
+
+<p>
+and recompiling everything fixes the problem. However be careful, for whatever reason I am not sure that make detects changes to <code>dts</code> files so be sure that if you are recompiling make actually notices the change and does everything. Maybe a 
+</p>
+<pre class="code">make clean</pre>
+
+<p>
+at the beginning can help. 
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Example of configuring  uboot-envtools&quot;,&quot;hid&quot;:&quot;example_of_configuring_uboot-envtools&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:15,&quot;range&quot;:&quot;10947-&quot;} -->

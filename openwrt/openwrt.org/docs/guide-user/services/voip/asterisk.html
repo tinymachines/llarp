@@ -1,0 +1,546 @@
+
+<h1 class="sectionedit1" id="asterisk">Asterisk</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Asterisk&quot;,&quot;hid&quot;:&quot;asterisk&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-23&quot;} -->
+<h2 class="sectionedit2" id="introduction">Introduction</h2>
+<div class="level2">
+
+<p>
+<a href="https://www.asterisk.org/" class="urlextern" title="https://www.asterisk.org/" rel="ugc nofollow">Asterisk</a> is an open-source software PBX that can be extended by various modules. OpenWrt provides packages for Asterisk and most of its official modules via the telephony <a href="/docs/guide-developer/feeds" class="wikilink1" title="docs:guide-developer:feeds" data-wiki-id="docs:guide-developer:feeds">feed</a>. On routers with Lantiq SoCs it&#039;s possible to use built in analogue FXS ports with Asterisk, turning these devices into <a href="https://en.wikipedia.org/wiki/VoIP_gateway" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/VoIP_gateway">VoIP gateways</a> (see <a href="/docs/guide-user/services/voip/chan-lantiq" class="wikilink1" title="docs:guide-user:services:voip:chan-lantiq" data-wiki-id="docs:guide-user:services:voip:chan-lantiq">chan-lantiq for Asterisk</a>).
+</p>
+
+<p>
+This article focuses on Asterisk installation and basic SIP configuration on OpenWrt.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Introduction&quot;,&quot;hid&quot;:&quot;introduction&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;24-604&quot;} -->
+<h2 class="sectionedit3" id="installation">Installation</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation&quot;,&quot;hid&quot;:&quot;installation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;605-629&quot;} -->
+<h3 class="sectionedit4" id="choosing_an_asterisk_version">Choosing an Asterisk version</h3>
+<div class="level3">
+
+<p>
+Asterisk has standard and long term support (LTS) releases. Have a look at <a href="https://docs.asterisk.org/About-the-Project/Asterisk-Versions/" class="urlextern" title="https://docs.asterisk.org/About-the-Project/Asterisk-Versions/" rel="ugc nofollow">Asterisk versions</a> on the Asterisk wiki for the current upstream support status.
+OpenWrt releases usually include the latest LTS release of Asterisk.
+</p>
+
+<p>
+You can query the package table to get information about the Asterisk versions in OpenWrt, module names and their descriptions: <a href="/packages/table/start?dataofs=50&amp;dataflt[Name_pkg-dependencies*~]=asterisk" class="wikilink1" title="packages:table:start" data-wiki-id="packages:table:start">Asterisk packages</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Choosing an Asterisk version&quot;,&quot;hid&quot;:&quot;choosing_an_asterisk_version&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;630-1186&quot;} -->
+<h3 class="sectionedit5" id="sip_stack">SIP stack</h3>
+<div class="level3">
+
+<p>
+Until Asterisk 20 it was possible to choose between two SIP stacks in Asterisk: <code>chan_sip</code> and <code>chan_pjsip</code>.
+</p>
+
+<p>
+<code>chan_sip</code> was marked as <a href="https://www.asterisk.org/deprecating-chan_sip-asterisk-17-0-0-rc2-release/" class="urlextern" title="https://www.asterisk.org/deprecating-chan_sip-asterisk-17-0-0-rc2-release/" rel="ugc nofollow">deprecated</a> with the release of Asterisk 17 and was <a href="https://docs.asterisk.org/Development/Asterisk-Module-Deprecations/" class="urlextern" title="https://docs.asterisk.org/Development/Asterisk-Module-Deprecations/" rel="ugc nofollow">removed in Asterisk 21</a>.
+</p>
+
+<p>
+You can find help on how to migrate your configuration <a href="https://docs.asterisk.org/Configuration/Channel-Drivers/SIP/Configuring-res_pjsip/Migrating-from-chan_sip-to-res_pjsip/" class="urlextern" title="https://docs.asterisk.org/Configuration/Channel-Drivers/SIP/Configuring-res_pjsip/Migrating-from-chan_sip-to-res_pjsip/" rel="ugc nofollow">here</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;SIP stack&quot;,&quot;hid&quot;:&quot;sip_stack&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;1187-1760&quot;} -->
+<h3 class="sectionedit6" id="opkg">Opkg</h3>
+<div class="level3">
+
+<p>
+While it&#039;s perfectly possible to install Asterisk via <a href="/docs/guide-user/additional-software/opkg" class="wikilink1" title="docs:guide-user:additional-software:opkg" data-wiki-id="docs:guide-user:additional-software:opkg">opkg</a>, keep in mind that space on the <a href="/docs/techref/filesystems" class="wikilink1" title="docs:techref:filesystems" data-wiki-id="docs:techref:filesystems">OverlayFS</a> ist limited on most devices.
+</p>
+<pre class="code">opkg install asterisk asterisk-pjsip asterisk-bridge-simple asterisk-codec-alaw asterisk-codec-ulaw asterisk-res-rtp-asterisk</pre>
+
+<p>
+An Asterisk installation can be quite big. If you plan to use several modules, you may easily run out of space. In this case, you can try to build a custom image using the image builder.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Opkg&quot;,&quot;hid&quot;:&quot;opkg&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;1761-2304&quot;} -->
+<h3 class="sectionedit7" id="image_builder">Image builder</h3>
+<div class="level3">
+
+<p>
+The <a href="/docs/guide-user/additional-software/imagebuilder" class="wikilink1" title="docs:guide-user:additional-software:imagebuilder" data-wiki-id="docs:guide-user:additional-software:imagebuilder">image builder</a> can be used to build Asterisk packages directly into the SquashFS partition. Optionally you can exclude packages you don&#039;t need to save space.
+</p>
+
+<p>
+Example command for an <a href="/toh/arcadyan/vgv7510kw22" class="wikilink1" title="toh:arcadyan:vgv7510kw22" data-wiki-id="toh:arcadyan:vgv7510kw22">o2 Box 6431</a>:
+</p>
+<pre class="code">make image PROFILE=arcadyan_vgv7510kw22-nor PACKAGES=&quot;kmod-ltq-tapi kmod-ltq-vmmc kmod-ltq-ifxos asterisk asterisk-pjsip asterisk-bridge-simple asterisk-codec-alaw asterisk-codec-ulaw asterisk-res-rtp-asterisk asterisk-chan-lantiq&quot;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Image builder&quot;,&quot;hid&quot;:&quot;image_builder&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:7,&quot;range&quot;:&quot;2305-2856&quot;} -->
+<h2 class="sectionedit8" id="security_considerations">Security considerations</h2>
+<div class="level2">
+
+<p>
+<abbr title="Voice over Internet Protocol">VoIP</abbr> services are a common attack target and it&#039;s important to implement at least some basic security measures before putting an Asterisk server online.
+</p>
+
+<p>
+Asterisk security advisories are announced here: <a href="https://www.asterisk.org/downloads/security-advisories" class="urlextern" title="https://www.asterisk.org/downloads/security-advisories" rel="ugc nofollow">https://www.asterisk.org/downloads/security-advisories</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Security considerations&quot;,&quot;hid&quot;:&quot;security_considerations&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:8,&quot;range&quot;:&quot;2857-3154&quot;} -->
+<h3 class="sectionedit9" id="modules">Modules</h3>
+<div class="level3">
+
+<p>
+Only install modules you really need. For basic SIP operation it&#039;s enough to install a RTP stack (<code>*-res-rtp-asterisk</code>), a channel bridging module (<code>asterisk*-bridge-simple</code>) and needed audio codecs (normally <code>*-codec-alaw</code> or <code>*-codec-ulaw</code>) in addition to the SIP stack.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Modules&quot;,&quot;hid&quot;:&quot;modules&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:9,&quot;range&quot;:&quot;3155-3453&quot;} -->
+<h3 class="sectionedit10" id="firewall">Firewall</h3>
+<div class="level3">
+
+<p>
+Don&#039;t expose SIP related ports on your <abbr title="Wide Area Network">WAN</abbr> Interface. For in- and outgoing calls the registration process takes care to establish a connection to your SIP provider and to keep it alive.
+</p>
+
+<p>
+If you have problems receiving incoming calls, you can try to install <code>kmod-nf-nathelper-extra</code>, see <a href="https://forum.openwrt.org/t/solved-incoming-calls-not-reaching-hosts-on-the-network/77568/2" class="urlextern" title="https://forum.openwrt.org/t/solved-incoming-calls-not-reaching-hosts-on-the-network/77568/2" rel="ugc nofollow">here</a> or <a href="https://forum.openwrt.org/t/voip-behind-a-openwrt-nat-router/40534/12" class="urlextern" title="https://forum.openwrt.org/t/voip-behind-a-openwrt-nat-router/40534/12" rel="ugc nofollow">here</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Firewall&quot;,&quot;hid&quot;:&quot;firewall&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:10,&quot;range&quot;:&quot;3454-3946&quot;} -->
+<h3 class="sectionedit11" id="blocking_of_unneeded_numbers">Blocking of unneeded numbers</h3>
+<div class="level3">
+
+<p>
+Most SIP providers offer to block foreign or special numbers. It&#039;s highly recommended to make use of that if you don&#039;t need them. That way an attacker can&#039;t make calls to these numbers, even if your installation should get compromised.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Blocking of unneeded numbers&quot;,&quot;hid&quot;:&quot;blocking_of_unneeded_numbers&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:11,&quot;range&quot;:&quot;3947-4222&quot;} -->
+<h2 class="sectionedit12" id="configuration">Configuration</h2>
+<div class="level2">
+
+<p>
+Asterisk configurations can differ to a great extend depending on provider/hardware/country, so it&#039;s difficult to provide generic configurations.
+On OpenWrt, Asterisk configuration files can be found under <code>/etc/asterisk/</code>. The most important files are the dialplan (<code>extensions.conf</code>) and the SIP channel configuration (<code>pjsip.conf</code> or <code>sip.conf</code>). Location specific tone indications are set in <code>indications.conf</code>. Links to the corresponding Asterisk-wiki-pages with details on configuration options  are given below, together with working examples, taken from <a href="https://forum.openwrt.org/t/voip-configuration-for-asterisk13-pjsip-chan-lantiq-and-vodafone-germany/9470" class="urlextern" title="https://forum.openwrt.org/t/voip-configuration-for-asterisk13-pjsip-chan-lantiq-and-vodafone-germany/9470" rel="ugc nofollow">this forum thread</a>.
+</p>
+
+<p>
+After changing your Asterisk configuration, restart the server: <code>/etc/init.d/asterisk reload</code>
+</p>
+
+<p>
+Before the asterisk service can be used it must be &#039;enabled&#039;. Edit the config file /etc/config/asterisk and check the option enabled (0→1).
+</p>
+
+<p>
+If asterisk is not started as a service and you see something like this in dmesg:
+</p>
+
+<p>
+do_page_fault(): sending SIGSEGV to asterisk for invalid read access from 00000008
+</p>
+
+<p>
+epc = 77d76e90 in libc.so[77d46000+ab000]
+</p>
+
+<p>
+ra  = 77d77394 in libc.so[77d46000+ab000]
+</p>
+
+<p>
+you should let asterisk run as root. There seems to be a bug if the service is run as the user asterisk. To prevent this edit:
+</p>
+
+<p>
+<code>nano /etc/init.d/asterisk</code> and comment the line “-U “$NAME” \” → “#-U “$NAME” \” also adjust the position if the “-f \” parameter.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:12,&quot;range&quot;:&quot;4223-5708&quot;} -->
+<h3 class="sectionedit13" id="pjsipconf">pjsip.conf</h3>
+<div class="level3">
+
+<p>
+<a href="https://docs.asterisk.org/Asterisk_16_Documentation/API_Documentation/Module_Configuration/res_pjsip/" class="urlextern" title="https://docs.asterisk.org/Asterisk_16_Documentation/API_Documentation/Module_Configuration/res_pjsip/" rel="ugc nofollow">https://docs.asterisk.org/Asterisk_16_Documentation/API_Documentation/Module_Configuration/res_pjsip/</a>
+</p>
+
+<p>
+<em class="u"><strong>Example for Vodafone Germany:</strong></em>
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-user/services/voip/asterisk?codeblock=2" title="Download Snippet" class="mediafile mf_conf">pjsip.conf</a></dt>
+<dd><pre class="code ini"><span class="re0"><span class="br0">&#91;</span>global<span class="br0">&#93;</span></span>
+<span class="re1">type</span> <span class="sy0">=</span><span class="re2"> global</span>
+<span class="re1">endpoint_identifier_order</span> <span class="sy0">=</span><span class="re2"> ip,username</span>
+&nbsp;
+<span class="re0"><span class="br0">&#91;</span>acl<span class="br0">&#93;</span></span>
+<span class="re1">type</span> <span class="sy0">=</span><span class="re2"> acl</span>
+<span class="re1">deny</span> <span class="sy0">=</span><span class="re2"> 0.0.0.0/0.0.0.0</span>
+<span class="re1">permit</span> <span class="sy0">=</span><span class="re2"> 127.0.0.1</span>
+<span class="co0">;permit = 192.168.1.0/24 ;uncomment if you want to connect clients from LAN</span>
+<span class="re1">permit</span> <span class="sy0">=</span><span class="sy0"><span class="re2"> 88.79.152.xxx ;nslookup &lt;area_code&gt;.sip.arcor.de</span></span>
+&nbsp;
+<span class="re0"><span class="br0">&#91;</span>transport-udp<span class="br0">&#93;</span></span>
+<span class="re1">type</span> <span class="sy0">=</span><span class="re2"> transport</span>
+<span class="re1">protocol</span> <span class="sy0">=</span><span class="re2"> udp</span>
+<span class="re1">bind</span> <span class="sy0">=</span><span class="re2"> 0.0.0.0:5060</span>
+<span class="re1">local_net</span> <span class="sy0">=</span><span class="re2"> 127.0.0.1</span>
+<span class="re1">local_net</span> <span class="sy0">=</span><span class="re2"> 192.168.1.0/24</span>
+&nbsp;
+<span class="re0"><span class="br0">&#91;</span>reg_arcor<span class="br0">&#93;</span></span>
+<span class="re1">type</span> <span class="sy0">=</span><span class="re2"> registration</span>
+<span class="re1">transport</span> <span class="sy0">=</span><span class="re2"> transport-udp</span>
+<span class="re1">contact_user</span> <span class="sy0">=</span><span class="re2"> &lt;area_code&gt;&lt;your_number&gt;</span>
+<span class="re1">client_uri</span> <span class="sy0">=</span><span class="re2"> sip:&lt;area_code&gt;&lt;your_number&gt;@&lt;area_code&gt;.sip.arcor.de</span>
+<span class="re1">server_uri</span> <span class="sy0">=</span><span class="re2"> sip:&lt;area_code&gt;.sip.arcor.de</span>
+<span class="re1">outbound_auth</span> <span class="sy0">=</span><span class="re2"> auth_arcor</span>
+<span class="re1">retry_interval</span> <span class="sy0">=</span><span class="re2"> 30</span>
+<span class="re1">forbidden_retry_interval</span> <span class="sy0">=</span><span class="re2"> 300</span>
+<span class="re1">max_retries</span> <span class="sy0">=</span><span class="re2"> 10</span>
+<span class="re1">auth_rejection_permanent</span> <span class="sy0">=</span><span class="re2"> false</span>
+&nbsp;
+<span class="re0"><span class="br0">&#91;</span>auth_arcor<span class="br0">&#93;</span></span>
+<span class="re1">type</span> <span class="sy0">=</span><span class="re2"> auth</span>
+<span class="re1">auth_type</span> <span class="sy0">=</span><span class="re2"> userpass</span>
+<span class="re1">realm</span> <span class="sy0">=</span><span class="re2"> arcor.de</span>
+<span class="re1">username</span> <span class="sy0">=</span><span class="re2"> &lt;area_code&gt;&lt;your_number&gt;</span>
+<span class="re1">password</span> <span class="sy0">=</span><span class="re2"> &lt;password&gt;</span>
+&nbsp;
+<span class="re0"><span class="br0">&#91;</span>aor_arcor<span class="br0">&#93;</span></span>
+<span class="re1">type</span> <span class="sy0">=</span><span class="re2"> aor</span>
+<span class="re1">contact</span> <span class="sy0">=</span><span class="re2"> sip:&lt;area_code&gt;.sip.arcor.de</span>
+&nbsp;
+<span class="re0"><span class="br0">&#91;</span>id_arcor<span class="br0">&#93;</span></span>
+<span class="re1">type</span> <span class="sy0">=</span><span class="re2"> identify</span>
+<span class="re1">match</span> <span class="sy0">=</span><span class="re2"> &lt;area_code&gt;.sip.arcor.de</span>
+<span class="re1">endpoint</span> <span class="sy0">=</span><span class="re2"> in_arcor</span>
+&nbsp;
+<span class="re0"><span class="br0">&#91;</span>in_arcor<span class="br0">&#93;</span></span>
+<span class="re1">type</span> <span class="sy0">=</span><span class="re2"> endpoint</span>
+<span class="re1">transport</span> <span class="sy0">=</span><span class="re2"> transport-udp</span>
+<span class="re1">context</span> <span class="sy0">=</span><span class="re2"> lantiq1_inbound</span>
+<span class="re1">disallow</span> <span class="sy0">=</span><span class="re2"> all</span>
+<span class="re1">allow</span> <span class="sy0">=</span><span class="re2"> alaw,g722,ulaw</span>
+<span class="re1">disable_direct_media_on_nat</span> <span class="sy0">=</span><span class="re2"> yes</span>
+<span class="re1">rewrite_contact</span> <span class="sy0">=</span><span class="re2"> yes</span>
+&nbsp;
+<span class="re0"><span class="br0">&#91;</span>out_arcor<span class="br0">&#93;</span></span>
+<span class="re1">type</span> <span class="sy0">=</span><span class="re2"> endpoint</span>
+<span class="re1">transport</span> <span class="sy0">=</span><span class="re2"> transport-udp</span>
+<span class="re1">disallow</span> <span class="sy0">=</span><span class="re2"> all</span>
+<span class="re1">allow</span> <span class="sy0">=</span><span class="re2"> alaw,g722,ulaw</span>
+<span class="re1">disable_direct_media_on_nat</span> <span class="sy0">=</span><span class="re2"> yes</span>
+<span class="re1">callerid</span> <span class="sy0">=</span><span class="re2"> &lt;area_code&gt;&lt;your_number&gt;</span>
+<span class="re1">from_user</span> <span class="sy0">=</span><span class="re2"> &lt;area_code&gt;&lt;your_number&gt;</span>
+<span class="re1">from_domain</span> <span class="sy0">=</span><span class="re2"> &lt;area_code&gt;.sip.arcor.de</span>
+<span class="re1">outbound_auth</span> <span class="sy0">=</span><span class="re2"> auth_arcor</span>
+<span class="re1">aors</span> <span class="sy0">=</span><span class="re2"> aor_arcor</span></pre>
+</dd></dl>
+
+<p>
+Vodafone also supports the <a href="https://www.asterisk.org/the-pjsip-outbound-registration-line-option/" class="urlextern" title="https://www.asterisk.org/the-pjsip-outbound-registration-line-option/" rel="ugc nofollow">line option</a>, which can simplify the configuration by omitting the <code>[id_arcor]</code> section. The above configuration is shown to present a more generic example.
+</p>
+
+<p>
+<em class="u"><strong>Example for Telekom Germany:</strong></em>
+</p>
+
+<p>
+In order to get trusted input ip-addresses which can be used in the [acl] section you can use: nslookup -q=SRV _sip._udp.tel.t-online.de 1.1.1.1 .
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-user/services/voip/asterisk?codeblock=3" title="Download Snippet" class="mediafile mf_conf">pjsip.conf</a></dt>
+<dd><pre class="code ini"><span class="re0"><span class="br0">&#91;</span>global<span class="br0">&#93;</span></span>
+<span class="re1">type</span> <span class="sy0">=</span><span class="re2"> global</span>
+<span class="re1">endpoint_identifier_order</span> <span class="sy0">=</span><span class="re2"> ip,username</span>
+&nbsp;
+<span class="re0"><span class="br0">&#91;</span>acl<span class="br0">&#93;</span></span>
+<span class="re1">type</span> <span class="sy0">=</span><span class="re2"> acl</span>
+<span class="re1">deny</span> <span class="sy0">=</span><span class="re2"> 0.0.0.0/0.0.0.0</span>
+<span class="re1">permit</span> <span class="sy0">=</span><span class="re2"> 127.0.0.1</span>
+<span class="re1">permit</span> <span class="sy0">=</span><span class="re2"> 217.0.147.5</span>
+<span class="re1">permit</span> <span class="sy0">=</span><span class="re2"> 217.0.146.5</span>
+<span class="re1">permit</span> <span class="sy0">=</span><span class="re2"> 217.0.147.197</span>
+&nbsp;
+<span class="re0"><span class="br0">&#91;</span>transport-udp<span class="br0">&#93;</span></span>
+<span class="re1">type</span> <span class="sy0">=</span><span class="re2"> transport</span>
+<span class="re1">protocol</span> <span class="sy0">=</span><span class="re2"> udp</span>
+<span class="re1">bind</span> <span class="sy0">=</span><span class="re2"> 0.0.0.0</span>
+&nbsp;
+<span class="re0"><span class="br0">&#91;</span>transport-tcp<span class="br0">&#93;</span></span>
+<span class="re1">type</span> <span class="sy0">=</span><span class="re2"> transport</span>
+<span class="re1">protocol</span> <span class="sy0">=</span><span class="re2"> tcp</span>
+<span class="re1">bind</span> <span class="sy0">=</span><span class="re2"> 0.0.0.0</span>
+&nbsp;
+<span class="re0"><span class="br0">&#91;</span>reg_telekom<span class="br0">&#93;</span></span>
+<span class="re1">type</span> <span class="sy0">=</span><span class="re2"> registration</span>
+<span class="re1">contact_user</span> <span class="sy0">=</span><span class="sy0"><span class="re2"> &lt;area_code&gt;&lt;your_number&gt; ;<span class="br0">&#40;</span></span>e.g. 0228...<span class="br0">&#41;</span></span>
+<span class="re1">client_uri</span> <span class="sy0">=</span><span class="sy0"><span class="re2"> sip:&lt;intern_code&gt;&lt;area_code&gt;&lt;your_number&gt;@tel.t-online.de ;<span class="br0">&#40;</span></span>e.g.+49228...<span class="br0">&#41;</span></span>
+<span class="re1">server_uri</span> <span class="sy0">=</span><span class="re2"> sip:tel.t-online.de</span>
+<span class="re1">outbound_auth</span> <span class="sy0">=</span><span class="re2"> auth_telekom</span>
+<span class="re1">retry_interval</span> <span class="sy0">=</span><span class="re2"> 30</span>
+<span class="re1">forbidden_retry_interval</span> <span class="sy0">=</span><span class="re2"> 300</span>
+<span class="re1">max_retries</span> <span class="sy0">=</span><span class="re2"> 10</span>
+<span class="re1">auth_rejection_permanent</span> <span class="sy0">=</span><span class="re2"> false</span>
+&nbsp;
+<span class="re0"><span class="br0">&#91;</span>auth_telekom<span class="br0">&#93;</span></span>
+<span class="re1">type</span> <span class="sy0">=</span><span class="re2"> auth</span>
+<span class="re1">auth_type</span> <span class="sy0">=</span><span class="re2"> userpass</span>
+<span class="re1">username</span> <span class="sy0">=</span><span class="sy0"><span class="re2"> &lt;accessnumber&gt; ;<span class="br0">&#40;</span></span>former T-Online Number<span class="br0">&#41;</span></span>
+<span class="re1">realm</span> <span class="sy0">=</span><span class="re2"> tel.t-online.de</span>
+&nbsp;
+<span class="re0"><span class="br0">&#91;</span>aor_telekom<span class="br0">&#93;</span></span>
+<span class="re1">type</span> <span class="sy0">=</span><span class="re2"> aor</span>
+<span class="re1">contact</span> <span class="sy0">=</span><span class="re2"> sip:&lt;intern_code&gt;&lt;area_code&gt;&lt;your_number&gt;@tel.t-online.de</span>
+&nbsp;
+<span class="re0"><span class="br0">&#91;</span>id_telekom<span class="br0">&#93;</span></span>
+<span class="re1">type</span> <span class="sy0">=</span><span class="re2"> identify</span>
+<span class="re1">match</span> <span class="sy0">=</span><span class="re2"> tel.t-online.de</span>
+<span class="re1">endpoint</span> <span class="sy0">=</span><span class="re2"> in_telekom</span>
+&nbsp;
+<span class="re0"><span class="br0">&#91;</span>in_telekom<span class="br0">&#93;</span></span>
+<span class="re1">type</span> <span class="sy0">=</span><span class="re2"> endpoint</span>
+<span class="re1">context</span> <span class="sy0">=</span><span class="re2"> lantiq1_inbound</span>
+<span class="re1">disallow</span> <span class="sy0">=</span><span class="re2"> all</span>
+<span class="re1">allow</span> <span class="sy0">=</span><span class="re2"> alaw,g722,ulaw</span>
+<span class="re1">disable_direct_media_on_nat</span> <span class="sy0">=</span><span class="re2"> yes</span>
+<span class="re1">rewrite_contact</span> <span class="sy0">=</span><span class="re2"> yes</span>
+&nbsp;
+<span class="re0"><span class="br0">&#91;</span>out_telekom<span class="br0">&#93;</span></span>
+<span class="re1">type</span> <span class="sy0">=</span><span class="re2"> endpoint</span>
+<span class="re1">disallow</span> <span class="sy0">=</span><span class="re2"> all</span>
+<span class="re1">allow</span> <span class="sy0">=</span><span class="re2"> alaw,g722,ulaw</span>
+<span class="re1">disable_direct_media_on_nat</span> <span class="sy0">=</span><span class="re2"> yes</span>
+<span class="re1">callerid</span> <span class="sy0">=</span><span class="re2"> &lt;area_code&gt;&lt;your_number&gt;</span>
+<span class="re1">from_user</span> <span class="sy0">=</span><span class="re2"> &lt;area_code&gt;&lt;your_number&gt;</span>
+<span class="re1">from_domain</span> <span class="sy0">=</span><span class="re2"> tel.t-online.de</span>
+<span class="re1">outbound_auth</span> <span class="sy0">=</span><span class="re2"> auth_telekom</span>
+<span class="re1">aors</span> <span class="sy0">=</span><span class="re2"> aor_telekom</span></pre>
+</dd></dl>
+
+<p>
+<em class="u"><strong>Important!</strong> Enable Telekom <abbr title="Domain Name System">DNS</abbr> server for *t-online.de:</em>
+</p>
+
+<p>
+<code>uci add_list dhcp.@dnsmasq[0].server=“/t-online.de/1.1.1.1”</code>
+</p>
+
+<p>
+<code>uci commit dhcp</code>
+</p>
+
+<p>
+<code>service dnsmasq restart</code>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;pjsip.conf&quot;,&quot;hid&quot;:&quot;pjsipconf&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:13,&quot;range&quot;:&quot;5709-9351&quot;} -->
+<h3 class="sectionedit14" id="extensionsconf">extensions.conf</h3>
+<div class="level3">
+
+<p>
+<a href="https://docs.asterisk.org/Configuration/Dialplan/" class="urlextern" title="https://docs.asterisk.org/Configuration/Dialplan/" rel="ugc nofollow">https://docs.asterisk.org/Configuration/Dialplan/</a>
+</p>
+
+<p>
+Example for Vodafone Germany:
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-user/services/voip/asterisk?codeblock=4" title="Download Snippet" class="mediafile mf_conf">extensions.conf</a></dt>
+<dd><pre class="code ini"><span class="re0"><span class="br0">&#91;</span>general<span class="br0">&#93;</span></span>
+<span class="re1">static</span><span class="sy0">=</span><span class="re2">yes</span>
+<span class="re1">writeprotect</span><span class="sy0">=</span><span class="re2">yes</span>
+<span class="re1">autofallthrough</span><span class="sy0">=</span><span class="re2">yes</span>
+&nbsp;
+<span class="re0"><span class="br0">&#91;</span>default<span class="br0">&#93;</span></span>
+<span class="re1">exten</span> <span class="sy0">=</span><span class="re2">&gt; _X.,1,Answer<span class="br0">&#40;</span><span class="br0">&#41;</span></span>
+<span class="re1">same</span> <span class="sy0">=</span><span class="re2">&gt; n,Verbose<span class="br0">&#40;</span>1,$<span class="br0">&#123;</span>CALLERID<span class="br0">&#40;</span>num<span class="br0">&#41;</span><span class="br0">&#125;</span> reached context DEFAULT by calling $<span class="br0">&#123;</span>EXTEN<span class="br0">&#125;</span><span class="br0">&#41;</span></span>
+<span class="re1">same</span> <span class="sy0">=</span><span class="re2">&gt; n,Hangup<span class="br0">&#40;</span><span class="br0">&#41;</span></span>
+&nbsp;
+<span class="re0"><span class="br0">&#91;</span>out_arcor<span class="br0">&#93;</span></span>
+<span class="co0">; national numbers with country code</span>
+<span class="re1">exten</span> <span class="sy0">=</span><span class="re2">&gt; _+49ZXX!.,1,Dial<span class="br0">&#40;</span>PJSIP/$<span class="br0">&#123;</span>EXTEN<span class="br0">&#125;</span>@out_arcor,60,Trg<span class="br0">&#41;</span></span>
+<span class="re1">same</span> <span class="sy0">=</span><span class="re2">&gt; n,Hangup<span class="br0">&#40;</span><span class="br0">&#41;</span></span>
+<span class="co0">
+; national numbers called with leading 0</span>
+<span class="re1">exten</span> <span class="sy0">=</span><span class="re2">&gt; _0Z.,1,Dial<span class="br0">&#40;</span>PJSIP/$<span class="br0">&#123;</span>EXTEN<span class="br0">&#125;</span>@out_arcor,60,Trg<span class="br0">&#41;</span></span>
+<span class="re1">same</span> <span class="sy0">=</span><span class="re2">&gt; n,Hangup<span class="br0">&#40;</span><span class="br0">&#41;</span></span>
+<span class="co0">
+; local area numbers</span>
+<span class="re1">exten</span> <span class="sy0">=</span><span class="re2">&gt; _Z.,1,Dial<span class="br0">&#40;</span>PJSIP/$<span class="br0">&#123;</span>EXTEN<span class="br0">&#125;</span>@out_arcor,60,Trg<span class="br0">&#41;</span></span>
+<span class="re1">same</span> <span class="sy0">=</span><span class="re2">&gt; n,Hangup<span class="br0">&#40;</span><span class="br0">&#41;</span></span>
+<span class="co0">
+; emergency calls</span>
+<span class="re1">exten</span> <span class="sy0">=</span><span class="re2">&gt; 110,1,Dial<span class="br0">&#40;</span>PJSIP/$<span class="br0">&#123;</span>EXTEN<span class="br0">&#125;</span>@out_arcor,60,Trg<span class="br0">&#41;</span></span>
+<span class="re1">exten</span> <span class="sy0">=</span><span class="re2">&gt; 110,n,Hangup<span class="br0">&#40;</span><span class="br0">&#41;</span></span>
+<span class="re1">exten</span> <span class="sy0">=</span><span class="re2">&gt; 112,1,Dial<span class="br0">&#40;</span>PJSIP/$<span class="br0">&#123;</span>EXTEN<span class="br0">&#125;</span>@out_arcor,60,Trg<span class="br0">&#41;</span></span>
+<span class="re1">exten</span> <span class="sy0">=</span><span class="re2">&gt; 112,n,Hangup<span class="br0">&#40;</span><span class="br0">&#41;</span></span>
+<span class="co0">
+; add rules for expensive special numbers. Get German examples from:</span>
+<span class="co0">; https://www.linuxmaker.com//asterisk-pbx/dialplan-extensionsconf.html</span>
+<span class="re1">exten</span> <span class="sy0">=</span><span class="re2">&gt; _0137Z.,1,Verbose<span class="br0">&#40;</span>1,Blocked: $<span class="br0">&#123;</span>EXTEN<span class="br0">&#125;</span><span class="br0">&#41;</span></span>
+<span class="co0">;same =&gt; n,Playback(forbidden)</span>
+<span class="re1">same</span> <span class="sy0">=</span><span class="re2">&gt; n,Hangup<span class="br0">&#40;</span><span class="br0">&#41;</span></span>
+&nbsp;
+<span class="re0"><span class="br0">&#91;</span>lantiq1_inbound<span class="br0">&#93;</span></span>
+<span class="re1">exten</span> <span class="sy0">=</span><span class="re2">&gt; &lt;area_code&gt;&lt;your_number&gt;,1,Dial<span class="br0">&#40;</span>TAPI/1,60,t<span class="br0">&#41;</span></span>
+<span class="re1">same</span> <span class="sy0">=</span><span class="re2">&gt; n,Hangup<span class="br0">&#40;</span><span class="br0">&#41;</span></span>
+&nbsp;
+<span class="re0"><span class="br0">&#91;</span>lantiq1<span class="br0">&#93;</span></span>
+<span class="re1">include</span> <span class="sy0">=</span><span class="re2">&gt; out_arcor</span>
+<span class="co0">
+;[lantiq2]</span>
+<span class="co0">;include =&gt; ltq2_out</span></pre>
+</dd></dl>
+
+<p>
+Just change arcor to telekom if you want to use it. Check on your router both ports for telephony in order to get the right one.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;extensions.conf&quot;,&quot;hid&quot;:&quot;extensionsconf&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:14,&quot;range&quot;:&quot;9352-10728&quot;} -->
+<h3 class="sectionedit15" id="indicationsconf">indications.conf</h3>
+<div class="level3">
+
+<p>
+<a href="https://docs.asterisk.org/Configuration/Core-Configuration/Configuring-Localized-Tone-Indications/" class="urlextern" title="https://docs.asterisk.org/Configuration/Core-Configuration/Configuring-Localized-Tone-Indications/" rel="ugc nofollow">https://docs.asterisk.org/Configuration/Core-Configuration/Configuring-Localized-Tone-Indications/</a>
+</p>
+
+<p>
+Example for Vodafone Germany:
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-user/services/voip/asterisk?codeblock=5" title="Download Snippet" class="mediafile mf_conf">indications.conf</a></dt>
+<dd><pre class="code ini"><span class="re0"><span class="br0">&#91;</span>general<span class="br0">&#93;</span></span>
+<span class="re1">country</span><span class="sy0">=</span><span class="re2">de</span></pre>
+</dd></dl>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;indications.conf&quot;,&quot;hid&quot;:&quot;indicationsconf&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:15,&quot;range&quot;:&quot;10729-10947&quot;} -->
+<h3 class="sectionedit16" id="lantiqconf">lantiq.conf</h3>
+<div class="level3">
+
+<p>
+If you plan to use Asterisk on a Lantiq device, see <a href="/docs/guide-user/services/voip/chan-lantiq" class="wikilink1" title="docs:guide-user:services:voip:chan-lantiq" data-wiki-id="docs:guide-user:services:voip:chan-lantiq">chan-lantiq</a> for detailed configuration examples.
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-user/services/voip/asterisk?codeblock=6" title="Download Snippet" class="mediafile mf_conf">lantiq.conf</a></dt>
+<dd><pre class="code ini"><span class="re0"><span class="br0">&#91;</span>interfaces<span class="br0">&#93;</span></span>
+<span class="re1">channels</span> <span class="sy0">=</span><span class="re2"> 2</span>
+<span class="re1">per_channel_context</span> <span class="sy0">=</span><span class="re2"> on</span></pre>
+</dd></dl>
+
+<p>
+<code>per_channel_context = on</code> is important, as it will place calls from the Lantiq FXS ports in contexts <code>lantiq1</code> and <code>lantiq2</code> instead of <code>default</code>, which should be avoided.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;lantiq.conf&quot;,&quot;hid&quot;:&quot;lantiqconf&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:16,&quot;range&quot;:&quot;10948-11368&quot;} -->
+<h3 class="sectionedit17" id="sqmqos">SQM/QoS</h3>
+<div class="level3">
+
+<p>
+For <abbr title="Voice over Internet Protocol">VoIP</abbr> you will need some form of traffic shaping to reduce latency. On OpenWrt the best choice is using <a href="/docs/guide-user/network/traffic-shaping/sqm" class="wikilink1" title="docs:guide-user:network:traffic-shaping:sqm" data-wiki-id="docs:guide-user:network:traffic-shaping:sqm">SQM with cake</a>. To prioritize <abbr title="Voice over Internet Protocol">VoIP</abbr> traffic choose <code>layer_cake.qos</code> as the queue setup script. For more details read <a href="https://forum.openwrt.org/t/simple-qos-for-voip/10382" class="urlextern" title="https://forum.openwrt.org/t/simple-qos-for-voip/10382" rel="ugc nofollow">this forum thread</a>.
+</p>
+
+<p>
+More information on TOS/CoS values can be found in the <a href="https://docs.asterisk.org/Configuration/Channel-Drivers/IP-Quality-of-Service/" class="urlextern" title="https://docs.asterisk.org/Configuration/Channel-Drivers/IP-Quality-of-Service/" rel="ugc nofollow">IP QoS article</a> on the Asterisk documentation.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;SQM\/QoS&quot;,&quot;hid&quot;:&quot;sqmqos&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:17,&quot;range&quot;:&quot;11369-11921&quot;} -->
+<h2 class="sectionedit18" id="asterisk_gui">Asterisk GUI</h2>
+<div class="level2">
+
+<p>
+A <abbr title="Graphical User Interface">GUI</abbr> in LuCI is provided through <a href="/packages/pkgdata/luci-app-asterisk" class="wikilink2" title="packages:pkgdata:luci-app-asterisk" rel="nofollow" data-wiki-id="packages:pkgdata:luci-app-asterisk">luci-app-asterisk</a> package, however it&#039;s been deprecated since Asterisk 17.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Asterisk GUI&quot;,&quot;hid&quot;:&quot;asterisk_gui&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:18,&quot;range&quot;:&quot;11922-12096&quot;} -->
+<h2 class="sectionedit19" id="asterisk_cli">Asterisk CLI</h2>
+<div class="level2">
+
+<p>
+<a href="https://docs.asterisk.org/Operation/Asterisk-Command-Line-Interface/" class="urlextern" title="https://docs.asterisk.org/Operation/Asterisk-Command-Line-Interface/" rel="ugc nofollow">Asterisk provides its own CLI</a>, which is especially useful for debugging. Execute <code>asterisk -r</code>, to connect to a already running Asterisk server.
+</p>
+
+<p>
+Commands follow a general syntax of <code>&lt;module name&gt; &lt;action type&gt; &lt;parameters&gt;</code>. The CLI supports command-line completion using the <code>&lt;Tab&gt;</code> key.
+</p>
+
+<p>
+You can stop the service <code>/etc/init.d/asterisk stop</code> and run the verbose CLI <code>asterisk -cvvvvv</code> while setting up the system.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Asterisk CLI&quot;,&quot;hid&quot;:&quot;asterisk_cli&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:19,&quot;range&quot;:&quot;12097-12621&quot;} -->
+<h3 class="sectionedit20" id="increasing_the_log_level">Increasing the log level</h3>
+<div class="level3">
+
+<p>
+To see what&#039;s going on during a call run the following command inside the Asterisk CLI:
+</p>
+<pre class="code">core set verbose 3</pre>
+
+<p>
+After that run <code>module reload logger</code> and make a call.
+To get even more verbose information, you can execute the following commands (<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> enabling all of them will produce a lot of output!):
+</p>
+<pre class="code">core set verbose 5
+core set debug 5
+pjsip set logger on
+rtp set debug on</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Increasing the log level&quot;,&quot;hid&quot;:&quot;increasing_the_log_level&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:20,&quot;range&quot;:&quot;12622-13059&quot;} -->
+<h3 class="sectionedit21" id="other_useful_commands">Other useful commands</h3>
+<div class="level3">
+<pre class="code">dialplan show &lt;context&gt;
+
+pjsip show endpoints
+pjsip show endpoint &lt;endpoint&gt;
+pjsip show registration &lt;registration&gt;</pre>
+
+<p>
+During a call:
+</p>
+<pre class="code">core show channels
+core show channel &lt;channel&gt;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Other useful commands&quot;,&quot;hid&quot;:&quot;other_useful_commands&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:21,&quot;range&quot;:&quot;13060-13301&quot;} -->
+<h3 class="sectionedit22" id="executing_commands_from_outside_the_cli">Executing commands from outside the CLI</h3>
+<div class="level3">
+
+<p>
+You can execute Asterisk commands from outside the CLI, for example to control the Asterisk server via a shell script:
+</p>
+<pre class="code">asterisk -rx &quot;pjsip show endpoints&quot;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Executing commands from outside the CLI&quot;,&quot;hid&quot;:&quot;executing_commands_from_outside_the_cli&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:22,&quot;range&quot;:&quot;13302-13522&quot;} -->
+<h2 class="sectionedit23" id="finding_further_information_about_asterisk">Finding further information about Asterisk</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> The first place to look for information is <a href="https://docs.asterisk.org/" class="urlextern" title="https://docs.asterisk.org/" rel="ugc nofollow">the Asterisk documentation</a></div>
+</li>
+<li class="level1"><div class="li"> Another great resource is <em>The Asterisk Book</em>. It&#039;s about an older Asterisk version, but explains the core principles in a very profound way: <a href="http://the-asterisk-book.com/" class="urlextern" title="http://the-asterisk-book.com/" rel="ugc nofollow">English version</a>, <a href="http://das-asterisk-buch.de/" class="urlextern" title="http://das-asterisk-buch.de/" rel="ugc nofollow">German version</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://community.asterisk.org/" class="urlextern" title="https://community.asterisk.org/" rel="ugc nofollow">Official Asterisk forum</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Finding further information about Asterisk&quot;,&quot;hid&quot;:&quot;finding_further_information_about_asterisk&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:23,&quot;range&quot;:&quot;13523-&quot;} -->

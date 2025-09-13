@@ -1,0 +1,40 @@
+
+<h1 class="sectionedit1" id="openvpn_pc_script_automated">OpenVPN PC script automated</h1>
+<div class="level1">
+
+<p>
+Creating private key on an embedded device requires a lot of time.  
+You can speed up things creating certificates on your PC.  
+</p>
+
+<p>
+Install OpenVPN on your PC (it is required to create build the certificate) and then run this script.  
+It will ask you a password to encrypt the private key of <code>client.ovpn</code>.  
+Then you only have to transfer <code>server.conf</code> on your router in <code>/etc/openvpn</code> path and run <code>service openvpn restart</code>.  
+</p>
+<pre class="code bash"><span class="re2">URL</span>=<span class="st0">&quot;https://openwrt.org/_export/code/docs/guide-user/services/vpn/openvpn/server&quot;</span>
+<span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> EOF <span class="sy0">&gt;</span> ovpn.sh
+<span class="re2">VPN_DIR</span>=<span class="st0">&quot;openvpn&quot;</span>
+<span class="re2">VPN_PKI</span>=<span class="st0">&quot;<span class="es1">\$</span>{VPN_DIR}/pki&quot;</span>
+<span class="re2">VPN_PORT</span>=<span class="st0">&quot;1194&quot;</span>
+<span class="re2">VPN_PROTO</span>=<span class="st0">&quot;udp&quot;</span>
+<span class="re2">VPN_POOL</span>=<span class="st0">&quot;192.168.8.0 255.255.255.0&quot;</span>
+<span class="re2">VPN_DNS</span>=<span class="st0">&quot;<span class="es1">\$</span>{VPN_POOL%.* *}.1&quot;</span>
+<span class="re2">VPN_DOMAIN</span>=<span class="st0">&quot;lan&quot;</span>
+<span class="re2">FETCHIP_URL</span>=<span class="st0">&quot;http://v4.ipv6-test.com/api/myip.php&quot;</span>
+<span class="re2">VPN_SERV</span>=<span class="st0">&quot;<span class="es1">\$</span>(wget -U &quot;</span><span class="st0">&quot; -O - &quot;</span>\<span class="co1">${FETCHIP_URL}</span><span class="st0">&quot;)&quot;</span>
+<span class="re2">EASYRSA_URL</span>=<span class="st0">&quot;https://github.com/OpenVPN/easy-rsa/releases/download/v3.1.7/EasyRSA-3.1.7.tgz&quot;</span>
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="sy0">!</span> <span class="re5">-f</span> <span class="st0">&quot;EasyRSA.tgz&quot;</span> <span class="br0">&#93;</span>
+<span class="kw1">then</span>
+<span class="kw2">wget</span> <span class="re5">-U</span> <span class="st0">&quot;&quot;</span> <span class="re5">-O</span> EasyRSA.tgz <span class="st0">&quot;<span class="es1">\$</span>{EASYRSA_URL}&quot;</span>
+<span class="kw2">tar</span> <span class="re5">-z</span> <span class="re5">-x</span> <span class="re5">-f</span> EasyRSA.tgz
+<span class="kw1">fi</span>
+<span class="kw3">alias</span> <span class="re2">easyrsa</span>=<span class="st0">&quot;EasyRSA-3.1.7/easyrsa&quot;</span>
+$<span class="br0">&#40;</span><span class="kw2">wget</span> <span class="re5">-U</span> <span class="st0">&quot;&quot;</span> <span class="re5">-O</span> - <span class="st0">&quot;<span class="es3">${URL}</span>?codeblock=1&quot;</span><span class="br0">&#41;</span>
+$<span class="br0">&#40;</span><span class="kw2">wget</span> <span class="re5">-U</span> <span class="st0">&quot;&quot;</span> <span class="re5">-O</span> - <span class="st0">&quot;<span class="es3">${URL}</span>?codeblock=3&quot;</span> \
+<span class="sy0">|</span> <span class="kw2">sed</span> <span class="re5">-e</span> <span class="st0">&quot;\|^/etc/init\.d/|d&quot;</span><span class="br0">&#41;</span>
+<span class="kw2">ls</span> \<span class="co1">${VPN_DIR}</span><span class="sy0">/*</span>.conf
+EOF
+<span class="kw2">sh</span> ovpn.sh</pre>
+
+</div>

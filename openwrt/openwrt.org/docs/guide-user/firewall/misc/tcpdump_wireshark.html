@@ -1,0 +1,154 @@
+
+<h1 class="sectionedit1" id="how_to_capture_filter_and_inspect_packets_using_tcpdump_or_wireshark_tools">How to capture, filter and inspect packets using tcpdump or wireshark tools</h1>
+<div class="level1">
+
+<p>
+OpenWrt is a versatile platform base on GNU/Linux, offering state-of-the art solutions. You may use <a href="http://www.tcpdump.org" class="urlextern" title="http://www.tcpdump.org" rel="ugc nofollow">tcpdump</a>, <a href="https://www.wireshark.org" class="urlextern" title="https://www.wireshark.org" rel="ugc nofollow">Wireshark</a> or even collect data from a switch and send it to a remote analysis system. This article does not cover network intrusion detection, which is documented separately.
+</p>
+
+<p>
+This HOWTO is based on a discussion on LEDE Forum, please discuss using this link:
+</p>
+
+<p>
+<a href="https://forum.lede-project.org/t/tp-wdr3600-monitoring-capturing-wireless-traffic-howto/3308" class="urlextern" title="https://forum.lede-project.org/t/tp-wdr3600-monitoring-capturing-wireless-traffic-howto/3308" rel="ugc nofollow">https://forum.lede-project.org/t/tp-wdr3600-monitoring-capturing-wireless-traffic-howto/3308</a>
+</p>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_round wrap_important plugin_wrap" style="width: 60%;">
+<p>
+This has not been tested recently.  It <strong>should</strong> work if the packages can be installed on the target.
+</p>
+
+<p>
+Update 2019-01-01: One person has confirmed its still working on a Buffalo device (Atheros AR71xx) running 18.06.1
+</p>
+
+<p>
+Update 2019-02-22: One person has confirmed its still working on a Netgear device (Atheros ar71xx) running 18.06.2
+</p>
+
+<p>
+Update 2020-09-19: One person has confirmed its still working on a iptime device (mt7620) running 20.172.67167
+</p>
+
+<p>
+Update 2023-01-24: One person has confirmed its still working on a Xiaomi and Raspberry Pi device running 22.03.2
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;How to capture, filter and inspect packets using tcpdump or wireshark tools&quot;,&quot;hid&quot;:&quot;how_to_capture_filter_and_inspect_packets_using_tcpdump_or_wireshark_tools&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1208&quot;} -->
+<h2 class="sectionedit4" id="capturing_packets_from_an_openwrt_appliance">Capturing packets from an OpenWrt appliance</h2>
+<div class="level2">
+
+<p>
+tcpdump is a network capture and analysis tool. It may be used to capture packets on the fly and/or save them in a file for later analysis. tcpdump relies on libcap, therefore it can produce standard pcap analysis files which may be processed by other tools.
+</p>
+
+<p>
+To install <a href="http://www.tcpdump.org" class="urlextern" title="http://www.tcpdump.org" rel="ugc nofollow">tcpdump</a> on your device:
+</p>
+<pre class="code">opkg install tcpdump</pre>
+
+<p>
+To capture all packets on the <abbr title="Wide Area Network">WAN</abbr> (the below assumes that interface eth1 is the <abbr title="Wide Area Network">WAN</abbr> interface):
+</p>
+<pre class="code"># killall tcpdump; tcpdump -n -i eth1
+tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
+listening on eth1, link-type EN10MB (Ethernet), capture size 262144 bytes
+13:16:55.036711 IP 192.168.1.94.41146 &gt; 121.59.12.182.443: Flags [.], ack 2010466204, win 444, options [nop,nop,TS val 1064304519 ecr 2837800946], length 0
+13:16:55.056721 IP 139.59.210.197.443 &gt; 192.168.1.94.41146: Flags [.], ack 1, win 1050, options [nop,nop,TS val 2837803506 ecr 1064299424], length 0
+13:16:56.018900 IP 192.168.1.94.38886 &gt; 139.59.209.225.443: Flags [P.], seq 3899787899:3899788551, ack 1045321715, win 1043, options [nop,nop,TS val 689756067 ecr   651566707], length 652
+13:16:56.072201 IP 139.59.209.225.443 &gt; 192.168.1.94.38886: Flags [.], seq 1:1449, ack 652, win 368, options [nop,nop,TS val 651567951 ecr 689756067], length 1448 </pre>
+
+<p>
+To capture all packets from a specific host on the network:
+</p>
+<pre class="code"># tcpdump -i eth0 host 192.168.2.102 -U -s0 -w /tmp/dump.txt</pre>
+
+<p>
+You may also use Wireshark capture and analysis tool. 
+</p>
+
+<p>
+To capture all packets on the the &#039;eth0&#039; interface, excluding port 22 (<abbr title="Secure Shell">SSH</abbr>) traffic, assuming Wireshark is installed in the default location:
+</p>
+<ol>
+<li class="level1"><div class="li"> Enable <abbr title="Secure Shell">SSH</abbr> connection with certificated (to avoid password prompt)</div>
+</li>
+<li class="level1"><div class="li"> on a Linux system:</div>
+</li>
+</ol>
+<pre class="code">ssh user@myledebox tcpdump -i eth1 -U -s0 -w - &#039;not port 22&#039; | sudo wireshark -k -i -</pre>
+<ol>
+<li class="level1"><div class="li"> on a macOS system:</div>
+</li>
+</ol>
+<pre class="code">ssh user@myledebox tcpdump -i eth1 -U -s0 -w - &#039;not port 22&#039; | sudo /Applications/Wireshark.app/Contents/MacOS/wireshark -k -i -</pre>
+<ol>
+<li class="level1"><div class="li"> or, on a Windows system:</div>
+</li>
+</ol>
+<pre class="code">ssh root@myledebox tcpdump -i eth1 -U -s0 -w - &#039;not port 22&#039; | &quot;C:\Program Files\Wireshark\Wireshark.exe&quot; -k -i -</pre>
+
+<p>
+Another option is to use the sshdump tool in wireshark, like so:
+</p>
+<pre class="code">wireshark &#039;-oextcap.sshdump.remotehost:OpenWrt.lan&#039; &#039;-oextcap.sshdump.remoteusername:root&#039; -i sshdump -k</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Capturing packets from an OpenWrt appliance&quot;,&quot;hid&quot;:&quot;capturing_packets_from_an_openwrt_appliance&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;1209-3564&quot;} -->
+<h2 class="sectionedit5" id="capturing_packets_from_a_switch">Capturing packets from a switch</h2>
+<div class="level2">
+
+<p>
+Modern switches offer port-mirroring, i.e. the ability to copy all network packets from a given number of ports to a single-port, usually for analysis purpose. Usually, switches with port-mirroring are called “manageable switches”. Port mirroring happens in hardware, so your switch might not slow down. Check your documentation if port mirroring is supported.
+</p>
+
+<p>
+Connect your LEDE device to the monitoring interface of your switch. 
+</p>
+
+<p>
+Then simply use tcpdump or wireshark to monitor traffic.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Capturing packets from a switch&quot;,&quot;hid&quot;:&quot;capturing_packets_from_a_switch&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:5,&quot;range&quot;:&quot;3565-4100&quot;} -->
+<h2 class="sectionedit6" id="sending_packets_for_remote_analysis_on_the_www">Sending packets for remote analysis on the WWW</h2>
+<div class="level2">
+
+<p>
+<a href="https://www.cloudshark.org" class="urlextern" title="https://www.cloudshark.org" rel="ugc nofollow">CloudShark</a> is an cloud analysis platform, independent and not related to LEDE. It relies on cshark plugin to send packets remotely for analysis. Please check your internal rules, whether sending network traffic to a cloud platform is allowed. 
+</p>
+
+<p>
+Install cshark and luci-app-cshark:
+</p>
+<pre class="code">opkg install cshark luci-app-cshark</pre>
+
+<p>
+Please check <a href="https://support.cloudshark.org/openwrt/openwrt-cloudshark.html" class="urlextern" title="https://support.cloudshark.org/openwrt/openwrt-cloudshark.html" rel="ugc nofollow">Cloud shark documentation</a> for more information.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Sending packets for remote analysis on the WWW&quot;,&quot;hid&quot;:&quot;sending_packets_for_remote_analysis_on_the_www&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:6,&quot;range&quot;:&quot;4101-4642&quot;} -->
+<h2 class="sectionedit7" id="questions_remaining_to_be_documented">Questions remaining to be documented</h2>
+<div class="level2">
+
+<p>
+Please insert here what remains to be documented:
+</p>
+
+<p>
+- How to send (automatically) pcap files remotely for later analysis, on your own network.
+</p>
+
+<p>
+- How to trap network traffic using simple rules and log them to syslog/rsyslog.
+</p>
+
+<p>
+- Are there uci / luci apps allowing to manage tcpdum rules, traffic analysis, etc ...
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Questions remaining to be documented&quot;,&quot;hid&quot;:&quot;questions_remaining_to_be_documented&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:7,&quot;range&quot;:&quot;4643-&quot;} -->

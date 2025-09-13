@@ -1,0 +1,147 @@
+
+<h1 class="sectionedit1" id="ipv6_multicast">IPv6 multicast</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;IPv6 multicast&quot;,&quot;hid&quot;:&quot;ipv6_multicast&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-29&quot;} -->
+<h2 class="sectionedit2" id="configuration">Configuration</h2>
+<div class="level2">
+
+<p>
+While the nature of bridged interfaces will ensure <abbr title="Internet Protocol version 6">IPv6</abbr> multicast traffic is passed between them, it does mean that all multicast traffic will be forwarded across all interfaces, even if there is nobody listening to the multicasted streams.  This can quickly saturate the network bandwidth, particularly of a wireless link (which may carry multicast traffic in both directions when only one direction is wanted).
+</p>
+
+<p>
+To avoid this, configuring full routing instead of using a bridge will ensure only the necessary traffic is forwarded across interfaces.  However in this case an additional multicast routing daemon is required in order to manage which multicast streams are forwarded where.  This is because although the Linux kernel handles the actual packet routing, a user-space daemon is required to send and receive MLD messages and to set up the actual routes the kernel uses.
+</p>
+
+<p>
+There are a number of different programs that can do this.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;30-996&quot;} -->
+<h3 class="sectionedit3" id="mcproxy">mcproxy</h3>
+<div class="level3">
+
+<p>
+mcproxy is a relative large (1.5 <abbr title="Megabyte">MB</abbr>) daemon that works well.  It contains UCI integration although as of 2021 this does not work, returning shell errors if it is used, however this can be bypassed.
+</p>
+
+<p>
+It is installed in the usual way:
+</p>
+<pre class="code bash">opkg <span class="kw2">install</span> mcproxy</pre>
+
+<p>
+Since the UCI interface gives shell errors when it is used, the option to use a custom config file must be enabled.  Edit <code>/etc/config/mcproxy</code> and find the entry for <code>mcproxy_file</code>.  Set the <code>disabled</code> option to <code>0</code>.  This tells OpenWrt to read the <code>/etc/mcproxy.conf</code> file you supply instead of building it from the rest of the values in <code>/etc/config/mcproxy</code>.
+</p>
+
+<p>
+Remove the default <code>/etc/mcproxy.conf</code> as it contains a large, complex example and start from scratch.  Use a simple config such as this to begin with:
+</p>
+<pre class="code">protocol IGMPv3;
+protocol MLDv2;
+
+pinstance myProxy: &quot;nicDst&quot; ==&gt; &quot;nicSrc&quot;;</pre>
+
+<p>
+Here <code>nicSrc</code> and <code>nicDst</code> are network interface names (as shown with <code>ip addr</code>, not the OpenWrt interface name).  <code>nicSrc</code> is the interface that is providing the multicast data, and <code>nicDst</code> is the interface that should receive a copy of the multicast data if someone on that interface has subscribed to it.  Note that the arrow suggests the direction has been reversed, but the arrow appears to refer to the direction of subscription messages rather than the direction of the resulting traffic.
+</p>
+
+<p>
+Once the config file has been saved, test it with <code>mcproxy -svv</code> to display diagnostic information.  Once you are happy it is working, start the service in the background with <code>service mcproxy start</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;mcproxy&quot;,&quot;hid&quot;:&quot;mcproxy&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;997-2627&quot;} -->
+<h3 class="sectionedit4" id="omcproxy">omcproxy</h3>
+<div class="level3">
+
+<p>
+omcproxy is a smaller alternative to mcproxy, taking up less space.  It includes UCI and LuCI integration, but unfortunately as of 2021 the project appears to be abandoned and it does not seem to work with OpenWrt.  The LuCI integration does not appear to work either.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;omcproxy&quot;,&quot;hid&quot;:&quot;omcproxy&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:4,&quot;range&quot;:&quot;2628-2916&quot;} -->
+<h3 class="sectionedit5" id="smcroute">smcroute</h3>
+<div class="level3">
+
+<p>
+smcroute is a static multicast router.  Rather than listening to MLD messages and setting up routes dynamically, the source and destinations are configured once and the traffic is always forwarded.
+</p>
+
+<p>
+This can be a robust alternative for networks where the multicast activity is relatively fixed, such as continuous streaming of security camera feeds or sensor data.  In these cases the ability to join and leave multicast groups is not particularly useful (since the receivers want to permanently be part of the multicast groups) so having smcroute forward the data at all times is not a drawback.
+</p>
+
+<p>
+On larger networks where bandwidth is limited so the multicast data should only be forwarded when someone is listening, one of the other programs that handle MLD messages is a better choice.
+</p>
+
+<p>
+Install smcroute:
+</p>
+<pre class="code bash">opkg <span class="kw2">install</span> smcroute</pre>
+
+<p>
+All configuration is done in <code>/etc/smcroute.conf</code>.  A basic configuration file looks like this:
+</p>
+<pre class="code"># Tell the kernel and any upstream switch we want these packets.
+mgroup from br-lan group ff05::/64
+
+# Specify where to forward packets in this multicast group.
+mroute from br-lan group ff05::/64 to wlan0</pre>
+
+<p>
+This will route all traffic coming in on the <code>br-lan</code> interface, which is being sent to any address in the <abbr title="Internet Protocol version 6">IPv6</abbr> multicast subnet <code>ff05::/64</code> and will forward the packets out the <code>wlan0</code> interface.  Note that all these are system interfaces (as shown with <code>ip addr</code>), not OpenWrt interfaces.
+</p>
+
+<p>
+smcroute can be started in debug mode during testing:
+</p>
+<pre class="code bash">service smcroute stop
+smcrouted <span class="re5">-n</span> <span class="re5">-l</span> debug</pre>
+
+<p>
+The <a href="https://github.com/troglobit/smcroute" class="urlextern" title="https://github.com/troglobit/smcroute" rel="ugc nofollow">project&#039;s GitHub page</a> has good documentation on the configuration file.
+</p>
+
+<p>
+Note that smcroute does not set promiscuous mode on the interface.  This means incoming multicast packets may not be visible to the machine and if so they cannot be forwarded.  The preferred solution is to add an <code>mgroup</code> directive to tell the kernel to subscribe to the group.  If the hardware is set correctly, this will enable only those packets to arrive on the machine.  If this does not work, you will need to go into the OpenWrt interface settings for the source interface and enable promiscuous mode.  This will deliver all network traffic to the system.  You can test if this is the problem by running <code>tcpdump</code> on the source interface, which enables promiscuous mode while it is running.  If multicast traffic is forwarded only while <code>tcpdump</code> is running, then promiscuous mode needs to be enabled for that interface.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;smcroute&quot;,&quot;hid&quot;:&quot;smcroute&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:5,&quot;range&quot;:&quot;2917-5481&quot;} -->
+<h2 class="sectionedit6" id="testing">Testing</h2>
+<div class="level2">
+
+<p>
+When testing multicast routing (e.g. with <code>ping</code>) ensure the <abbr title="Time To Live">TTL</abbr> is set larger than one.  By default all multicast packets have a <abbr title="Time To Live">TTL</abbr> of 1 which means they will not be routed at all.  The <code>-t</code> option for <code>ping</code> will do this, and other programs will have different options.
+</p>
+<pre class="code bash"><span class="kw2">ping</span> <span class="re5">-t</span> <span class="nu0">4</span> ff05::<span class="nu0">1</span></pre>
+
+<p>
+You can use <code>tcpdump</code> on the router at each hop to confirm multicast traffic is arriving and leaving on the correct interfaces.  If for example traffic should arrive on the <code>br-lan</code> interface and be forwarded to <code>wlan0</code>, ping packets can be examined like so:
+</p>
+<pre class="code bash">$ tcpdump <span class="re5">-nn</span> <span class="re5">-i</span> br-lan icmp6
+<span class="nu0">20</span>:<span class="nu0">38</span>:<span class="nu0">23.819226</span> IP6 <span class="nu0">2001</span>:db8::<span class="nu0">1</span> <span class="sy0">&gt;</span> ff08:<span class="nu0">1500</span>::<span class="nu0">1</span>: ICMP6, <span class="kw3">echo</span> request, <span class="kw2">seq</span> <span class="nu0">1</span>, length <span class="nu0">64</span>
+<span class="nu0">20</span>:<span class="nu0">38</span>:<span class="nu0">24.824981</span> IP6 <span class="nu0">2001</span>:db8::<span class="nu0">1</span> <span class="sy0">&gt;</span> ff08:<span class="nu0">1500</span>::<span class="nu0">1</span>: ICMP6, <span class="kw3">echo</span> request, <span class="kw2">seq</span> <span class="nu0">2</span>, length <span class="nu0">64</span></pre>
+
+<p>
+The fact that packets appear here confirms that they are making it onto the machine so the upstream network is configured correctly.  The same command can then be run on the output interface to make sure the packets are also being forwarded out again:
+</p>
+<pre class="code bash">$ tcpdump <span class="re5">-nn</span> <span class="re5">-i</span> wlan0 icmp6
+<span class="nu0">20</span>:<span class="nu0">38</span>:<span class="nu0">23.819226</span> IP6 <span class="nu0">2001</span>:db8::<span class="nu0">1</span> <span class="sy0">&gt;</span> ff08:<span class="nu0">1500</span>::<span class="nu0">1</span>: ICMP6, <span class="kw3">echo</span> request, <span class="kw2">seq</span> <span class="nu0">1</span>, length <span class="nu0">64</span>
+<span class="nu0">20</span>:<span class="nu0">38</span>:<span class="nu0">24.824981</span> IP6 <span class="nu0">2001</span>:db8::<span class="nu0">1</span> <span class="sy0">&gt;</span> ff08:<span class="nu0">1500</span>::<span class="nu0">1</span>: ICMP6, <span class="kw3">echo</span> request, <span class="kw2">seq</span> <span class="nu0">2</span>, length <span class="nu0">64</span></pre>
+
+<p>
+If these packets do not appear, the multicast daemon has not been configured correctly (or the <abbr title="Time To Live">TTL</abbr> is too low on the packets and they are being dropped at this node).
+</p>
+
+<p>
+If the multicast routes appear to work but only when <code>tcpdump</code> is running, try enabling “promiscuous mode” on that interface.  <code>tcpdump</code> enables this while it is running, and it may be required in order for multicast packets to arrive on the machine.  Ideally the switch hardware in the OpenWrt device will have MLD snooping enabled so that it can selectively receive multicast packets, however as of 2021 this functionality is not available, so receiving all packets via promiscuous mode is required.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Testing&quot;,&quot;hid&quot;:&quot;testing&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:6,&quot;range&quot;:&quot;5482-&quot;} -->

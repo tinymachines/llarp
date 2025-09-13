@@ -1,0 +1,127 @@
+
+<h1 class="sectionedit1" id="uci_defaults">UCI defaults</h1>
+<div class="level1">
+
+<p>
+See also: <a href="/docs/guide-user/base-system/uci" class="wikilink1" title="docs:guide-user:base-system:uci" data-wiki-id="docs:guide-user:base-system:uci">The UCI system</a>
+</p>
+
+<p>
+<em>OpenWrt</em> relies on UCI, the <em>Unified Configuration Interface</em>, to configure its core services.
+UCI defaults provides a way to preconfigure your images, using UCI.
+</p>
+
+<p>
+To set some system defaults the first time the device boots, create a script in the directory <code>/etc/uci-defaults</code>.
+</p>
+
+<p>
+All scripts in that directory are automatically executed by the <code>boot</code> service:
+</p>
+<ul>
+<li class="level1"><div class="li"> If they exit with code 0 they are deleted afterwards.</div>
+</li>
+<li class="level1"><div class="li"> Scripts that exit with non-zero exit code are not deleted and will be re-executed at the next boot until they also successfully exit.</div>
+</li>
+</ul>
+
+<p>
+In a live router you can see the existing UCI defaults scripts in <code>/rom/etc/uci-defaults</code> , as <code>/etc/uci-defaults</code> itself is typically empty (after all scripts have been run successfully and have been deleted).
+</p>
+
+<p>
+UCI defaults scripts can be created by packages or they can be inserted into the build manually as custom files.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;UCI defaults&quot;,&quot;hid&quot;:&quot;uci_defaults&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-985&quot;} -->
+<h2 class="sectionedit2" id="integrating_custom_settings">Integrating custom settings</h2>
+<div class="level2">
+
+<p>
+See also:
+<a href="/docs/guide-developer/toolchain/use-buildsystem#custom_files" class="wikilink1" title="docs:guide-developer:toolchain:use-buildsystem" data-wiki-id="docs:guide-developer:toolchain:use-buildsystem">Build system - Custom files</a>,
+<a href="/docs/guide-user/additional-software/imagebuilder#custom_files" class="wikilink1" title="docs:guide-user:additional-software:imagebuilder" data-wiki-id="docs:guide-user:additional-software:imagebuilder">Image builder - Custom files</a>
+</p>
+
+<p>
+Easiest way to include uci-defaults scripts in your firmware may be as custom files.
+You can preload custom settings by adding batch scripts containing UCI commands into the <code>/files/etc/uci-defaults</code> directory.
+The path is identical for the buildroot and the image generator.
+The scripts will be run <strong>after</strong> the flashing process - in case of upgrading, that also includes appending the existing configuration to the JFFS2 partition (mounted as <code>/overlay</code>).
+Scripts should not be executable.
+To ensure your scripts are not interfering with any other scripts, make sure they get executed last by giving them a high prefix (e.g. <em>xx_custom</em>).
+A basic script that creates the actual uci-defaults script could look like this:
+</p>
+<pre class="code bash"><span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>uci-defaults<span class="sy0">/</span><span class="nu0">99</span>-custom
+uci <span class="re5">-q</span> batch <span class="co2">&lt;&lt; EOI
+set network.lan.ipaddr='192.168.178.1'
+set wireless.@wifi-device[0].disabled='0'
+set wireless.@wifi-iface[0].ssid='OpenWrt0815'
+add dhcp host
+set dhcp.@host[-1].name='bellerophon'
+set dhcp.@host[-1].ip='192.168.2.100'
+set dhcp.@host[-1].mac='a1:b2:c3:d4:e5:f6'
+rename firewall.@zone[0]='lan'
+rename firewall.@zone[1]='wan'
+rename firewall.@forwarding[0]='lan_wan'
+EOI</span>
+EOF</pre>
+
+<p>
+Naturally the script can be created by any text editor, too.
+The uci-defaults script itself is:
+</p>
+<pre class="code bash">uci <span class="re5">-q</span> batch <span class="co2">&lt;&lt; EOI
+set network.lan.ipaddr='192.168.178.1'
+set wireless.@wifi-device[0].disabled='0'
+set wireless.@wifi-iface[0].ssid='OpenWrt0815'
+add dhcp host
+set dhcp.@host[-1].name='bellerophon'
+set dhcp.@host[-1].ip='192.168.2.100'
+set dhcp.@host[-1].mac='a1:b2:c3:d4:e5:f6'
+rename firewall.@zone[0]='lan'
+rename firewall.@zone[1]='wan'
+rename firewall.@forwarding[0]='lan_wan'
+EOI</span></pre>
+
+<p>
+This is a simple example to set up the <abbr title="Local Area Network">LAN</abbr> <abbr title="Internet Protocol">IP</abbr> address, SSID, enable Wi-Fi, configure a static <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> lease, rename firewall zone and forwarding sections.
+Once the script has run successfully and exited cleanly (exit status 0), it will be removed from <code>/etc/uci-defaults</code>.
+You can still consult the original in <code>/rom/etc/uci-defaults</code> if needed.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Integrating custom settings&quot;,&quot;hid&quot;:&quot;integrating_custom_settings&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;986-3265&quot;} -->
+<h2 class="sectionedit3" id="ensuring_scripts_don_t_overwrite_custom_settingsimplementing_checks">Ensuring scripts don’t overwrite custom settings: implementing checks</h2>
+<div class="level2">
+
+<p>
+Scripts in <code>/etc/uci-defaults</code> will get executed at every first boot (i.e. after a clean install or an upgrade), possibly overwriting already existing values.
+If this behaviour is undesired, we recommend you implement a test at the top of your script - e.g. probe for a custom setting your script would normally configure:
+</p>
+<pre class="code bash"><span class="br0">&#91;</span> <span class="st0">&quot;<span class="es4">$(uci -q get system.@system[0].zonename)</span>&quot;</span> = <span class="st0">&quot;America/New York&quot;</span> <span class="br0">&#93;</span> <span class="sy0">&amp;&amp;</span> <span class="kw3">exit</span> <span class="nu0">0</span></pre>
+
+<p>
+This will make sure, when the key has the correct value set, that the script exits cleanly and gets removed from <code>/etc/uci-defaults</code> as explained above.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Ensuring scripts don\u2019t overwrite custom settings: implementing checks&quot;,&quot;hid&quot;:&quot;ensuring_scripts_don_t_overwrite_custom_settingsimplementing_checks&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:3,&quot;range&quot;:&quot;3266-3930&quot;} -->
+<h2 class="sectionedit4" id="examples">Examples</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/additional-software/imagebuilder#restricting_root_access" class="wikilink1" title="docs:guide-user:additional-software:imagebuilder" data-wiki-id="docs:guide-user:additional-software:imagebuilder">Restricting root access</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/openwrt/openwrt/tree/master/package/base-files/files/etc/uci-defaults" class="urlextern" title="https://github.com/openwrt/openwrt/tree/master/package/base-files/files/etc/uci-defaults" rel="ugc nofollow">uci-defaults @ base-files</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/freifunk-berlin/firmware-packages/tree/master/defaults" class="urlextern" title="https://github.com/freifunk-berlin/firmware-packages/tree/master/defaults" rel="ugc nofollow">uci-defaults @ Freifunk Berlin</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/ffulm/firmware/blob/master/files/etc/uci-defaults/50_freifunk-setup" class="urlextern" title="https://github.com/ffulm/firmware/blob/master/files/etc/uci-defaults/50_freifunk-setup" rel="ugc nofollow">uci-defaults @ Freifunk Ulm</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/richb-hanover/OpenWrtScripts/blob/main/config-openwrt.sh" class="urlextern" title="https://github.com/richb-hanover/OpenWrtScripts/blob/main/config-openwrt.sh" rel="ugc nofollow">config-openwrt @ richb-hanover</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Examples&quot;,&quot;hid&quot;:&quot;examples&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:4,&quot;range&quot;:&quot;3931-&quot;} -->

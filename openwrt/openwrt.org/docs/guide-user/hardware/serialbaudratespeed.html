@@ -1,0 +1,160 @@
+
+<h1 class="sectionedit1" id="change_uart_serial_port_speed_baud_rate_on_openwrt">Change UART serial port speed (baud rate) on OpenWrt</h1>
+<div class="level1">
+
+<p>
+<strong>Related documentation:</strong>
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="/docs/techref/hardware/port.serial" class="wikilink1" title="docs:techref:hardware:port.serial" data-wiki-id="docs:techref:hardware:port.serial">port.serial</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/techref/bootloader/uboot.config" class="wikilink1" title="docs:techref:bootloader:uboot.config" data-wiki-id="docs:techref:bootloader:uboot.config">uboot.config</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/ticket/1509" class="urlextern" title="https://dev.openwrt.org/ticket/1509" rel="ugc nofollow">https://dev.openwrt.org/ticket/1509</a></div>
+</li>
+</ul>
+
+<p>
+I saw a lot of forum questions asking “how to change serial port speed”, and I thought it was easy, but it is not that easy.
+</p>
+
+<p>
+OpenWrt has uart serial port baudrade speed set via kernel command line option, so it is hardwired into kernel, and as far as I know this method is the only way to change baudrate speed of serial port.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Change UART serial port speed (baud rate) on OpenWrt&quot;,&quot;hid&quot;:&quot;change_uart_serial_port_speed_baud_rate_on_openwrt&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-557&quot;} -->
+<h2 class="sectionedit2" id="if_you_are_lucky">If you are lucky</h2>
+<div class="level2">
+
+<p>
+If you are lucky maybe your kernel supports changing serial port speeds, then you can just try <code>stty</code> or <code>mgetty</code> commands:
+</p>
+<pre class="code">mgetty -s 19200 /dev/ttyS0 </pre>
+
+<p>
+OR
+</p>
+<pre class="code">stty -F /dev/ttyS0 9600 clocal cread cs8 -cstopb -parenb </pre>
+
+<p>
+For reading serial port settings use:
+</p>
+<pre class="code">stty -F /dev/ttyS0 -a </pre>
+
+<p>
+In recent builds, you can easilly install stty from packages as follows:
+</p>
+<pre class="code">opkg update
+opkg install coreutils-stty</pre>
+
+<p>
+You will find stty in your menuconfig under
+</p>
+<pre class="code">Base system -&gt; busybox -&gt; Coreutils -&gt; stty</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;If you are lucky&quot;,&quot;hid&quot;:&quot;if_you_are_lucky&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;558-1131&quot;} -->
+<h2 class="sectionedit3" id="first_method">First method</h2>
+<div class="level2">
+
+<p>
+For example for TP-Link WR741ND V4.x it is set to: “console=ttyATH0,115200”
+</p>
+
+<p>
+Now the question is how to change this kernel command line, only way to do this is to compile your own kernel with different “console=” line.
+</p>
+
+<p>
+First you need to know which speed you need to set. In this example we use TP-LINK WR741ND which uses has it&#039;s uart serial port baudrate speed set to 115200 and we need to change it to 19200.
+</p>
+
+<p>
+First check check what baudrate and which port your current router uses, telnet or ssh to your router and then find out your current settings. Usual uart serial ports are <code>ttyS0</code> or <code>ttyATH0</code>.
+</p>
+
+<p>
+Use these command to check your serial port settings
+</p>
+<ul>
+<li class="level1 node"><div class="li"> <code>fw_printenv</code></div>
+<ul>
+<li class="level2"><div class="li"> baudrate=115200</div>
+</li>
+<li class="level2"><div class="li"> console=console=ttyS0,115200</div>
+</li>
+</ul>
+</li>
+<li class="level1 node"><div class="li"> OR: <code>logread | grep tty</code></div>
+<ul>
+<li class="level2"><div class="li"> ...</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+find where is your config file:
+</p>
+<ul>
+<li class="level1"><div class="li"> grep ttyATH0 ./trunk/target/linux/ar71xx/ -R</div>
+</li>
+</ul>
+
+<p>
+edit file before <a href="/docs/guide-developer/toolchain/start" class="wikilink1" title="docs:guide-developer:toolchain:start" data-wiki-id="docs:guide-developer:toolchain:start">building</a> your own image:
+</p>
+<ul>
+<li class="level1"><div class="li"> ./trunk/target/linux/ar71xx/image/Makefile</div>
+</li>
+</ul>
+
+<p>
+find line for your modem:
+</p>
+<ul>
+<li class="level1"><div class="li"> tlwr740_cmdline=board=TL-WR741ND console=ttyS0,115200</div>
+</li>
+<li class="level1"><div class="li"> tlwr740v4_cmdline=board=TL-WR741ND-v4 console=ttyATH0,115200</div>
+</li>
+</ul>
+
+<p>
+Change “console=ttyATH0,115200” to speed you need:
+</p>
+<ul>
+<li class="level1"><div class="li"> tlwr740_cmdline=board=TL-WR741ND console=ttyS0,19200</div>
+</li>
+<li class="level1"><div class="li"> tlwr740v4_cmdline=board=TL-WR741ND-v4 console=ttyATH0,19200</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;First method&quot;,&quot;hid&quot;:&quot;first_method&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:3,&quot;range&quot;:&quot;1132-2477&quot;} -->
+<h2 class="sectionedit4" id="second_method">Second method</h2>
+<div class="level2">
+
+<p>
+You can change the Kernel command line within kernel_menuconfig:
+</p>
+<ul>
+<li class="level1"><div class="li"> kernel_menuconfig &gt; Kernel hacking &gt; Default kernel command string</div>
+</li>
+</ul>
+
+<p>
+Then you have to recompile the Kernel with &#039;make target/clean world&#039; and reflash.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Second method&quot;,&quot;hid&quot;:&quot;second_method&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:4,&quot;range&quot;:&quot;2478-2726&quot;} -->
+<h2 class="sectionedit5" id="forum_discussion">Forum discussion</h2>
+<div class="level2">
+
+<p>
+<a href="https://forum.openwrt.org/viewtopic.php?id=38419" class="urlextern" title="https://forum.openwrt.org/viewtopic.php?id=38419" rel="ugc nofollow">https://forum.openwrt.org/viewtopic.php?id=38419</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Forum discussion&quot;,&quot;hid&quot;:&quot;forum_discussion&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:5,&quot;range&quot;:&quot;2727-&quot;} -->

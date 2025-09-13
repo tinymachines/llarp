@@ -1,0 +1,407 @@
+
+<h1 class="sectionedit1" id="wireguard_server">WireGuard server</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__meta:infobox:howto_links">
+<div class="level1">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_info plugin_wrap">
+<p>
+This article relies on the following:
+</p>
+<ul>
+<li class="level1"><div class="li"> Accessing <a href="/docs/guide-quick-start/walkthrough_login" class="wikilink1" title="docs:guide-quick-start:walkthrough_login" data-wiki-id="docs:guide-quick-start:walkthrough_login">web interface</a> / <a href="/docs/guide-quick-start/sshadministration" class="wikilink1" title="docs:guide-quick-start:sshadministration" data-wiki-id="docs:guide-quick-start:sshadministration">command-line interface</a></div>
+</li>
+<li class="level1"><div class="li"> Managing <a href="/docs/guide-user/base-system/uci" class="wikilink1" title="docs:guide-user:base-system:uci" data-wiki-id="docs:guide-user:base-system:uci">configs</a> / <a href="/docs/guide-user/additional-software/managing_packages" class="wikilink1" title="docs:guide-user:additional-software:managing_packages" data-wiki-id="docs:guide-user:additional-software:managing_packages">packages</a> / <a href="/docs/guide-user/base-system/managing_services" class="wikilink1" title="docs:guide-user:base-system:managing_services" data-wiki-id="docs:guide-user:base-system:managing_services">services</a> / <a href="/docs/guide-user/base-system/log.essentials" class="wikilink1" title="docs:guide-user:base-system:log.essentials" data-wiki-id="docs:guide-user:base-system:log.essentials">logs</a></div>
+</li>
+</ul>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;WireGuard server&quot;,&quot;hid&quot;:&quot;wireguard_server&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-113&quot;} -->
+<h2 class="sectionedit6" id="introduction">Introduction</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> This how-to describes the method for setting up <a href="https://en.wikipedia.org/wiki/WireGuard" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/WireGuard">WireGuard</a> server on OpenWrt.</div>
+</li>
+<li class="level1"><div class="li"> Follow <a href="/docs/guide-user/services/vpn/wireguard/client" class="wikilink1" title="docs:guide-user:services:vpn:wireguard:client" data-wiki-id="docs:guide-user:services:vpn:wireguard:client">WireGuard client</a> for client setup and <a href="/docs/guide-user/services/vpn/wireguard/extras" class="wikilink1" title="docs:guide-user:services:vpn:wireguard:extras" data-wiki-id="docs:guide-user:services:vpn:wireguard:extras">WireGuard extras</a> for additional tuning.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Introduction&quot;,&quot;hid&quot;:&quot;introduction&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;114-426&quot;} -->
+<h2 class="sectionedit7" id="goals">Goals</h2>
+<div class="level2">
+<ul>
+<li class="level1 node"><div class="li"> Encrypt your internet connection to enforce security and privacy.</div>
+<ul>
+<li class="level2"><div class="li"> Prevent traffic leaks and spoofing on the client side.</div>
+</li>
+</ul>
+</li>
+<li class="level1 node"><div class="li"> Bypass regional restrictions using commercial providers.</div>
+<ul>
+<li class="level2"><div class="li"> Escape client side content filters and internet censorship.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Access your <abbr title="Local Area Network">LAN</abbr> services remotely without port forwarding.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Goals&quot;,&quot;hid&quot;:&quot;goals&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;427-766&quot;} -->
+<h2 class="sectionedit8" id="command-line_instructions">Command-line instructions</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Command-line instructions&quot;,&quot;hid&quot;:&quot;command-line_instructions&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:8,&quot;range&quot;:&quot;767-804&quot;} -->
+<h3 class="sectionedit9" id="preparation">1. Preparation</h3>
+<div class="level3">
+
+<p>
+Install the required packages.
+Specify configuration parameters for <abbr title="Virtual Private Network">VPN</abbr> server.
+</p>
+<pre class="code bash"><span class="co0"># Install packages</span>
+opkg update
+opkg <span class="kw2">install</span> wireguard-tools
+&nbsp;
+<span class="co0"># Configuration parameters</span>
+<span class="re2">VPN_IF</span>=<span class="st0">&quot;vpn&quot;</span>
+<span class="re2">VPN_PORT</span>=<span class="st0">&quot;51820&quot;</span>
+<span class="re2">VPN_ADDR</span>=<span class="st0">&quot;192.168.9.1/24&quot;</span>
+<span class="re2">VPN_ADDR6</span>=<span class="st0">&quot;fd00:9::1/64&quot;</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;1. Preparation&quot;,&quot;hid&quot;:&quot;preparation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:9,&quot;range&quot;:&quot;805-1100&quot;} -->
+<h3 class="sectionedit10" id="key_management">2. Key management</h3>
+<div class="level3">
+
+<p>
+Generate and <a href="/docs/guide-user/services/vpn/wireguard/basics#key_management" class="wikilink1" title="docs:guide-user:services:vpn:wireguard:basics" data-wiki-id="docs:guide-user:services:vpn:wireguard:basics">exchange keys</a> between server and client.
+</p>
+<pre class="code bash"><span class="co0"># Generate keys</span>
+<span class="kw3">umask</span> <span class="re2">go</span>=
+wg genkey <span class="sy0">|</span> <span class="kw2">tee</span> wgserver.key <span class="sy0">|</span> wg pubkey <span class="sy0">&gt;</span> wgserver.pub
+wg genkey <span class="sy0">|</span> <span class="kw2">tee</span> wgclient.key <span class="sy0">|</span> wg pubkey <span class="sy0">&gt;</span> wgclient.pub
+wg genpsk <span class="sy0">&gt;</span> wgclient.psk
+&nbsp;
+<span class="co0"># Server private key</span>
+<span class="re2">VPN_KEY</span>=<span class="st0">&quot;<span class="es4">$(cat wgserver.key)</span>&quot;</span>
+&nbsp;
+<span class="co0"># Pre-shared key</span>
+<span class="re2">VPN_PSK</span>=<span class="st0">&quot;<span class="es4">$(cat wgclient.psk)</span>&quot;</span>
+&nbsp;
+<span class="co0"># Client public key</span>
+<span class="re2">VPN_PUB</span>=<span class="st0">&quot;<span class="es4">$(cat wgclient.pub)</span>&quot;</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;2. Key management&quot;,&quot;hid&quot;:&quot;key_management&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:10,&quot;range&quot;:&quot;1101-1583&quot;} -->
+<h3 class="sectionedit11" id="firewall">3. Firewall</h3>
+<div class="level3">
+
+<p>
+Consider <abbr title="Virtual Private Network">VPN</abbr> network as private.
+Assign <abbr title="Virtual Private Network">VPN</abbr> interface to <abbr title="Local Area Network">LAN</abbr> zone to minimize firewall setup.
+Allow access to <abbr title="Virtual Private Network">VPN</abbr> server from <abbr title="Wide Area Network">WAN</abbr> zone.
+</p>
+<pre class="code bash"><span class="co0"># Configure firewall</span>
+uci rename firewall.<span class="sy0">@</span>zone<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>=<span class="st0">&quot;lan&quot;</span>
+uci rename firewall.<span class="sy0">@</span>zone<span class="br0">&#91;</span><span class="nu0">1</span><span class="br0">&#93;</span>=<span class="st0">&quot;wan&quot;</span>
+uci del_list firewall.lan.network=<span class="st0">&quot;<span class="es3">${VPN_IF}</span>&quot;</span>
+uci add_list firewall.lan.network=<span class="st0">&quot;<span class="es3">${VPN_IF}</span>&quot;</span>
+uci <span class="re5">-q</span> delete firewall.wg
+uci <span class="kw1">set</span> firewall.wg=<span class="st0">&quot;rule&quot;</span>
+uci <span class="kw1">set</span> firewall.wg.name=<span class="st0">&quot;Allow-WireGuard&quot;</span>
+uci <span class="kw1">set</span> firewall.wg.src=<span class="st0">&quot;wan&quot;</span>
+uci <span class="kw1">set</span> firewall.wg.dest_port=<span class="st0">&quot;<span class="es3">${VPN_PORT}</span>&quot;</span>
+uci <span class="kw1">set</span> firewall.wg.proto=<span class="st0">&quot;udp&quot;</span>
+uci <span class="kw1">set</span> firewall.wg.target=<span class="st0">&quot;ACCEPT&quot;</span>
+uci commit firewall
+service firewall restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;3. Firewall&quot;,&quot;hid&quot;:&quot;firewall&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:11,&quot;range&quot;:&quot;1584-2229&quot;} -->
+<h3 class="sectionedit12" id="network">4. Network</h3>
+<div class="level3">
+
+<p>
+Configure <abbr title="Virtual Private Network">VPN</abbr> interface and peers.
+</p>
+<pre class="code bash"><span class="co0"># Configure network</span>
+uci <span class="re5">-q</span> delete network.<span class="co1">${VPN_IF}</span>
+uci <span class="kw1">set</span> network.<span class="co1">${VPN_IF}</span>=<span class="st0">&quot;interface&quot;</span>
+uci <span class="kw1">set</span> network.<span class="co1">${VPN_IF}</span>.proto=<span class="st0">&quot;wireguard&quot;</span>
+uci <span class="kw1">set</span> network.<span class="co1">${VPN_IF}</span>.private_key=<span class="st0">&quot;<span class="es3">${VPN_KEY}</span>&quot;</span>
+uci <span class="kw1">set</span> network.<span class="co1">${VPN_IF}</span>.listen_port=<span class="st0">&quot;<span class="es3">${VPN_PORT}</span>&quot;</span>
+uci add_list network.<span class="co1">${VPN_IF}</span>.addresses=<span class="st0">&quot;<span class="es3">${VPN_ADDR}</span>&quot;</span>
+uci add_list network.<span class="co1">${VPN_IF}</span>.addresses=<span class="st0">&quot;<span class="es3">${VPN_ADDR6}</span>&quot;</span>
+&nbsp;
+<span class="co0"># Add VPN peers</span>
+uci <span class="re5">-q</span> delete network.wgclient
+uci <span class="kw1">set</span> network.wgclient=<span class="st0">&quot;wireguard_<span class="es3">${VPN_IF}</span>&quot;</span>
+uci <span class="kw1">set</span> network.wgclient.public_key=<span class="st0">&quot;<span class="es3">${VPN_PUB}</span>&quot;</span>
+uci <span class="kw1">set</span> network.wgclient.preshared_key=<span class="st0">&quot;<span class="es3">${VPN_PSK}</span>&quot;</span>
+uci add_list network.wgclient.allowed_ips=<span class="st0">&quot;<span class="es3">${VPN_ADDR%.*}</span>.2/32&quot;</span>
+uci add_list network.wgclient.allowed_ips=<span class="st0">&quot;<span class="es3">${VPN_ADDR6%:*}</span>:2/128&quot;</span>
+uci commit network
+service network restart</pre>
+<hr />
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;4. Network&quot;,&quot;hid&quot;:&quot;network&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:12,&quot;range&quot;:&quot;2230-3031&quot;} -->
+<h2 class="sectionedit13" id="luci_web_interface_instructions">LuCI Web Interface instructions</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;LuCI Web Interface instructions&quot;,&quot;hid&quot;:&quot;luci_web_interface_instructions&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:13,&quot;range&quot;:&quot;3032-3075&quot;} -->
+<h3 class="sectionedit14" id="installing_packages">1. Installing packages</h3>
+<div class="level3">
+
+<p>
+Navigate to <strong>LuCI → System → Software</strong> and install the package <a href="/packages/pkgdata/luci-proto-wireguard" class="wikilink1" title="packages:pkgdata:luci-proto-wireguard" data-wiki-id="packages:pkgdata:luci-proto-wireguard">luci-proto-wireguard</a>.
+</p>
+
+<p>
+Optionally install the package <a href="/packages/pkgdata/qrencode" class="wikilink1" title="packages:pkgdata:qrencode" data-wiki-id="packages:pkgdata:qrencode">qrencode</a> to allow creation of a QR code when creating a peer configuration for simple import onto a phone wireguard client.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;1. Installing packages&quot;,&quot;hid&quot;:&quot;installing_packages&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:14,&quot;range&quot;:&quot;3076-3396&quot;} -->
+<h3 class="sectionedit15" id="restarting_services">2. Restarting services</h3>
+<div class="level3">
+
+<p>
+Navigate to <strong>LuCI → System → Startup → Initscripts</strong> and click on <strong>network → Restart</strong>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;2. Restarting services&quot;,&quot;hid&quot;:&quot;restarting_services&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:15,&quot;range&quot;:&quot;3397-3524&quot;} -->
+<h3 class="sectionedit16" id="add_wireguard_network_interface">3. Add WireGuard Network Interface</h3>
+<div class="level3">
+
+<p>
+To create a new WireGuard interface go to <strong>LuCI → Network → Interfaces → Add new interface...</strong>
+</p>
+<ul>
+<li class="level1"><div class="li"> Select <strong>WireGuard <abbr title="Virtual Private Network">VPN</abbr></strong> from the <strong>Protocol</strong> dropdown menu.</div>
+</li>
+<li class="level1"><div class="li"> Name the interface <strong>wg0</strong> (or whatever is preferred)</div>
+</li>
+<li class="level1"><div class="li"> Click on <strong>Create Interface</strong> to create it and open it for editing</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;3. Add WireGuard Network Interface&quot;,&quot;hid&quot;:&quot;add_wireguard_network_interface&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:16,&quot;range&quot;:&quot;3525-3869&quot;} -->
+<h3 class="sectionedit17" id="configure_the_wireguard_network_interface">4. Configure the WireGuard Network Interface</h3>
+<div class="level3">
+
+<p>
+In the open edit window of the interface configure the following:
+</p>
+<ul>
+<li class="level1"><div class="li"> Click on <strong>Generate new key pair</strong> to populate the private and public keys</div>
+</li>
+<li class="level1"><div class="li"> Listen port: <strong>51820</strong> or preferred port</div>
+</li>
+<li class="level1"><div class="li"> <abbr title="Internet Protocol">IP</abbr> addresses: 10.0.0.1/24 or preferred internal <abbr title="Virtual Private Network">VPN</abbr> <abbr title="Internet Protocol version 4">IPv4</abbr> address for the WireGuard server interface end of the <abbr title="Virtual Private Network">VPN</abbr></div>
+</li>
+<li class="level1"><div class="li"> Save this configuration</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;4. Configure the WireGuard Network Interface&quot;,&quot;hid&quot;:&quot;configure_the_wireguard_network_interface&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:17,&quot;range&quot;:&quot;3870-4265&quot;} -->
+<h3 class="sectionedit18" id="configure_wireguard_peers">5. Configure WireGuard Peers</h3>
+<div class="level3">
+
+<p>
+To create a new WireGuard peer configuration go to <strong>LuCI → Network → Interfaces → wg0 → Edit → Peers</strong>
+</p>
+<ul>
+<li class="level1"><div class="li"> Click on <strong>Add peer</strong></div>
+</li>
+<li class="level1"><div class="li"> Click on <strong>Generate new key pair</strong> to populate the public and private key fields</div>
+</li>
+<li class="level1"><div class="li"> Allowed IPs: 10.0.0.10/24 or other address in <abbr title="Internet Protocol">IP</abbr> range being used</div>
+</li>
+<li class="level1"><div class="li"> Enable <strong>Route allowed IPs</strong></div>
+</li>
+<li class="level1"><div class="li"> Endpoint port: 51820</div>
+</li>
+<li class="level1"><div class="li"> Persistent Keep Alive: 25</div>
+</li>
+<li class="level1"><div class="li"> Save</div>
+</li>
+</ul>
+
+<p>
+Click on <strong>Edit</strong> for the peer just created
+</p>
+<ul>
+<li class="level1"><div class="li"> Click on <strong>Generate configuration...</strong> and under Connection endpoint select:</div>
+</li>
+<li class="level1"><div class="li">   * If connecting from a publicly accessible <abbr title="Internet Protocol version 4">IPv4</abbr> address the router wan interface <abbr title="Internet Protocol version 4">IPv4</abbr> address</div>
+</li>
+<li class="level1"><div class="li">   * If connecting from a publicly accessible <abbr title="Internet Protocol version 6">IPv6</abbr> address the router wan interface <abbr title="Internet Protocol version 6">IPv6</abbr> address</div>
+</li>
+<li class="level1"><div class="li">   * If using a publicly accessible hostname enter as a custom entry</div>
+</li>
+</ul>
+
+<p>
+To transfer the peer configuration to the client device either:
+</p>
+<ul>
+<li class="level1"><div class="li"> Use a Wireguard client on a phone / tablet that can scan the generated QR code or</div>
+</li>
+<li class="level1"><div class="li"> Copy and paste the generated configuration data into a device.conf file for import into a WireGuard client     </div>
+</li>
+</ul>
+
+<p>
+Go to <strong>LuCI → Network → Interfaces</strong> and restart the <strong>wg0 interface</strong>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;5. Configure WireGuard Peers&quot;,&quot;hid&quot;:&quot;configure_wireguard_peers&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:18,&quot;range&quot;:&quot;4266-5440&quot;} -->
+<h3 class="sectionedit19" id="configure_firewall_for_wireguard_traffic">6. Configure Firewall for WireGuard traffic</h3>
+<div class="level3">
+
+<p>
+Go to <strong>LuCI → Network → Firewall → General Settings</strong> and under <strong>Zones</strong> add a new zone:
+</p>
+<ul>
+<li class="level1"><div class="li"> Name: <strong>WireguardVPN</strong> (or preferred name)</div>
+</li>
+<li class="level1"><div class="li"> Input: <strong>accept</strong></div>
+</li>
+<li class="level1"><div class="li"> Output: <strong>accept</strong></div>
+</li>
+<li class="level1"><div class="li"> Intra zone forward: <strong>accept</strong></div>
+</li>
+<li class="level1"><div class="li"> Masquerading: <strong>checked</strong></div>
+</li>
+<li class="level1"><div class="li"> MSS Clamping: <strong>checked</strong></div>
+</li>
+<li class="level1"><div class="li"> Covered networks: <strong>wg0</strong></div>
+</li>
+<li class="level1"><div class="li"> Allow forward to destination zones: <strong>lan and wan</strong></div>
+</li>
+<li class="level1"><div class="li"> Allow forward from source zones: <strong>lan</strong></div>
+</li>
+<li class="level1"><div class="li"> Save</div>
+</li>
+</ul>
+
+<p>
+Create rule to allow <abbr title="Internet Protocol version 4">IPv4</abbr> &amp; <abbr title="Internet Protocol version 6">IPv6</abbr> traffic through from internet for connecting from client device using <abbr title="Internet Protocol version 4">IPv4</abbr> (if router has public <abbr title="Internet Protocol version 4">IPv4</abbr> address) or from client device using <abbr title="Internet Protocol version 6">IPv6</abbr> (if router has public <abbr title="Internet Protocol version 6">IPv6</abbr> address available).
+</p>
+
+<p>
+Go to <strong>LuCI → Network → Firewall → Traffic Rules</strong>
+</p>
+<ul>
+<li class="level1"><div class="li"> Name: <strong>WireGuard-incoming</strong> (or preferred name)</div>
+</li>
+<li class="level1"><div class="li"> Protocol: <strong><abbr title="User Datagram Protocol">UDP</abbr></strong></div>
+</li>
+<li class="level1"><div class="li"> Source zone: <strong>wan</strong></div>
+</li>
+<li class="level1"><div class="li"> Source address: <strong>-- add <abbr title="Internet Protocol">IP</abbr> --</strong></div>
+</li>
+<li class="level1"><div class="li"> Source port: <strong>any</strong></div>
+</li>
+<li class="level1"><div class="li"> Destination zone: <strong>Device</strong></div>
+</li>
+<li class="level1"><div class="li"> Destination address: <strong>-- add <abbr title="Internet Protocol">IP</abbr>--</strong></div>
+</li>
+<li class="level1"><div class="li"> Destination port: <strong>51820</strong></div>
+</li>
+<li class="level1"><div class="li"> Action: <strong>accept</strong></div>
+</li>
+<li class="level1"><div class="li"> Save, Save &amp; apply</div>
+</li>
+</ul>
+
+<p>
+Note: If only <abbr title="Internet Protocol version 4">IPv4</abbr> is being used to connect to the WireGuard server the above firewall traffic rule could be replaced with a <strong>Port Forward</strong> rule instead.
+</p>
+
+<p>
+If you have an upstream <abbr title="Internet Service Provider">ISP</abbr> router between the Openwrt router configured as a WireGuard server and the internet then port 51820 will also need to be opened up for <abbr title="Internet Protocol version 4">IPv4</abbr>/<abbr title="Internet Protocol version 6">IPv6</abbr> traffic to the Openwrt router. 
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;6. Configure Firewall for WireGuard traffic&quot;,&quot;hid&quot;:&quot;configure_firewall_for_wireguard_traffic&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:19,&quot;range&quot;:&quot;5441-6876&quot;} -->
+<h2 class="sectionedit20" id="testing">Testing</h2>
+<div class="level2">
+
+<p>
+Establish the <abbr title="Virtual Private Network">VPN</abbr> connection.
+Verify your routing with <a href="http://man.cx/traceroute%288%29" class="interwiki iw_man" title="http://man.cx/traceroute%288%29">traceroute</a> and <a href="http://man.cx/traceroute6%288%29" class="interwiki iw_man" title="http://man.cx/traceroute6%288%29">traceroute6</a>.
+</p>
+<pre class="code bash">traceroute openwrt.org
+traceroute6 openwrt.org</pre>
+
+<p>
+Check your <abbr title="Internet Protocol">IP</abbr> and <abbr title="Domain Name System">DNS</abbr> provider.
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="https://ipleak.net/" class="urlextern" title="https://ipleak.net/" rel="ugc nofollow">ipleak.net</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://www.dnsleaktest.com/" class="urlextern" title="https://www.dnsleaktest.com/" rel="ugc nofollow">dnsleaktest.com</a></div>
+</li>
+</ul>
+
+<p>
+On router:
+</p>
+<ul>
+<li class="level1"><div class="li"> Go to <strong>LuCI &gt; Status &gt; Wireguard</strong> and look for peer device connected with an <abbr title="Internet Protocol version 4">IPv4</abbr> or <abbr title="Internet Protocol version 6">IPv6</abbr> address and with a recent handshake time</div>
+</li>
+<li class="level1"><div class="li"> Go to <strong>LuCI &gt; Network &gt; Diagnostics</strong> and <strong>ipv4 ping</strong> client device <abbr title="Internet Protocol">IP</abbr> eg. 10.0.0.10</div>
+</li>
+</ul>
+
+<p>
+On client device depending on wireguard software:
+</p>
+<ul>
+<li class="level1"><div class="li"> Check transfer traffic for tx &amp; rx</div>
+</li>
+<li class="level1"><div class="li"> Ping router internal lan <abbr title="Internet Protocol">IP</abbr></div>
+</li>
+<li class="level1"><div class="li"> Check public <abbr title="Internet Protocol">IP</abbr> address in a browser – <a href="https://whatsmyip.com" class="urlextern" title="https://whatsmyip.com" rel="ugc nofollow">https://whatsmyip.com</a> – should see public <abbr title="Internet Protocol">IP</abbr> address of <abbr title="Internet Service Provider">ISP</abbr> for the router</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Testing&quot;,&quot;hid&quot;:&quot;testing&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:20,&quot;range&quot;:&quot;6877-7705&quot;} -->
+<h2 class="sectionedit21" id="troubleshooting">Troubleshooting</h2>
+<div class="level2">
+
+<p>
+Collect and analyze the following information.
+</p>
+<pre class="code bash"><span class="co0"># Restart services</span>
+service log restart; service network restart; <span class="kw2">sleep</span> <span class="nu0">10</span>
+&nbsp;
+<span class="co0"># Log and status</span>
+logread <span class="re5">-e</span> vpn; <span class="kw2">netstat</span> <span class="re5">-l</span> <span class="re5">-n</span> <span class="re5">-p</span> <span class="sy0">|</span> <span class="kw2">grep</span> <span class="re5">-e</span> <span class="st0">&quot;^udp\s.*\s-$&quot;</span>
+&nbsp;
+<span class="co0"># Runtime configuration</span>
+pgrep <span class="re5">-f</span> <span class="re5">-a</span> wg; wg show; wg showconf wg0
+<span class="kw2">ip</span> address show; <span class="kw2">ip route</span> show table all
+<span class="kw2">ip rule</span> show; <span class="kw2">ip</span> <span class="re5">-6</span> rule show; nft list ruleset
+&nbsp;
+<span class="co0"># Persistent configuration</span>
+uci show network; uci show firewall; crontab <span class="re5">-l</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Troubleshooting&quot;,&quot;hid&quot;:&quot;troubleshooting&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:21,&quot;range&quot;:&quot;7706-&quot;} -->

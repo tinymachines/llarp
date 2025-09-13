@@ -1,0 +1,202 @@
+
+<h1 class="sectionedit1" id="docker_openwrt_image_generation">Docker OpenWrt Image Generation</h1>
+<div class="level1">
+
+<p>
+See also <a href="/docs/guide-user/virtualization/docker_openwrt_image" class="wikilink1" title="docs:guide-user:virtualization:docker_openwrt_image" data-wiki-id="docs:guide-user:virtualization:docker_openwrt_image">Docker OpenWrt Image</a>
+</p>
+
+<p>
+You can use a premade <a href="https://www.docker.io/" class="urlextern" title="https://www.docker.io/" rel="ugc nofollow">Docker</a> image to build yourself an OpenWrt firmware image. A list of known such Docker images (see instructions how to use them on their pages):
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="https://github.com/openwrt/docker" class="urlextern" title="https://github.com/openwrt/docker" rel="ugc nofollow">Official OpenWRT Docker images</a> which can be pulled from <a href="https://hub.docker.com/r/openwrt" class="urlextern" title="https://hub.docker.com/r/openwrt" rel="ugc nofollow">Docker hub</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/noonien/docker-openwrt-buildroot" class="urlextern" title="https://github.com/noonien/docker-openwrt-buildroot" rel="ugc nofollow">noonien/docker-openwrt-buildroot</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/galalmounir/openwrt-image-builder" class="urlextern" title="https://github.com/galalmounir/openwrt-image-builder" rel="ugc nofollow">galalmounir/openwrt-image-builder</a></div>
+</li>
+<li class="level1"><div class="li"> <em>wlan slovenija</em> <a href="https://github.com/wlanslovenija/firmware-core" class="urlextern" title="https://github.com/wlanslovenija/firmware-core" rel="ugc nofollow">image generator</a></div>
+</li>
+<li class="level1"><div class="li"> Roll your own using either Alpine or Debian containerfiles.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Docker OpenWrt Image Generation&quot;,&quot;hid&quot;:&quot;docker_openwrt_image_generation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-816&quot;} -->
+<h2 class="sectionedit2" id="building_openwrt_using_docker">Building OpenWRT using Docker</h2>
+<div class="level2">
+
+<p>
+First, an image needs to be obtained. Lets start with the most basic example, where a custom container is build. This can be skipped by instead pulling one of the OpenWRT containers from a container registry.
+</p>
+<div class="hiddenGlobal  hiddenActive"><div class="hiddenElements"></div><div class="hiddenHead  hiddenSinceBeginning"><div class="hiddenOnHidden">
+<p>
+Alpine Container
+</p>
+</div><div class="hiddenOnVisible">
+<p>
+Alpine Container
+</p>
+</div></div> <!-- .hiddenHead --><div class="hiddenBody"><dl class="code">
+<dt><a href="/_export/code/docs/guide-user/virtualization/obtain.firmware.docker?codeblock=0" title="Download Snippet" class="mediafile mf_">Containerfile-alpine</a></dt>
+<dd><pre class="code">FROM docker.io/alpine:latest
+
+ENV GCC_COLORS=&#039;error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01&#039;
+WORKDIR /workdir
+
+RUN apk add --no-cache \
+    &#039;argp-standalone&#039; \
+    &#039;asciidoc&#039; \
+    &#039;bash&#039; \
+    &#039;bc&#039; \
+    &#039;binutils&#039; \
+    &#039;bzip2&#039; \
+    &#039;cdrkit&#039; \
+    &#039;coreutils&#039; \
+    &#039;diffutils&#039; \
+    &#039;elfutils-dev&#039; \
+    &#039;findutils&#039; \
+    &#039;flex&#039; \
+    &#039;g++&#039; \
+    &#039;gawk&#039; \
+    &#039;gcc&#039; \
+    &#039;gettext&#039; \
+    &#039;git&#039; \
+    &#039;grep&#039; \
+    &#039;gzip&#039; \
+    &#039;intltool&#039; \
+    &#039;libxslt&#039; \
+    &#039;linux-headers&#039; \
+    &#039;make&#039; \
+    &#039;musl-fts-dev&#039; \
+    &#039;musl-libintl&#039; \
+    &#039;musl-obstack-dev&#039; \
+    &#039;ncurses-dev&#039; \
+    &#039;openssl-dev&#039; \
+    &#039;patch&#039; \
+    &#039;perl&#039; \
+    &#039;python3-dev&#039; \
+    &#039;rsync&#039; \
+    &#039;tar&#039; \
+    &#039;unzip&#039; \
+    &#039;util-linux&#039; \
+    &#039;wget&#039; \
+    &#039;zlib-dev&#039; \
+    &#039;py3-distutils-extra&#039; \
+    &#039;py3-setuptools&#039; \
+  &amp;&amp; \
+  addgroup &#039;buildbot&#039; &amp;&amp; \
+  adduser -s &#039;/bin/bash&#039; -G &#039;buildbot&#039; -D &#039;buildbot&#039;
+
+USER buildbot</pre>
+</dd></dl>
+</div></div><div class="hiddenGlobal  hiddenActive"><div class="hiddenElements"></div><div class="hiddenHead  hiddenSinceBeginning"><div class="hiddenOnHidden">
+<p>
+Debian Container
+</p>
+</div><div class="hiddenOnVisible">
+<p>
+Debian Container
+</p>
+</div></div> <!-- .hiddenHead --><div class="hiddenBody"><dl class="code">
+<dt><a href="/_export/code/docs/guide-user/virtualization/obtain.firmware.docker?codeblock=1" title="Download Snippet" class="mediafile mf_">Containerfile-debian</a></dt>
+<dd><pre class="code">FROM docker.io/debian:stable-slim
+
+ENV GCC_COLORS=&#039;error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01&#039;
+WORKDIR /workdir
+
+RUN apt-get update &amp;&amp; apt-get install --no-install-recommends --no-install-suggests --yes \
+    &#039;build-essential&#039; \
+    &#039;ca-certificates&#039; \
+    &#039;clang&#039; \
+    &#039;flex&#039; \
+    &#039;bison&#039; \
+    &#039;g++&#039; \
+    &#039;gawk&#039; \
+    &#039;gcc-multilib&#039; \
+    &#039;gettext&#039; \
+    &#039;git&#039; \
+    &#039;libncurses5-dev&#039; \
+    &#039;libssl-dev&#039; \
+    &#039;python3-distutils&#039; \
+    &#039;rsync&#039; \
+    &#039;unzip&#039; \
+    &#039;zlib1g-dev&#039; \
+    &#039;file&#039; \
+    &#039;wget&#039; \
+  &amp;&amp; \
+  rm -f -r &#039;/var/lib/apt/&#039; &amp;&amp; \
+  rm -f -r &#039;/var/cache/apt/&#039; &amp;&amp; \
+  useradd -m -s &#039;/bin/bash&#039; -U &#039;buildbot&#039;
+
+USER buildbot</pre>
+</dd></dl>
+</div></div>
+<p>
+After placing (either) downloading either/both of these files, a OpenWRT repository is needed. After cloning or downloading the OpenWRT repository it might be a thought to create a dedicated worktree, when not wanting to build using master. 
+</p>
+<pre class="code">cd &lt;openwrt repo&gt;; git worktree add ../openwrt-&lt;branch name&gt; -b &lt;branch name&gt;; cd ../openwrt-&lt;branch name&gt;</pre>
+
+<p>
+. This will create a new git branch and check it out on a worktree.
+</p>
+
+<p>
+Next, the container is to be built, using either <strong>podman</strong> or <strong>docker</strong>.
+</p>
+
+<p>
+Note, while not strictly necessary, we don&#039;t want to copy all of the repository files into the container context. Doing so won&#039;t hurt or break anything, but it wastes space and costs time and won&#039;t even be accessible when running the container.
+</p>
+
+<p>
+To avoid copying needless files, a <em>.dockerignore</em> file is used, which can be either in the same location as the <em>Dockerfile</em> or in the current working directory.
+</p>
+<pre class="code">echo &quot;*&quot; &gt; .dockerignore</pre>
+
+<p>
+Building the container is as simple as:
+</p>
+<pre class="code">docker build --rm --tag openwrt:alpine --file &lt;path-to-containerfile&gt;/Containerfile-alpine &lt;path-to-openwrt&gt;</pre>
+
+<p>
+The tag can be named whatever of course, dated or likewise. The container only occasionally has to be rebuild, when &#039;host dependencies&#039; are changed or updated.
+</p>
+
+<p>
+Finally, the container can be used to launch a build environment
+</p>
+<pre class="code">docker run --interactive --rm --tty --ulimit &#039;nofile=1024:262144&#039; --volume &quot;$(pwd):/workdir&quot; --workdir &#039;/workdir&#039; openwrt:alpine /bin/bash
+&lt;hostname&gt;:/workdir$</pre>
+
+<p>
+From here, any normal OpenWRT command can be used as expected (`make menuconfig` etc). It is recommended to create an alias such as
+</p>
+<pre class="code">alias make=&#039;make -j10 V=sc&#039;</pre>
+
+<p>
+ to build more verbose with multiple jobs, but this is completely optional.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Building OpenWRT using Docker&quot;,&quot;hid&quot;:&quot;building_openwrt_using_docker&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;817-4565&quot;} -->
+<h2 class="sectionedit3" id="openwrt_cloud_builder_api">OpenWrt Cloud Builder API</h2>
+<div class="level2">
+
+<p>
+To facilitate easy sharing, reuse, and swapping of builders and testing out of new firmwares in the wider OpenWrt community, the <a href="https://github.com/wlanslovenija/firmware-core#openwrt-cloud-builder-api" class="urlextern" title="https://github.com/wlanslovenija/firmware-core#openwrt-cloud-builder-api" rel="ugc nofollow">following standard is proposed</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;OpenWrt Cloud Builder API&quot;,&quot;hid&quot;:&quot;openwrt_cloud_builder_api&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:3,&quot;range&quot;:&quot;4566-4843&quot;} -->
+<h2 class="sectionedit4" id="project_specific_openwrt_buildroot">Project specific OpenWrt Buildroot</h2>
+<div class="level2">
+
+<p>
+To facilitate sharing an project specific OpenWrt buildroot in such a way non Docker or Linux experts can understand. 
+<a href="https://github.com/Doodle3D/openwrt-buildroot-example" class="urlextern" title="https://github.com/Doodle3D/openwrt-buildroot-example" rel="ugc nofollow">https://github.com/Doodle3D/openwrt-buildroot-example</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Project specific OpenWrt Buildroot&quot;,&quot;hid&quot;:&quot;project_specific_openwrt_buildroot&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:4,&quot;range&quot;:&quot;4844-&quot;} -->

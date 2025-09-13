@@ -1,0 +1,108 @@
+
+<h1 class="sectionedit1" id="logging_forwarded_packets_in_openwrt">Logging Forwarded Packets in OpenWrt</h1>
+<div class="level1">
+
+<p>
+This article demonstrates how to extend the firewall3 configuration to add
+iptable LOG targets for forwarded packets between the <abbr title="Local Area Network">LAN</abbr>-side and <abbr title="Wide Area Network">WAN</abbr>-side of
+the router.
+</p>
+
+<p>
+The <a href="/docs/guide-user/firewall/overview" class="wikilink1" title="docs:guide-user:firewall:overview" data-wiki-id="docs:guide-user:firewall:overview">fw3 application</a> does not support
+extended logging rules except for rejected packets, so these must be added
+using the <code>iptables</code> application.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Logging Forwarded Packets in OpenWrt&quot;,&quot;hid&quot;:&quot;logging_forwarded_packets_in_openwrt&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-405&quot;} -->
+<h2 class="sectionedit2" id="requirements">Requirements</h2>
+<div class="level2">
+
+<p>
+This is a set of simple requirements to implement the iptable LOG rules.  The basic idea is they should be simple, easily added and easily flushed.
+</p>
+<ul>
+<li class="level1"><div class="li"> log rules must be easily added and removed</div>
+</li>
+<li class="level1"><div class="li"> log rules must not affect existing chains</div>
+</li>
+<li class="level1"><div class="li"> log rules must be persistent across reboots</div>
+</li>
+</ul>
+
+<p>
+Additionally it is recognized that the log rules will impact performance based on how much traffic is logged.  
+The custom firewall rules demonstrate levels of logging from minimal to noisy.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Requirements&quot;,&quot;hid&quot;:&quot;requirements&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;406-913&quot;} -->
+<h2 class="sectionedit3" id="custom_firewall_rules">Custom Firewall Rules</h2>
+<div class="level2">
+
+<p>
+There is no fw3 configuration option to add LOG rules so these are implemented as iptable rules in <code>/etc/firewall.user</code> included in <code>/etc/config/firewall</code>.
+</p>
+
+<p>
+The chains/rules below are comment but some explanation is in order.
+</p>
+<ol>
+<li class="level1"><div class="li"> First create a new chain for logging.  All LOG rules are added and flushed from this.</div>
+</li>
+<li class="level1"><div class="li"> Append this chain to the firewall3 <code>forwarding_rule</code> (which is actually a chain).</div>
+</li>
+<li class="level1"><div class="li"> Add a rule to the forwarding_log_chain to LOG <abbr title="Transmission Control Protocol">TCP</abbr> syn packets on <abbr title="Hypertext Transfer Protocol">HTTP</abbr>(80) or <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr>(443). These packets are going from <abbr title="Local Area Network">LAN</abbr>-side to a <abbr title="Wide Area Network">WAN</abbr>-side web server to make an <abbr title="Hypertext Transfer Protocol">HTTP</abbr>/S connection.</div>
+</li>
+<li class="level1"><div class="li"> Add a rule to LOG <abbr title="Transmission Control Protocol">TCP</abbr> ACK-FIN packets on <abbr title="Hypertext Transfer Protocol">HTTP</abbr>/S.  These packets are going from the <abbr title="Local Area Network">LAN</abbr>-side to the <abbr title="Wide Area Network">WAN</abbr>-side to release the <abbr title="Hypertext Transfer Protocol">HTTP</abbr>/S connection. </div>
+</li>
+</ol>
+
+<p>
+There is an alternative set of rules commented-out to log ALL <abbr title="Hypertext Transfer Protocol">HTTP</abbr>/S traffic in both directions (<abbr title="Local Area Network">LAN</abbr>-side and <abbr title="Wide Area Network">WAN</abbr>-side). These rules noticeably slow down the router.
+</p>
+
+<p>
+Finally, if I&#039;ve made a mess of things, I can flush all the rules from the logging chain and start again.  This is commented out but can be run manually.
+</p>
+<pre class="file"># create a new chain for logging forwarded packets
+iptables -N forwarding_log_chain
+
+# append to openwrt forwarding_rule chain (which generally has nothing in it)
+iptables -A forwarding_rule -j forwarding_log_chain
+
+# add log rules all HTTP/S SYN (can use --syn instead of --tcp-flags) and FIN-ACK events
+iptables -A forwarding_log_chain -p tcp --dport 80:443 --tcp-flags ALL SYN -j LOG --log-prefix &quot;HTTP-SYN:&quot;
+iptables -A forwarding_log_chain -p tcp --dport 80:443 --tcp-flags ALL ACK,FIN -j LOG --log-prefix &quot;HTTP-ACK-FIN:&quot;
+
+# alternative log rule for all HTTP/S events.  NOISY - causes some througput delays)
+# iptables -A forwarding_log_chain -p tcp --dport 80:443 -j LOG --log-prefix &quot;HTTP-DPRT-ALL:&quot;
+# iptables -A forwarding_log_chain -p tcp --sport 80:443 -j LOG --log-prefix &quot;HTTP-SPRT-ALL:&quot;
+
+# Flush entries from logging chain
+# iptables -F forwarding_log_chain</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Custom Firewall Rules&quot;,&quot;hid&quot;:&quot;custom_firewall_rules&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;914-2900&quot;} -->
+<h2 class="sectionedit4" id="logging_destination">Logging Destination</h2>
+<div class="level2">
+
+<p>
+The iptable rules above will generate a log message for each match with the given log prefix but where do the log messages go?
+</p>
+
+<p>
+See <a href="/docs/guide-user/base-system/log.essentials" class="wikilink1" title="docs:guide-user:base-system:log.essentials" data-wiki-id="docs:guide-user:base-system:log.essentials">log.essentials</a> for an understanding of how openwrt logging works. 
+</p>
+
+<p>
+One of the best ways to capture the iptable LOG events over a long period is to set up the logging to station on the <abbr title="Local Area Network">LAN</abbr>-side.  The station just has to listen on the configured port for log messages and collect them.  The messages can be post-processed (e.g. <abbr title="Domain Name System">DNS</abbr> lookup) later.
+</p>
+
+<p>
+<abbr title="Transmission Control Protocol">TCP</abbr>, I believe, sets up a connection for each log message, which will impact performance.  <abbr title="User Datagram Protocol">UDP</abbr> does not do this which makes it much more performant, but also potentially lossy.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Logging Destination&quot;,&quot;hid&quot;:&quot;logging_destination&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:4,&quot;range&quot;:&quot;2901-&quot;} -->

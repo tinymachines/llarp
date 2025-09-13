@@ -1,0 +1,259 @@
+
+<h1 class="sectionedit1" id="multipath_tcp_and_openwrt">Multipath TCP and OpenWrt</h1>
+<div class="level1">
+
+<p>
+This page discusses the Multipath <abbr title="Transmission Control Protocol">TCP</abbr> support in OpenWrt.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Multipath TCP and OpenWrt&quot;,&quot;hid&quot;:&quot;multipath_tcp_and_openwrt&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-100&quot;} -->
+<h2 class="sectionedit2" id="start">Start</h2>
+<div class="level2">
+
+<p>
+<strong>this is now part of the trunk since commit <a href="https://github.com/openwrt/openwrt/commit/c8d5abd62b70137c70bf12e83b6d0708b980abb3" class="urlextern" title="https://github.com/openwrt/openwrt/commit/c8d5abd62b70137c70bf12e83b6d0708b980abb3" rel="ugc nofollow">https://github.com/openwrt/openwrt/commit/c8d5abd62b70137c70bf12e83b6d0708b980abb3</a> </strong>
+</p>
+
+<p>
+It is available in 24.10.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Start&quot;,&quot;hid&quot;:&quot;start&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;101-278&quot;} -->
+<h2 class="sectionedit3" id="multipath_tcp">Multipath TCP</h2>
+<div class="level2">
+
+<p>
+Multipath <abbr title="Transmission Control Protocol">TCP</abbr> (MPTCP) is an effort towards enabling the simultaneous use of several <abbr title="Internet Protocol">IP</abbr>-addresses/interfaces by a modification of <abbr title="Transmission Control Protocol">TCP</abbr> that presents a regular <abbr title="Transmission Control Protocol">TCP</abbr> interface to applications, while in fact spreading data across several sub-flows. Benefits of this include better resource utilisation, better throughput and smoother reaction to failures.
+</p>
+
+<p>
+You must run an MPTCP capable kernel on both sender/receiver devices that are involved in a Multipath <abbr title="Transmission Control Protocol">TCP</abbr> connection. 
+If these devices are PCs, more info can be found at <a href="http://multipath-tcp.org" class="urlextern" title="http://multipath-tcp.org" rel="ugc nofollow">http://multipath-tcp.org</a>
+</p>
+
+<p>
+If your PC and Server have an ordinary <abbr title="Transmission Control Protocol">TCP</abbr>-connection, your router cannot use MPTCP by default.
+To make it work, you have two possible solutions:
+</p>
+<ul>
+<li class="level1"><div class="li"> Use a proxy on the router</div>
+</li>
+<li class="level1"><div class="li"> Use a <abbr title="Virtual Private Network">VPN</abbr> to an endpoint with faster network. In this way, you can use all uplinks for all traffic, even traffic to a non MPTCP capable server.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Multipath TCP&quot;,&quot;hid&quot;:&quot;multipath_tcp&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;279-1183&quot;} -->
+<h3 class="sectionedit4" id="configuration">Configuration</h3>
+<div class="level3">
+
+<p>
+MPTCP runs without any configuration. But if you want to use multiple interfaces on your device you have to configure them.
+</p>
+
+<p>
+To enable MPTCP globally
+</p>
+<pre class="code">uci set network.globals.multipath=enable</pre>
+
+<p>
+Set each interface with:
+</p>
+<pre class="code">uci set network.&lt;name&gt;.multipath=&lt;option&gt;</pre>
+
+<p>
+Where <code>&lt;option&gt;</code> is one of:
+</p>
+<div class="table sectionedit5"><table class="inline">
+	<tr class="row0">
+		<td class="col0"> on </td><td class="col1"> No special config </td>
+	</tr>
+	<tr class="row1">
+		<td class="col0"> master </td><td class="col1"> Like “on” but also set the default route for all other traffic (<strong>use it for one interface!</strong>) </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> off </td><td class="col1"> Disable the interface for mp-tcp (default option) </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> backup </td><td class="col1"> Use this interface but don&#039;t forward traffic until no other interface are available (faster switch) </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> handover </td><td class="col1"> Establish a connection only if no other interface available (slower switch but normally none traffic) </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;1502-1926&quot;} -->
+<p>
+Save your changes with:
+</p>
+<ul>
+<li class="level1"><div class="li"> uci commit</div>
+</li>
+<li class="level1"><div class="li"> /etc/init.d/network restart</div>
+</li>
+</ul>
+
+<p>
+The script generates multiple default routes in different tables and rules. These can cause problems with other packages. I&#039;m sure that it will <strong>not work with multiwan</strong>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;1184-2171&quot;} -->
+<h3 class="sectionedit6" id="test">Test</h3>
+<div class="level3">
+
+<p>
+you can see all current connections by using:
+</p>
+<pre class="code">multipath -c</pre>
+
+<p>
+If you have installed the patched net-tools on your pc you can see MPTCPs behaviour in a better way by using
+</p>
+<pre class="code">netstat -m</pre>
+
+<p>
+The patched version of netstat is not yet ported to the openwrt repos.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Test&quot;,&quot;hid&quot;:&quot;test&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;2172-2446&quot;} -->
+<h2 class="sectionedit7" id="vpn_example">VPN Example</h2>
+<div class="level2">
+
+<p>
+This is an example for a <abbr title="Virtual Private Network">VPN</abbr> over 2 <abbr title="Wide Area Network">WAN</abbr> connections. It routes the entire network to the <abbr title="Virtual Private Network">VPN</abbr> endpoint and sends the data to the internet there, consequently it needs a back route from there which is why you should (also) implement <abbr title="Network Address Translation">NAT</abbr> on the remote side of the <abbr title="Virtual Private Network">VPN</abbr> tunnel.
+</p>
+
+<p>
+The following configuration has <strong>no encryption</strong> on the <abbr title="Virtual Private Network">VPN</abbr> link. This is faster but it is not secure. The configuration also updates the MAC address to prevent problems in case you have 2 <abbr title="Internet Service Provider">ISP</abbr> clients but the same address.
+</p>
+<pre class="code">network.globals.multipath=enable
+
+network.wan1=interface
+network.wan1.proto=dhcp
+network.wan1.ifname=eth0.1
+network.wan1.macaddr=XX:XX:XX:XX:XX:01
+network.wan1.multipath=master
+
+network.wan2=interface
+network.wan2.proto=dhcp
+network.wan2.ifname=eth0.2
+network.wan2.macaddr=XX:XX:XX:XX:XX:02
+network.wan2.multipath=on
+
+network.tap1337=interface
+network.tap1337.proto=none
+network.tap1337.ifname=tap1337
+
+
+firewall.@zone[1].name=wan
+firewall.@zone[1].network=wan1 wan2
+
+firewall.@zone[2]=zone
+firewall.@zone[2].name=vpn
+firewall.@zone[2].input=ACCEPT
+firewall.@zone[2].output=ACCEPT
+firewall.@zone[2].network=tap1337
+firewall.@zone[2].forward=ACCEPT
+
+firewall.@forwarding[0]=forwarding
+firewall.@forwarding[0].dest=vpn
+firewall.@forwarding[0].src=lan
+firewall.@forwarding[2]=forwarding
+firewall.@forwarding[2].dest=lan
+firewall.@forwarding[2].src=vpn
+
+
+openvpn.mptcp=openvpn
+openvpn.mptcp.enabled=1
+openvpn.mptcp.client=1
+openvpn.mptcp.dev=tap1337
+openvpn.mptcp.proto=tcp
+openvpn.mptcp.remote=X.X.X.X 1194
+openvpn.mptcp.resolv_retry=infinite
+openvpn.mptcp.nobind=1
+openvpn.mptcp.persist_key=1
+openvpn.mptcp.persist_tun=1
+openvpn.mptcp.ca=/etc/openvpn/ca.crt
+openvpn.mptcp.cert=/etc/openvpn/client.crt
+openvpn.mptcp.key=/etc/openvpn/client.key
+openvpn.mptcp.cipher=none
+openvpn.mptcp.verb=3
+openvpn.mptcp.link_mtu=1480
+openvpn.mptcp.script_security=2
+openvpn.mptcp.up=/etc/openvpn/up.sh
+openvpn.mptcp.down=/etc/openvpn/down.sh</pre>
+
+<p>
+/etc/openvpn/up.sh
+</p>
+<pre class="code">#!/bin/sh
+# ^ must be the first line
+# set the execution bit by &#039;chmod +x /etc/openvpn/up.sh&#039;
+
+# Route the traffic from the bridged interface &quot;lan&quot; via table 1
+# multipath-tcp will use the table 2 and up
+ip rule add iif br-lan table 1
+# set the default route via vpn (only table 1)
+ip route add 10.9.8.0/24 via 10.9.8.1 dev $1 table 1
+ip route add default via 10.9.8.1 dev $1 table 1
+# refresh the routes
+ip route flush cache</pre>
+
+<p>
+/etc/openvpn/down.sh
+</p>
+<pre class="code">#!/bin/sh
+
+ip rule del table 1
+ip route flush table 1
+ip route flush cache</pre>
+
+<p>
+<strong>Server Configuration</strong>
+</p>
+
+<p>
+OpenVPN
+</p>
+<pre class="code">port 1194
+proto tcp
+dev tap
+
+ca      /etc/openvpn/keys/ca.crt    # generated keys
+cert    /etc/openvpn/keys/server.crt
+key     /etc/openvpn/keys/server.key  # keep secret
+dh      /etc/openvpn/keys/dh1024.pem
+
+server 10.9.8.0 255.255.255.0  # internal tun0 connection IP
+ifconfig-pool-persist ipp.txt
+keepalive 10 120
+
+#comp-lzo         # Compression - must be turned on at both ends
+persist-key
+persist-tun
+cipher none       # &lt; No encryption!!!
+status /var/log/openvpn-status.log
+verb 3
+client-to-client
+link-mtu 1480 
+script-security 2
+up /etc/openvpn/up.sh  # &lt; Set the back route in this script.</pre>
+
+<p>
+Example of the server up.sh <em>(replace 192.168.1.0 with your own value)</em>.
+</p>
+<pre class="code">#!/bin/sh
+#The client IPs are fixed in the ipp.txt
+ip route add 192.168.1.0/24 via 10.9.8.2 dev $1</pre>
+
+<p>
+Don&#039;t forget to implement <abbr title="Network Address Translation">NAT</abbr> at the Server. 
+<em>
+(for examples, browse “debian nat”)</em>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;VPN Example&quot;,&quot;hid&quot;:&quot;vpn_example&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;2447-&quot;} -->

@@ -1,0 +1,178 @@
+
+<h1 class="sectionedit1" id="wi-fi_onoff_buttons">Wi-Fi on/off buttons</h1>
+<div class="level1">
+
+<p>
+Quite a bit of devices come with at least one button (apart from the omnipresent reset/recovery button, which isn&#039;t convenient to press), which in the stock firmware is used for WPS, toggling Wi-Fi, or whatever, and on OpenWrt is not usually connected to any function.<br/>
+
+</p>
+
+<p>
+In this article we will install and configure a package called <strong>wifitoggle</strong>, which allows us to configure one of such buttons as a Wi-Fi on/off (toggle) button.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Wi-Fi on\/off buttons&quot;,&quot;hid&quot;:&quot;wi-fi_onoff_buttons&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-471&quot;} -->
+<h2 class="sectionedit2" id="setup_steps">Setup steps</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> This package lacks a graphical interface so for the setup we will need to connect to the OpenWrt device using <abbr title="Secure Shell">SSH</abbr> (remote terminal).</div>
+</li>
+<li class="level1"><div class="li"> Install <strong>wifitoggle</strong> package with <code>opkg update &amp;&amp; opkg install wifitoggle</code></div>
+</li>
+<li class="level1"><div class="li"> see the new uci configuration for it <code>uci show wifitoggle</code>, you will see something like this </div>
+</li>
+</ul>
+<pre class="code bash"><span class="co0"># uci show wifitoggle</span>
+wifitoggle.<span class="sy0">@</span>wifitoggle<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>=wifitoggle
+wifitoggle.<span class="sy0">@</span>wifitoggle<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.button=<span class="st_h">'wps'</span>
+wifitoggle.<span class="sy0">@</span>wifitoggle<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.timer=<span class="st_h">'600'</span>
+wifitoggle.<span class="sy0">@</span>wifitoggle<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.persistent=<span class="st_h">'0'</span>
+wifitoggle.<span class="sy0">@</span>wifitoggle<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.led_enable_trigger=<span class="st_h">'timer'</span>
+wifitoggle.<span class="sy0">@</span>wifitoggle<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.led_enable_delayon=<span class="st_h">'500'</span>
+wifitoggle.<span class="sy0">@</span>wifitoggle<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.led_enable_delayoff=<span class="st_h">'500'</span>
+wifitoggle.<span class="sy0">@</span>wifitoggle<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.led_disable_default=<span class="st_h">'0'</span></pre>
+<ul>
+<li class="level1"><div class="li"> Do any customizations to the configuration and then save the changes with <code>uci commit</code></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Setup steps&quot;,&quot;hid&quot;:&quot;setup_steps&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;472-1314&quot;} -->
+<h2 class="sectionedit3" id="wifitoggle_uci_section">wifitoggle uci section</h2>
+<div class="level2">
+
+<p>
+The <code>wifitoggle</code> section contains these settings:
+</p>
+<div class="table sectionedit4"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Name </th><th class="col1"> Type </th><th class="col2"> Required </th><th class="col3"> Default </th><th class="col4"> Description </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> <code>button</code> </td><td class="col1"> String </td><td class="col2"> yes </td><td class="col3"> wps </td><td class="col4"> internal name of the button to use. Usually the internal name is similar to what the button did in stock firmware. See notes below this table. </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> <code>persistent</code> </td><td class="col1"> Boolean </td><td class="col2"> yes </td><td class="col3"> 0 </td><td class="col4"> Commit changes to wireless config file, persistent after reset. Always 0 if Timer enabled </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> <code>timer</code> </td><td class="col1"> Integer </td><td class="col2"> yes </td><td class="col3"> 600 </td><td class="col4"> Seconds for Wi-Fi to be turned off, 0 for no timer </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> <code>led_sysfs</code> </td><td class="col1"> String </td><td class="col2"> no </td><td class="col3"> none </td><td class="col4"> Led to use, see <a href="/docs/guide-user/base-system/led_configuration" class="wikilink1" title="docs:guide-user:base-system:led_configuration" data-wiki-id="docs:guide-user:base-system:led_configuration">Led configuration</a> for possible values </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0"> <code>led_enable_trigger</code> </td><td class="col1"> String </td><td class="col2"> yes </td><td class="col3"> timer </td><td class="col4"> led trigger name, see <a href="/docs/guide-user/base-system/led_configuration" class="wikilink1" title="docs:guide-user:base-system:led_configuration" data-wiki-id="docs:guide-user:base-system:led_configuration">Led configuration</a> for other possible led trigger names </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0"> <code>led_enable_delayon</code> </td><td class="col1"> Integer </td><td class="col2"> yes </td><td class="col3"> 500 </td><td class="col4"> Milliseconds to turn led on after button pressed </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0"> <code>led_enable_delayoff</code> </td><td class="col1"> Integer </td><td class="col2"> yes </td><td class="col3"> 500 </td><td class="col4"> Milliseconds to turn led off after button pressed </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0"> <code>led_disable_default</code> </td><td class="col1"> Boolean </td><td class="col2"> yes </td><td class="col3"> 0 </td><td class="col4"> Led state for Wi-Fi disabled, 1 to turn it off if Wi-Fi is off </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;1402-2492&quot;} -->
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Common internal names for button (by searching through the source code) are:
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong>wps</strong> = Wi-Fi protected service, most likely to be free in OpenWrt and also default in wifitoggle</div>
+</li>
+<li class="level1"><div class="li"> <strong>wlan</strong> = used for buttons that toggle Wi-Fi on/off in stock firmware </div>
+</li>
+<li class="level1"><div class="li"> <strong>rfkill</strong> = also used for buttons that toggle Wi-Fi on/off in stock firmware</div>
+</li>
+<li class="level1"><div class="li"> <strong>wifi</strong> = also used for buttons that toggle Wi-Fi on/off in stock firmware, yes there is a bit of creativity going on.</div>
+</li>
+<li class="level1"><div class="li"> <strong>power</strong> = used to power up some devices, may be bound already to system shutdown function</div>
+</li>
+<li class="level1"><div class="li"> <strong>help</strong> = unknown, but I see it in the source code of some devices</div>
+</li>
+<li class="level1"><div class="li"> <strong>phone</strong> = unknown, but I see it in the source code of some devices</div>
+</li>
+<li class="level1"><div class="li"> <strong>BTN_0</strong> = unknown, but I see it in the source code of some devices</div>
+</li>
+<li class="level1"><div class="li"> <strong>BTN_1</strong> = unknown, but I see it in the source code of some devices</div>
+</li>
+<li class="level1"><div class="li"> <strong>ses</strong> = cisco services button</div>
+</li>
+<li class="level1"><div class="li"> <strong>reset</strong> = the reset button, usually already bound to system restart function</div>
+</li>
+</ul>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> <a href="/docs/guide-user/base-system/hotplug#finding_the_internal_name_of_hardware_buttons" class="wikilink1" title="docs:guide-user:base-system:hotplug" data-wiki-id="docs:guide-user:base-system:hotplug">Here&#039;s</a> a way to identify the internal name of your button if just trying the above list blindly does not work.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;wifitoggle uci section&quot;,&quot;hid&quot;:&quot;wifitoggle_uci_section&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;1315-3670&quot;} -->
+<h2 class="sectionedit5" id="troubleshooting">Troubleshooting</h2>
+<div class="level2">
+
+<p>
+If the script isn&#039;t working on your Wi-Fi networks, or it works only on some but not all, try deleting and creating again the ones that don&#039;t work.
+</p>
+
+<p>
+Default Wi-Fi networks look like this in the config, and it seems the script can&#039;t parse that.
+</p>
+<pre class="code bash">wireless.default_radio0=wifi-iface
+wireless.default_radio0.device=<span class="st_h">'radio0'</span>
+wireless.default_radio0.network=<span class="st_h">'lan'</span>
+wireless.default_radio0.mode=<span class="st_h">'ap'</span>
+wireless.default_radio0.ssid=<span class="st_h">'myWifi'</span>
+wireless.default_radio0.encryption=<span class="st_h">'psk2+tkip+ccmp'</span>
+wireless.default_radio0.key=<span class="st_h">'password'</span>
+wireless.default_radio0.disabled=<span class="st_h">'1'</span></pre>
+
+<p>
+This is how it looks after I deleted and created it again (and is actually working)
+</p>
+<pre class="code bash">wireless.<span class="sy0">@</span>wifi-iface<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>=wifi-iface
+wireless.<span class="sy0">@</span>wifi-iface<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.device=<span class="st_h">'radio0'</span>
+wireless.<span class="sy0">@</span>wifi-iface<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.mode=<span class="st_h">'ap'</span>
+wireless.<span class="sy0">@</span>wifi-iface<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.ssid=<span class="st_h">'myWifi'</span>
+wireless.<span class="sy0">@</span>wifi-iface<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.encryption=<span class="st_h">'psk2+tkip+ccmp'</span>
+wireless.<span class="sy0">@</span>wifi-iface<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.key=<span class="st_h">'password'</span></pre>
+
+<p>
+Anyone that can fix the script please send a PR from the link below.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Troubleshooting&quot;,&quot;hid&quot;:&quot;troubleshooting&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:5,&quot;range&quot;:&quot;3671-4691&quot;} -->
+<h2 class="sectionedit6" id="wi-fi_disable_after_boot">Wi-Fi disable after boot</h2>
+<div class="level2">
+
+<p>
+If you like to have Wi-Fi disabled after power on, set it disabled by default and then set wifitoggle to NOT save Wi-Fi state changes to permanent memory (so that whatever the state was on reboot it would reset to disabled) with the following:
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> wireless.<span class="sy0">@</span>wifi-device<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.disabled=<span class="nu0">1</span>
+uci <span class="kw1">set</span> wifitoggle.<span class="sy0">@</span>wifitoggle<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.persistent=<span class="nu0">0</span>
+uci commit</pre>
+
+<p>
+Or add this to <code>/etc/rc.local</code> or in Startup (LuCI System - Startup): 
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> wireless.<span class="sy0">@</span>wifi-device<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.disabled=<span class="nu0">1</span>
+wifi</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Wi-Fi disable after boot&quot;,&quot;hid&quot;:&quot;wi-fi_disable_after_boot&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:6,&quot;range&quot;:&quot;4692-5240&quot;} -->
+<h2 class="sectionedit7" id="behind-the-scenes_info_for_additional_tweaking">Behind-the-scenes info for additional tweaking</h2>
+<div class="level2">
+
+<p>
+This package drops a script called <strong>50-wifitoggle</strong> into <strong>/etc/hotplug.d/button</strong> and this script relies on the OpenWrt <a href="/docs/guide-user/base-system/hotplug" class="wikilink1" title="docs:guide-user:base-system:hotplug" data-wiki-id="docs:guide-user:base-system:hotplug">Hotplug</a> infrastructure to be called when you press the button.<br/>
+
+The other component of its package is the uci configuration file to integrate it with the uci system.
+See the source <a href="https://github.com/openwrt/packages/tree/master/utils/wifitoggle" class="urlextern" title="https://github.com/openwrt/packages/tree/master/utils/wifitoggle" rel="ugc nofollow">here</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Behind-the-scenes info for additional tweaking&quot;,&quot;hid&quot;:&quot;behind-the-scenes_info_for_additional_tweaking&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:7,&quot;range&quot;:&quot;5241-&quot;} -->

@@ -1,0 +1,175 @@
+
+<h1 class="sectionedit1" id="usb_over_ip_tunnel">USB over IP tunnel</h1>
+<div class="level1">
+
+<p>
+USB/<abbr title="Internet Protocol">IP</abbr> Project aims to develop a general USB device sharing system over <abbr title="Internet Protocol">IP</abbr> network. To share USB devices between computers with their full functionality, USB/<abbr title="Internet Protocol">IP</abbr> encapsulates “USB I/O messages” into <abbr title="Transmission Control Protocol">TCP</abbr>/<abbr title="Internet Protocol">IP</abbr> payloads and transmits them between computers.
+</p>
+<div class="table sectionedit2"><table class="inline">
+	<tr class="row0">
+		<td class="col0"> <img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> This is reported to be working, but we lack a HowTo yet! </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;287-351&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;USB over IP tunnel&quot;,&quot;hid&quot;:&quot;usb_over_ip_tunnel&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-353&quot;} -->
+<h2 class="sectionedit3" id="server_on_openwrt">Server on OpenWrt</h2>
+<div class="level2">
+
+<p>
+<strong>Since Barrier Breaker release USBIP packets are missing - there&#039;s difference in installation procedure</strong>
+</p>
+
+<p>
+First install the usb kernel module and usbip server and client packages:
+</p>
+
+<p>
+<em>Attitude Adjustment:</em>
+</p>
+<pre class="code">opkg install kmod-usb-ohci usbip-server usbip-client</pre>
+
+<p>
+<em>Barrier Breaker + Chaos Calmer:</em>
+</p>
+<pre class="code">opkg install kmod-usb-ohci
+opkg install http://downloads.openwrt.org/attitude_adjustment/12.09/ar71xx/generic/packages/usbip_1.1.1-2_ar71xx.ipk
+opkg install http://downloads.openwrt.org/attitude_adjustment/12.09/ar71xx/generic/packages/usbip-client_1.1.1-2_ar71xx.ipk
+opkg install http://downloads.openwrt.org/attitude_adjustment/12.09/ar71xx/generic/packages/usbip-server_1.1.1-2_ar71xx.ipk</pre>
+
+<p>
+(The packages are installed from AA, but kernel modules would be installed from BB automatically to match kernel ver)
+</p>
+
+<p>
+Now use <code>usbip list -l</code> to list the local usb devices available that can be exported. In the following example a hub, usb printer, and an optical mouse are shown:
+</p>
+<pre class="code">root@OpenWrt:~# usbip list -l
+Local USB devices
+=================
+ - busid 2-1 (05e3:0608)
+         2-1:1.0 -&gt; hub
+
+ - busid 2-1.4 (04e8:344f)
+         2-1.4:1.0 -&gt; unknown
+         2-1.4:1.1 -&gt; unknown
+
+ - busid 2-2 (093a:2510)
+         2-2:1.0 -&gt; unknown</pre>
+
+<p>
+The information that you are looking for is <strong>2-2</strong>, which is the BUSID for the target device (an optical mouse).<br/>
+
+Edit <code>/etc/rc.local</code> and before the <code>exit 0</code> add the following lines:
+</p>
+<pre class="code">usbipd -D &amp;
+sleep 1
+usbip bind -b 2-2</pre>
+
+<p>
+Use <code>netstat</code> to see if everything works:
+</p>
+<pre class="code">root@OpenWrt:~# netstat -alpt
+Active Internet connections (servers and established)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name    
+tcp        0      0 0.0.0.0:3240            0.0.0.0:*               LISTEN      927/usbipd</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Server on OpenWrt&quot;,&quot;hid&quot;:&quot;server_on_openwrt&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;354-2240&quot;} -->
+<h2 class="sectionedit4" id="client_side_arch-linux_pc">Client side (Arch-linux PC)</h2>
+<div class="level2">
+
+<p>
+Install <strong>usbip</strong> in your PC
+</p>
+<pre class="code">[root@tool dani]# pacman -S usbip</pre>
+
+<p>
+Load the module for the client
+</p>
+<pre class="code">[root@tool dani]# modprobe vhci_hcd</pre>
+
+<p>
+List the available remote devices at OpenWrt (server side). 
+</p>
+<pre class="code">[root@tool dani]# usbip list -r 192.168.1.1
+Exportable USB devices
+======================
+ - 192.168.1.1
+        2-2: Pixart Imaging, Inc. : Optical Mouse (093a:2510)
+           : /sys/devices/platform/bcm63xx_ohci.0/usb2/2-2
+           : (Defined at Interface level) (00/00/00)
+           :  0 - Human Interface Device / Boot Interface Subclass / Mouse (03/01/02)</pre>
+
+<p>
+Attach the remote device
+</p>
+<pre class="code">[root@tool dani]# usbip attach -r 192.168.1.1 -b 2-2</pre>
+
+<p>
+If all went fine now you can move the mouse on your pc, but attached to the router with OpenWrt.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Client side (Arch-linux PC)&quot;,&quot;hid&quot;:&quot;client_side_arch-linux_pc&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:4,&quot;range&quot;:&quot;2241-3070&quot;} -->
+<h2 class="sectionedit5" id="client_side_windows_pc_incl_w7_x64">Client side (Windows PC (incl. W7 x64)</h2>
+<div class="level2">
+
+<p>
+Solution consists of 2 parts:
+</p>
+
+<p>
+1. Install Driver
+</p>
+
+<p>
+2. Start usbip tool
+</p>
+
+<p>
+1. Installing a driver could be a challenge - there is a signed drivers, included in 0.200 version of tool. Unfortunately the don&#039;t work anymore. at least for Win7 x64. Look through USBIP forum to find the latest compiled driver and tool. Unfortunately the Driver is not signed and in order to install it, you have to switch off Windows drivers signature check.
+a)Download the working Driver and usbip tool here: <a href="http://sourceforge.net/p/usbip/discussion/418507/thread/86c5e473/" class="urlextern" title="http://sourceforge.net/p/usbip/discussion/418507/thread/86c5e473/" rel="ugc nofollow">http://sourceforge.net/p/usbip/discussion/418507/thread/86c5e473/</a>
+</p>
+
+<p>
+b)Disable Windows Drivers check:
+</p>
+<pre class="code">    Open a command prompt as an admin and type:
+    bcdedit -set loadoptions DISABLE_INTEGRITY_CHECKS
+    bcdedit -set TESTSIGNING ON
+    NOTE: Turning off driver signing is a security risk.
+    If it doesn&#039;t work, for whatever reason, you can just remove loadoptions with bcedit and &gt;switch testsigning off, though this is not recommended:
+    bcdedit /deletevalue loadoptions
+    bcdedit -set TESTSIGNING OFF
+    For Windows 8.1, use the details on this page:
+    [[http://www.howtogeek.com/167723/how-to-disable-driver-signature-verification-on-64-bit-windows-8.1-so-that-you-can-install-unsigned-drivers/]]
+    And then restart Windows.</pre>
+
+<p>
+2. Use the tool usbip.exe, downloaded with the working driver.
+</p>
+<pre class="code">a) usbip -l &lt;HOST IP address&gt;                to show all USB devices binded on the HOST
+b) usbip -a &lt;HOST IP address&gt; &lt;BUSID&gt;        to connect to particular Device.</pre>
+
+<p>
+<img src="/lib/images/smileys/biggrin.svg" class="icon smiley" alt=":-D" /> Tested on BB release. Working at least with USB Drives and Kvaser Leaf Lite CAN gateway.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Client side (Windows PC (incl. W7 x64)&quot;,&quot;hid&quot;:&quot;client_side_windows_pc_incl_w7_x64&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:5,&quot;range&quot;:&quot;3071-4703&quot;} -->
+<h2 class="sectionedit6" id="notes">Notes</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <a href="http://www.howtoforge.com/how-to-set-up-a-usb-over-ip-server-and-client-with-ubuntu-10.04" class="urlextern" title="http://www.howtoforge.com/how-to-set-up-a-usb-over-ip-server-and-client-with-ubuntu-10.04" rel="ugc nofollow">http://www.howtoforge.com/how-to-set-up-a-usb-over-ip-server-and-client-with-ubuntu-10.04</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/ticket/5590" class="urlextern" title="https://dev.openwrt.org/ticket/5590" rel="ugc nofollow">#5590</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://usbip.sourceforge.net/" class="urlextern" title="http://usbip.sourceforge.net/" rel="ugc nofollow">http://usbip.sourceforge.net/</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/ticket/9953" class="urlextern" title="https://dev.openwrt.org/ticket/9953" rel="ugc nofollow">#9953</a> (usbip server on OpenWRT fails after client tries to attach device) also features a small how to.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Notes&quot;,&quot;hid&quot;:&quot;notes&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:6,&quot;range&quot;:&quot;4704-&quot;} -->

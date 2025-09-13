@@ -1,0 +1,176 @@
+
+<h1 class="sectionedit1" id="guest_wi-fi_using_cli">Guest Wi-Fi using CLI</h1>
+<div class="level1">
+
+<p>
+This page provides a script that creates an additional separated guest network and a new guest firewall zone for your OpenWrt device.
+That is, to create a guest <abbr title="Wireless Local Area Network">WLAN</abbr>, that only has Internet access but cannot access your existing <abbr title="Local Area Network">LAN</abbr>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Guest Wi-Fi using CLI&quot;,&quot;hid&quot;:&quot;guest_wi-fi_using_cli&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-272&quot;} -->
+<h2 class="sectionedit2" id="step_by_step">Step by step</h2>
+<div class="level2">
+<ol>
+<li class="level1"><div class="li"> Take your time, to read this whole page, before starting any configuration. Get at least a rough idea, of what below&#039;s code is configuring.</div>
+</li>
+<li class="level1"><div class="li"> Create the guest <abbr title="Wireless Local Area Network">WLAN</abbr> as additional config on either your 2,4 or 5 <abbr title="Gigahertz">GHz</abbr> radio which should typically match <code>@wifi-iface[0]</code> or <code>@wifi-iface[1]</code>. The new guest networks will share the channel/frequency with your probably already existing WLANs.</div>
+</li>
+<li class="level1"><div class="li"> Copy the whole following code block as is into a <abbr title="Secure Shell">SSH</abbr> command prompt of your OpenWrt device and press enter. Alternatively, create and run it as shell script on your OpenWrt device.</div>
+</li>
+</ol>
+<pre class="code bash"><span class="co0"># Configuration parameters</span>
+<span class="re2">NET_ID</span>=<span class="st0">&quot;guest&quot;</span>
+<span class="re2">WIFI_DEV</span>=<span class="st0">&quot;<span class="es4">$(uci -q get wireless.@wifi-iface[0].device)</span>&quot;</span>
+&nbsp;
+<span class="co0"># Fetch upstream zone</span>
+. <span class="sy0">/</span>lib<span class="sy0">/</span>functions<span class="sy0">/</span>network.sh
+network_flush_cache
+network_find_wan NET_IF
+<span class="re2">FW_WAN</span>=<span class="st0">&quot;<span class="es4">$(fw4 -q network ${NET_IF})</span>&quot;</span>
+&nbsp;
+<span class="co0"># Set up guest WLAN</span>
+uci <span class="re5">-q</span> batch <span class="co2">&lt;&lt; EOI
+delete network.${NET_ID}_dev
+set network.${NET_ID}_dev=device
+set network.${NET_ID}_dev.type=bridge
+set network.${NET_ID}_dev.name=br-${NET_ID}
+delete network.${NET_ID}
+set network.${NET_ID}=interface
+set network.${NET_ID}.proto=static
+set network.${NET_ID}.device=br-${NET_ID}
+set network.${NET_ID}.ipaddr=192.168.3.1/24
+commit network
+delete wireless.${NET_ID}
+set wireless.${NET_ID}=wifi-iface
+set wireless.${NET_ID}.device=${WIFI_DEV}
+set wireless.${NET_ID}.mode=ap
+set wireless.${NET_ID}.network=${NET_ID}
+set wireless.${NET_ID}.ssid=${NET_ID}
+set wireless.${NET_ID}.encryption=none
+commit wireless
+delete dhcp.${NET_ID}
+set dhcp.${NET_ID}=dhcp
+set dhcp.${NET_ID}.interface=${NET_ID}
+set dhcp.${NET_ID}.start=100
+set dhcp.${NET_ID}.limit=150
+set dhcp.${NET_ID}.leasetime=1h
+commit dhcp
+delete firewall.${NET_ID}
+set firewall.${NET_ID}=zone
+set firewall.${NET_ID}.name=${NET_ID}
+set firewall.${NET_ID}.network=${NET_ID}
+set firewall.${NET_ID}.input=REJECT
+set firewall.${NET_ID}.output=ACCEPT
+set firewall.${NET_ID}.forward=REJECT
+delete firewall.${NET_ID}_${FW_WAN}
+set firewall.${NET_ID}_${FW_WAN}=forwarding
+set firewall.${NET_ID}_${FW_WAN}.src=${NET_ID}
+set firewall.${NET_ID}_${FW_WAN}.dest=${FW_WAN}
+delete firewall.${NET_ID}_dns
+set firewall.${NET_ID}_dns=rule
+set firewall.${NET_ID}_dns.name=Allow-DNS-${NET_ID}
+set firewall.${NET_ID}_dns.src=${NET_ID}
+set firewall.${NET_ID}_dns.dest_port=53
+add_list firewall.${NET_ID}_dns.proto=tcp
+add_list firewall.${NET_ID}_dns.proto=udp
+set firewall.${NET_ID}_dns.target=ACCEPT
+delete firewall.${NET_ID}_dhcp
+set firewall.${NET_ID}_dhcp=rule
+set firewall.${NET_ID}_dhcp.name=Allow-DHCP-${NET_ID}
+set firewall.${NET_ID}_dhcp.src=${NET_ID}
+set firewall.${NET_ID}_dhcp.dest_port=67
+set firewall.${NET_ID}_dhcp.proto=udp
+set firewall.${NET_ID}_dhcp.family=ipv4
+set firewall.${NET_ID}_dhcp.target=ACCEPT
+commit firewall
+EOI</span>
+service network reload
+service dnsmasq restart
+service firewall restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Step by step&quot;,&quot;hid&quot;:&quot;step_by_step&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;273-3113&quot;} -->
+<h2 class="sectionedit3" id="explanation_of_this_config_code">Explanation of this config code</h2>
+<div class="level2">
+
+<p>
+All the changes will be visible in the web interface afterwards.
+</p>
+<ul>
+<li class="level1"><div class="li"> a guest network called “guest” is created </div>
+</li>
+<li class="level1"><div class="li"> a dhcp configuration is created for the “guest” network (assuming that <code>192.168.3.1/24</code> is not conflicting with something else on your home network)</div>
+</li>
+<li class="level1"><div class="li"> a firewall zone called “guest” is created for the “guest” network</div>
+</li>
+<li class="level1"><div class="li"> a firewall zone forwarder from the “guest” to the “wan” zone is created (not the other direction)</div>
+</li>
+<li class="level1"><div class="li"> a firewall rule allowing your guests to access your OpenWrt <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> service is created</div>
+</li>
+<li class="level1"><div class="li"> a firewall rule allowing your guests to access your OpenWrt <abbr title="Domain Name System">DNS</abbr> service is created</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Explanation of this config code&quot;,&quot;hid&quot;:&quot;explanation_of_this_config_code&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;3114-3772&quot;} -->
+<h2 class="sectionedit4" id="customization">Customization</h2>
+<div class="level2">
+
+<p>
+There are endless of personal customization options.
+</p>
+<ul>
+<li class="level1"><div class="li"> Be aware that there are no special Internet firewall restrictions active for your guests in this default config. If you want to restrict your weird guests to http(s) protocol or block <abbr title="User Datagram Protocol">UDP</abbr> or do whatever fancy restriction, you have to add some additional customized firewall rules yourself.</div>
+</li>
+<li class="level1"><div class="li"> Also you may have to find individual rules/network setups for your personal situations, e.g. if your guests would like access to your printer or need to stream stuff from their smartphones to your Smart-TV. Unfortunately there is not a single one-fits-all solution for that.</div>
+</li>
+<li class="level1"><div class="li"> You could go even further and split of a <abbr title="Local Area Network">LAN</abbr>-jack using a custom <abbr title="Virtual Local Area Network">VLAN</abbr> configuration and link that split-of <abbr title="Local Area Network">LAN</abbr> jack to that guest net as well, if your guests prefer a wired connection.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Customization&quot;,&quot;hid&quot;:&quot;customization&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:4,&quot;range&quot;:&quot;3773-4614&quot;} -->
+<h2 class="sectionedit5" id="manual_rollback">Manual rollback</h2>
+<div class="level2">
+
+<p>
+If you ever want to get rid of the customization created by this script, simply open your OpenWrt web interface.
+</p>
+<ul>
+<li class="level1"><div class="li"> Delete the guest network interface in the interface tab.</div>
+</li>
+<li class="level1"><div class="li"> Delete the guest firewall zone in the firewall tab.</div>
+</li>
+<li class="level1"><div class="li"> All firewall rules will be deleted automatically, once the firewall zone has been deleted.</div>
+</li>
+<li class="level1"><div class="li"> The <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> config will be deleted automatically, once the guest interface is gone.</div>
+</li>
+<li class="level1"><div class="li"> Then click “Save &amp; Apply”.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Manual rollback&quot;,&quot;hid&quot;:&quot;manual_rollback&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:5,&quot;range&quot;:&quot;4615-5084&quot;} -->
+<h2 class="sectionedit6" id="on_demand_usage">On demand usage</h2>
+<div class="level2">
+
+<p>
+You may not have guests hanging out in your house all week long.
+You do not have to delete the whole config, when your guests are leaving.
+You can just enter the OpenWrt web interface and simply <strong>enable</strong> or <strong>disable</strong> the guest <abbr title="Wireless Local Area Network">WLAN</abbr> at will.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;On demand usage&quot;,&quot;hid&quot;:&quot;on_demand_usage&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:6,&quot;range&quot;:&quot;5085-5358&quot;} -->
+<h2 class="sectionedit7" id="see_also">See also</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <a href="https://github.com/Shine-/OpenWrt-guest_wifi" class="urlextern" title="https://github.com/Shine-/OpenWrt-guest_wifi" rel="ugc nofollow">OpenWrt-guest_wifi</a> script to automatically set up Guest WiFi network</div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/network/wifi/guestwifi/extras" class="wikilink1" title="docs:guide-user:network:wifi:guestwifi:extras" data-wiki-id="docs:guide-user:network:wifi:guestwifi:extras">Guest Wi-Fi extras</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;See also&quot;,&quot;hid&quot;:&quot;see_also&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:7,&quot;range&quot;:&quot;5359-&quot;} -->

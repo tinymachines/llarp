@@ -1,0 +1,254 @@
+
+<h1 class="sectionedit1" id="converting_to_dsa">Converting to DSA</h1>
+<div class="level1">
+
+<p>
+Since Openwrt 21.02 an increasing amount of devices are using DSA (<a href="https://www.kernel.org/doc/html/latest/networking/dsa/dsa.html" class="urlextern" title="https://www.kernel.org/doc/html/latest/networking/dsa/dsa.html" rel="ugc nofollow">Distributed Switch Architecture</a>) for configuring network interfaces, this page aims to provide information to allow you to re-implement swconfig based configurations in DSA.
+</p>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_info plugin_wrap">
+<p>
+If you are upgrading your router to a firmware version that uses DSA, you should read this page.
+</p>
+
+<p>
+<strong>Note:</strong> Follow <a href="/docs/guide-user/network/dsa/dsa-mini-tutorial" class="wikilink1" title="docs:guide-user:network:dsa:dsa-mini-tutorial" data-wiki-id="docs:guide-user:network:dsa:dsa-mini-tutorial">DSA Mini-Tutorial</a> for DSA configuration information. 
+</p>
+
+<p>
+<strong>Note</strong>: DSA support does not affect wireless configuration in <code>/etc/config/wireless</code>. In particular the wireless config option ifname continues to be valid for specifying a custom name for a WiFi interface.
+</p>
+
+<p>
+<strong>Note:</strong> Also check the <a href="https://www.youtube.com/watch?v=qeuZqRqH-ug" class="urlextern" title="https://www.youtube.com/watch?v=qeuZqRqH-ug" rel="ugc nofollow">very good Youtube video from onemarcfifty</a> that talks about the theory of VLANs and describes the differences between OpenWrt 19.0x and 21.0x.
+</p>
+<iframe src="//www.youtube-nocookie.com/embed/qeuZqRqH-ug?" width="425" height="239" style="width:425px;height:239px;" class="vshare vshare__none" allowfullscreen="" frameborder="0" scrolling="no" data-domain="www.youtube-nocookie.com"><h3></h3></iframe></div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+<em>This page is a Work In Process. If you can contribute your knowledge, we would be pleased for the help.</em>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Converting to DSA&quot;,&quot;hid&quot;:&quot;converting_to_dsa&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1147&quot;} -->
+<h2 class="sectionedit4" id="bridge_all_switch_ports">Bridge all switch ports</h2>
+<div class="level2">
+
+<p>
+Gather all of the interfaces for the switch ports (wan, lan1, lan2, etc.) in one bridge interface. Remove them from other bridges if they exist.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Bridge all switch ports&quot;,&quot;hid&quot;:&quot;bridge_all_switch_ports&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;1148-1330&quot;} -->
+<h2 class="sectionedit5" id="vlan_configuration">VLAN Configuration</h2>
+<div class="level2">
+
+<p>
+Back with swconfig we had CPU ports, eth0/eth1, to tag the CPU in a <abbr title="Virtual Local Area Network">VLAN</abbr> (i.e. eth0.2 or eth1.2 for <abbr title="Virtual Local Area Network">VLAN</abbr> ID 2).
+</p>
+
+<p>
+With DSA, we just create a subinterface of the bridge interface (i.e. br0.2) to get the router (CPU) involved in that <abbr title="Virtual Local Area Network">VLAN</abbr>.
+</p>
+
+<p>
+If you specify br0.2 as the “Device” on Network → Interfaces section, OpenWrt will automatically create a subinterface of br0 with <abbr title="Virtual Local Area Network">VLAN</abbr> ID 2.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;VLAN Configuration&quot;,&quot;hid&quot;:&quot;vlan_configuration&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;1331-1745&quot;} -->
+<h3 class="sectionedit6" id="swconfig_dsa_vlan_configuration_comparison">swconfig &amp; DSA VLAN Configuration Comparison</h3>
+<div class="level3">
+
+<p>
+Here is a comparison of <abbr title="Virtual Local Area Network">VLAN</abbr> configuration on swconfig and DSA.
+</p>
+
+</div>
+
+<h4 id="swconfig">swconfig</h4>
+<div class="level4">
+
+<p>
+<a href="/_detail/media/dsa/dsa-simple-01.png?id=docs%3Aguide-user%3Anetwork%3Adsa%3Aconverting-to-dsa" class="media" title="media:dsa:dsa-simple-01.png"><img src="/_media/media/dsa/dsa-simple-01.png" class="media" loading="lazy" alt="" /></a>
+</p>
+<pre class="code">config switch
+	option name &#039;switch0&#039;
+	option reset &#039;1&#039;
+	option enable_vlan &#039;1&#039;
+
+config switch_vlan
+	option device &#039;switch0&#039;
+	option vlan &#039;1&#039;
+	option ports &#039;0 1 2 3 5t&#039;
+	option vid &#039;1&#039;
+
+config switch_vlan
+	option device &#039;switch0&#039;
+	option vlan &#039;2&#039;
+	option ports &#039;4 6t&#039;
+	option vid &#039;2&#039;</pre>
+
+</div>
+
+<h4 id="dsa">DSA</h4>
+<div class="level4">
+
+<p>
+<a href="/_detail/media/dsa/dsa-simple-04.png?id=docs%3Aguide-user%3Anetwork%3Adsa%3Aconverting-to-dsa" class="media" title="media:dsa:dsa-simple-04.png"><img src="/_media/media/dsa/dsa-simple-04.png" class="media" loading="lazy" alt="" /></a> <a href="/_detail/media/dsa/dsa-simple-02.png?id=docs%3Aguide-user%3Anetwork%3Adsa%3Aconverting-to-dsa" class="media" title="media:dsa:dsa-simple-02.png"><img src="/_media/media/dsa/dsa-simple-02.png" class="media" loading="lazy" alt="" /></a>
+</p>
+<pre class="code">config device
+	option type &#039;bridge&#039;
+	option name &#039;br0&#039;
+	list ports &#039;lan1&#039;
+	list ports &#039;lan2&#039;
+	list ports &#039;lan3&#039;
+	list ports &#039;lan4&#039;
+	list ports &#039;wan&#039;
+
+config bridge-vlan
+	option device &#039;br0&#039;
+	option vlan &#039;1&#039;
+	list ports &#039;lan1:u*&#039;
+	list ports &#039;lan2:u*&#039;
+	list ports &#039;lan3:u*&#039;
+	list ports &#039;lan4:u*&#039;
+
+config bridge-vlan
+	option device &#039;br0&#039;
+	option vlan &#039;2&#039;
+	list ports &#039;wan:u*&#039;
+
+config interface &#039;lan&#039;
+        option device &#039;br0.1&#039;
+        option proto &#039;dhcp&#039;
+</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;swconfig &amp; DSA VLAN Configuration Comparison&quot;,&quot;hid&quot;:&quot;swconfig_dsa_vlan_configuration_comparison&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;1746-2773&quot;} -->
+<h3 class="sectionedit7" id="local">Local</h3>
+<div class="level3">
+
+<p>
+Local option will automatically assign the specified <abbr title="Virtual Local Area Network">VLAN</abbr> ID to the bridge interface and create a <abbr title="Virtual Local Area Network">VLAN</abbr> interface of the bridge interface. So the router can use the <abbr title="Virtual Local Area Network">VLAN</abbr> interface to be involved in that <abbr title="Virtual Local Area Network">VLAN</abbr>.
+</p>
+
+<p>
+If you don&#039;t want the router to be involved in that <abbr title="Virtual Local Area Network">VLAN</abbr>, you can disable this option and run <code>service network restart</code> for this change to take effect.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Local&quot;,&quot;hid&quot;:&quot;local&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:7,&quot;range&quot;:&quot;2774-3154&quot;} -->
+<h3 class="sectionedit8" id="untagged_tagged_and_pvid">Untagged, Tagged and PVID</h3>
+<div class="level3">
+
+<p>
+<strong>Untagged Traffic</strong>: Traffic between devices where there&#039;s no <abbr title="Virtual Local Area Network">VLAN</abbr> ID in the frames. Computers, printers, etc. send and receive untagged traffic by default.
+</p>
+
+<p>
+<strong>Ingress</strong>: Traffic coming in to the bridge through an interface on the bridge
+</p>
+
+<p>
+<strong>Egress</strong>: Traffic going out of the bridge through an interface on the bridge
+</p>
+
+<p>
+<strong>Untagged</strong>: Frames will leave the bridge through the specified interface as untagged. Untagged ingress will be assigned to the specified <abbr title="Virtual Local Area Network">VLAN</abbr> ID unless PVID is set to a different <abbr title="Virtual Local Area Network">VLAN</abbr> ID on the interface. Tagged ingress is discarded.
+</p>
+
+<p>
+<strong>Tagged</strong>: Frames will leave the bridge through the specified interface as tagged with the specified <abbr title="Virtual Local Area Network">VLAN</abbr> ID. Untagged ingress is discarded unless PVID is set to a <abbr title="Virtual Local Area Network">VLAN</abbr> ID on the interface. Tagged ingress is discarded if the <abbr title="Virtual Local Area Network">VLAN</abbr> ID on the tag doesn&#039;t match the <abbr title="Virtual Local Area Network">VLAN</abbr> ID(s) assigned to the interface.
+</p>
+
+<p>
+<strong>PVID</strong>: Primary <abbr title="Virtual Local Area Network">VLAN</abbr> ID makes the specified <abbr title="Virtual Local Area Network">VLAN</abbr> ID assigned to the interface the primary one. Untagged ingress will be assigned to the specified <abbr title="Virtual Local Area Network">VLAN</abbr> ID. This is not useful if only a single <abbr title="Virtual Local Area Network">VLAN</abbr> ID is assigned to the interface as untagged.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Untagged, Tagged and PVID&quot;,&quot;hid&quot;:&quot;untagged_tagged_and_pvid&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:8,&quot;range&quot;:&quot;3155-4293&quot;} -->
+<h3 class="sectionedit9" id="egress_untagged_egress_tagged_and_pvid_examples">Egress Untagged, Egress Tagged and PVID Examples</h3>
+<div class="level3">
+
+<p>
+Untagged ingress from the second interface is assigned to <abbr title="Virtual Local Area Network">VLAN</abbr> ID 600 in both cases.
+</p>
+
+<p>
+<a href="/_detail/media/dsa/br-vid-filter-examples-01.png?id=docs%3Aguide-user%3Anetwork%3Adsa%3Aconverting-to-dsa" class="media" title="media:dsa:br-vid-filter-examples-01.png"><img src="/_media/media/dsa/br-vid-filter-examples-01.png" class="media" loading="lazy" alt="" /></a>
+</p>
+
+<p>
+<a href="/_detail/media/dsa/br-vid-filter-examples-03.png-05-29_13-48-41.png?id=docs%3Aguide-user%3Anetwork%3Adsa%3Aconverting-to-dsa" class="media" title="media:dsa:br-vid-filter-examples-03.png-05-29_13-48-41.png"><img src="/_media/media/dsa/br-vid-filter-examples-03.png-05-29_13-48-41.png" class="media" loading="lazy" alt="" /></a>
+</p>
+
+<p>
+Untagged ingress from the second interface is assigned to <abbr title="Virtual Local Area Network">VLAN</abbr> ID 601.
+</p>
+
+<p>
+<a href="/_detail/media/dsa/br-vid-filter-examples-02.png?id=docs%3Aguide-user%3Anetwork%3Adsa%3Aconverting-to-dsa" class="media" title="media:dsa:br-vid-filter-examples-02.png"><img src="/_media/media/dsa/br-vid-filter-examples-02.png" class="media" loading="lazy" alt="" /></a>
+</p>
+
+<p>
+Untagged ingress from the third interface is discarded.
+</p>
+
+<p>
+<a href="/_detail/media/dsa/br-vid-filter-examples-03.png-05-29_13-48-41.png?id=docs%3Aguide-user%3Anetwork%3Adsa%3Aconverting-to-dsa" class="media" title="media:dsa:br-vid-filter-examples-03.png-05-29_13-48-41.png"><img src="/_media/media/dsa/br-vid-filter-examples-03.png-05-29_13-48-41.png" class="media" loading="lazy" alt="" /></a>
+</p>
+
+<p>
+Untagged ingress from the third interface is assigned to <abbr title="Virtual Local Area Network">VLAN</abbr> 600.
+</p>
+
+<p>
+<a href="/_detail/media/dsa/br-vid-filter-examples-04.png?id=docs%3Aguide-user%3Anetwork%3Adsa%3Aconverting-to-dsa" class="media" title="media:dsa:br-vid-filter-examples-04.png"><img src="/_media/media/dsa/br-vid-filter-examples-04.png" class="media" loading="lazy" alt="" /></a>
+</p>
+
+<p>
+Untagged ingress from the third interface is assigned to <abbr title="Virtual Local Area Network">VLAN</abbr> 601.
+</p>
+
+<p>
+<a href="/_detail/media/dsa/br-vid-filter-examples-05.png-05-29_14-17-38.png?id=docs%3Aguide-user%3Anetwork%3Adsa%3Aconverting-to-dsa" class="media" title="media:dsa:br-vid-filter-examples-05.png-05-29_14-17-38.png"><img src="/_media/media/dsa/br-vid-filter-examples-05.png-05-29_14-17-38.png" class="media" loading="lazy" alt="" /></a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Egress Untagged, Egress Tagged and PVID Examples&quot;,&quot;hid&quot;:&quot;egress_untagged_egress_tagged_and_pvid_examples&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:9,&quot;range&quot;:&quot;4294-5043&quot;} -->
+<h3 class="sectionedit10" id="wireless">Wireless</h3>
+<div class="level3">
+
+<p>
+Back with swconfig, we couldn&#039;t directly assign wireless interfaces to VLANs. So we had to bridge wireless with an already <abbr title="Virtual Local Area Network">VLAN</abbr> configured ethX.X interface.
+</p>
+
+<p>
+With DSA, this is not the case anymore.
+</p>
+
+<p>
+Go to Network → Wireless and choose the network that wireless interfaces should attach to.
+</p>
+
+<p>
+Wireless interfaces will automatically be included in the bridge and belong in the correct <abbr title="Virtual Local Area Network">VLAN</abbr>.
+</p>
+
+<p>
+<a href="/_detail/media/dsa/dsa-simple-03.png?id=docs%3Aguide-user%3Anetwork%3Adsa%3Aconverting-to-dsa" class="media" title="media:dsa:dsa-simple-03.png"><img src="/_media/media/dsa/dsa-simple-03.png" class="media" loading="lazy" alt="" /></a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Wireless&quot;,&quot;hid&quot;:&quot;wireless&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:10,&quot;range&quot;:&quot;5044-5489&quot;} -->
+<h2 class="sectionedit11" id="complex_vlan_configuration_-_vlans_tagged_on_multiple_switch_ports_and_the_router">Complex VLAN Configuration - VLANs tagged on multiple switch ports and the router</h2>
+<div class="level2">
+
+<p>
+<a href="/_detail/media/dsa/dsa-complex-01.png?id=docs%3Aguide-user%3Anetwork%3Adsa%3Aconverting-to-dsa" class="media" title="media:dsa:dsa-complex-01.png"><img src="/_media/media/dsa/dsa-complex-01.png" class="media" loading="lazy" alt="" /></a>
+</p>
+
+<p>
+<a href="/_detail/media/dsa/dsa-complex-02.png?id=docs%3Aguide-user%3Anetwork%3Adsa%3Aconverting-to-dsa" class="media" title="media:dsa:dsa-complex-02.png"><img src="/_media/media/dsa/dsa-complex-02.png" class="media" loading="lazy" alt="" /></a> <a href="/_detail/media/dsa/dsa-complex-03.png?id=docs%3Aguide-user%3Anetwork%3Adsa%3Aconverting-to-dsa" class="media" title="media:dsa:dsa-complex-03.png"><img src="/_media/media/dsa/dsa-complex-03.png" class="media" loading="lazy" alt="" /></a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Complex VLAN Configuration - VLANs tagged on multiple switch ports and the router&quot;,&quot;hid&quot;:&quot;complex_vlan_configuration_-_vlans_tagged_on_multiple_switch_ports_and_the_router&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:11,&quot;range&quot;:&quot;5490-&quot;} -->

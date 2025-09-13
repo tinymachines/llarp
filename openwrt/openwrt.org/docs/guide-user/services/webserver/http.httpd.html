@@ -1,0 +1,379 @@
+
+<h1 class="sectionedit1" id="busybox_http_daemon_httpd_webserver">BusyBox HTTP Daemon (httpd) webserver</h1>
+<div class="level1">
+
+<p>
+<a href="/docs/techref/busybox" class="wikilink1" title="docs:techref:busybox" data-wiki-id="docs:techref:busybox">BusyBox</a> is a toolbox with tiny replacements of essential Linux programs.
+One of them is a tiny <abbr title="Hypertext Transfer Protocol">HTTP</abbr> server <code>httpd</code> (<abbr title="Hypertext Transfer Protocol">HTTP</abbr> Daemon). 
+Early versions of OpenWrt before Attitude Adjustment 12.0 release used the <code>httpd</code> server but then switched to own <a href="/docs/guide-user/services/webserver/http.uhttpd" class="wikilink1" title="docs:guide-user:services:webserver:http.uhttpd" data-wiki-id="docs:guide-user:services:webserver:http.uhttpd">uHTTPd</a> which has a built-in Lua interpreter so can serve Luci faster. 
+</p>
+
+<p>
+For a long period before BusyBox v1.37 (Dec 2024) the Luci didn&#039;t worked with plain BB httpd. So now it should be possible to use it with the Luci.
+The BB httpd can be compiled with only basic features like CGI and ETag and will have only 8Kb against 32Kb of stock uhttpd.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;BusyBox HTTP Daemon (httpd) webserver&quot;,&quot;hid&quot;:&quot;busybox_http_daemon_httpd_webserver&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-726&quot;} -->
+<h2 class="sectionedit2" id="features">Features</h2>
+<div class="level2">
+
+<p>
+It&#039;s is a single threaded daemon with most needed features:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="https://en.wikipedia.org/wiki/HTTP_ETag" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/HTTP_ETag">ETag</a> to avoid re-downloading of files cached in browser</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://en.wikipedia.org/wiki/Common Gateway Interface" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Common Gateway Interface">CGI</a> to execute server side request processing </div>
+</li>
+<li class="level1"><div class="li"> <a href="https://en.wikipedia.org/wiki/Basic_access_authentication" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Basic_access_authentication">Basic authentication</a> to limit access by a password</div>
+</li>
+<li class="level1"><div class="li"> Serving pre-compressed gzip files with <a href="https://en.wikipedia.org/wiki/HTTP_compression" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/HTTP_compression">Content-Encoding: gzip</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://datatracker.ietf.org/doc/html/rfc7233" class="urlextern" title="https://datatracker.ietf.org/doc/html/rfc7233" rel="ugc nofollow">Range requests</a> to get only part of a file.</div>
+</li>
+<li class="level1"><div class="li"> <abbr title="Access Control List">ACL</abbr> by <abbr title="Internet Protocol">IP</abbr> to allow or deny access</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://en.wikipedia.org/wiki/Reverse proxy" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Reverse proxy">Reverse proxy</a></div>
+</li>
+<li class="level1"><div class="li"> Custom error pages e.g. 404.html</div>
+</li>
+</ul>
+
+<p>
+But it doesn&#039;t support Keep Alive, <abbr title="Transport Layer Security">TLS</abbr> (<abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr>), Virtual Hosting, FastCGI and many other features so it&#039;s often replaced in embedded systems with <a href="/docs/guide-user/services/webserver/lighttpd" class="wikilink1" title="docs:guide-user:services:webserver:lighttpd" data-wiki-id="docs:guide-user:services:webserver:lighttpd">Lighttpd</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Features&quot;,&quot;hid&quot;:&quot;features&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;727-1549&quot;} -->
+<h2 class="sectionedit3" id="installation">Installation</h2>
+<div class="level2">
+
+<p>
+There is no package called <code>httpd</code> that you can install with <code>opkg</code>. The <code>httpd</code> is part of BusyBox functionality.
+You could either compile BusyBox with this functionality included, or you could install a second BusyBox binary with this functionality included.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation&quot;,&quot;hid&quot;:&quot;installation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;1550-1843&quot;} -->
+<h2 class="sectionedit4" id="usage">Usage</h2>
+<div class="level2">
+
+<p>
+From <a href="https://busybox.net/downloads/BusyBox.html#httpd" class="urlextern" title="https://busybox.net/downloads/BusyBox.html#httpd" rel="ugc nofollow">https://busybox.net/downloads/BusyBox.html#httpd</a>:
+</p>
+<pre class="code">httpd [-ifv[v]] [-c CONFFILE] [-p [IP:]PORT] [-u USER[:GRP]] [-r REALM] [-h HOME] or httpd -d/-e/-m STRING
+
+Listen for incoming HTTP requests
+
+Options:
+
+        -i              Inetd mode
+        -f              Do not daemonize
+        -v[v]           Verbose
+        -c FILE         Configuration file (default httpd.conf)
+        -p [IP:]PORT    Bind to ip:port (default *:80)
+        -u USER[:GRP]   Set uid/gid after binding to port
+        -r REALM        Authentication Realm for Basic Authentication
+        -h HOME         Home directory (default .)
+        -m STRING       MD5 crypt STRING
+        -e STRING       HTML encode STRING
+        -d STRING       URL decode STRING</pre>
+
+<p>
+Note that multiple instances of httpd can be run, which would have different <code>.conf</code> files:
+</p>
+<pre class="code bash"><span class="sy0">/</span>usr<span class="sy0">/</span>sbin<span class="sy0">/</span>httpd <span class="re5">-p</span> <span class="nu0">80</span> <span class="re5">-h</span> <span class="sy0">/</span>www
+<span class="sy0">/</span>usr<span class="sy0">/</span>sbin<span class="sy0">/</span>httpd <span class="re5">-p</span> <span class="nu0">8080</span> <span class="re5">-h</span> <span class="sy0">/</span>www2 <span class="re5">-c</span> <span class="sy0">/</span>etc<span class="sy0">/</span>httpd2.conf</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Usage&quot;,&quot;hid&quot;:&quot;usage&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;1844-2822&quot;} -->
+<h2 class="sectionedit5" id="configuration">Configuration</h2>
+<div class="level2">
+
+<p>
+<code>httpd</code> may work without a configuration file. But by default it will try to read config from <code>/etc/httpd.conf</code>.
+There were also some brief uci support for this: <a href="/docs/guide-user/base-system/httpd" class="wikilink1" title="docs:guide-user:base-system:httpd" data-wiki-id="docs:guide-user:base-system:httpd">httpd</a>.
+</p>
+
+<p>
+The <code>httpd</code> documented itself <a href="https://git.busybox.net/busybox/tree/networking/httpd.c" class="urlextern" title="https://git.busybox.net/busybox/tree/networking/httpd.c" rel="ugc nofollow">directly in source code</a>
+</p>
+
+<p>
+Example of config file:
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-user/services/webserver/http.httpd?codeblock=2" title="Download Snippet" class="mediafile mf_conf">/etc/httpd.conf</a></dt>
+<dd><pre class="code">H:/serverroot     # define the server root. It will override -h
+# Allow/Deny part
+#
+# [aA]:from    ip address allow, * for wildcard, network subnet allow
+# [dD]:from    ip address deny, * for wildcard, network subnet allow
+#
+# network subnet definition
+#  172.20.                    address from 172.20.0.0/16
+#  10.0.0.0/25                address from 10.0.0.0-10.0.0.127
+#  10.0.0.0/255.255.255.128   address that previous set
+#
+#  The Deny/Allow IP logic:
+#
+#  - Default is to allow all.  No addresses are denied unless
+#         denied with a D: rule.
+#  - Order of Deny/Allow rules is significant
+#  - Deny rules take precedence over allow rules.
+#  - If a deny all rule (D:*) is used it acts as a catch-all for unmatched
+#       addresses.
+#  - Specification of Allow all (A:*) is a no-op
+#
+# Example:
+#   1. Allow only specified addresses
+#     A:172.20          # Allow any address that begins with 172.20.
+#     A:10.10.          # Allow any address that begins with 10.10.
+#     A:127.0.0.1       # Allow local loopback connections
+#     D:*               # Deny from other IP connections
+#
+#   2. Only deny specified addresses
+#     D:1.2.3.        # deny from 1.2.3.0 - 1.2.3.255
+#     D:2.3.4.        # deny from 2.3.4.0 - 2.3.4.255
+#     A:*             # (optional line added for clarity)
+#
+# Note:
+# A:*
+# D:*
+# Mean deny ALL !!!!
+#
+
+A:*
+
+#
+# Authentication part
+#
+# /path:user:pass     username/password
+#
+# password may be clear text or MD5 cript
+#
+# Example :
+# /cgi-bin:admin:FOO
+#
+# MD5 crypt password :
+# httpd -m &quot;_password_&quot;
+# Example :
+# httpd -m &quot;astro&quot;  =&gt;  $1$$e6xMPuPW0w8dESCuffefU.
+# /work:toor:$1$$e6xMPuPW0w8dESCuffefU.
+#
+
+#
+# MIME type part
+#
+# .ext:mime/type   new mime type not compiled into httpd
+#
+# Example :
+# .ipk:application/octet-stream
+#
+# MIME type compiled into httpd
+#
+# .htm:text/html
+# .html:text/html
+# .jpg:image/jpeg
+# .jpeg:image/jpeg
+# .gif:image/gif
+# .png:image/png
+# .txt:text/plain
+# .h:text/plain
+# .c:text/plain
+# .cc:text/plain
+# .cpp:text/plain
+# .css:text/css
+# .wav:audio/wav
+# .avi:video/x-msvideo
+# .qt:video/quicktime
+# .mov:video/quicktime
+# .mpe:video/mpeg
+# .mpeg:video/mpeg
+# .mid:audio/midi
+# .midi:audio/midi
+# .mp3:audio/mpeg
+#
+# Default MIME type is application/octet-stream if extension isn&#039;t set
+
+# Use Unicode for text files
+.txt:text/plain;charset=utf-8
+.md:text/plain;charset=utf-8
+.htm:text/html;charset=utf-8
+.html:text/html;charset=utf-8
+
+# configure interpreters. 
+*.php:/usr/bin/php-cgi
+*.pl:/usr/bin/perl
+*.rb:/usr/bin/ruby
+*.erb:/usr/bin/eruby
+*.py:/usr/bin/python
+# The *.cgi often are Perl files but may be just a shell with shebang
+#*.cgi:/usr/bin/perl</pre>
+</dd></dl>
+
+<p>
+Example of BB httpd options and their analogues in Apache HTTPD:
+</p>
+<div class="table sectionedit6"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign"> BB httpd conf option      </th><th class="col1 leftalign"> Apache HTTPD conf option        </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> <code>I:default.htm</code>         </td><td class="col1 leftalign"> <code>DirectoryIndex default.htm</code>  </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> <code>H:/srv/www/</code>           </td><td class="col1 leftalign"> <code>DocumentRoot /srv/www/</code>      </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> <code>A:192.168.11.1</code>        </td><td class="col1 leftalign"> <code>Allow from 192.168.11.1</code>     </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"> <code>D:*</code>                   </td><td class="col1 leftalign"> <code>Deny from all</code>               </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 leftalign"> <code>E401:401.html</code>         </td><td class="col1"> <code>ErrorDocument 401 /401.html</code> </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0 leftalign"> <code>P:/blog:wp/</code>           </td><td class="col1 leftalign"> <code>ProxyPass /blog:<a href="http://wp/" class="urlextern" title="http://wp/" rel="ugc nofollow">http://wp/</a></code>  </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0 leftalign"> <code>.webp:image/webp</code>      </td><td class="col1 leftalign"> <code>AddType image/webp webp</code>     </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0 leftalign"> <code>*.py:/usr/bin/python</code>  </td><td class="col1 leftalign"> <code>AddHandler mod_python .py</code> (the mod_python must be enabled)   </td>
+	</tr>
+	<tr class="row9">
+		<td class="col0"> <code>/cgi-bin:admin:SECRET</code> </td><td class="col1"> <code>AuthType Basic</code>, <code>AuthUserFile /etc/.htpasswd</code> (you&#039;ll need to create a separate file) </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:6,&quot;range&quot;:&quot;5939-6671&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:5,&quot;range&quot;:&quot;2823-6673&quot;} -->
+<h2 class="sectionedit7" id="cgi_scripts">CGI scripts</h2>
+<div class="level2">
+
+<p>
+<code>httpd</code> expects it&#039;s CGI script files to be in the subdirectory <code>cgi-bin</code> under main web directory set by options <code>-h</code> (default is <code>/www</code>, so <code>/www/cgi-bin</code>). The CGI script files must also have permission to be executed (min mode 700). If directory <abbr title="Uniform Resource Locator">URL</abbr> is given, no <code>index.html</code> is found and CGI support is enabled, then <code>cgi-bin/index.cgi</code> will be executed. 
+</p>
+
+<p>
+BusyBox sources contains two useful CGI programs:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="https://git.busybox.net/busybox/tree/networking/httpd_indexcgi.c" class="urlextern" title="https://git.busybox.net/busybox/tree/networking/httpd_indexcgi.c" rel="ugc nofollow">httpd_indexcgi.c</a> generates a directory listing i.e. list of files. Other Web Servers has this as built-in feature but for BB http this is delegated to a CGI program.</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://git.busybox.net/busybox/tree/networking/httpd_ssi.c" class="urlextern" title="https://git.busybox.net/busybox/tree/networking/httpd_ssi.c" rel="ugc nofollow">httpd_ssi.c</a> processes <a href="https://en.wikipedia.org/wiki/Server Side Includes" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Server Side Includes">Server Side Includes</a></div>
+</li>
+</ul>
+
+<p>
+Use <code>httpd_helpers.sh</code> to compile them. Also there is and example of shell script to process File Upload <a href="https://git.busybox.net/busybox/tree/networking/httpd_post_upload.cgi" class="urlextern" title="https://git.busybox.net/busybox/tree/networking/httpd_post_upload.cgi" rel="ugc nofollow">httpd_post_upload.cgi</a>
+</p>
+
+<p>
+Check more <a href="https://gist.github.com/stokito/a9a2732ffc7982978a16e40e8d063c8f" class="urlextern" title="https://gist.github.com/stokito/a9a2732ffc7982978a16e40e8d063c8f" rel="ugc nofollow">CGI shell samples</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;CGI scripts&quot;,&quot;hid&quot;:&quot;cgi_scripts&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:7,&quot;range&quot;:&quot;6674-7787&quot;} -->
+<h3 class="sectionedit8" id="cgi_variables">CGI Variables</h3>
+<div class="level3">
+
+<p>
+Standard set of Common Gateway Interface environment variables are described in <a href="https://datatracker.ietf.org/doc/html/rfc3875" class="urlextern" title="https://datatracker.ietf.org/doc/html/rfc3875" rel="ugc nofollow">RFC3875</a>.
+For example:
+</p>
+<pre class="code">CONTENT_TYPE=application/x-www-form-urlencoded
+CONTENT_LENGTH=128
+REQUEST_METHOD=POST
+REQUEST_URI=/cgi-bin/printenvs
+QUERY_STRING=param1=12345&amp;param2=&amp;param3=some%20text
+REMOTE_USER=[http basic auth username]
+HTTP_HOST: &quot;example.com&quot;
+HTTP_USER_AGENT: &quot;Chrome&quot;
+HTTP_ACCEPT: &quot;*/*&quot;
+HTTP_REFERER=http://192.168.1.1/index1.html
+REMOTE_ADDR=192.168.1.180
+REMOTE_PORT=2292
+SERVER_PORT=80
+PATH=/bin:/sbin:/usr/bin:/usr/sbin
+PATH_INFO=
+PWD=/www/cgi-bin
+SCRIPT_NAME=/cgi-bin/printenvs
+SERVER_PROTOCOL=HTTP/1.0
+GATEWAY_INTERFACE=CGI/1.1
+SERVER_SOFTWARE=busybox httpd/1.30.1</pre>
+
+<p>
+Example of CGI script that prints them:
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-user/services/webserver/http.httpd?codeblock=4" title="Download Snippet" class="mediafile mf_">/cgi-bin/printenvs</a></dt>
+<dd><pre class="code">#!/bin/sh
+echo &quot;Content-Type: text/html&quot;
+echo &quot;&quot;
+echo &quot;Environment variables:&quot;
+env</pre>
+</dd></dl>
+
+<p>
+Environment variables are set up and the script is invoked with pipes for stdin/stdout.
+</p>
+
+<p>
+All request headers are available with <abbr title="Hypertext Transfer Protocol">HTTP</abbr> prefix e.g. Host header will be passed in <abbr title="Hypertext Transfer Protocol">HTTP</abbr>_HOST env.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;CGI Variables&quot;,&quot;hid&quot;:&quot;cgi_variables&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:8,&quot;range&quot;:&quot;7788-8895&quot;} -->
+<h3 class="sectionedit9" id="https">HTTPS</h3>
+<div class="level3">
+
+<p>
+BB httpd doesn&#039;t support <abbr title="Transport Layer Security">TLS</abbr> but you may try to use <a href="https://www.stunnel.org/index.html" class="urlextern" title="https://www.stunnel.org/index.html" rel="ugc nofollow">stunnel</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;HTTPS&quot;,&quot;hid&quot;:&quot;https&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:9,&quot;range&quot;:&quot;8896-9015&quot;} -->
+<h3 class="sectionedit10" id="reverse_proxy">Reverse Proxy</h3>
+<div class="level3">
+
+<p>
+BB httpd has a very basic reverse proxy support but it&#039;s not compiled by default. Use <code>FEATURE_HTTPD_PROXY</code> to enable it.
+</p>
+
+<p>
+This option allows you to define URLs that will be forwarded to another <abbr title="Hypertext Transfer Protocol">HTTP</abbr> server (the <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> is not supported).
+To setup add the following line to the configuration file:
+</p>
+<pre class="code">P:/old/path:[http://]hostname[:port]/new/path</pre>
+
+<p>
+Then a request to <code>/old/path</code> will be forwarded to <code><a href="http://hostname[:port]/new/path" class="urlextern" title="http://hostname[:port]/new/path" rel="ugc nofollow">http://hostname[:port]/new/path</a></code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Reverse Proxy&quot;,&quot;hid&quot;:&quot;reverse_proxy&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:10,&quot;range&quot;:&quot;9016-9493&quot;} -->
+<h3 class="sectionedit11" id="serve_gzipped_files">Serve gzipped files</h3>
+<div class="level3">
+
+<p>
+For every file that should be served gzipped, add a matching <code>[FILENAME].gz</code>. The <code>.gz</code> file will be server instead of the original file so you may remove the original file.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Serve gzipped files&quot;,&quot;hid&quot;:&quot;serve_gzipped_files&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:11,&quot;range&quot;:&quot;9494-9703&quot;} -->
+<h3 class="sectionedit12" id="see_also">See also</h3>
+<div class="level3">
+
+<p>
+ * <a href="http://wiki.chumby.com/index.php?title=Using_the_busybox_HTTP_server" class="urlextern" title="http://wiki.chumby.com/index.php?title=Using_the_busybox_HTTP_server" rel="ugc nofollow">Using the busybox HTTP server</a>
+ * <a href="https://github.com/forksss/docker-static-website" class="urlextern" title="https://github.com/forksss/docker-static-website" rel="ugc nofollow">docker-static-website</a> a Docker image to run the BusyBox httpd 
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;See also&quot;,&quot;hid&quot;:&quot;see_also&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:12,&quot;range&quot;:&quot;9704-&quot;} -->

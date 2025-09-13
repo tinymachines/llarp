@@ -1,0 +1,387 @@
+
+<h1 class="sectionedit1" id="procd_system_init_and_daemon_management">Procd system init and daemon management</h1>
+<div class="level1">
+
+<p>
+<strong>See also:
+<a href="/docs/guide-developer/procd-init-scripts#procd_init_scripts" class="wikilink1" title="docs:guide-developer:procd-init-scripts" data-wiki-id="docs:guide-developer:procd-init-scripts">procd_init_scripts</a></strong>
+</p>
+
+<p>
+<code>procd</code> is the OpenWrt <a href="https://en.wikipedia.org/wiki/Process (computing)" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Process (computing)">process</a> management daemon written in <a href="https://en.wikipedia.org/wiki/C (programming language)" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/C (programming language)">C</a>. It keeps track of processes started from init scripts (via ubus calls), and can suppress redundant service start/restart requests when the config/environment has not changed.
+</p>
+
+<p>
+<code>procd</code> has replaced ... , e.g.
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>hotplug2</code>, a dynamic device management subsystem for embedded systems. Hotplug2 is a trivial replacement of some of the UDev functionality in a tiny pack, intended for Linux early userspace: Init RAM FS and InitRD.</div>
+</li>
+<li class="level1"><div class="li"> <code>busybox-klogd</code> and <code>busybox-syslogd</code></div>
+</li>
+<li class="level1"><div class="li"> <code>busybox-watchdog</code></div>
+</li>
+</ul>
+
+<p>
+<code>procd</code> is intended to stay compatible with the existing format of <code><a href="/docs/guide-user/base-system/uci" class="wikilink1" title="docs:guide-user:base-system:uci" data-wiki-id="docs:guide-user:base-system:uci">/etc/config/</a></code>; exceptions ...
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Procd system init and daemon management&quot;,&quot;hid&quot;:&quot;procd_system_init_and_daemon_management&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-903&quot;} -->
+<h2 class="sectionedit2" id="help_with_the_development_of_procd">Help with the development of procd</h2>
+<div class="level2">
+<ol>
+<li class="level1"><div class="li"> test what has been ported</div>
+</li>
+<li class="level1"><div class="li"> review of the code</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Help with the development of procd&quot;,&quot;hid&quot;:&quot;help_with_the_development_of_procd&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;904-1004&quot;} -->
+<h2 class="sectionedit3" id="buttons_with_procd">Buttons with procd</h2>
+<div class="level2">
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> see commit in <a href="https://dev.openwrt.org/log/trunk/package/base-files/files/etc/rc.button" class="urlextern" title="https://dev.openwrt.org/log/trunk/package/base-files/files/etc/rc.button" rel="ugc nofollow">https://dev.openwrt.org/log/trunk/package/base-files/files/etc/rc.button</a>
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> see use case <a href="/docs/guide-user/hardware/hardware.button" class="wikilink1" title="docs:guide-user:hardware:hardware.button" data-wiki-id="docs:guide-user:hardware:hardware.button">hardware.button</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Buttons with procd&quot;,&quot;hid&quot;:&quot;buttons_with_procd&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;1005-1195&quot;} -->
+<h2 class="sectionedit4" id="init_scripts_with_procd">Init scripts with procd</h2>
+<div class="level2">
+
+<p>
+see <a href="/docs/guide-developer/procd-init-scripts" class="wikilink1" title="docs:guide-developer:procd-init-scripts" data-wiki-id="docs:guide-developer:procd-init-scripts">procd-init-scripts</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Init scripts with procd&quot;,&quot;hid&quot;:&quot;init_scripts_with_procd&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;1196-1282&quot;} -->
+<h2 class="sectionedit5" id="early_state_and_preinit">early state and preinit</h2>
+<div class="level2">
+
+<p>
+Before the real procd runs, a small init process is started. This process has the job of early system init. It will do the following things in the listed order
+</p>
+<ul>
+<li class="level1"><div class="li"> bring up basic mounts such as /proc /sys/{,fs/cgroup} /dev/{,shm,pts}</div>
+</li>
+<li class="level1"><div class="li"> create some required folder, /tmp/{run,lock,state}</div>
+</li>
+<li class="level1"><div class="li"> bring up /dev/console and map the processes stdin/out/err to the console (this is the “Console is alive” message)</div>
+</li>
+<li class="level1"><div class="li"> setup the PATH environment variable</div>
+</li>
+<li class="level1"><div class="li"> check if “init_debug=” is set in the kernel command line and apply the debug level if set</div>
+</li>
+<li class="level1"><div class="li"> initialise the watchdog</div>
+</li>
+<li class="level1"><div class="li"> start kmodloader and load the modules listed in /etc/modules-boot.d/</div>
+</li>
+<li class="level1"><div class="li"> start hotplug with the preinit rules (/etc/hotplug-preinit.json)</div>
+</li>
+<li class="level1"><div class="li"> start preinit scripts found inside /lib/preinit/</div>
+</li>
+</ul>
+
+<p>
+Once preinit is complete the init process is done and will do an exec on the real procd. This will replace init as pid1 with an instance of procd running as the new pid 1. The watchdog file descriptor is not closed. Instead it is handed over to the new procd process. The debug_level will also be handed over to the new procd instance if it was set via command line or during preinit.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;early state and preinit&quot;,&quot;hid&quot;:&quot;early_state_and_preinit&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;1283-2471&quot;} -->
+<h2 class="sectionedit6" id="procd_start_up">procd start up</h2>
+<div class="level2">
+
+<p>
+Procd will first do some basic process init such as setting itself to be owner of its own process group and setting up signals. We are now ready to bring up the userland in the following order
+</p>
+<ul>
+<li class="level1"><div class="li"> find out if a watchdog file descriptor was passed by the init process and start up the watchdog</div>
+</li>
+<li class="level1"><div class="li"> setup /dev/console to be our stdin/out/err</div>
+</li>
+<li class="level1"><div class="li"> start the coldplug process using the full rule set (/etc/hotplug.json). This is done by manually triggering all events that have already happened using udevtrigger</div>
+</li>
+<li class="level1"><div class="li"> start ubus, register it as a service and connect to it.</div>
+</li>
+</ul>
+
+<p>
+The basic system bringup is now complete, procd is up and running and can start handling daemons and services
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;procd start up&quot;,&quot;hid&quot;:&quot;procd_start_up&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;2472-3180&quot;} -->
+<h2 class="sectionedit7" id="etcinittab">/etc/inittab</h2>
+<div class="level2">
+
+<p>
+Procd supports four commands inside inittab
+</p>
+<ul>
+<li class="level1"><div class="li"> respawn - this works just like you expect it. It starts a process and will respawn it once it has completed.</div>
+</li>
+<li class="level1"><div class="li"> respawnlate - this works like the respawn but will start the process only when the procd init is completed.</div>
+</li>
+<li class="level1"><div class="li"> askfirst - this works just like respawn but will print the line “Please press Enter to activate this console.” before starting the process</div>
+</li>
+<li class="level1"><div class="li"> askconsole - this works like askfirst but, instead of running on the tty passed as a parameter, it will look for the tty defined in the kernel command line using “console=”</div>
+</li>
+<li class="level1"><div class="li"> askconsolelate - this works like the askconsole but will start the process only when the procd init is completed.</div>
+</li>
+<li class="level1"><div class="li"> sysinit - this will trigger procd to run the command, given as a parameter, only once. This is usually used to trigger execution of /etc/rc.d/</div>
+</li>
+</ul>
+
+<p>
+Once all items inside /etc/inittab are processed, procd enter its normal run mode and will handle messages coming in via ubus. It will stay in this state until a reboot/shutdown is triggered.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;\/etc\/inittab&quot;,&quot;hid&quot;:&quot;etcinittab&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;3181-4255&quot;} -->
+<h2 class="sectionedit8" id="ubus_command_interface">ubus command interface</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;ubus command interface&quot;,&quot;hid&quot;:&quot;ubus_command_interface&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:8,&quot;range&quot;:&quot;4256-4291&quot;} -->
+<h2 class="sectionedit9" id="hotplug">hotplug</h2>
+<div class="level2">
+
+<p>
+Hotplug scripts are located inside /etc/hotplug.d and are based on json_script. This is a json based if then else syntax. Procd hotplug service offers the following actions:
+</p>
+<ul>
+<li class="level1"><div class="li"> makedev</div>
+</li>
+<li class="level1"><div class="li"> rm</div>
+</li>
+<li class="level1"><div class="li"> exec</div>
+</li>
+<li class="level1"><div class="li"> button</div>
+</li>
+<li class="level1"><div class="li"> load-firmware</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;meta:infobox:construction&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:10,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__meta:infobox:construction" id="plugin_include__meta__infobox__construction">
+<div class="level2">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:12,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_center wrap_construction plugin_wrap" style="width: 70%;">
+<p>
+<strong>Under Construction!</strong><br/>
+
+This page is currently under construction. You can edit the article to help completing it.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:13,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;meta:infobox:construction&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:11,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;hotplug&quot;,&quot;hid&quot;:&quot;hotplug&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:9,&quot;range&quot;:&quot;4292-4610&quot;} -->
+<h2 class="sectionedit14" id="procd_process_management_daemon_technical_reference">procd (process management daemon) – Technical Reference</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <a href="http://git.openwrt.org/?p=project/procd.git;a=summary" class="urlextern" title="http://git.openwrt.org/?p=project/procd.git;a=summary" rel="ugc nofollow">Project&#039;s git</a></div>
+</li>
+<li class="level1"><div class="li"> procd is available in OpenWrt since <a href="https://dev.openwrt.org/changeset/34865" class="urlextern" title="https://dev.openwrt.org/changeset/34865" rel="ugc nofollow">r34865 (trunk)</a>. It consists of files under GPLv2, LGPLv2.1 and ISC licenses.</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/search?q=procd&amp;noquickjump=1&amp;changeset=on" class="urlextern" title="https://dev.openwrt.org/search?q=procd&amp;noquickjump=1&amp;changeset=on" rel="ugc nofollow">commits to OpenWrt trunk regarding procd</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;procd (process management daemon) \u2013 Technical Reference&quot;,&quot;hid&quot;:&quot;procd_process_management_daemon_technical_reference&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:14,&quot;range&quot;:&quot;4611-5033&quot;} -->
+<h2 class="sectionedit15" id="openwrt_operating_system_architecture">OpenWrt – operating system architecture</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;docs:techref:architecture&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:16,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__docs:techref:architecture" id="plugin_include__docs__techref__architecture">
+<div class="level2">
+
+<p>
+Whereas desktop distributions use <a href="https://en.wikipedia.org/wiki/GLib" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/GLib">glib</a>+<a href="https://en.wikipedia.org/wiki/D-Bus" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/D-Bus">dbus</a>+<a href="https://en.wikipedia.org/wiki/udev" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/udev">udev(part of systemd)</a>, OpenWrt uses <a href="/docs/techref/libubox" class="wikilink1" title="docs:techref:libubox" data-wiki-id="docs:techref:libubox">libubox</a>+<a href="/docs/techref/ubus" class="wikilink1" title="docs:techref:ubus" data-wiki-id="docs:techref:ubus">ubus</a>+<a href="/docs/techref/procd" class="wikilink1" title="docs:techref:procd" data-wiki-id="docs:techref:procd">procd</a>.
+This provides some pretty awesome functionality without requiring huge libraries with huge dependencies (*cough* glib).
+</p>
+<div class="table sectionedit18"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> </th><th class="col1 centeralign" colspan="2">  Desktop Distributions  </th><th class="col3 centeralign" colspan="2">  OpenWrt  </th><th class="col5 centeralign">  <a href="https://en.wikipedia.org/wiki/Android (operating system)" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Android (operating system)">Android</a>  </th><th class="col6"> <a href="https://en.wikipedia.org/wiki/Replicant (operating system)" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Replicant (operating system)">Replicant</a> </th><th class="col7"> <a href="https://en.wikipedia.org/wiki/Mer (software distribution)" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Mer (software distribution)">mer-based</a> </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> Typical main memory size         </td><td class="col1 centeralign" colspan="2">  <strong><span style='color:red; '>128 MiB</span></strong> to 16 GiB (or more)     </td><td class="col3 centeralign" colspan="2">  <strong><span style='color:red; '>32 MiB</span></strong> to 512 MiB<sup><a href="#fn__1" id="fnt__1" class="fn_top">1)</a></sup>  </td><td class="col5 centeralign" colspan="2">  min <strong><span style='color:red; '>92 MiB</span></strong> for Android 2.1 <br/>
+min <strong><span style='color:red; '>340 MiB</span></strong> for Android 4.0  </td><td class="col7 centeralign">  ?  </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> Supported instruction sets        </td><td class="col1 centeralign" colspan="2">  almost anything                 </td><td class="col3 centeralign" colspan="2">  almost anything         </td><td class="col5 centeralign" colspan="3">  x86, 86-64, ARM, MIPS32  </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> non-volatile storage space       </td><td class="col1 centeralign" colspan="2">  100 MiB                               </td><td class="col3 centeralign" colspan="2">  8 MiB<sup><a href="#fn__2" id="fnt__2" class="fn_top">2)</a></sup>  </td><td class="col5 centeralign" colspan="2">  150MiB for Android 2.1<br/>
+512MiB for Android 4.0  </td><td class="col7 centeralign">  ?  </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0" rowspan="2"> <a href="https://en.wikipedia.org/wiki/Kernel (computing)" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Kernel (computing)">kernel</a> </td><td class="col1 centeralign" colspan="7">  <strong><code><a href="https://en.wikipedia.org/wiki/Linux kernel" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Linux kernel">Linux kernel</a></code></strong>  </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 leftalign" colspan="2"> <abbr title="Free &amp; Open-Source Software">FOSS</abbr> and binary drivers           </td><td class="col2" colspan="2"> <abbr title="Free &amp; Open-Source Software">FOSS</abbr> drivers: e.g. <a href="https://en.wikipedia.org/wiki/Comparison of open-source wireless drivers" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Comparison of open-source wireless drivers">802.11</a>; <a href="/docs/techref/hardware/internet.access.technologies" class="wikilink1" title="docs:techref:hardware:internet.access.technologies" data-wiki-id="docs:techref:hardware:internet.access.technologies">Iaccess</a> </td><td class="col4"> Android binary drivers </td><td class="col5 leftalign">   </td><td class="col6 leftalign">   </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0 leftalign"> <a href="https://en.wikipedia.org/wiki/C standard library" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/C standard library">C standard library</a>        </td><td class="col1 leftalign" colspan="2"> <a href="https://en.wikipedia.org/wiki/GNU C Library" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/GNU C Library">glibc</a>        </td><td class="col3 leftalign" colspan="2"> <a href="https://en.wikipedia.org/wiki/uClibc" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/uClibc">uClibc</a>, <a href="https://en.wikipedia.org/wiki/musl" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/musl">musl</a>    </td><td class="col5 leftalign"> <a href="https://en.wikipedia.org/wiki/Bionic (software)" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Bionic (software)">bionic</a>         </td><td class="col6"> glibc + <a href="https://en.wikipedia.org/wiki/Hybris (software)" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Hybris (software)">libhybris</a> </td><td class="col7 leftalign"> eglibc 2.15  </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0 leftalign"> <a href="https://en.wikipedia.org/wiki/init" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/init">init</a>                      </td><td class="col1 leftalign"> <a href="https://en.wikipedia.org/wiki/init" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/init">init</a><br/>
+<a href="https://en.wikipedia.org/wiki/Upstart" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Upstart">Upstart</a><br/>
+ <a href="https://en.wikipedia.org/wiki/Initng" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Initng">Initng</a>     </td><td class="col2" rowspan="6"> <strong><code><a href="https://en.wikipedia.org/wiki/systemd" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/systemd">systemd</a></code></strong> </td><td class="col3 leftalign"> busybox-initd                               </td><td class="col4" rowspan="4"> <strong><code><a href="/docs/techref/procd" class="wikilink1" title="docs:techref:procd" data-wiki-id="docs:techref:procd">procd</a></code></strong> </td><td class="col5"> Android init-fork </td><td class="col6"> </td><td class="col7" rowspan="6"> <code>systemd</code> </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0 leftalign">                                  </td><td class="col1"> <a href="https://en.wikipedia.org/wiki/rsyslog" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/rsyslog">rsyslog</a> / <a href="https://en.wikipedia.org/wiki/syslog-ng" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/syslog-ng">syslog-ng</a> </td><td class="col2 leftalign"> busybox-klogd, busybox-syslogd              </td><td class="col3 leftalign">  </td><td class="col4 leftalign">  </td>
+	</tr>
+	<tr class="row9">
+		<td class="col0 leftalign">                                  </td><td class="col1 leftalign"> <a href="https://en.wikipedia.org/wiki/watchdog" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/watchdog">watchdog</a>                   </td><td class="col2 leftalign"> busybox-watchdog                            </td><td class="col3 leftalign">  </td><td class="col4 leftalign">  </td>
+	</tr>
+	<tr class="row10">
+		<td class="col0 leftalign">                                  </td><td class="col1 leftalign"> <a href="https://en.wikipedia.org/wiki/udev" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/udev">udev</a>                       </td><td class="col2 leftalign"> <a href="/docs/techref/hotplug_legacy" class="wikilink1" title="docs:techref:hotplug_legacy" data-wiki-id="docs:techref:hotplug_legacy">hotplug2</a>           </td><td class="col3 leftalign">  </td><td class="col4 leftalign">  </td>
+	</tr>
+	<tr class="row11">
+		<td class="col0 leftalign">                                  </td><td class="col1 leftalign"> <a href="https://en.wikipedia.org/wiki/cron" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/cron">cron</a>                       </td><td class="col2 leftalign" colspan="2"> <code><a href="/docs/guide-user/services/ntp/client-server" class="wikilink1" title="docs:guide-user:services:ntp:client-server" data-wiki-id="docs:guide-user:services:ntp:client-server">busybox-crond</a></code>       </td><td class="col4 leftalign">  </td><td class="col5 leftalign">  </td>
+	</tr>
+	<tr class="row12">
+		<td class="col0 leftalign">                                  </td><td class="col1 leftalign"> <a href="https://en.wikipedia.org/wiki/at (Unix)" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/at (Unix)">atd</a>              </td><td class="col2 leftalign" colspan="2"> <em>na</em>                                           </td><td class="col4 leftalign">  </td><td class="col5 leftalign">  </td>
+	</tr>
+	<tr class="row13">
+		<td class="col0 leftalign">                                  </td><td class="col1 leftalign" colspan="2"> <a href="https://en.wikipedia.org/wiki/D-Bus" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/D-Bus">D-Bus</a>                      </td><td class="col3 leftalign" colspan="2"> <a href="/docs/techref/ubus" class="wikilink1" title="docs:techref:ubus" data-wiki-id="docs:techref:ubus">ubus</a>         </td><td class="col5"> Binder </td><td class="col6 leftalign"> ?  </td><td class="col7"> D-Bus </td>
+	</tr>
+	<tr class="row14">
+		<td class="col0 leftalign"> network configuration            </td><td class="col1 leftalign" colspan="2"> <a href="https://en.wikipedia.org/wiki/NetworkManager" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/NetworkManager">NetworkManager</a> + <abbr title="Graphical User Interface">GUI</abbr>       </td><td class="col3 leftalign" colspan="2"> <code><a href="/docs/techref/netifd" class="wikilink1" title="docs:techref:netifd" data-wiki-id="docs:techref:netifd">netifd</a></code>   </td><td class="col5"> ConnectivityManager<br/>
+(not <a href="https://connman.net/" class="urlextern" title="https://connman.net/" rel="ugc nofollow">ConnMan = ConnectionManager</a>!) </td><td class="col6"> ? </td><td class="col7"> ConnMan </td>
+	</tr>
+	<tr class="row15">
+		<td class="col0 leftalign">                                  </td><td class="col1 leftalign" colspan="2"> <a href="https://en.wikipedia.org/wiki/GLib" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/GLib">GLib</a> <br/>
+(GObject, Glib, GModule, GThread, GIO)  </td><td class="col3 leftalign" colspan="2"> <a href="/docs/techref/libubox" class="wikilink1" title="docs:techref:libubox" data-wiki-id="docs:techref:libubox">libubox</a>      </td><td class="col5"> ? </td><td class="col6"> ? </td><td class="col7"> Qt-based? </td>
+	</tr>
+	<tr class="row16">
+		<td class="col0 leftalign">                                  </td><td class="col1 leftalign" colspan="2"> <a href="https://en.wikipedia.org/wiki/PulseAudio" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/PulseAudio">PulseAudio</a>                 </td><td class="col3" colspan="2"> <a href="/docs/guide-user/hardware/audio/pulseaudio" class="wikilink1" title="docs:guide-user:hardware:audio:pulseaudio" data-wiki-id="docs:guide-user:hardware:audio:pulseaudio">pulseaudio</a> (optional) </td><td class="col5"> PulseAudio </td><td class="col6"> PulseAudio </td><td class="col7"> PulseAudio </td>
+	</tr>
+	<tr class="row17">
+		<td class="col0"> <a href="https://en.wikipedia.org/wiki/Package management system" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Package management system">Package management system</a> </td><td class="col1 leftalign" colspan="2"> <a href="https://en.wikipedia.org/wiki/dpkg" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/dpkg">dpkg</a>/<a href="https://en.wikipedia.org/wiki/Advanced Packaging Tool" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Advanced Packaging Tool">APT</a><br/>
+<a href="https://en.wikipedia.org/wiki/RPM Package Manager" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/RPM Package Manager">RPM</a>/<a href="https://en.wikipedia.org/wiki/Yellowdog Updater, Modified" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Yellowdog Updater, Modified">yum</a><br/>
+<a href="https://en.wikipedia.org/wiki/Portage (software)" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Portage (software)">portage</a><br/>
+<a href="https://en.wikipedia.org/wiki/pacman (package manager)" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/pacman (package manager)">pacman</a><br/>
+...  </td><td class="col3 leftalign" colspan="2"> <code><a href="/docs/guide-user/additional-software/opkg" class="wikilink1" title="docs:guide-user:additional-software:opkg" data-wiki-id="docs:guide-user:additional-software:opkg">opkg</a></code>  </td><td class="col5"> <a href="https://en.wikipedia.org/wiki/APK (file format)" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/APK (file format)">apk</a> </td><td class="col6"> ? </td><td class="col7"> <a href="https://en.wikipedia.org/wiki/RPM Package Manager" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/RPM Package Manager">RPM</a> </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:18,&quot;range&quot;:&quot;354-3792&quot;} -->
+</div>
+
+<h4 id="what_s_the_difference_between_ubus_vs_dbus">What&#039;s the difference between ubus vs dbus?</h4>
+<div class="level4">
+
+<p>
+<code>dbus</code> is bloated, its C <abbr title="Application Programming Interface">API</abbr> is very annoying to use and requires writing large amounts of boilerplate code. In fact, the pure C <abbr title="Application Programming Interface">API</abbr> is so annoying that its own <abbr title="Application Programming Interface">API</abbr> documentation states: “If you use this low-level <abbr title="Application Programming Interface">API</abbr> directly, you&#039;re signing up for some pain.”
+</p>
+
+<p>
+<code>ubus</code> is tiny and has the advantage of being easy to use from regular C code, as well as automatically making all exported <abbr title="Application Programming Interface">API</abbr> functionality also available to shell scripts with no extra effort.
+</p>
+
+<p>
+“Of course, NetworkManager should be renamed to <strong><em><code>“unetwork”</code></em></strong>, dbus to <strong><em><code>“ubus”</code></em></strong>, PulseAudio to <strong><em><code>“usound”</code></em></strong>, and X.Org-Server/Wayland-Compositor to <strong><em><code>“udisplay”</code></em></strong>; and then indescribable happiness would come down to all people of this world.” – <a href="http://lists.freedesktop.org/archives/dbus/2010-April/012545.html" class="urlextern" title="http://lists.freedesktop.org/archives/dbus/2010-April/012545.html" rel="ugc nofollow">Lennart Poettering</a>
+</p>
+<hr />
+<ul>
+<li class="level1"><div class="li"> →<a href="/docs/guide-developer/toolchain/start" class="wikilink1" title="docs:guide-developer:toolchain:start" data-wiki-id="docs:guide-developer:toolchain:start">OpenWrt Buildroot – About</a></div>
+</li>
+<li class="level1"><div class="li"> →<a href="/docs/guide-developer/toolchain/install-buildsystem" class="wikilink1" title="docs:guide-developer:toolchain:install-buildsystem" data-wiki-id="docs:guide-developer:toolchain:install-buildsystem"> OpenWrt Buildroot – Installation</a></div>
+</li>
+<li class="level1"><div class="li"> →<a href="/docs/guide-developer/toolchain/start" class="wikilink1" title="docs:guide-developer:toolchain:start" data-wiki-id="docs:guide-developer:toolchain:start">OpenWrt Buildroot – Usage</a></div>
+</li>
+<li class="level1"><div class="li"> →<a href="/docs/guide-developer/toolchain/use-patches-with-buildsystem" class="wikilink1" title="docs:guide-developer:toolchain:use-patches-with-buildsystem" data-wiki-id="docs:guide-developer:toolchain:use-patches-with-buildsystem">OpenWrt Buildroot – Patches</a></div>
+</li>
+</ul>
+<hr />
+<ul>
+<li class="level1"><div class="li"> →<a href="/docs/techref/file_system" class="wikilink1" title="docs:techref:file_system" data-wiki-id="docs:techref:file_system">file_system</a> / <a href="/docs/techref/flash.layout" class="wikilink1" title="docs:techref:flash.layout" data-wiki-id="docs:techref:flash.layout">flash.layout</a></div>
+</li>
+<li class="level1"><div class="li"> →<a href="/docs/techref/internal.layout" class="wikilink1" title="docs:techref:internal.layout" data-wiki-id="docs:techref:internal.layout">internal.layout</a></div>
+</li>
+<li class="level1"><div class="li"> →<a href="/docs/techref/preinit_mount" class="wikilink1" title="docs:techref:preinit_mount" data-wiki-id="docs:techref:preinit_mount">preinit_mount</a>/<a href="/docs/techref/process.boot" class="wikilink1" title="docs:techref:process.boot" data-wiki-id="docs:techref:process.boot">process.boot</a>/<a href="/docs/techref/requirements.boot.process" class="wikilink1" title="docs:techref:requirements.boot.process" data-wiki-id="docs:techref:requirements.boot.process">requirements.boot.process</a></div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> <a href="https://www.freedesktop.org/wiki/Software/PulseAudio/FAQ/#index2h3" class="urlextern" title="https://www.freedesktop.org/wiki/Software/PulseAudio/FAQ/#index2h3" rel="ugc nofollow">PulseAudio does not depend on GLib</a> and does not seem to depends on D-Bus neither: <a href="http://www.linuxfromscratch.org/blfs/view/svn/multimedia/pulseaudio.html" class="urlextern" title="http://www.linuxfromscratch.org/blfs/view/svn/multimedia/pulseaudio.html" rel="ugc nofollow">LFS</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://archive.fosdem.org/2013/schedule/event/dist_network/" class="urlextern" title="https://archive.fosdem.org/2013/schedule/event/dist_network/" rel="ugc nofollow">FOSDEM2013: Can Linux network configuration suck less?</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_editbtn&quot;,&quot;name&quot;:&quot;docs:techref:architecture&quot;,&quot;hid&quot;:&quot;plugin_include__docs__techref__architecture&quot;,&quot;secid&quot;:19,&quot;range&quot;:&quot;0-&quot;} --><!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;docs:techref:architecture&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:17,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;OpenWrt \u2013 operating system architecture&quot;,&quot;hid&quot;:&quot;openwrt_operating_system_architecture&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:15,&quot;range&quot;:&quot;5034-5141&quot;} -->
+<h3 class="sectionedit20" id="history">History</h3>
+<div class="level3">
+
+<p>
+Package history is available at:
+</p>
+<ul>
+<li class="level1"><div class="li"> current history: <a href="https://dev.openwrt.org/log/trunk/package/system/procd" class="urlextern" title="https://dev.openwrt.org/log/trunk/package/system/procd" rel="ugc nofollow">https://dev.openwrt.org/log/trunk/package/system/procd</a></div>
+</li>
+<li class="level1"><div class="li"> old history pre r37007 <a href="https://dev.openwrt.org/log/trunk/package/procd/Makefile?rev=36995" class="urlextern" title="https://dev.openwrt.org/log/trunk/package/procd/Makefile?rev=36995" rel="ugc nofollow">https://dev.openwrt.org/log/trunk/package/procd/Makefile?rev=36995</a></div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/changeset/34865" class="urlextern" title="https://dev.openwrt.org/changeset/34865" rel="ugc nofollow">r34865: procd: add initial implementation</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/changeset/34866" class="urlextern" title="https://dev.openwrt.org/changeset/34866" rel="ugc nofollow">r34866: base-files: add basic procd integration, let procd start (and restart) ubus instead of having an ubus init script</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/changeset/34867" class="urlextern" title="https://dev.openwrt.org/changeset/34867" rel="ugc nofollow">r34867: dropbear: convert init script to procd</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/changeset/36003" class="urlextern" title="https://dev.openwrt.org/changeset/36003" rel="ugc nofollow">r36003: base-files: make basefiles aware of procd</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/changeset/36005" class="urlextern" title="https://dev.openwrt.org/changeset/36005" rel="ugc nofollow">r36005: busybox: make init and logread depend on !PROCD_INIT</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/changeset/36446" class="urlextern" title="https://dev.openwrt.org/changeset/36446" rel="ugc nofollow">r36446: hotplug2: make it depend on !PROCD_INIT</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/changeset/36896" class="urlextern" title="https://dev.openwrt.org/changeset/36896" rel="ugc nofollow">r36896: procd: make the preinit rules wildcard all buttons for failsafe</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/changeset/36987" class="urlextern" title="https://dev.openwrt.org/changeset/36987" rel="ugc nofollow">r36987: hotplug2: procd does the hotplugging now</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/changeset/36998" class="urlextern" title="https://dev.openwrt.org/changeset/36998" rel="ugc nofollow">r36998: base-files: procd is now the init process</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/changeset/36999" class="urlextern" title="https://dev.openwrt.org/changeset/36999" rel="ugc nofollow">r36999: base-files: diag does not need to insmod any drivers, procd already did it for us</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/changeset/37000" class="urlextern" title="https://dev.openwrt.org/changeset/37000" rel="ugc nofollow">r37000: base-files: input/button drivers get loaded before preinit by procd</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/changeset/37002" class="urlextern" title="https://dev.openwrt.org/changeset/37002" rel="ugc nofollow">r37002: base-files: /etc/init.d/rcS is no longer needed, procd handles this for us now</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/changeset/37039" class="urlextern" title="https://dev.openwrt.org/changeset/37039" rel="ugc nofollow">r37039: busybox: disable syslogd/klogd by default, procd replaces them</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/changeset/37106" class="urlextern" title="https://dev.openwrt.org/changeset/37106" rel="ugc nofollow">r37106: busybox: disable the watchdog utility by default (procd handles watchdog devices)</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/changeset/37242" class="urlextern" title="https://dev.openwrt.org/changeset/37242" rel="ugc nofollow">r37242, 37243, 37244: busybox: convert telnet, crond and sysntpd init scripts to procd</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/changeset/37245" class="urlextern" title="https://dev.openwrt.org/changeset/37245" rel="ugc nofollow">r37245: dropbear: register a config.change trigger: procd_add_config_trigger &quot;dropbear&quot; &quot;/etc/init.d/dropbear&quot; &quot;restart&quot;</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/changeset/37249" class="urlextern" title="https://dev.openwrt.org/changeset/37249" rel="ugc nofollow">r37429: procd: add proto and trigger support to the /etc/init.d/log</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://dev.openwrt.org/changeset/37336" class="urlextern" title="https://dev.openwrt.org/changeset/37336" rel="ugc nofollow">r37336: procd: make old button hotplug rules work until all packages are migrated</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;History&quot;,&quot;hid&quot;:&quot;history&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:20,&quot;range&quot;:&quot;5142-&quot;} --><div class="footnotes">
+<div class="fn"><sup><a href="#fnt__1" id="fn__1" class="fn_bot">1)</a></sup> 
+<div class="content">yes, <em>heavily</em> stripped OpenWrt can run on 16 or even 8MiB</div></div>
+<div class="fn"><sup><a href="#fnt__2" id="fn__2" class="fn_bot">2)</a></sup> 
+<div class="content">yes, 4MiB and 2MiB possible</div></div>
+</div>

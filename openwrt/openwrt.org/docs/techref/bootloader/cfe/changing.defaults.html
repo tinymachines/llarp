@@ -1,0 +1,171 @@
+
+<h1 class="sectionedit1" id="changing_cfe_defaults">Changing CFE defaults</h1>
+<div class="level1">
+
+<p>
+The following is a guide from <a href="http://wl500g.dyndns.org/wrt54g.html" class="urlextern" title="http://wl500g.dyndns.org/wrt54g.html" rel="ugc nofollow">http://wl500g.dyndns.org/wrt54g.html</a> that I&#039;ve copied here, with added commentary. I am not the original author, that credit goes to Oleg.<em> </em>
+</p>
+
+<p>
+Copyright © 2005 Oleg I. Vdovikin IMPORTANT: This information provided AS IS, without any warranties. If in doubt leave this page now. This information applies to WRT54G hw rev 2.0, 2.2, 3.0. No other units were tested, but most likely WRT54GS units should be the same. WRT54G hw rev 1.x use different layout, so you need to adjust things accordingly.
+</p>
+
+<p>
+The wrt54g v.2.2 unit was kindly donated to me by maxx, the member of the forum.chupa.nl forum. I would like to publically say thank you to him.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Changing CFE defaults&quot;,&quot;hid&quot;:&quot;changing_cfe_defaults&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-712&quot;} -->
+<h2 class="sectionedit2" id="extracting_default_values">Extracting default values</h2>
+<div class="level2">
+
+<p>
+Telnet/ssh to your router running your favorite firmware and type the following
+</p>
+<pre class="code">dd if=/dev/mtdblock/0 bs=1 skip=4116 count=2048 | strings &gt; /tmp/cfe.txt
+dd if=/dev/mtdblock/0 of=/tmp/cfe.bin</pre>
+
+<p>
+Copy both cfe.bin and cfe.txt to your linux box (this is required).
+</p>
+
+<p>
+To copy files from your router to your computer, make sure the Dropbear package is installed, and type:
+</p>
+<pre class="code">scp root@:/tmp/cfe.bin /directory/on/your/computer
+scp root@:/tmp/cfe.txt /directory/on/your/computer</pre>
+
+<p>
+<em>Check cfe.txt, it should look like this (this is from v.2.2): </em>
+</p>
+<pre class="code">boardtype=0x0708
+boardnum=42
+boardrev=0x10
+boardflags=0x0118
+boardflags2=0
+sromrev=2
+clkfreq=200
+sdram_init=0x000b
+sdram_config=0x0062
+sdram_refresh=0x0000
+sdram_ncdl=0x0
+et0macaddr=00:90:4C:00:00:00
+et0phyaddr=30
+et0mdcport=0
+gpio5=robo_reset
+vlan0ports=1 2 3 4 5*
+vlan0hwname=et0
+vlan1ports=0 5
+vlan1hwname=et0
+wl0id=0x4320
+il0macaddr=00:90:4C:00:00:00
+aa0=3
+ag0=255
+pa0maxpwr=0x4e
+pa0itssit=62
+pa0b0=0x15eb
+pa0b1=0xfa82
+pa0b2=0xfe66
+wl0gpio2=0
+wl0gpio3=0
+cctl=0
+ccode=0
+dl_ram_addr=a0001000
+os_ram_addr=80001000
+os_flash_addr=bfc40000
+lan_ipaddr=192.168.1.1
+lan_netmask=255.255.255.0
+scratch=a0180000
+boot_wait=off
+watchdog=5000
+bootnv_ver=2</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Extracting default values&quot;,&quot;hid&quot;:&quot;extracting_default_values&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;713-1983&quot;} -->
+<h2 class="sectionedit3" id="changing_defaults">Changing defaults</h2>
+<div class="level2">
+
+<p>
+Open cfe.txt using text editor and change defaults in the way you like (but be extremely careful, as some changes could prevent device from booting and you will need to use JTAG cable to bring it back to life). For me I&#039;ve decided to enable both Afterburner (Speedbooster) and set boot_wait to on by default, so reset to default no longer messes the things, so I&#039;ve applied this pseudo-patch (please note, that I&#039;ve added bit 0x200 to boardflags to enable afterburner):
+</p>
+<pre class="code">-boardflags=0x0118
+-boot_wait=off
++boardflags=0x0318
++boot_wait=on</pre>
+
+<p>
+To make life easier for me, I added “reset_gpio=6” to the cfe.txt file. This way, if I do set something wrong, like clkfreq, and the router just locks up, I wont have to try over and over again to hit a very slim window with the JTAG to erase the nvram. I can just hold reset when the router powers on, and it will use the default nvram values stored in the cfe.<em> </em>
+</p>
+
+<p>
+If you do not understand some things in this file, do not try to edit it. This is also applies to afterburner. I&#039;ve also tried to change default lan_ipaddr, but this does not work in the way I expect: CFE started to answer to ping request to new lan_ipaddr, but it does not accept tftp transfers...
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Changing defaults&quot;,&quot;hid&quot;:&quot;changing_defaults&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:3,&quot;range&quot;:&quot;1984-3238&quot;} -->
+<h2 class="sectionedit4" id="creating_new_cfe_image">Creating new CFE image</h2>
+<div class="level2">
+
+<p>
+You will need a nvserial utility which comes with several <abbr title="GNU General Public License">GPL</abbr> tarballs. Linksys supplies it in the wrt54g.1.42.3, wrt54g.1.42.2, wap55ag.1.07, wap54gv2.2.06. Launch nvserial in the way like this on your x86 linux box: You can get nvserial from <a href="http://downloads.openwrt.org/people/inh/programs/nvserial" class="urlextern" title="http://downloads.openwrt.org/people/inh/programs/nvserial" rel="ugc nofollow">http://downloads.openwrt.org/people/inh/programs/nvserial</a>
+</p>
+<pre class="code">nvserial -i cfe.bin -o cfe_new.bin -b 4096 -c 2048 cfe.txt</pre>
+
+<p>
+It works really slow, but it should finally create cfe_new.bin file for you, which has new embedded nvram.
+</p>
+
+<p>
+<strong>Recompiling kernel with writable pmon partition</strong>
+</p>
+
+<p>
+By default most firmwares has pmon partition write protected, i.e. you can&#039;t flash anything to this first 256k of flash. This is to prevent corrupting PMON/CFE. To remove this “lock” you will need to compile your own firmare with the following patch, you will need to copy the patch into “target/linux/linux-2.4/patches/brcm”. (This patch works with WHITERUSSIAN RC3)
+</p>
+<pre class="code">--- linux-2.4.30/arch/mips/bcm947xx/setup.c.orig        2005-09-21 11:24:09.000000000 -0400
++++ linux-2.4.30/arch/mips/bcm947xx/setup.c     2005-09-21 13:48:46.853425632 -0400
+@@ -174,7 +174,7 @@
+ #ifdef CONFIG_MTD_PARTITIONS
+
+ static struct mtd_partition bcm947xx_parts[] = {
+-       { name: &quot;pmon&quot;, offset: 0, size: 0, mask_flags: MTD_WRITEABLE, },
++       { name: &quot;pmon&quot;, offset: 0, size: 0 /*, mask_flags: MTD_WRITEABLE,*/ },
+        { name: &quot;linux&quot;, offset: 0, size: 0, },
+        { name: &quot;rootfs&quot;, offset: 0, size: 0, },
+        { name: &quot;nvram&quot;, offset: 0, size: 0, },</pre>
+
+<p>
+Note: At least on White Russian recompiling the kernel is not necessary. Theres a kernel module thats makes the CFE Partition writable at <a href="http://myantihero.net/pub/openwrt/" class="urlextern" title="http://myantihero.net/pub/openwrt/" rel="ugc nofollow">http://myantihero.net/pub/openwrt/</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Creating new CFE image&quot;,&quot;hid&quot;:&quot;creating_new_cfe_image&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:4,&quot;range&quot;:&quot;3239-4953&quot;} -->
+<h2 class="sectionedit5" id="flashing_new_cfe_image">Flashing new CFE image</h2>
+<div class="level2">
+
+<p>
+So, once you&#039;ve recompiled and flashed your new firmware you need you upgrade CFE. This process is dangerous, as flash failure during it will prevent your unit from booting. Copy cfe_new.bin to your wrt54g and flash it. The exact commands are dependent on the firmware. With OpenWrt I&#039;ve used the following:
+</p>
+<pre class="code">mtd unlock pmon
+mtd write -f /tmp/cfe_new.bin pmon</pre>
+
+<p>
+I recommend using the JTAG cable method for re-flashing your CFE. If something were to go wrong, you would end up needing the JTAG cable anyways. It&#039;s really cheap and easy to build, and makes it possible to recover from almost any error you make when writing to the flash. Check out <a href="http://openwrt.org/OpenWrtDocs/Troubleshooting" class="urlextern" title="http://openwrt.org/OpenWrtDocs/Troubleshooting" rel="ugc nofollow">http://openwrt.org/OpenWrtDocs/Troubleshooting</a> <strong>&#039; </strong>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Flashing new CFE image&quot;,&quot;hid&quot;:&quot;flashing_new_cfe_image&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:5,&quot;range&quot;:&quot;4954-5705&quot;} -->
+<h2 class="sectionedit6" id="checking_it">Checking it</h2>
+<div class="level2">
+
+<p>
+Embedded nvram is only used, when real nvram is either corrupted or empty (CRC/magic checks fails), so you will need to erase nvram or to reset to defaults. With OpenWrt type this:
+</p>
+<pre class="code">mtd erase nvram</pre>
+
+<p>
+Then cross your fingers and reboot your unit. And remember - I&#039;m not responsible for any damage to your unit, as this information is provided AS IS for my own pleasure. oleg@cs.msu.su Posted: 2005-04-03
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Checking it&quot;,&quot;hid&quot;:&quot;checking_it&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:6,&quot;range&quot;:&quot;5706-&quot;} -->

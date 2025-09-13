@@ -1,0 +1,119 @@
+
+<h1 class="sectionedit1" id="installing_openwrt_over_ftp_generic">Installing OpenWrt over FTP (generic)</h1>
+<div class="level1">
+
+<p>
+Go back to <a href="/docs/guide-user/installation/generic.flashing" class="wikilink1" title="docs:guide-user:installation:generic.flashing" data-wiki-id="docs:guide-user:installation:generic.flashing">generic.flashing</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;meta:infobox:dangerous&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__meta:infobox:dangerous" id="plugin_include__meta__infobox__dangerous">
+<div class="level1">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_center wrap_dangerous plugin_wrap" style="width: 70%;">
+<p>
+<strong>Warning!</strong><br/>
+
+This section describes actions that might damage your device or firmware. Proceed with care!
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;meta:infobox:dangerous&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installing OpenWrt over FTP (generic)&quot;,&quot;hid&quot;:&quot;installing_openwrt_over_ftp_generic&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-175&quot;} -->
+<h2 class="sectionedit6" id="bootloader_contains_ftp_server">Bootloader contains FTP server</h2>
+<div class="level2">
+
+<p>
+One example of a bootloader containing a <abbr title="File Transfer Protocol">FTP</abbr>-server is the <a href="/docs/techref/bootloader/adam2" class="wikilink1" title="docs:techref:bootloader:adam2" data-wiki-id="docs:techref:bootloader:adam2">ADAM2/EVA</a>-bootloader, used by Texas Instruments hardware. One device, regarding to which this howto is written, is the <a href="/toh/avm/fritz.box.wlan.7570" class="wikilink2" title="toh:avm:fritz.box.wlan.7570" rel="nofollow" data-wiki-id="toh:avm:fritz.box.wlan.7570">AVM FRITZ!Box Fon WLAN 7570</a>. No, this is not supported by OpenWrt, and probably will never be!
+</p>
+
+<p>
+Said box has the default <abbr title="Internet Protocol">IP</abbr> address of 192.168.1.1, but the bootloader has a different default <abbr title="Internet Protocol">IP</abbr> address: 192.168.178.1. Since we connect to the bootloader, and not to the firmware, this is the one relevant here.
+</p>
+<ol>
+<li class="level1"><div class="li"> give your PC a static <abbr title="Internet Protocol">IP</abbr> address out of 192.168.178.1/24, besides the 1, e.g. use <code>192.168.178.2</code></div>
+</li>
+<li class="level1"><div class="li"> install a <abbr title="File Transfer Protocol">FTP</abbr>-client software, e.g. the standard POSIX ftp-client</div>
+</li>
+<li class="level1"><div class="li"> place the files you want to upload to the router in some directory, e.g. <code>~/images</code> and change into that directory <code>cd ~/image</code></div>
+</li>
+<li class="level1"><div class="li"> connect your PC with a <abbr title="Local Area Network">LAN</abbr>-Port of the Router</div>
+</li>
+<li class="level1"><div class="li"> power cycle the router and after about 3 seconds enter the following: <pre class="code">ftp -n 192.168.178.1</pre>
+
+<p>
+ (read <a href="http://man.cx/ftp" class="interwiki iw_man" title="http://man.cx/ftp">ftp</a> for the meaning of the <code>-n</code>.
+</p>
+</div>
+</li>
+<li class="level1"><div class="li"> once successfully connected to the bootloader, you will be asked for <em>username</em> and <em>password</em>. In this case <em>username</em> is <code>adam2</code> and the <em>password</em> is also <code>adam2</code>. Enter them as prompted and then issue the following commands: <pre class="code">binary
+debug
+passive
+quote MEDIA FLSH
+put empty.file mtd3
+put empty.file mtd4
+put kernel.image mtd1
+reboot</pre>
+
+<p>
+ (On the AVM FRITZ!Box Fon <abbr title="Wireless Local Area Network">WLAN</abbr> 7170 the last command must be replaced by <code>quote REBOOT</code>.)
+</p>
+</div>
+</li>
+</ol>
+
+<p>
+The `passive` command above is only relevant for older clients. Newer clients use the passive mode by default.
+</p>
+
+<p>
+Depending on what firmware you install, it may be necessary to additionally change a certain parameter in the bootloader environment:
+</p>
+<pre class="code">quote SETENV firmware_version &quot;hansenet&quot;</pre>
+
+<p>
+<strong><code>Note0:</code></strong> In case of the AVM/Fritz! with EVA-bootloader, at least on the 7360, do <code>not</code> change the environment-variable firmware-version. Doing so makes the ethernet interface fail (only access is via the console), some of the AVM-daemons crash and after 160 seconds the hardware watchdog kicks in, causing the box to reboot over and over. At least on the international version of the 7360, the correct value is
+</p>
+<pre class="code">Eva_AVM &gt;setenv firmware_version avme
+Eva_AVM &gt;restart</pre>
+
+<p>
+<strong><code>Note1:</code></strong> In case of the EVA-bootloader, do not issue any other commands. This bootloader is broken by design, if you issue some harmless command like say <code>quote GETENV firmware_version</code>, the upload process will not function any longer afterwards. You would need to disconnect from it, and connect again, and then try again. Such quirks are not very common, and thus a major <abbr title="Pain in the Ass">PITA</abbr> if you do not know about them. When using unmaintained and sloppily programed closed source software, like EVA, you really should expect anything <img src="/lib/images/smileys/wink.svg" class="icon smiley" alt=";-)" />
+</p>
+
+<p>
+<strong><code>Note2:</code></strong> the files <code>empty.file</code> and <code>kernel.image</code> are the ones located in <code>~/images</code>. In order for the <abbr title="File Transfer Protocol">FTP</abbr> client to find them, you need to change into that directory either before starting the <abbr title="File Transfer Protocol">FTP</abbr> client or after that by issuing <code>lcd ~/image</code> into the ftp-client.
+</p>
+
+<p>
+<strong><code>Note3:</code></strong> should you decide to use <code>ncftp</code> instead of <code>ftp</code>, you need to connect with <code>ncftp -u adam2 192.168.178.1</code>. That is why, you should read the manpage for the software you are employing!
+</p>
+
+<p>
+<strong><code>Note4:</code></strong> You can use a python flash script from “Freifunk Darmstadt” - a german non-commercial initiative for free wireless networks - to flash AVM devices. 
+<a href="https://fritz-tools.readthedocs.io/en/latest/flashing/ubuntu_1804.html" class="urlextern" title="https://fritz-tools.readthedocs.io/en/latest/flashing/ubuntu_1804.html" rel="ugc nofollow">flashing instruction</a>
+<a href="https://raw.githubusercontent.com/freifunk-darmstadt/fritz-tools/master/fritzflash.py" class="urlextern" title="https://raw.githubusercontent.com/freifunk-darmstadt/fritz-tools/master/fritzflash.py" rel="ugc nofollow">direct download python script</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Bootloader contains FTP server&quot;,&quot;hid&quot;:&quot;bootloader_contains_ftp_server&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;176-3950&quot;} -->
+<h3 class="sectionedit7" id="examples">Examples</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> <a href="/toh/d-link/dsl-5xxt-6xxt-adam2" class="wikilink1" title="toh:d-link:dsl-5xxt-6xxt-adam2" data-wiki-id="toh:d-link:dsl-5xxt-6xxt-adam2">D-Link DSL-5xxT and DSL-G6xxT - ADAM2 Installation Guide</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Examples&quot;,&quot;hid&quot;:&quot;examples&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:7,&quot;range&quot;:&quot;3951-4066&quot;} -->
+<h2 class="sectionedit8" id="bootloader_contains_ftp_client">Bootloader contains FTP client</h2>
+<div class="level2">
+
+<p>
+TODO
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Bootloader contains FTP client&quot;,&quot;hid&quot;:&quot;bootloader_contains_ftp_client&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:8,&quot;range&quot;:&quot;4067-&quot;} -->

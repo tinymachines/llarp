@@ -1,0 +1,85 @@
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:1,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_center wrap_round wrap_help plugin_wrap" style="width: 90%;">
+<p>
+UPDATE: This functionality was <a href="https://git.lede-project.org/?p=source.git;a=commit;h=b044bd5921e9644c9df9655bef10cee0af730724" class="urlextern" title="https://git.lede-project.org/?p=source.git;a=commit;h=b044bd5921e9644c9df9655bef10cee0af730724" rel="ugc nofollow">removed in April 2017</a>.
+</p>
+
+<p>
+The easy way is to include the files as <a href="/docs/guide-developer/toolchain/use-buildsystem#custom_files" class="wikilink1" title="docs:guide-developer:toolchain:use-buildsystem" data-wiki-id="docs:guide-developer:toolchain:use-buildsystem">custom files</a>
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+This is a plain copy-paste from mailing list, if you have some time to turn it in a proper wiki article please do so.
+</p>
+
+<p>
+Hi Karl,<br/>
+
+</p>
+
+<p>
+let me introduce a not strictly new way but another heavily under
+documented buildroot feature which you can use to implement custom
+modifications to packages which do not require source code edits.<br/>
+
+</p>
+
+<p>
+For every processed package Makefile, the buildroot tries to include a a
+Makefile fragment in $(TOPDIR)/overlay/*/$(PKG_DIR_NAME).mk which one
+can use to monkey-patch internals without directly touching the package
+recipes.<br/>
+
+</p>
+
+<p>
+For example to amend “base-files” to include a custom banner and
+inittab, you could create an overlay file called<br/>
+
+</p>
+<pre class="code">&quot;overlay/my-example-organization/base-files.mk&quot;\\</pre>
+
+<p>
+which extends the default Package/base-files/install recipe to copy your
+custom files in the end.<br/>
+
+</p>
+
+<p>
+Assuming a directory structure like this<br/>
+
+</p>
+
+<p>
+ * overlay/my-example-organization/banner<br/>
+
+ * overlay/my-example-organization/inittab<br/>
+
+ * overlay/my-example-organization/base-files.mk<br/>
+
+</p>
+
+<p>
+the base-files.mk would need to include something like the following
+code to splicy your custom files into the packaging procedure:
+</p>
+<pre class="code">--- 8&lt; ---
+# Figure out the containing dir of this Makefile
+OVERLAY_DIR:=$(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+
+# Declare custom installation commands
+define custom_install_commands
+        @echo &quot;Installing extra files from $(OVERLAY_DIR)&quot;
+        $(INSTALL_DIR) $(1)/etc/config
+        $(INSTALL_DATA) $(OVERLAY_DIR)/banner $(1)/etc/banner
+        $(INSTALL_DATA) $(OVERLAY_DIR)/inittab $(1)/etc/inittab
+endef
+
+# Append custom commands to install recipe,
+# and make sure to include a newline to avoid syntax error
+Package/base-files/install += $(newline)$(custom_install_commands)
+--- &gt;8 ---</pre>
+
+<p>
+HTH,
+Jo
+</p>

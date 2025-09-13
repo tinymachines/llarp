@@ -1,0 +1,353 @@
+
+<h1 class="sectionedit1" id="create_a_sample_procd_init_script">Create a sample procd init script</h1>
+<div class="level1">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_center wrap_round wrap_info plugin_wrap" style="width: 80%;">
+<p>
+This article is a mostly verbatim copy of <a href="https://web.archive.org/web/20220518121856/https://joostoostdijk.com/posts/service-configuration-with-procd" class="urlextern" title="https://web.archive.org/web/20220518121856/https://joostoostdijk.com/posts/service-configuration-with-procd" rel="ugc nofollow">this archived article</a>, all credit goes to the original author, <strong>Joost Oostdijk</strong> <br/>
+
+It was adapted to use an equivalent shell script instead of NodeJS JavaScript, because it&#039;s lighter and better for a simple testing setup on most OpenWrt devices.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+Procd init scripts gives us many nice to use features by default such as a restart strategy and the ability to store and read configuration from the UCI system.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Create a sample procd init script&quot;,&quot;hid&quot;:&quot;create_a_sample_procd_init_script&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-650&quot;} -->
+<h2 class="sectionedit4" id="setting_up">Setting up</h2>
+<div class="level2">
+
+<p>
+As example, lets say we’d want to create shell script as a service and that this service can be configured with a message and a timeout in order for us to be reminded to get up from ur desks once in a while. Our service name will be myservice and it depends on the following script
+</p>
+<pre class="code bash"><span class="co0">#!/bin/sh</span>
+&nbsp;
+<span class="co0">#these if statements will check input and place default values if no input is given</span>
+<span class="co0">#they will also check if input is a number so you can call </span>
+<span class="co0">#this script with just a time and it will still work correctly</span>
+&nbsp;
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="st0">&quot;$1&quot;</span> = <span class="st_h">''</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+    <span class="re2">name</span>=<span class="st0">&quot;You&quot;</span>
+<span class="kw1">else</span>
+    <span class="kw1">if</span> <span class="kw3">echo</span> <span class="st0">&quot;$1&quot;</span> <span class="sy0">|</span> <span class="kw2">egrep</span> <span class="re5">-q</span> <span class="st_h">'^[0-9]+$'</span>; <span class="kw1">then</span>
+        <span class="re2">name</span>=<span class="st0">&quot;You&quot;</span>
+    <span class="kw1">else</span>
+        <span class="re2">name</span>=<span class="st0">&quot;$1&quot;</span>
+    <span class="kw1">fi</span>
+<span class="kw1">fi</span>
+&nbsp;
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="st0">&quot;$2&quot;</span> = <span class="st_h">''</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+    <span class="re2">every</span>=<span class="st0">&quot;5&quot;</span>
+<span class="kw1">else</span>
+    <span class="re2">every</span>=<span class="st0">&quot;$2&quot;</span>
+<span class="kw1">fi</span>
+&nbsp;
+<span class="kw1">if</span> <span class="kw3">echo</span> <span class="st0">&quot;$1&quot;</span> <span class="sy0">|</span> <span class="kw2">egrep</span> <span class="re5">-q</span> <span class="st_h">'^[0-9]+$'</span>; <span class="kw1">then</span>
+    <span class="re2">every</span>=<span class="st0">&quot;$1&quot;</span>
+<span class="kw1">fi</span>
+&nbsp;
+<span class="co0">#endless loop, will print the message every X seconds as indicated in the $every variable</span>
+&nbsp;
+<span class="kw1">while</span> <span class="br0">&#91;</span> <span class="nu0">1</span> <span class="br0">&#93;</span>; <span class="kw1">do</span> 
+    <span class="kw3">echo</span> <span class="st0">&quot;Hey, <span class="es2">$name</span>, it's time to get up&quot;</span>
+    <span class="kw2">sleep</span> <span class="re1">$every</span>
+<span class="kw1">done</span>
+&nbsp;
+<span class="kw3">exit</span> <span class="nu0">0</span></pre>
+
+<p>
+Place it in <strong>/var/myscript.sh</strong> and test it by running on OpenWrt
+</p>
+<pre class="code">$ /bin/sh /var/myscript.sh &quot;Name Surname&quot;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Setting up&quot;,&quot;hid&quot;:&quot;setting_up&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;651-1769&quot;} -->
+<h2 class="sectionedit5" id="creating_a_basic_procd_script">Creating a basic procd script</h2>
+<div class="level2">
+
+<p>
+Now that we have a working script, we can make a service out of it. Create a file in /etc/init.d/myservice with the following content
+</p>
+<pre class="code bash"><span class="co0">#!/bin/sh /etc/rc.common</span>
+<span class="re2">USE_PROCD</span>=<span class="nu0">1</span>
+<span class="re2">START</span>=<span class="nu0">95</span>
+<span class="re2">STOP</span>=01
+start_service<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    procd_open_instance
+    procd_set_param <span class="kw3">command</span> <span class="sy0">/</span>bin<span class="sy0">/</span><span class="kw2">sh</span> <span class="st0">&quot;/var/myscript.sh&quot;</span>
+    procd_close_instance
+<span class="br0">&#125;</span></pre>
+
+<p>
+First, it includes the common ‘run commands’ file /etc/rc.common needed for a service. This file defines several functions that can be used to manage the service lifecycle, it supports old style init scripts as well as procd scripts. In order to tell that we want to use the new style we then set the USE_PROCD flag.
+</p>
+
+<p>
+The START option basically tell the system when the service should start and stop during startup and shutdown of OpenWrt.
+</p>
+
+<p>
+This init script isn’t very useful at the moment but it shows the basic building blocks on which we will develop the script further.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Creating a basic procd script&quot;,&quot;hid&quot;:&quot;creating_a_basic_procd_script&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:5,&quot;range&quot;:&quot;1770-2724&quot;} -->
+<h2 class="sectionedit6" id="enabling_the_service">Enabling the service</h2>
+<div class="level2">
+
+<p>
+To tell OpenWrt that we have a new service we would need to run
+</p>
+<pre class="code"> /etc/init.d/myservice enable</pre>
+
+<p>
+This will install a symlink for us in directory /etc/rc.d/ called S95myservice (because <code>START=95</code>) which points to our respective service script in /etc/init.d/. OpenWrt will start the services according the the order of S* scripts in /etc/rc.d/. To see the order you could simply run
+</p>
+<pre class="code">$ ls -la /etc/rc.d/S*</pre>
+
+<p>
+...
+</p>
+
+<p>
+It is useful to be able to influence the order of startup of services, if our service would be dependent on the network we’d make sure that
+the START sequence ‘index’ is at least 1 more than the START sequence of the network service.
+</p>
+
+<p>
+The same rules apply for the optional STOP parameters, only this time it defines in which order the services will be shutdown.
+To see Which shutdown scripts are activated you can run
+</p>
+<pre class="code">$ ls -la /etc/rc.d/K*</pre>
+
+<p>
+You always need to define a START or STOP sequence in your script (you can also define both). If you define a STOP sequence you also want to
+define a stop_service() handler in the init script. This handler is usually taking care of cleaning up service resources or persistence of data needed when the service starts again.
+Testing the service
+</p>
+
+<p>
+Finally, lets just test our service. Open a second shell to the OpenWrt device and run
+</p>
+<pre class="code">$ logread -f</pre>
+
+<p>
+This will tail the system logs on the device.
+then enable (if you havent done that yet), and start the service.
+</p>
+<pre class="code">$ /etc/init.d/myservice enable
+$ /etc/init.d/myservice start</pre>
+
+<p>
+After about 5 seconds we should see the message repeat itself in the log, but we didn’t…
+We still need to redirect stdout and stderr to logd in order to see the console.log output in the system logs.
+</p>
+<pre class="code bash"><span class="co0">#!/bin/sh /etc/rc.common</span>
+&nbsp;
+<span class="re2">USE_PROCD</span>=<span class="nu0">1</span>
+&nbsp;
+<span class="re2">START</span>=<span class="nu0">95</span>
+<span class="re2">STOP</span>=01
+&nbsp;
+start_service<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    procd_open_instance
+    procd_set_param <span class="kw3">command</span> <span class="sy0">/</span>bin<span class="sy0">/</span><span class="kw2">sh</span> <span class="st0">&quot;/var/myscript.sh&quot;</span>
+    procd_set_param stdout <span class="nu0">1</span>
+    procd_set_param stderr <span class="nu0">1</span>
+    procd_close_instance
+<span class="br0">&#125;</span></pre>
+
+<p>
+Now, when we restart we should see something like
+</p>
+<pre class="code">$ logread -f
+... ommitted ... Hey, You, it&#039;s time to get up
+... ommitted ... Hey, You, it&#039;s time to get up
+... ommitted ... Hey, You, it&#039;s time to get up
+... ommitted ... Hey, You, it&#039;s time to get up
+... ommitted ... Hey, You, it&#039;s time to get up
+... ommitted ... Hey, You, it&#039;s time to get up
+...</pre>
+
+<p>
+Setting up a service simple script like above with procd already gives us some advantages
+</p>
+
+<p>
+ * Common api to manage services
+ * The service will automatically start at every boot
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Enabling the service&quot;,&quot;hid&quot;:&quot;enabling_the_service&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:6,&quot;range&quot;:&quot;2725-5309&quot;} -->
+<h2 class="sectionedit7" id="service_configuration">Service configuration</h2>
+<div class="level2">
+
+<p>
+It’s time to get more personal, and to that we will use OpenWrts UCI configuration interface. Create a configuration file /etc/config/myservice with the following content
+</p>
+<pre class="code">config myservice &#039;hello&#039;
+	option name &#039;Joost&#039;
+ 	option every &#039;5&#039;</pre>
+
+<p>
+UCI will immediately pick this up and the config for our service can be inspected like
+</p>
+<pre class="code">$ uci show myservice
+myservice.hello=myservice
+myservice.hello.name=Joost
+myservice.hello.every=&#039;5&#039;</pre>
+
+<p>
+Also single options can be requested
+</p>
+<pre class="code">$ uci get myservice.hello.name</pre>
+
+<p>
+and we can also change specific configuration with UCI
+</p>
+<pre class="code">$ uci set myservice.hello.name=Knight
+$ uci commit</pre>
+
+<p>
+Now, we’ll introduce a couple of changes to the service script in order to read and use the configuration in our script.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Service configuration&quot;,&quot;hid&quot;:&quot;service_configuration&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:7,&quot;range&quot;:&quot;5310-6125&quot;} -->
+<h2 class="sectionedit8" id="loading_service_configuration">Loading service configuration</h2>
+<div class="level2">
+
+<p>
+We can already pass configuration to the node script by passing arguments to it. The only thing we need to do is load the services matching configuration, store the values of the options we need into some variables
+and pass them into the command that starts the script.
+</p>
+<pre class="code bash"><span class="co0">#!/bin/sh /etc/rc.common</span>
+&nbsp;
+<span class="re2">USE_PROCD</span>=<span class="nu0">1</span>
+&nbsp;
+<span class="re2">START</span>=<span class="nu0">95</span>
+<span class="re2">STOP</span>=01
+&nbsp;
+<span class="re2">CONFIGURATION</span>=myservice
+&nbsp;
+start_service<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="co0"># Reading config</span>
+    config_load <span class="st0">&quot;<span class="es3">${CONFIGURATION}</span>&quot;</span>
+    <span class="kw3">local</span> name
+    <span class="kw3">local</span> every
+&nbsp;
+    config_get name hello name
+    config_get every hello every
+&nbsp;
+    procd_open_instance
+&nbsp;
+    <span class="co0"># pass config to script on start</span>
+    procd_set_param <span class="kw3">command</span> <span class="sy0">/</span>bin<span class="sy0">/</span><span class="kw2">sh</span> <span class="st0">&quot;/var/myscript.sh&quot;</span> <span class="st0">&quot;<span class="es2">$name</span>&quot;</span> <span class="st0">&quot;<span class="es2">$every</span>&quot;</span>
+    procd_set_param <span class="kw2">file</span> <span class="sy0">/</span>etc<span class="sy0">/</span>config<span class="sy0">/</span>myservice
+    procd_set_param stdout <span class="nu0">1</span>
+    procd_set_param stderr <span class="nu0">1</span>
+    procd_close_instance
+<span class="br0">&#125;</span></pre>
+
+<p>
+We can pass new configuration by running
+</p>
+<pre class="code">$ uci set myservice.hello.name=Woodrow Wilson Smith
+$ uci commit</pre>
+
+<p>
+Note that in the service script the arguments are quoted, which allows us to use spaces in the name option.
+If we wouldn’t do this, each part of the name would be treated as a separate argument.
+</p>
+
+<p>
+Apart from the loading and passing of config to our script we also added
+</p>
+<pre class="code">...
+procd_set_param file /etc/config/myservice
+...</pre>
+
+<p>
+With that line in place we are able to restart the service whenever only our configuration has changed.
+</p>
+<pre class="code">$ /etc/init.d/myservice reload</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Loading service configuration&quot;,&quot;hid&quot;:&quot;loading_service_configuration&quot;,&quot;codeblockOffset&quot;:14,&quot;secid&quot;:8,&quot;range&quot;:&quot;6126-7584&quot;} -->
+<h2 class="sectionedit9" id="advanced_options">Advanced options</h2>
+<div class="level2">
+
+<p>
+There are a couple of more options that can be configured in a procd scripts ‘instance block’ that might be handy to know about.
+I’ll list a few here, but this is by no means covering everything.
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong>respawn</strong><br/>
+respawn your service automatically when it terminates for some reason.<br/>
+<pre class="code bash">procd_set_param respawn \
+      <span class="co1">${respawn_threshold:-3600}</span> \
+      <span class="co1">${respawn_timeout:-5}</span> <span class="co1">${respawn_retry:-5}</span></pre>
+
+<p>
+ <br/>
+In this example we respawn if process terminates sooner than respawn_threshold, it is considered crashed and after 5 retries the service is stopped. However, if it terminates later than respawn_threshold, it would be respawned indefinitely.
+</p>
+</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> <strong>pidfile</strong><br/>
+Configure where to store the pid file <br/>
+<pre class="code bash">procd_set_param pidfile <span class="re1">$PIDFILE</span></pre>
+</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> <strong>env vars</strong> <br/>
+Pass environment variables to your process with <br/>
+<pre class="code bash">procd_set_param <span class="kw2">env</span> <span class="re2">A_VAR</span>=avalue</pre>
+</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> <strong>ulimit</strong> <br/>
+If you need to set resource limits for your process you can use <br/>
+<pre class="code bash">procd_set_param limits <span class="re2">core</span>=<span class="st0">&quot;unlimited&quot;</span></pre>
+
+<p>
+ <br/>
+To see the system wide settings for ulimt on an OpenWrt device you can run <br/>
+
+</p>
+<pre class="code">$ ulimit -a
+-f: file size (blocks)             unlimited
+-t: cpu time (seconds)             unlimited
+-d: data seg size (kb)             unlimited
+-s: stack size (kb)                8192
+-c: core file size (blocks)        0
+-m: resident set size (kb)         unlimited
+-l: locked memory (kb)             64
+-p: processes                      475
+-n: file descriptors               1024
+-v: address space (kb)             unlimited
+-w: locks                          unlimited
+-e: scheduling priority            0
+-r: real-time priority             0</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> <strong>user</strong> <br/>
+To change the user that runs the service you can use <br/>
+<pre class="code"> procd_set_param user nobody </pre>
+
+<p>
+ <br/>
+Default OpenWrt only has a ‘root’ user or ‘nobody’ as the process owner. <br/>
+You can add users with the usual linux way, see <a href="/docs/guide-user/security/secure.access#create_a_non-privileged_user_in_openwrt" class="wikilink1" title="docs:guide-user:security:secure.access" data-wiki-id="docs:guide-user:security:secure.access"> Create a non-privileged user in OpenWrt</a> or if you are creating an actual package you can use <a href="/docs/guide-developer/packages#buildpackage_defines" class="wikilink1" title="docs:guide-developer:packages" data-wiki-id="docs:guide-developer:packages"> buildpackage defines </a> to make OpenWrt generate the user when the package is installed.
+</p>
+</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Advanced options&quot;,&quot;hid&quot;:&quot;advanced_options&quot;,&quot;codeblockOffset&quot;:18,&quot;secid&quot;:9,&quot;range&quot;:&quot;7585-&quot;} -->

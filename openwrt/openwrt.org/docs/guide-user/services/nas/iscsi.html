@@ -1,0 +1,169 @@
+
+<h1 class="sectionedit1" id="iscsi">iSCSI</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__meta:infobox:howto_links">
+<div class="level1">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_info plugin_wrap">
+<p>
+This article relies on the following:
+</p>
+<ul>
+<li class="level1"><div class="li"> Accessing <a href="/docs/guide-quick-start/walkthrough_login" class="wikilink1" title="docs:guide-quick-start:walkthrough_login" data-wiki-id="docs:guide-quick-start:walkthrough_login">web interface</a> / <a href="/docs/guide-quick-start/sshadministration" class="wikilink1" title="docs:guide-quick-start:sshadministration" data-wiki-id="docs:guide-quick-start:sshadministration">command-line interface</a></div>
+</li>
+<li class="level1"><div class="li"> Managing <a href="/docs/guide-user/base-system/uci" class="wikilink1" title="docs:guide-user:base-system:uci" data-wiki-id="docs:guide-user:base-system:uci">configs</a> / <a href="/docs/guide-user/additional-software/managing_packages" class="wikilink1" title="docs:guide-user:additional-software:managing_packages" data-wiki-id="docs:guide-user:additional-software:managing_packages">packages</a> / <a href="/docs/guide-user/base-system/managing_services" class="wikilink1" title="docs:guide-user:base-system:managing_services" data-wiki-id="docs:guide-user:base-system:managing_services">services</a> / <a href="/docs/guide-user/base-system/log.essentials" class="wikilink1" title="docs:guide-user:base-system:log.essentials" data-wiki-id="docs:guide-user:base-system:log.essentials">logs</a></div>
+</li>
+</ul>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level1">
+
+<p>
+<a href="https://en.wikipedia.org/wiki/ISCSI" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/ISCSI">iSCSI</a> allows to share a block device (i.e. a hard drive) at the block level, basically giving full control of partitions and filesystem to the client connected to it. Due to its design, only a single client can connect to it at a time.
+It&#039;s mostly used to provide network storage for commercial application and appliances that lack advanced storage options (RAID), usually VMWare ESXi (virtualization host) but there are others.
+</p>
+
+<p>
+On OpenWrt 19.07 there is support only for <strong>iSCSI targets</strong> (i.e. the OpenWrt device can share its storage with iSCSI), support for <strong>iSCSI initiators</strong> (i.e. connecting to a iSCSI target to access its shared storage) is implemented from 21.02.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;iSCSI&quot;,&quot;hid&quot;:&quot;iscsi&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-800&quot;} -->
+<h2 class="sectionedit6" id="prerequisites">Prerequisites</h2>
+<div class="level2">
+
+<p>
+install package <strong>tgt</strong> and <strong>kmod-scsi-core</strong>
+</p>
+
+<p>
+The documentation for the tools used is <a href="http://stgt.sourceforge.net/" class="urlextern" title="http://stgt.sourceforge.net/" rel="ugc nofollow"> here</a> although it is not strictly necessary to read it for a basic setup.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Prerequisites&quot;,&quot;hid&quot;:&quot;prerequisites&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;801-1022&quot;} -->
+<h2 class="sectionedit7" id="configuration">Configuration</h2>
+<div class="level2">
+
+<p>
+Open the uci config file with a text editor to see the comments and edit it. Most options are self-explanatory or explained by the comments inside.
+</p>
+
+<p>
+Let&#039;s see what is in this file:
+</p>
+<pre class="code">config options &#039;tgt&#039;
+# iothreads limits number of worker threads per rdwr target, default is 16
+# which seems to be too much for an avarage router
+	option iothreads &#039;2&#039;
+#	option nop_count &#039;3&#039;
+#	option nop_interval &#039;1&#039;
+#	option logging &#039;0&#039;
+#	list portal &#039;[::1]&#039;
+#	list portal &#039;127.0.0.1:3261&#039;
+#	list portal &#039;0.0.0.0:3262&#039;
+#	list portal &#039;[::]:3263&#039;
+
+config target 1
+	option name &#039;iqn.2012-06.org.openwrt:target1&#039;
+#	list allow_name &#039;iqn.1994-05.org.example:fedcba987654&#039;
+#	list allow_address &#039;192.168.2.128/27&#039;
+
+#config target 2
+#	option name &#039;iqn.2012-06.org.openwrt:t2&#039;
+
+# all options are set to default, except for the device
+# lun &quot;name&quot; is constructed as TGTID_LUN
+#config lun                        1_1
+#	option &#039;device&#039; &#039;/dev/sda&#039;
+# type of scsi device. available options: disk, cd, pt (sg passthrough)
+#	option &#039;type&#039; &#039;disk&#039;
+# backing store access method: rdwr (read-write), aio (async IO), sg (for pt type only, device must be /dev/sgN)
+#	option &#039;bstype&#039; &#039;aio&#039;
+# set sync and/or direct flags when opening device, affect only rdwr
+#	option &#039;sync&#039; &#039;0&#039;
+#	option &#039;direct&#039; &#039;0&#039;
+# block size for lun, default is 512
+#	option &#039;blocksize&#039; 4096
+# override SCSI mode page, see tgtadm man page for details
+#	option &#039;mode_page&#039; &#039;string&#039;
+# vendor, product, revision, SCSI ID and SCSI Serial number
+#	option &#039;vendor_id&#039; &#039;string&#039;
+#	option &#039;product_id&#039; &#039;string&#039;
+#	option &#039;product_rev&#039; &#039;string&#039;
+#	option &#039;scsi_id&#039; &#039;string&#039;
+#	option &#039;scsi_sn&#039; &#039;string&#039;
+# refuse write attempts. applies only to disk type
+#	option &#039;readonly&#039; &#039;0&#039;
+# Disk devices default to non-removable, cd - to removable
+#	option &#039;removable&#039; &#039;0&#039;
+#  0 = Classic sense format, 1 = Support descriptor format.
+#	option &#039;sense_format&#039; &#039;0&#039;
+# Rotaion rate: 0: not reported, 1: non-rotational medium (SSD), 2-1024: reserverd, 1025+: &quot;Nominal rotation rate&quot;
+#	option &#039;rotation_rate&#039; &#039;0&#039;
+
+#config lun 2_1
+#	option device /mnt/iscsi.img
+
+#config lun 2_2
+#	option device /dev/sdc
+
+#config account
+#	list target 1
+#	list target 2
+#	option user &quot;username1&quot;
+#	option password &quot;pass1&quot;
+
+#config account
+#	option target 2
+#	option user &quot;user2&quot;
+#	option password &quot;pwd2&quot;
+#	option outgoing 1</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;1023-3368&quot;} -->
+<h2 class="sectionedit8" id="basic_setup">Basic Setup</h2>
+<div class="level2">
+
+<p>
+It&#039;s better to not delete all comments as they are useful information, but here I don&#039;t want to waste space in the wiki so I will provide a short and basic example setup where I am using <strong>/dev/sda</strong> as the iSCSI drive,<strong> iqn.2012-06.org.openwrt:target1</strong> as the name, and a user/password set up to have some limited security (it&#039;s better to set the “allow_name” and “allow_address” options too to limit access only to your iSCSI client if you want more security)
+</p>
+<pre class="code">config options &#039;tgt&#039;
+	option iothreads &#039;2&#039;
+config target 1
+	option name &#039;iqn.2012-06.org.openwrt:target1&#039;
+
+config lun                        1_1
+	option &#039;device&#039; &#039;/dev/sda&#039;
+
+config account
+	list target 1
+	option user &quot;username&quot;
+	option password &quot;pass&quot;</pre>
+
+<p>
+After you changed the config, restart tgt with <strong>service tgt restart</strong>. Your iSCSI target is ready.
+</p>
+
+<p>
+How to connect to this iSCSI target will be explained in the documentation of the appliance or application or device you want to connect.
+It will usually involve this iSCSI device name and it&#039;s <abbr title="Internet Protocol">IP</abbr> address, and the <strong>default iSCSI port 3260</strong>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Basic Setup&quot;,&quot;hid&quot;:&quot;basic_setup&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:8,&quot;range&quot;:&quot;3369-4470&quot;} -->
+<h2 class="sectionedit9" id="performance">Performance</h2>
+<div class="level2">
+
+<p>
+Testing this config on a Zyxel NSA310b (single core ARMv5 device with 256MB RAM) with a normal 3,5&#039;&#039; hard drive provides around 20-30MB/s of performance and loads the CPU to the max. More powerful devices will fare better.
+</p>
+
+<p>
+As noted in the comments in the config file, if your device is more powerful you can increase the <strong>option iothreads &#039;2&#039;</strong>. You can check CPU utilization by installing and executing <strong>htop</strong> tool.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Performance&quot;,&quot;hid&quot;:&quot;performance&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:9,&quot;range&quot;:&quot;4471-&quot;} -->

@@ -1,0 +1,236 @@
+
+<h1 class="sectionedit1" id="lirc_gpio_blaster">LIRC GPIO blaster</h1>
+<div class="level1">
+
+<p>
+<a href="http://www.lirc.org/" class="urlextern" title="http://www.lirc.org/" rel="ugc nofollow">LIRC</a> is a package that allows you to decode and send infra-red signals of many (but not all) commonly used remote controls.
+</p>
+
+<p>
+An infrared blaster is a device that emulates an infrared remote control. In this case the task is made using LIRC which will control a GPIO. The output of this GPIO is connected to a circuit with an IR diode. This is only for the transmitter, nothing about receiving IR signals is covered in this page.
+</p>
+
+<p>
+<img src="/lib/exe/fetch.php?tok=d9be56&amp;media=http%3A%2F%2Fupload.wikimedia.org%2Fwikipedia%2Fcommons%2Fb%2Fb6%2FWireless-Router.png" class="media" loading="lazy" alt="" /> <strong>=</strong> <img src="/lib/exe/fetch.php?w=150&amp;tok=7c25d4&amp;media=http%3A%2F%2Fupload.wikimedia.org%2Fwikipedia%2Fcommons%2Fthumb%2Fd%2Fd0%2FXbox_360_remote.png%2F271px-Xbox_360_remote.png" class="media" loading="lazy" alt="" width="150" />
+</p>
+
+<p>
+You&#039;ll need at least 1 free GPIO in your router. Also you need to locate VCC (3.3V) and GND, but this is a piece of cake.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;LIRC GPIO blaster&quot;,&quot;hid&quot;:&quot;lirc_gpio_blaster&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-817&quot;} -->
+<h2 class="sectionedit2" id="prepare_your_hardware">Prepare your hardware</h2>
+<div class="level2">
+
+<p>
+These are two schematics for connecting the IR LED to our GPIO output. Both should work fine.
+</p>
+<ol>
+<li class="level1"><div class="li"> Simple circuit. It should work on any device<br/>
+<img src="/_media/media/doc/howtos/lirc-gpioblaster_reduced.png?w=400&amp;tok=ee4232" class="media" loading="lazy" alt="" width="400" /><br/>
+With this schematic we must ensure the GPIO is <strong>never on continously</strong>, and VCC is powerful enough to feed the IR LED. The IR LED can forward high current but only with short pulses, otherwise if forced to forward high current continuously (100mA or more), it may burn out itself. Of course we can increment the value of R2 to a higher value but then the range of the IR LED will be very limited.<br/>
+<code>   </code> We can also add a pulldown resitor (≥10 kohm) at the GPIO line to avoid “floating current” until the LIRC GPIO blaster module is loaded (and configured as output). This will avoid to turn on accidentally the IR LED.<br/>
+<br/>
+</div>
+</li>
+<li class="level1"><div class="li"> Safe circuit. R3 and C1 added. Recommended for devices with power supply weakness:<br/>
+<img src="/_media/media/doc/howtos/lirc-gpioblaster.png?w=500&amp;tok=2751bb" class="media" loading="lazy" alt="" width="500" /><br/>
+The components are not restricted to the values shown in the schematic, they can be different but the choice of values for C1, R2 and R3 is very important. <strong>R2</strong> determines how much current will be drawn through the IR LED, which determines the range of the remote control. <strong>R3</strong> determines how fast capacitor C1 is charged. The value must be small enough to charge capacitor C1 in a reasonable amount of time, but large enough to not overstress VCC. Depending on the values of R2 and R3, the capacitor must be large enough to retain most of its charge through a complete data packet. <strong>R4</strong> determines how much current is drawn from the GPIO, a value of 750 or higher is considered safe. Power supply VCC can be a higher voltage.</div>
+</li>
+</ol>
+
+<p>
+You can substitute the NPN S9013 (500mA) by a:
+</p>
+<ul>
+<li class="level1"><div class="li">2N3904 : 200mA, less range</div>
+</li>
+<li class="level1"><div class="li">2N2222 : 800mA, more range</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Prepare your hardware&quot;,&quot;hid&quot;:&quot;prepare_your_hardware&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;818-2680&quot;} -->
+<h3 class="sectionedit3" id="casing">Casing</h3>
+<div class="level3">
+
+<p>
+As an example here you can see how a pendrive casing is used to store the simple circuit.
+</p>
+
+<p>
+<a href="/_media/media/doc/howtos/lirc-gpioblaster-case.jpg" class="media" title="media:doc:howtos:lirc-gpioblaster-case.jpg"><img src="/_media/media/doc/howtos/lirc-gpioblaster-case.jpg?h=200&amp;tok=28bd04" class="media" loading="lazy" alt="" height="200" /></a> <a href="/_media/media/doc/howtos/lirc-gpioblaster-plugged.jpg" class="media" title="media:doc:howtos:lirc-gpioblaster-plugged.jpg"><img src="/_media/media/doc/howtos/lirc-gpioblaster-plugged.jpg?h=200&amp;tok=898af8" class="media" loading="lazy" alt="" height="200" /></a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Casing&quot;,&quot;hid&quot;:&quot;casing&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;2681-2916&quot;} -->
+<h2 class="sectionedit4" id="prepare_your_software">Prepare your software</h2>
+<div class="level2">
+
+<p>
+You will need to make a custom build. The module lirc_gpioblaster isn&#039;t available in the official repositories, and LIRC is not maintained an probably broken. The lirc_gpioblaster module is based on the one avaliable for the raspberry pi, without the receiver part, and properly packaged to build an external independent module for OpenWrt.
+</p>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_center wrap_round wrap_download plugin_wrap" style="width: 60%;">
+<p>
+This is the kernel module lirc_gpioblaster, and LIRC package only with the transmitter:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="https://drive.google.com/uc?export=download&amp;id=0B-EMoBe-_OdBcnhJaXBHY1FZS3c" class="urlextern" title="https://drive.google.com/uc?export=download&amp;id=0B-EMoBe-_OdBcnhJaXBHY1FZS3c" rel="ugc nofollow">lirc-gpioblaster.zip</a> (Tested in Attitude Adjustment 12.07)</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://drive.google.com/uc?export=download&amp;id=0B-EMoBe-_OdBdF8xT0lBZUxvWVk" class="urlextern" title="https://drive.google.com/uc?export=download&amp;id=0B-EMoBe-_OdBdF8xT0lBZUxvWVk" rel="ugc nofollow">lirc-gpioblaster-CC.zip</a> (Tested in Chaos Calmer)</div>
+</li>
+</ul>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:6,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+Extract lirc-gpioblaster.zip, and move the directories under the <strong><em>package</em></strong>/ subdirectory at the build root.
+</p>
+
+<p>
+As usually build your custom firmware but select lirc with the transmitter enabled
+</p>
+<pre class="code">Location: 
+    -&gt; Utilities</pre>
+<pre class="code">┌─────────────────────────────────── Utilities ───────────────────────────────────┐
+│ ┌─────────────────────────────────────────────────────────────────────────────┐ │  
+│ │     Boot Loaders  ---&gt;                                                      │ │  
+│ │     Editors  ---&gt;                                                           │ │  
+│ │     Filesystem  ---&gt;                                                        │ │  
+│ │     Terminal  ---&gt;                                                          │ │  
+│ │     disc  ---&gt;                                                              │ │  
+│ │ &lt; &gt; alsa-utils............ ALSA (Advanced Linux Sound Architecture) utilitie│ │  
+│ │ &lt; &gt; alsa-utils-seq.................................. ALSA sequencer utilitie│ │  
+│ │ &lt; &gt; alsa-utils-tests.......... ALSA utilities test data (adds ~1.3M to image│ │  
+│ │ &lt; &gt; bzip2.................................... bzip2 is a compression utility│ │  
+│ │ &lt; &gt; cal................................................... display a calenda│ │  
+│ │ &lt; &gt; comgt............................... Option/Vodafone 3G/GPRS control too│ │  
+│ │ &lt; &gt; dmesg............................ print or control the kernel ring buffe│ │  
+│ │ &lt; &gt; dropbearconvert.......................... Utility for converting SSH key│ │  
+│ │ &lt; &gt; fconfig..................................... RedBoot configuration edito│ │  
+│ │ &lt; &gt; flock.................................... manage locks from shell script│ │  
+│ │ &lt; &gt; gdb......................................................... GNU Debugge│ │  
+│ │ &lt; &gt; gdbserver................................. Remote server for GNU Debugge│ │  
+│ │ &lt; &gt; getopt.................................. parse command options (enhanced│ │  
+│ │ &lt; &gt; gpioctl................................... Tool for controlling gpio pin│ │  
+│ │ &lt; &gt; hwclock.................................. query or set the hardware cloc│ │  
+│ │ &lt; &gt; iconv................................... Character set conversion utilit│ │  
+│ │ &lt; &gt; iwcap.................................... Simple radiotap capture utilit│ │  
+│ │ &lt; &gt; iwinfo.......................... Generalized Wireless Information utilit│ │  
+│ │ --- jshn................................................. JSON SHell Notatio│ │  
+│ │ &lt; &gt; kexec-tools.......................................... Kernel boots kerne│ │  
+│ │ &lt; &gt; ldconfig............................... Shared library path configuratio│ │  
+│ │ &lt; &gt; ldd.................................................... LDD trace utilit│ │  
+│ │ &lt;*&gt; lirc................................ LIRC - Linux Infrared Remote Contro│ │  
+│ │ &lt; &gt; logger......... a shell command interface to the syslog system log modul│ │  
+│ │ &lt; &gt; look......................... display lines beginning with a given strin│ │  
+│ └─v(+)────────────────────────────────────────────────────────────────────────┘ │  
+├─────────────────────────────────────────────────────────────────────────────────┤  
+│                        &lt;Select&gt;    &lt; Exit &gt;    &lt; Help &gt;                         │  
+└─────────────────────────────────────────────────────────────────────────────────┘ </pre>
+
+<p>
+ and kmod-lirc_gpioblaster
+</p>
+<pre class="code">Location: 
+    -&gt; Kernel modules
+      -&gt; Other modules</pre>
+<pre class="code">
+  ┌─────────────────────────────────── Other modules ───────────────────────────────────┐
+  │ ┌─────────────────────────────────────────────────────────────────────────────────┐ │  
+  │ │ &lt; &gt; kmod-bcma................................................... BCMA support   │ │  
+  │ │ &lt; &gt; kmod-bluetooth......................................... Bluetooth support   │ │  
+  │ │ &lt;*&gt; kmod-button-hotplug................................ Button Hotplug driver   │ │  
+  │ │ &lt; &gt; kmod-eeprom-93cx6................................... EEPROM 93CX6 support   │ │  
+  │ │ &lt; &gt; kmod-eeprom-at24..................................... EEPROM AT24 support   │ │  
+  │ │ &lt; &gt; kmod-eeprom-at25..................................... EEPROM AT25 support   │ │  
+  │ │ &lt; &gt; kmod-gpio-button-hotplug............... Simple GPIO Button Hotplug driver   │ │  
+  │ │ &lt; &gt; kmod-gpio-dev........................... Generic GPIO char device support   │ │  
+  │ │ &lt; &gt; kmod-gpio-nxp-74hc164.................. NXP 74HC164 GPIO expander support   │ │  
+  │ │ &lt; &gt; kmod-hid..................................................... HID Devices   │ │  
+  │ │ --- kmod-input-core........................................ Input device core   │ │  
+  │ │ &lt; &gt; kmod-input-evdev...................................... Input event device   │ │  
+  │ │ &lt; &gt; kmod-input-gpio-buttons................. Polled GPIO buttons input device   │ │  
+  │ │ &lt; &gt; kmod-input-gpio-encoder............................... GPIO rotay encoder   │ │  
+  │ │ &lt; &gt; kmod-input-gpio-keys.................................... GPIO key support   │ │  
+  │ │ &lt;*&gt; kmod-input-gpio-keys-polled...................... Polled GPIO key support   │ │  
+  │ │ &lt; &gt; kmod-input-joydev................................ Joystick device support   │ │  
+  │ │ --- kmod-input-polldev........................... Polled Input device support   │ │  
+  │ │ &lt;*&gt; kmod-lirc_gpioblaster................... Driver for LIRC GPIO transmitter   │ │  
+  │ │ &lt; &gt; kmod-mmc............................................. MMC/SD Card Support   │ │  
+  │ │ &lt; &gt; kmod-mmc-over-gpio......................... MMC/SD card over GPIO support  -│ │  
+  │ │ &lt; &gt; kmod-mtdtests........................................ MTD subsystem tests   │ │  
+  │ │ &lt; &gt; kmod-nand............................................. NAND flash support   │ │  
+  │ └─v(+)────────────────────────────────────────────────────────────────────────────┘ │  
+  ├─────────────────────────────────────────────────────────────────────────────────────┤  
+  │                          &lt;Select&gt;    &lt; Exit &gt;    &lt; Help &gt;                           │  
+  └─────────────────────────────────────────────────────────────────────────────────────┘  </pre>
+
+<p>
+Build openwrt, and flash your custom firmware. Now you have lirc prepared to work.
+</p>
+<div class="table sectionedit7"><table class="inline">
+	<tr class="row0">
+		<td class="col0"> <a href="/_detail/meta/icons/tango/dialog-information.png?id=docs%3Aguide-user%3Ahardware%3Alirc-gpioblaster" class="media" title="meta:icons:tango:dialog-information.png"><img src="/_media/meta/icons/tango/dialog-information.png" class="media" loading="lazy" alt="" /></a> </td><td class="col1"> Note the file <strong>/etc/lirc/lircd.conf</strong> is specific for your remote. You might need to use <a href="http://www.lirc.org/html/irrecord.html" class="urlextern" title="http://www.lirc.org/html/irrecord.html" rel="ugc nofollow">irrecord</a> in a machine with a lirc receiver to get one for your own remote if you don&#039;t find any in the <a href="https://sourceforge.net/p/lirc-remotes/code/ci/master/tree/remotes/" class="urlextern" title="https://sourceforge.net/p/lirc-remotes/code/ci/master/tree/remotes/" rel="ugc nofollow">lirc database</a>. </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:7,&quot;range&quot;:&quot;11961-12335&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Prepare your software&quot;,&quot;hid&quot;:&quot;prepare_your_software&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;2917-12336&quot;} -->
+<h2 class="sectionedit8" id="make_it_work">Make it work</h2>
+<div class="level2">
+
+<p>
+As default there is an init script which autostarts lircd conected to /dev/lirc0
+</p>
+
+<p>
+/dev/lirc0 is created when the module lirc_gpioblaster is loaded. As default the GPIO 0 is used, to use another for example the GPIO 17 you need to parse the option<br/>
+
+<code>gpio_out_pin=17</code>
+</p>
+
+<p>
+Also you may need to invert the signal depending if the GPIO is active low or high:<br/>
+
+<code>invert=1</code>
+</p>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:9,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_center wrap_round wrap_important plugin_wrap" style="width: 60%;">
+<p>
+<strong>Warning</strong>: if you use incorrectly the invert option, you can fry the IR led (depending on the schematic you use). Most GPIO outputs are active high, invert shouldn&#039;t be used unless some components were inverting the signal.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:10,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+Example, insert the module with the above options:<br/>
+
+<code>insmod lirc_gpioblaster gpio_out_pin=17 invert=1</code>
+</p>
+
+<p>
+You don&#039;t need to use this command every time you want to load the module. The module is autoloaded when the system boots up, just add the options to <strong>/etc/modules.d/99-lirc_gpioblaster</strong> file
+</p>
+<pre class="code">lirc_gpioblaster gpio_out_pin=17 invert=0</pre>
+
+<p>
+And restart OpenWrt.
+</p>
+
+<p>
+Now is time to probe you IR transmitter: execute this command:
+</p>
+<pre class="code">irsend SEND_ONCE rct3004 KEY_POWER</pre>
+
+<p>
+And if all is working OK, then IR signals are sent. Check it with your mobile phone camera, since these cameras usually are able to detect the IR light.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Make it work&quot;,&quot;hid&quot;:&quot;make_it_work&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:8,&quot;range&quot;:&quot;12337-13645&quot;} -->
+<h2 class="sectionedit11" id="notes">Notes</h2>
+<div class="level2">
+
+<p>
+Successfully tested in AA, platform bcm63xx.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Notes&quot;,&quot;hid&quot;:&quot;notes&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:11,&quot;range&quot;:&quot;13646-&quot;} -->

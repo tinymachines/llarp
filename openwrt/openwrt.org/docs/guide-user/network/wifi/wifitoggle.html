@@ -1,0 +1,104 @@
+
+<h1 class="sectionedit1" id="wi-fi_toggle">Wi-Fi toggle</h1>
+<div class="level1">
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> <strong>There is a package called <code>wifitoggle</code> that does the same thing as the scripts below but is more advanced and has configuration. See <a href="/docs/guide-user/network/wifi/wifi_toggle" class="wikilink1" title="docs:guide-user:network:wifi:wifi_toggle" data-wiki-id="docs:guide-user:network:wifi:wifi_toggle">Wifi ON OFF buttons</a></strong>
+</p>
+
+<p>
+The scripts below allow the use of the SES button to enable or disable the wireless, this is achieved by adding a hotplug handler which reacts on button press events and a toggle script which enables or disabled the wireless depending on the current state.
+</p>
+
+<p>
+Note: If you are using wireless encryption, nas and radius daemons will not be turned off during toggle and will continue to occupy CPU/memory. They should not consume too many resources with no client load though.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Wi-Fi toggle&quot;,&quot;hid&quot;:&quot;wi-fi_toggle&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-710&quot;} -->
+<h2 class="sectionedit2" id="toggle_script">Toggle script</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Toggle script&quot;,&quot;hid&quot;:&quot;toggle_script&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;711-736&quot;} -->
+<h3 class="sectionedit3" id="new_script">New script</h3>
+<div class="level3">
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> <em>This new revision aims to fix the issues previously noticed with the old script. It also uses the commands </em><code>wifi up</code><em> and </em><code>wifi down</code><em> that are supposed to be the right way to turn on or off the device.</em>
+</p>
+<pre class="code bash"><span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>sbin<span class="sy0">/</span>woggle
+<span class="co0">#!/bin/sh</span>
+&nbsp;
+<span class="re2">device</span>=<span class="st0">&quot;wl0&quot;</span>
+<span class="kw1">case</span> $<span class="br0">&#40;</span>uci get wireless.<span class="re1">$device</span>.disabled<span class="br0">&#41;</span> <span class="kw1">in</span>
+    <span class="nu0">0</span><span class="br0">&#41;</span>
+        wifi down <span class="re1">$device</span>
+        <span class="kw3">echo</span> <span class="nu0">0</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>proc<span class="sy0">/</span>diag<span class="sy0">/</span>led<span class="sy0">/</span>ses_white
+        <span class="kw3">echo</span> <span class="nu0">2</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>proc<span class="sy0">/</span>diag<span class="sy0">/</span>led<span class="sy0">/</span>wlan
+        <span class="kw3">echo</span> <span class="nu0">1</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>proc<span class="sy0">/</span>diag<span class="sy0">/</span>led<span class="sy0">/</span>power
+        uci <span class="kw1">set</span> wireless.<span class="re1">$device</span>.disabled=<span class="nu0">1</span>
+&nbsp;
+        <span class="kw3">echo</span> <span class="st0">&quot;Wifi disabled&quot;</span>
+    <span class="sy0">;;</span>
+    <span class="nu0">1</span><span class="br0">&#41;</span>
+        uci <span class="kw1">set</span> wireless.<span class="re1">$device</span>.disabled=<span class="nu0">0</span>
+        wifi up <span class="re1">$device</span>
+        <span class="kw3">echo</span> <span class="nu0">1</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>proc<span class="sy0">/</span>diag<span class="sy0">/</span>led<span class="sy0">/</span>ses_white
+&nbsp;
+        <span class="kw3">echo</span> <span class="st0">&quot;Wifi enabled&quot;</span>
+    <span class="sy0">;;</span>
+<span class="kw1">esac</span>
+EOF
+&nbsp;
+<span class="kw2">chmod</span> +x <span class="sy0">/</span>sbin<span class="sy0">/</span>woggle</pre>
+
+<p>
+Don&#039;t forget to change the value of <em>device</em> according to your case.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;New script&quot;,&quot;hid&quot;:&quot;new_script&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;737-1586&quot;} -->
+<h3 class="sectionedit4" id="old_script">Old script</h3>
+<div class="level3">
+<pre class="code bash"><span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>sbin<span class="sy0">/</span>woggle-old
+<span class="co0">#!/bin/sh</span>
+&nbsp;
+<span class="kw1">case</span> <span class="st0">&quot;<span class="es4">$(uci get wireless.@wifi-device[0].disabled)</span>&quot;</span> <span class="kw1">in</span>
+    <span class="nu0">1</span><span class="br0">&#41;</span>
+        uci <span class="kw1">set</span> wireless.<span class="sy0">@</span>wifi-device<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.disabled=<span class="nu0">0</span>
+        wifi
+        <span class="kw3">echo</span> <span class="nu0">1</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>proc<span class="sy0">/</span>diag<span class="sy0">/</span>led<span class="sy0">/</span>ses_white
+    <span class="sy0">;;</span>
+    <span class="sy0">*</span><span class="br0">&#41;</span>
+        uci <span class="kw1">set</span> wireless.<span class="sy0">@</span>wifi-device<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.disabled=<span class="nu0">1</span>
+        wifi
+        <span class="kw3">echo</span> <span class="nu0">0</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>proc<span class="sy0">/</span>diag<span class="sy0">/</span>led<span class="sy0">/</span>ses_white
+        <span class="kw3">echo</span> <span class="nu0">2</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>proc<span class="sy0">/</span>diag<span class="sy0">/</span>led<span class="sy0">/</span>wlan
+    <span class="sy0">;;</span>
+<span class="kw1">esac</span>
+EOF
+&nbsp;
+<span class="kw2">chmod</span> +x <span class="sy0">/</span>sbin<span class="sy0">/</span>woggle-old</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Old script&quot;,&quot;hid&quot;:&quot;old_script&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:4,&quot;range&quot;:&quot;1587-2041&quot;} -->
+<h2 class="sectionedit5" id="hotplug_handler">Hotplug handler</h2>
+<div class="level2">
+
+<p>
+To get hotplug working, run the copy-pastethe code:
+</p>
+<pre class="code bash"><span class="kw2">mkdir</span> <span class="re5">-p</span> <span class="sy0">/</span>etc<span class="sy0">/</span>hotplug.d<span class="sy0">/</span>button
+<span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>hotplug.d<span class="sy0">/</span>button<span class="sy0">/</span>01-radio-toggle
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es2">$BUTTON</span>&quot;</span> = <span class="st0">&quot;ses&quot;</span> <span class="re5">-a</span> <span class="st0">&quot;<span class="es2">$ACTION</span>&quot;</span> = <span class="st0">&quot;pressed&quot;</span> <span class="br0">&#93;</span> ; <span class="kw1">then</span>
+        <span class="br0">&#40;</span> <span class="kw2">sleep</span> <span class="nu0">1</span>; <span class="sy0">/</span>sbin<span class="sy0">/</span>woggle <span class="br0">&#41;</span> <span class="sy0">&amp;</span>
+<span class="kw1">fi</span>
+EOF</pre>
+
+<p>
+Now, every time you want to turn the wireless on or off, you can press the button on the router, or you can issue a <code>woggle</code> command from the OpenWrt shell.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Hotplug handler&quot;,&quot;hid&quot;:&quot;hotplug_handler&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:5,&quot;range&quot;:&quot;2042-&quot;} -->

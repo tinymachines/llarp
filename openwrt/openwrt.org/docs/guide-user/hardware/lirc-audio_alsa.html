@@ -1,0 +1,332 @@
+
+<h1 class="sectionedit1" id="lirc_audio_alsa">LIRC audio_alsa</h1>
+<div class="level1">
+
+<p>
+<a href="http://www.lirc.org/" class="urlextern" title="http://www.lirc.org/" rel="ugc nofollow">LIRC</a> is a package that allows you to decode and send infra-red signals of many (but not all) commonly used remote controls.
+</p>
+
+<p>
+Be aware you&#039;ll need a <strong>sound card</strong> with microphone input. A cheap usb sound card can do the job.
+</p>
+
+<p>
+The audio_alsa module lets you to use a soundcard input to receive infrarred signals. The basic idea is that the output of the IR module (somewhere in the range from 0 to ~3-4V) can be limited by using the attenuator built into every audio-card (also known as “mixer sliders”).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;LIRC audio_alsa&quot;,&quot;hid&quot;:&quot;lirc_audio_alsa&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-560&quot;} -->
+<h2 class="sectionedit2" id="prepare_your_hardware">Prepare your hardware</h2>
+<div class="level2">
+
+<p>
+These are some schematics for connecting the IR module to our soundcard input
+</p>
+<ol>
+<li class="level1"><div class="li"> Using a diode, see <a href="http://www.lirc.org/ir-audio.html" class="urlextern" title="http://www.lirc.org/ir-audio.html" rel="ugc nofollow">http://www.lirc.org/ir-audio.html</a><br/>
+<a href="/_media/media/doc/howtos/lirc-alsa-diode.png" class="media" title="media:doc:howtos:lirc-alsa-diode.png"><img src="/_media/media/doc/howtos/lirc-alsa-diode.png?w=400&amp;tok=da1cee" class="media" loading="lazy" alt="" width="400" /></a><br/>
+Tested with a small signal switching diode BAV20PH, but other diodes (not all) should also work.<br/>
+<br/>
+</div>
+</li>
+<li class="level1"><div class="li"> Using a voltage divider<br/>
+<a href="/_detail/media/doc/howtos/lirc-audio_alsa.jpg?id=docs%3Aguide-user%3Ahardware%3Alirc-audio_alsa" class="media" title="media:doc:howtos:lirc-audio_alsa.jpg"><img src="/_media/media/doc/howtos/lirc-audio_alsa.jpg?w=500&amp;tok=33e875" class="media" loading="lazy" alt="" width="500" /></a><br/>
+A TSOP1736 IR module also works. The +5V should be as stable as possible to avoid power supply disturbances.<br/>
+<br/>
+</div>
+</li>
+<li class="level1"><div class="li"> Using a voltage divider, with some improvements: With a low band pass filter to minimize power supply disturbances. Also we put the 100 nF capacitor before the voltage divider, not after. And a 10kohm pullup resistor in the IR module out to boost the signal.<br/>
+<a href="/_media/media/doc/howtos/lirc-audio_alsa-v3.png" class="media" title="media:doc:howtos:lirc-audio_alsa-v3.png"><img src="/_media/media/doc/howtos/lirc-audio_alsa-v3.png?w=500&amp;tok=85873d" class="media" loading="lazy" alt="" width="500" /></a></div>
+</li>
+</ol>
+
+<p>
+One drawback for keeping it simple is the power supply. We can just modify our USB audiostick <strong>isolating one minijack contact</strong> and bridging it to the +5V usb power supply.<br/>
+<a href="/_detail/media/doc/howtos/lirc_alsa-audiostick.jpg?id=docs%3Aguide-user%3Ahardware%3Alirc-audio_alsa" class="media" title="media:doc:howtos:lirc_alsa-audiostick.jpg"><img src="/_media/media/doc/howtos/lirc_alsa-audiostick.jpg?w=400&amp;tok=1ab239" class="media" loading="lazy" alt="" width="400" /></a><br/>
+The circuit then can be wired with a minijack cable. We need a little case for the circuit with the IR module receiver, an ADSL microfilter case is perfect for this purpose (you have for sure tons of them from ISPs).<br/>
+<a href="/_detail/media/doc/howtos/lirc_alsa-case1.jpg?id=docs%3Aguide-user%3Ahardware%3Alirc-audio_alsa" class="media" title="media:doc:howtos:lirc_alsa-case1.jpg"><img src="/_media/media/doc/howtos/lirc_alsa-case1.jpg?w=400&amp;tok=81446a" class="media" loading="lazy" alt="" width="400" /></a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Prepare your hardware&quot;,&quot;hid&quot;:&quot;prepare_your_hardware&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;561-1905&quot;} -->
+<h2 class="sectionedit3" id="prepare_your_software">Prepare your software</h2>
+<div class="level2">
+
+<p>
+To use the audio_alsa module you&#039;ll need to build Openwrt with the package lirc and alsamixer. Install both before building your own firmware. 
+</p>
+<pre class="code">./scripts/feeds update -a
+./scripts/feeds install lirc alsa-utils</pre>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_center wrap_round wrap_download plugin_wrap" style="width: 60%;">
+<p>
+The lirc package is not built as default with <em>audio_alsa</em>, and it seems partially broken. As a result of this you must modify the Makefile for lirc. Or just download this fixed one: <br/>
+Mirror: <a href="https://github.com/probonopd/lirc-audio_alsa-for-openwrt" class="urlextern" title="https://github.com/probonopd/lirc-audio_alsa-for-openwrt" rel="ugc nofollow">lirc-audio_alsa-for-openwrt</a> <br/>
+Tested with OpenWrt Attitude Adjustment, but it may also work with Backfire. Replace the lirc directory under feeds with this new one.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+As usually build your custom firmware but select alsa-utils, lirc:
+</p>
+<pre class="code">Location: 
+    -&gt; Utilities</pre>
+<pre class="code">┌─────────────────────────────────── Utilities ───────────────────────────────────┐
+│ ┌─────────────────────────────────────────────────────────────────────────────┐ │  
+│ │     Boot Loaders  ---&gt;                                                      │ │  
+│ │     Editors  ---&gt;                                                           │ │  
+│ │     Filesystem  ---&gt;                                                        │ │  
+│ │     Terminal  ---&gt;                                                          │ │  
+│ │     disc  ---&gt;                                                              │ │  
+│ │ &lt;*&gt; alsa-utils............ ALSA (Advanced Linux Sound Architecture) utilitie│ │  
+│ │ &lt; &gt; alsa-utils-seq.................................. ALSA sequencer utilitie│ │  
+│ │ &lt; &gt; alsa-utils-tests.......... ALSA utilities test data (adds ~1.3M to image│ │  
+│ │ &lt; &gt; bzip2.................................... bzip2 is a compression utility│ │  
+│ │ &lt; &gt; cal................................................... display a calenda│ │  
+│ │ &lt; &gt; comgt............................... Option/Vodafone 3G/GPRS control too│ │  
+│ │ &lt; &gt; dmesg............................ print or control the kernel ring buffe│ │  
+│ │ &lt; &gt; dropbearconvert.......................... Utility for converting SSH key│ │  
+│ │ &lt; &gt; fconfig..................................... RedBoot configuration edito│ │  
+│ │ &lt; &gt; flock.................................... manage locks from shell script│ │  
+│ │ &lt; &gt; gdb......................................................... GNU Debugge│ │  
+│ │ &lt; &gt; gdbserver................................. Remote server for GNU Debugge│ │  
+│ │ &lt; &gt; getopt.................................. parse command options (enhanced│ │  
+│ │ &lt; &gt; gpioctl................................... Tool for controlling gpio pin│ │  
+│ │ &lt; &gt; hwclock.................................. query or set the hardware cloc│ │  
+│ │ &lt; &gt; iconv................................... Character set conversion utilit│ │  
+│ │ &lt; &gt; iwcap.................................... Simple radiotap capture utilit│ │  
+│ │ &lt; &gt; iwinfo.......................... Generalized Wireless Information utilit│ │  
+│ │ --- jshn................................................. JSON SHell Notatio│ │  
+│ │ &lt; &gt; kexec-tools.......................................... Kernel boots kerne│ │  
+│ │ &lt; &gt; ldconfig............................... Shared library path configuratio│ │  
+│ │ &lt; &gt; ldd.................................................... LDD trace utilit│ │  
+│ │ &lt;*&gt; lirc................................ LIRC - Linux Infrared Remote Contro│ │  
+│ │ &lt; &gt; logger......... a shell command interface to the syslog system log modul│ │  
+│ │ &lt; &gt; look......................... display lines beginning with a given strin│ │  
+│ └─v(+)────────────────────────────────────────────────────────────────────────┘ │  
+├─────────────────────────────────────────────────────────────────────────────────┤  
+│                        &lt;Select&gt;    &lt; Exit &gt;    &lt; Help &gt;                         │  
+└─────────────────────────────────────────────────────────────────────────────────┘ </pre>
+
+<p>
+ and lirc utitilities:
+</p>
+<pre class="code">Location: 
+    -&gt; Utilities
+      -&gt; lirc</pre>
+<pre class="code">┌─────────── lirc............. LIRC - Linux Infrared Remote Control ────────────┐
+│ ┌───────────────────────────────────────────────────────────────────────────┐ │
+│ │ --- lirc.................. LIRC - Linux Infrared Remote Control           │ │
+│ │ &lt;*&gt;   lircdaemonadd...................... Daemon Additional Files         │ │
+│ │ &lt;*&gt;   lirctools....................................... LIRC tools         │ │
+│ │                                                                           │ │
+│ └───────────────────────────────────────────────────────────────────────────┘ │
+├───────────────────────────────────────────────────────────────────────────────┤
+│                   &lt;Select&gt;    &lt; Exit &gt;    &lt; Help &gt;                            │
+└───────────────────────────────────────────────────────────────────────────────┘</pre>
+
+<p>
+Build openwrt, and flash your custom firmware. Now you have lirc prepared to work.
+</p>
+<div class="table sectionedit6"><table class="inline">
+	<tr class="row0">
+		<td class="col0"> <a href="/_detail/meta/icons/tango/dialog-information.png?id=docs%3Aguide-user%3Ahardware%3Alirc-audio_alsa" class="media" title="meta:icons:tango:dialog-information.png"><img src="/_media/meta/icons/tango/dialog-information.png" class="media" loading="lazy" alt="" /></a> </td><td class="col1"> Note the file <strong>/etc/lircd.conf</strong> is specific for your remote. You&#039;ll may need to use <a href="http://www.lirc.org/html/irrecord.html" class="urlextern" title="http://www.lirc.org/html/irrecord.html" rel="ugc nofollow">irrecord</a> to get one for your own remote if you don&#039;t find any in the <a href="http://lirc.sourceforge.net/remotes/" class="urlextern" title="http://lirc.sourceforge.net/remotes/" rel="ugc nofollow">lirc database</a>. </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:6,&quot;range&quot;:&quot;8610-8915&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Prepare your software&quot;,&quot;hid&quot;:&quot;prepare_your_software&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;1906-8916&quot;} -->
+<h3 class="sectionedit7" id="build_with_a_transmitter">Build with a transmitter</h3>
+<div class="level3">
+
+<p>
+You may want to use the <a href="/docs/guide-user/hardware/lirc-gpioblaster" class="wikilink1" title="docs:guide-user:hardware:lirc-gpioblaster" data-wiki-id="docs:guide-user:hardware:lirc-gpioblaster">LIRC GPIO blaster</a> kernel module together with audio_alsa receiver. We can use two lirc instances connected via <abbr title="Transmission Control Protocol">TCP</abbr>/<abbr title="Internet Protocol">IP</abbr> or rather to patch lirc for having only one daemon running, this way it&#039;s more compact and saves some bytes. Link with the LIRC package and the patch, and also the lirc_gpioblaster module
+</p>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:8,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_center wrap_round wrap_download plugin_wrap" style="width: 60%;">
+<p>
+LIRC audio_alsa patched to work with lirc_gpioblaster kernel module<br/>
+
+<a href="https://drive.google.com/uc?export=download&amp;id=0B-EMoBe-_OdBTTROQ3hpYUV3S0k" class="urlextern" title="https://drive.google.com/uc?export=download&amp;id=0B-EMoBe-_OdBTTROQ3hpYUV3S0k" rel="ugc nofollow">lirc_0.9.0-audio_alsa-plus_gpioblaster.zip</a>
+</p>
+
+<p>
+(Tested under Openwrt Attitude Adjustment)
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:9,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Build with a transmitter&quot;,&quot;hid&quot;:&quot;build_with_a_transmitter&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:7,&quot;range&quot;:&quot;8917-9606&quot;} -->
+<h2 class="sectionedit10" id="make_it_work">Make it work</h2>
+<div class="level2">
+
+<p>
+Execute the lirc daemon
+</p>
+<pre class="code">mkdir /var/run/lirc
+lircd --driver=audio_alsa -d plughw@24000</pre>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:11,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_center wrap_round wrap_important plugin_wrap" style="width: 60%;">
+<p>
+LIRC sometimes is affected by an alsa bug, see → <a href="#alsa_bug" title="docs:guide-user:hardware:lirc-audio_alsa ↵" class="wikilink1">alsa_bug</a>
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:12,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+Now execute irw, to test your remote, the codes are shown when you press any button.
+</p>
+<pre class="code">root@OpenWrt:/# irw
+00000000000005e9 00 + rct3004
+00000000000005ea 00 - rct3004
+00000000000005ea 01 - rct3004
+00000000000005dd 00 power rct3004
+00000000000005d0 00 3 rct3004
+00000000000005d0 01 3 rct3004
+00000000000005c9 00 5 rct3004
+00000000000005c9 01 5 rct3004
+00000000000005c1 00 4 rct3004
+00000000000005c1 01 4 rct3004</pre>
+
+<p>
+If nothing is shown you may need to calibrate the infrared receiver with alsamixer:
+</p>
+<pre class="code">┌───────── AlsaMixer v1.0.24.2 ─────────┐
+│ Card: Generic USB Audio Device        │
+│ Chip: USB Mixer                       │
+│ View: Playback                        │
+│ Item: Speaker [dB gain: -0.06, -0.06] │
+│     ┌──┐        ┌──┐                  │
+│     │▒▒│        │  │                  │
+│     │▒▒│        │  │                  │
+│     │▒▒│        │  │                  │
+│     │▒▒│        │  │                  │
+│     │▒▒│        │  │                  │
+│     │▒▒│        │▒▒│                  │
+│     │▒▒│        │▒▒│                  │
+│     │▒▒│        │▒▒│                  │
+│     │▒▒│        │▒▒│                  │
+│     │▒▒│        │▒▒│                  │
+│     ├──┤        ├──┤        ┌──┐      │
+│     │OO│        │MM│        │OO│      │
+│     └──┘        └──┘        └──┘      │
+│   100&lt;&gt;100       52                   │
+│ &lt;  Speaker  &gt;    Mic     Auto Gain C  │
+└───────────────────────────────────────┘</pre>
+
+<p>
+Sometimes is better to use Auto Gain other times not (<strong>m</strong> key to disable/enable). So play with it together with the next control: <br/>
+
+<strong>Press F4</strong> to enter the Capture control.
+</p>
+<pre class="code">┌───────── AlsaMixer v1.0.24.2 ─────────┐
+│ Card: Generic USB Audio Device        │
+│ Chip: USB Mixer                       │
+│ View: Capture                         │
+│ Item: Mic [dB gain: 14.88]            │
+│                                       │
+│                 ┌──┐                  │
+│                 │  │                  │
+│                 │  │                  │
+│                 │  │                  │
+│                 │  │                  │
+│                 │▒▒│                  │
+│                 │▒▒│                  │
+│                 │▒▒│                  │
+│                 │▒▒│                  │
+│                 │▒▒│                  │
+│                 │▒▒│                  │
+│                L└──┘R                 │
+│               CAPTURE                 │
+│                  62                   │
+│              &lt;  Mic   &gt;               │
+└───────────────────────────────────────┘</pre>
+
+<p>
+Now play with the gain (arrow up/down) until your remote shows its codes with irw. Once calibrated press Esc key to exit alsamixer.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Make it work&quot;,&quot;hid&quot;:&quot;make_it_work&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:10,&quot;range&quot;:&quot;9607-13238&quot;} -->
+<h3 class="sectionedit13" id="irexec">irexec</h3>
+<div class="level3">
+
+<p>
+Ok nothing new here, just configure <a href="http://www.lirc.org/html/configure.html#lircrc_format" class="urlextern" title="http://www.lirc.org/html/configure.html#lircrc_format" rel="ugc nofollow">lircrc</a> as described in the LIRC website. The file /etc/wifiradio/lircrc is an example. Run the <a href="http://www.lirc.org/html/irexec.html" class="urlextern" title="http://www.lirc.org/html/irexec.html" rel="ugc nofollow">irexec</a> daemon with a command like this:
+</p>
+<pre class="code">irexec --daemon /etc/wifiradio/lircrc</pre>
+
+<p>
+Now everytime you press a button in your remote, irexec will execute the associated commands in the lircrc file.
+</p>
+
+<p>
+You can put the commands to calibrate alsamixer and execute commands in /etc/rc.local, to autostart lircd and irexec once you got it working.
+</p>
+<pre class="code">mkdir /var/run/lirc
+amixer -q set Mic capture 62%
+lircd --driver=audio_alsa -d plughw@24000
+irexec --daemon /etc/wifiradio/lircrc</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;irexec&quot;,&quot;hid&quot;:&quot;irexec&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:13,&quot;range&quot;:&quot;13239-13977&quot;} -->
+<h2 class="sectionedit14" id="alsa_bug">alsa bug</h2>
+<div class="level2">
+
+<p>
+Sometimes lirc is unable to open correctly the recording device. The cause is still unknown. But fortunatelly when opening several times the alsa recording device we can see it fails with a defined pattern.
+</p>
+
+<p>
+<code>
+arecord -q -d 1 -r44100 -f S16_LE -c1 -t wav test01.wav  ← good  <br/>
+
+arecord -q -d 1 -r44100 -f S16_LE -c1 -t wav test02.wav  ← <span style='color:red; '>bad</span>  <br/>
+
+arecord -q -d 1 -r44100 -f S16_LE -c1 -t wav test03.wav  ← <span style='color:red; '>bad</span>  <br/>
+
+arecord -q -d 1 -r44100 -f S16_LE -c1 -t wav test04.wav  ← <span style='color:red; '>bad</span>  <br/>
+
+arecord -q -d 1 -r44100 -f S16_LE -c1 -t wav test05.wav  ← good  <br/>
+
+arecord -q -d 1 -r44100 -f S16_LE -c1 -t wav test06.wav  ← <span style='color:red; '>bad</span>  <br/>
+
+arecord -q -d 1 -r44100 -f S16_LE -c1 -t wav test07.wav  ← <span style='color:red; '>bad</span>  <br/>
+
+arecord -q -d 1 -r44100 -f S16_LE -c1 -t wav test08.wav  ← <span style='color:red; '>bad</span>  <br/>
+
+arecord -q -d 1 -r44100 -f S16_LE -c1 -t wav test09.wav  ← good  <br/>
+
+arecord -q -d 1 -r44100 -f S16_LE -c1 -t wav test10.wav  ← <span style='color:red; '>bad</span>  <br/>
+
+arecord -q -d 1 -r44100 -f S16_LE -c1 -t wav test11.wav  ← <span style='color:red; '>bad</span>  <br/>
+
+......
+</code>
+</p>
+
+<p>
+<a href="/_media/media/doc/howtos/lirc_alsa-arecord-bcm63xx.png" class="media" title="media:doc:howtos:lirc_alsa-arecord-bcm63xx.png"><img src="/_media/media/doc/howtos/lirc_alsa-arecord-bcm63xx.png?w=600&amp;tok=4c301f" class="media" loading="lazy" alt="" width="600" /></a>
+</p>
+
+<p>
+This happens in bcm63xx, the pattern is 3 good recordings, 1 bad. In bcm47xx the pattern is 1 good recording, 1 bad recording. 
+</p>
+
+<p>
+Considering this known predictable bug, we can solve the problem with an ugly workaround: <strong>make dummy recordings before running lirc</strong>.
+</p>
+
+<p>
+Put this command before the line that executes the lirc daemon
+</p>
+<pre class="code">/usr/bin/arecord -q -d 1 -r48000 -f S16_LE -c1 -t raw &gt; /dev/null</pre>
+
+<p>
+You may need to put 1, 2 or 3 lines depending on the state of the recording device. Just test it adding more lines with a router reboot in every added recording line until lirc starts working ok.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;alsa bug&quot;,&quot;hid&quot;:&quot;alsa_bug&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:14,&quot;range&quot;:&quot;13978-15795&quot;} -->
+<h2 class="sectionedit15" id="notes">Notes</h2>
+<div class="level2">
+
+<p>
+Successfully tested with a <a href="/toh/inventel/dv4210" class="wikilink1" title="toh:inventel:dv4210" data-wiki-id="toh:inventel:dv4210">Livebox 1</a> router under Backfire, using a CSOUNDU Conceptronic usb audio card, and TSOP1736  --- <em>danitool 2012/11/04 15:02</em>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Notes&quot;,&quot;hid&quot;:&quot;notes&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:15,&quot;range&quot;:&quot;15796-&quot;} -->

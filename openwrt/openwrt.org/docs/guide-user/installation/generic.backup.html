@@ -1,0 +1,227 @@
+
+<h1 class="sectionedit1" id="generic_nor_backup">Generic NOR backup</h1>
+<div class="level1">
+<ul>
+<li class="level1"><div class="li"> This guide describes how to perform block-level backup/restore via <a href="/docs/guide-quick-start/sshadministration" class="wikilink1" title="docs:guide-quick-start:sshadministration" data-wiki-id="docs:guide-quick-start:sshadministration">CLI</a>.</div>
+</li>
+<li class="level1"><div class="li"> Follow <a href="/docs/guide-user/troubleshooting/backup_restore" class="wikilink1" title="docs:guide-user:troubleshooting:backup_restore" data-wiki-id="docs:guide-user:troubleshooting:backup_restore">Backup and restore</a> for file-level backup/restore.</div>
+</li>
+</ul>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_center wrap_round wrap_important plugin_wrap" style="width: 60%;">
+<p>
+NAND-based devices should use <a href="/docs/techref/flash#nand-specific_tools_for_reading_and_writing_to_raw_nand" class="wikilink1" title="docs:techref:flash" data-wiki-id="docs:techref:flash">NAND-aware utilities</a>, as <code>dd</code> does not properly handle the error correction or bad-block marking of NAND flash.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+Please have a look at <a href="/docs/techref/file_system" class="wikilink1" title="docs:techref:file_system" data-wiki-id="docs:techref:file_system">file_system</a> and the <a href="/docs/techref/flash.layout#details" class="wikilink1" title="docs:techref:flash.layout" data-wiki-id="docs:techref:flash.layout">flash layout details</a> and take notice, that OpenWrt covers only the <code>firmware</code> part.
+The <strong><a href="/docs/techref/bootloader" class="wikilink1" title="docs:techref:bootloader" data-wiki-id="docs:techref:bootloader">bootloader</a> partition</strong>, <code>ART</code>/<code>NVRAM</code> and similar partitions are NOT part of the OpenWrt firmware.
+If something should go wrong and the data on these partition gets unexpectedly corrupted, you will not be able to replace it via public OpenWrt sources!
+</p>
+
+<p>
+Since OpenWrt does not write to those partitions, it is very unlikely that they get corrupted by OpenWrt itself.
+However, if you mess around with the bootloader, you certainly should create a copy of this data on your PC.
+Otherwise, in case you lose that data, you would have to go to the forum, ask somebody to make a backup of theirs and send it to you, then you would have to replace the MAC address, and then flash it via <a href="/docs/techref/hardware/port.jtag" class="wikilink1" title="docs:techref:hardware:port.jtag" data-wiki-id="docs:techref:hardware:port.jtag">port.jtag</a>, since your device would probably not boot any longer.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Generic NOR backup&quot;,&quot;hid&quot;:&quot;generic_nor_backup&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1514&quot;} -->
+<h2 class="sectionedit4" id="create_art_backup">Create ART backup</h2>
+<div class="level2">
+
+<p>
+If your ART-partition got corrupted, you would still be able to boot OpenWrt and only your wireless would not function correctly any longer.
+Easy fix with <code><a href="/docs/techref/mtd" class="wikilink1" title="docs:techref:mtd" data-wiki-id="docs:techref:mtd">mtd</a></code>.
+</p>
+<pre class="code bash"><span class="kw2">dd</span> <span class="re2">if</span>=<span class="sy0">/</span>dev<span class="sy0">/</span>$<span class="br0">&#40;</span><span class="kw2">sed</span> <span class="re5">-n</span> <span class="re5">-e</span> <span class="st_h">'/:.*&quot;art&quot;/s///p'</span> <span class="sy0">/</span>proc<span class="sy0">/</span>mtd<span class="br0">&#41;</span> <span class="re2">of</span>=<span class="sy0">/</span>tmp<span class="sy0">/</span>art.backup</pre>
+
+<p>
+If your bootloader-partition got corrupted, you would not even have a <a href="/docs/techref/bootloader#additional_functions" class="wikilink1" title="docs:techref:bootloader" data-wiki-id="docs:techref:bootloader">booloader console</a> which you could only access through <a href="/docs/techref/hardware/port.serial" class="wikilink1" title="docs:techref:hardware:port.serial" data-wiki-id="docs:techref:hardware:port.serial">Serial Port</a> any longer, and the only way to recover from this would be though the <a href="/docs/techref/hardware/port.jtag" class="wikilink1" title="docs:techref:hardware:port.jtag" data-wiki-id="docs:techref:hardware:port.jtag">JTAG Port</a> or by de-soldering the flash-chip, but please see <a href="/docs/guide-user/troubleshooting/generic.debrick" class="wikilink1" title="docs:guide-user:troubleshooting:generic.debrick" data-wiki-id="docs:guide-user:troubleshooting:generic.debrick">generic.debrick</a> for help.
+</p>
+
+<p>
+However, once you&#039;ve gotten yourself into the position to write to the flash again, you will still need something you can write to it.
+Something that will work.
+And here is, where your backup will come in handy:
+</p>
+<pre class="code bash"><span class="kw2">dd</span> <span class="re2">if</span>=<span class="sy0">/</span>dev<span class="sy0">/</span>mtd0 <span class="re2">of</span>=<span class="sy0">/</span>tmp<span class="sy0">/</span>boot.backup</pre>
+
+<p>
+Then copy your backup-file via scp or ssh to your PC and keep them safe for the time when you may need them.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Create ART backup&quot;,&quot;hid&quot;:&quot;create_art_backup&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;1515-2649&quot;} -->
+<h2 class="sectionedit5" id="create_full_mtd_backup">Create full MTD backup</h2>
+<div class="level2">
+
+<p>
+This script assumes a working Bash and <abbr title="Secure Shell">SSH</abbr> in native Unix-like or WSL environment.
+If you&#039;ve changed your router&#039;s <abbr title="Internet Protocol">IP</abbr> address, change the OPENWRT variable value to the hostname/<abbr title="Internet Protocol">IP</abbr> of your OpenWrt router.
+This will backup your mtd contents to a compressed tarball file <code>mtd_backup.tgz</code> in the same folder as the script.
+</p>
+<pre class="code bash"><span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> mtdbk.sh
+<span class="co0">#!/bin/bash</span>
+&nbsp;
+<span class="kw1">set</span> <span class="re5">-e</span>
+&nbsp;
+<span class="kw1">function</span> die<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+	<span class="kw3">echo</span> <span class="st0">&quot;<span class="es3">${@}</span>&quot;</span>
+	<span class="kw3">exit</span> <span class="nu0">2</span>
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="re2">OUTPUT_FILE</span>=<span class="st0">&quot;mtd_backup.tgz&quot;</span>
+<span class="re2">OPENWRT</span>=<span class="st0">&quot;root@openwrt.lan&quot;</span>
+<span class="re2">TMPDIR</span>=$<span class="br0">&#40;</span><span class="kw2">mktemp</span> -d<span class="br0">&#41;</span>
+<span class="re2">BACKUP_DIR</span>=<span class="st0">&quot;<span class="es3">${TMPDIR}</span>/mtd_backup&quot;</span>
+<span class="kw2">mkdir</span> <span class="re5">-p</span> <span class="st0">&quot;<span class="es3">${BACKUP_DIR}</span>&quot;</span>
+<span class="re2">SSH_CONTROL</span>=<span class="st0">&quot;<span class="es3">${TMPDIR}</span>/ssh_control&quot;</span>
+&nbsp;
+<span class="kw1">function</span> cleanup<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+	<span class="kw1">set</span> +e
+&nbsp;
+	<span class="kw3">echo</span> <span class="st0">&quot;Closing master SSH connection&quot;</span>
+	<span class="st0">&quot;<span class="es3">${SSH_CMD[@]}</span>&quot;</span> <span class="re5">-O</span> stop
+&nbsp;
+	<span class="kw3">echo</span> <span class="st0">&quot;Removing temporary backup files&quot;</span>
+	<span class="kw2">rm</span> <span class="re5">-r</span> <span class="st0">&quot;<span class="es3">${TMPDIR}</span>&quot;</span>
+<span class="br0">&#125;</span>
+<span class="kw3">trap</span> cleanup EXIT
+&nbsp;
+<span class="co0"># Open master ssh connection, to avoid the need to authenticate multiple times</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Opening master SSH connection&quot;</span>
+<span class="kw2">ssh</span> <span class="re5">-o</span> <span class="st0">&quot;ControlMaster=yes&quot;</span> <span class="re5">-o</span> <span class="st0">&quot;ControlPath=<span class="es3">${SSH_CONTROL}</span>&quot;</span> <span class="re5">-o</span> <span class="st0">&quot;ControlPersist=10&quot;</span> <span class="re5">-n</span> <span class="re5">-N</span> <span class="st0">&quot;<span class="es3">${OPENWRT}</span>&quot;</span>
+&nbsp;
+<span class="co0"># This is the command we'll use to reuse the master connection</span>
+<span class="re2">SSH_CMD</span>=<span class="br0">&#40;</span><span class="kw2">ssh</span> <span class="re5">-o</span> <span class="st0">&quot;ControlMaster=no&quot;</span> <span class="re5">-o</span> <span class="st0">&quot;ControlPath=<span class="es3">${SSH_CONTROL}</span>&quot;</span> <span class="re5">-n</span> <span class="st0">&quot;<span class="es3">${OPENWRT}</span>&quot;</span><span class="br0">&#41;</span>
+&nbsp;
+<span class="co0"># List remote mtd devices from /proc/mtd. The first line is just a table</span>
+<span class="co0"># header, so skip it (using tail)</span>
+<span class="st0">&quot;<span class="es3">${SSH_CMD[@]}</span>&quot;</span> <span class="st_h">'cat /proc/mtd'</span> <span class="sy0">|</span> <span class="kw2">tail</span> -n+<span class="nu0">2</span> <span class="sy0">|</span> <span class="kw1">while</span> <span class="kw3">read</span>; <span class="kw1">do</span>
+	<span class="re2">MTD_DEV</span>=$<span class="br0">&#40;</span><span class="kw3">echo</span> <span class="co1">${REPLY}</span> <span class="sy0">|</span> <span class="kw2">cut</span> <span class="re5">-f1</span> -d:<span class="br0">&#41;</span>
+	<span class="re2">MTD_NAME</span>=$<span class="br0">&#40;</span><span class="kw3">echo</span> <span class="co1">${REPLY}</span> <span class="sy0">|</span> <span class="kw2">cut</span> <span class="re5">-f2</span> <span class="re5">-d</span><span class="co3">\&quot;</span><span class="br0">&#41;</span>
+	<span class="kw3">echo</span> <span class="st0">&quot;Backing up <span class="es3">${MTD_DEV}</span> (<span class="es3">${MTD_NAME}</span>)&quot;</span>
+	<span class="co0"># It's important that the remote command only prints the actual file</span>
+	<span class="co0"># contents to stdout, otherwise our backup files will be corrupted. Other</span>
+	<span class="co0"># info must be printed to stderr instead. Luckily, this is how the dd</span>
+	<span class="co0"># command already behaves by default, so no additional flags are needed.</span>
+	<span class="st0">&quot;<span class="es3">${SSH_CMD[@]}</span>&quot;</span> <span class="st0">&quot;dd if='/dev/<span class="es3">${MTD_DEV}</span>ro'&quot;</span> <span class="sy0">&gt;</span> <span class="st0">&quot;<span class="es3">${BACKUP_DIR}</span>/<span class="es3">${MTD_DEV}</span>_<span class="es3">${MTD_NAME}</span>.backup&quot;</span> <span class="sy0">||</span> die <span class="st0">&quot;dd failed, aborting...&quot;</span>
+<span class="kw1">done</span>
+&nbsp;
+<span class="co0"># Use gzip and tar to compress the backup files</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Compressing backup files to <span class="es1">\&quot;</span><span class="es3">${OUTPUT_FILE}</span><span class="es1">\&quot;</span>&quot;</span>
+<span class="br0">&#40;</span><span class="kw3">cd</span> <span class="st0">&quot;<span class="es3">${TMPDIR}</span>&quot;</span> <span class="sy0">&amp;&amp;</span> <span class="kw2">tar</span> czf - <span class="st0">&quot;<span class="es4">$(basename &quot;${BACKUP_DIR}&quot;)</span>&quot;</span><span class="br0">&#41;</span> <span class="sy0">&gt;</span> <span class="st0">&quot;<span class="es3">${OUTPUT_FILE}</span>&quot;</span> <span class="sy0">||</span> die <span class="st_h">'tar failed, aborting...'</span>
+&nbsp;
+<span class="co0"># Clean up a little earlier, so the completion message is the last thing the user sees</span>
+cleanup
+<span class="co0"># Reset signal handler</span>
+<span class="kw3">trap</span> EXIT
+&nbsp;
+<span class="kw3">echo</span> <span class="re5">-e</span> <span class="st0">&quot;<span class="es1">\n</span>MTD backup complete. Extract the files using:<span class="es1">\n</span>tar xzf <span class="es1">\&quot;</span><span class="es3">${OUTPUT_FILE}</span><span class="es1">\&quot;</span>&quot;</span>
+EOF
+<span class="kw2">chmod</span> +x mtdbk.sh
+.<span class="sy0">/</span>mtdbk.sh</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Create full MTD backup&quot;,&quot;hid&quot;:&quot;create_full_mtd_backup&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:5,&quot;range&quot;:&quot;2650-5003&quot;} -->
+<h2 class="sectionedit6" id="create_full_mtd_backup_from_openwrt">Create full MTD backup from OpenWrt</h2>
+<div class="level2">
+
+<p>
+The method above works great, but only if you have <abbr title="Secure Shell">SSH</abbr> root access to you router.
+In some cases when you don&#039;t have <abbr title="Secure Shell">SSH</abbr> root access to router, but can connected from UART console.
+For example TP-Link Archer C9 HW ver 5.0 with original stock firmware.
+You can make backup from router to you host.
+</p>
+<pre class="code bash"><span class="co0"># Save the script</span>
+<span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>backup.sh
+<span class="co0">#!/bin/sh</span>
+&nbsp;
+<span class="re2">BACKUP_HOST</span>=<span class="st0">&quot;pc.lan&quot;</span>
+<span class="re2">BACKUP_USER</span>=<span class="st0">&quot;root&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Backup host <span class="es3">${BACKUP_HOST}</span>&quot;</span>
+&nbsp;
+<span class="kw2">cat</span> <span class="sy0">/</span>proc<span class="sy0">/</span>mtd <span class="sy0">|</span> <span class="kw2">tail</span> -n+<span class="nu0">2</span> <span class="sy0">|</span> <span class="kw1">while</span> <span class="kw3">read</span>; <span class="kw1">do</span>
+  <span class="re2">MTD_DEV</span>=$<span class="br0">&#40;</span><span class="kw3">echo</span> <span class="co1">${REPLY}</span> <span class="sy0">|</span> <span class="kw2">cut</span> <span class="re5">-f1</span> -d:<span class="br0">&#41;</span>
+  <span class="re2">MTD_NAME</span>=$<span class="br0">&#40;</span><span class="kw3">echo</span> <span class="co1">${REPLY}</span> <span class="sy0">|</span> <span class="kw2">cut</span> <span class="re5">-f2</span> <span class="re5">-d</span><span class="co3">\&quot;</span><span class="br0">&#41;</span>
+  <span class="kw3">echo</span> <span class="st0">&quot;Backing up <span class="es3">${MTD_DEV}</span> (<span class="es3">${MTD_NAME}</span>)&quot;</span>
+  <span class="kw2">dd</span> <span class="re2">if</span>=<span class="sy0">/</span>dev<span class="sy0">/</span><span class="co1">${MTD_DEV}</span>ro <span class="sy0">|</span> <span class="kw2">ssh</span> <span class="re5">-y</span> <span class="co1">${BACKUP_USER}</span><span class="sy0">@</span><span class="co1">${BACKUP_HOST}</span> <span class="st0">&quot;dd of=~/<span class="es3">${MTD_DEV}</span>_<span class="es3">${MTD_NAME}</span>.backup&quot;</span>
+<span class="kw1">done</span>
+EOF
+&nbsp;
+<span class="co0"># Run the script</span>
+<span class="kw2">sh</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>backup.sh</pre>
+
+<p>
+Now you&#039;ll be asked for <abbr title="Secure Shell">SSH</abbr> password from PC for each mtd device 5 or more times.
+</p>
+
+<p>
+After operation completed, you&#039;ll find all files in user home directory on PC.
+</p>
+
+<p>
+If you on linux and wish to see progress you can run in separate console on PC:
+</p>
+<pre class="code bash"><span class="kw2">watch</span> <span class="re5">-n</span> <span class="nu0">0.2</span> <span class="kw2">ls</span> <span class="re5">-l</span> <span class="re5">--block-size</span>=K ~</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Create full MTD backup from OpenWrt&quot;,&quot;hid&quot;:&quot;create_full_mtd_backup_from_openwrt&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:6,&quot;range&quot;:&quot;5004-6124&quot;} -->
+<h2 class="sectionedit7" id="create_backup_from_bootloader">Create backup from bootloader</h2>
+<div class="level2">
+
+<p>
+Sometimes it might be necessary to backup settings/partitions from original firmware.
+Depending on the bootloader, different strategies might be possible.
+</p>
+
+<p>
+The flash-chip is mapped to a start address.
+With uboot it should be in the following settings:
+</p>
+<pre class="code bash">printenv
+bdinfo</pre>
+
+<p>
+Memory dump to serial that is logged (uboot: <em>md</em> ; redboot: <em>dump</em>).
+Writing dumps to tftp or nfs.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Create backup from bootloader&quot;,&quot;hid&quot;:&quot;create_backup_from_bootloader&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:7,&quot;range&quot;:&quot;6125-6561&quot;} -->
+<h2 class="sectionedit8" id="restore_backup_from_bootloader_console">Restore backup from bootloader console</h2>
+<div class="level2">
+
+<p>
+Many bootloader allow you to work with mtd partition, but beware: they do not have to be identical with the Kernel mtd partitions!
+Also, with some bootloaders, you cannot use mtd-partition, you must work with offsets.
+In the latter case, it is probably a good idea to write down these correct offsets when you make the backups.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Restore backup from bootloader console&quot;,&quot;hid&quot;:&quot;restore_backup_from_bootloader_console&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:8,&quot;range&quot;:&quot;6562-6941&quot;} -->
+<h2 class="sectionedit9" id="restore_backup_from_openwrt_console">Restore backup from OpenWrt console</h2>
+<div class="level2">
+<pre class="code bash">mtd <span class="kw2">write</span> art.backup art</pre>
+
+<p>
+Above method could work, but most probably will not as art partition is usually not writable, so you will have to compile you own kernel after doing some <a href="/toh/tp-link/tl-wr1043nd#making_bootloader_partition_writable" class="wikilink1" title="toh:tp-link:tl-wr1043nd" data-wiki-id="toh:tp-link:tl-wr1043nd">minor modification</a>.
+Then you must flash this to you device, boot it, and now the partition should be writable.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Restore backup from OpenWrt console&quot;,&quot;hid&quot;:&quot;restore_backup_from_openwrt_console&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:9,&quot;range&quot;:&quot;6942-7365&quot;} -->
+<h2 class="sectionedit10" id="exploring_mtd_backups">Exploring MTD Backups</h2>
+<div class="level2">
+
+<p>
+If you want to explore the contents of an MTD backup on your computer, without restoring it to OpenWrt, you can use <a href="https://github.com/sviehb/jefferson" class="urlextern" title="https://github.com/sviehb/jefferson" rel="ugc nofollow">jefferson</a> with the command
+</p>
+<pre class="code bash">jefferson mtd4_rootfs_data.backup <span class="re5">-d</span> rootfs</pre>
+
+<p>
+Where the mtd4_rootfs_data.backup file is the mtd block you want to explore. Likely this will be rootfs_data as it contains most of the customizations you will have made to OpenWrt.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Exploring MTD Backups&quot;,&quot;hid&quot;:&quot;exploring_mtd_backups&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:10,&quot;range&quot;:&quot;7366-&quot;} -->

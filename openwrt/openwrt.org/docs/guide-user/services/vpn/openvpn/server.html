@@ -1,0 +1,350 @@
+
+<h1 class="sectionedit1" id="openvpn_server">OpenVPN server</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__meta:infobox:howto_links">
+<div class="level1">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_info plugin_wrap">
+<p>
+This article relies on the following:
+</p>
+<ul>
+<li class="level1"><div class="li"> Accessing <a href="/docs/guide-quick-start/walkthrough_login" class="wikilink1" title="docs:guide-quick-start:walkthrough_login" data-wiki-id="docs:guide-quick-start:walkthrough_login">web interface</a> / <a href="/docs/guide-quick-start/sshadministration" class="wikilink1" title="docs:guide-quick-start:sshadministration" data-wiki-id="docs:guide-quick-start:sshadministration">command-line interface</a></div>
+</li>
+<li class="level1"><div class="li"> Managing <a href="/docs/guide-user/base-system/uci" class="wikilink1" title="docs:guide-user:base-system:uci" data-wiki-id="docs:guide-user:base-system:uci">configs</a> / <a href="/docs/guide-user/additional-software/managing_packages" class="wikilink1" title="docs:guide-user:additional-software:managing_packages" data-wiki-id="docs:guide-user:additional-software:managing_packages">packages</a> / <a href="/docs/guide-user/base-system/managing_services" class="wikilink1" title="docs:guide-user:base-system:managing_services" data-wiki-id="docs:guide-user:base-system:managing_services">services</a> / <a href="/docs/guide-user/base-system/log.essentials" class="wikilink1" title="docs:guide-user:base-system:log.essentials" data-wiki-id="docs:guide-user:base-system:log.essentials">logs</a></div>
+</li>
+</ul>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;OpenVPN server&quot;,&quot;hid&quot;:&quot;openvpn_server&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-111&quot;} -->
+<h2 class="sectionedit6" id="introduction">Introduction</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> This how-to describes the method for setting up <a href="https://en.wikipedia.org/wiki/OpenVPN" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/OpenVPN">OpenVPN</a> server on OpenWrt.</div>
+</li>
+<li class="level1"><div class="li"> Follow <a href="/docs/guide-user/services/vpn/openvpn/client" class="wikilink1" title="docs:guide-user:services:vpn:openvpn:client" data-wiki-id="docs:guide-user:services:vpn:openvpn:client">OpenVPN client</a> for client setup and <a href="/docs/guide-user/services/vpn/openvpn/extras" class="wikilink1" title="docs:guide-user:services:vpn:openvpn:extras" data-wiki-id="docs:guide-user:services:vpn:openvpn:extras">OpenVPN extras</a> for additional tuning.</div>
+</li>
+<li class="level1 node"><div class="li"> It requires OpenWrt 21.02+ with OpenVPN 2.5+ supporting <code>tls-crypt-v2</code>.</div>
+<ul>
+<li class="level2"><div class="li"> OpenWrt 19.07 users with OpenVPN 2.4 should refer to an <a href="/docs/guide-user/services/vpn/openvpn/server?rev=1632708683" class="wikilink1" title="docs:guide-user:services:vpn:openvpn:server" data-wiki-id="docs:guide-user:services:vpn:openvpn:server">older revision</a>.</div>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Introduction&quot;,&quot;hid&quot;:&quot;introduction&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;112-631&quot;} -->
+<h2 class="sectionedit7" id="goals">Goals</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;docs:guide-user:services:vpn:wireguard:server&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:8,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__docs:guide-user:services:vpn:wireguard:server">
+<div class="level2">
+<ul>
+<li class="level1 node"><div class="li"> Encrypt your internet connection to enforce security and privacy.</div>
+<ul>
+<li class="level2"><div class="li"> Prevent traffic leaks and spoofing on the client side.</div>
+</li>
+</ul>
+</li>
+<li class="level1 node"><div class="li"> Bypass regional restrictions using commercial providers.</div>
+<ul>
+<li class="level2"><div class="li"> Escape client side content filters and internet censorship.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Access your <abbr title="Local Area Network">LAN</abbr> services remotely without port forwarding.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;docs:guide-user:services:vpn:wireguard:server&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:9,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Goals&quot;,&quot;hid&quot;:&quot;goals&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;632-745&quot;} -->
+<h2 class="sectionedit10" id="command-line_instructions">Command-line instructions</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Command-line instructions&quot;,&quot;hid&quot;:&quot;command-line_instructions&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:10,&quot;range&quot;:&quot;746-783&quot;} -->
+<h3 class="sectionedit11" id="preparation">1. Preparation</h3>
+<div class="level3">
+
+<p>
+Install the required packages.
+Specify configuration parameters for <abbr title="Virtual Private Network">VPN</abbr> server.
+</p>
+<pre class="code bash"><span class="co0"># Install packages</span>
+opkg update
+opkg <span class="kw2">install</span> openvpn-openssl openvpn-easy-rsa
+&nbsp;
+<span class="co0"># Configuration parameters</span>
+<span class="re2">VPN_DIR</span>=<span class="st0">&quot;/etc/openvpn&quot;</span>
+<span class="re2">VPN_PKI</span>=<span class="st0">&quot;/etc/easy-rsa/pki&quot;</span>
+<span class="re2">VPN_PORT</span>=<span class="st0">&quot;1194&quot;</span>
+<span class="re2">VPN_PROTO</span>=<span class="st0">&quot;udp&quot;</span>
+<span class="re2">VPN_POOL</span>=<span class="st0">&quot;192.168.9.0 255.255.255.0&quot;</span>
+<span class="re2">VPN_DNS</span>=<span class="st0">&quot;<span class="es3">${VPN_POOL%.* *}</span>.1&quot;</span>
+<span class="re2">VPN_DN</span>=<span class="st0">&quot;<span class="es4">$(uci -q get dhcp.@dnsmasq[0].domain)</span>&quot;</span>
+&nbsp;
+<span class="co0"># Fetch server address</span>
+<span class="re2">NET_FQDN</span>=<span class="st0">&quot;<span class="es4">$(uci -q get ddns.@service[0].lookup_host)</span>&quot;</span>
+. <span class="sy0">/</span>lib<span class="sy0">/</span>functions<span class="sy0">/</span>network.sh
+network_flush_cache
+network_find_wan NET_IF
+network_get_ipaddr NET_ADDR <span class="st0">&quot;<span class="es3">${NET_IF}</span>&quot;</span>
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-n</span> <span class="st0">&quot;<span class="es3">${NET_FQDN}</span>&quot;</span> <span class="br0">&#93;</span>
+<span class="kw1">then</span> <span class="re2">VPN_SERV</span>=<span class="st0">&quot;<span class="es3">${NET_FQDN}</span>&quot;</span>
+<span class="kw1">else</span> <span class="re2">VPN_SERV</span>=<span class="st0">&quot;<span class="es3">${NET_ADDR}</span>&quot;</span>
+<span class="kw1">fi</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;1. Preparation&quot;,&quot;hid&quot;:&quot;preparation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:11,&quot;range&quot;:&quot;784-1484&quot;} -->
+<h3 class="sectionedit12" id="key_management">2. Key management</h3>
+<div class="level3">
+
+<p>
+Use <a href="https://github.com/OpenVPN/easy-rsa#overview" class="urlextern" title="https://github.com/OpenVPN/easy-rsa#overview" rel="ugc nofollow">EasyRSA</a> to manage the <abbr title="Public Key Infrastructure">PKI</abbr>.
+Utilize private key password protection if necessary.
+</p>
+<pre class="code bash"><span class="co0"># Configuration parameters</span>
+<span class="kw3">export</span> <span class="re2">EASYRSA_PKI</span>=<span class="st0">&quot;<span class="es3">${VPN_PKI}</span>&quot;</span>
+<span class="kw3">export</span> <span class="re2">EASYRSA_TEMP_DIR</span>=<span class="st0">&quot;/tmp&quot;</span>
+<span class="kw3">export</span> <span class="re2">EASYRSA_CERT_EXPIRE</span>=<span class="st0">&quot;3650&quot;</span>
+<span class="kw3">export</span> <span class="re2">EASYRSA_BATCH</span>=<span class="st0">&quot;1&quot;</span>
+&nbsp;
+<span class="co0"># Remove and re-initialize PKI directory</span>
+easyrsa init-pki
+&nbsp;
+<span class="co0"># Generate DH parameters</span>
+easyrsa gen-dh
+&nbsp;
+<span class="co0"># Create a new CA</span>
+easyrsa build-ca nopass
+&nbsp;
+<span class="co0"># Generate server keys and certificate</span>
+easyrsa build-server-full server nopass
+openvpn <span class="re5">--genkey</span> tls-crypt-v2-server <span class="co1">${EASYRSA_PKI}</span><span class="sy0">/</span>private<span class="sy0">/</span>server.pem
+&nbsp;
+<span class="co0"># Generate client keys and certificate</span>
+easyrsa build-client-full client nopass
+openvpn <span class="re5">--tls-crypt-v2</span> <span class="co1">${EASYRSA_PKI}</span><span class="sy0">/</span>private<span class="sy0">/</span>server.pem \
+<span class="re5">--genkey</span> tls-crypt-v2-client <span class="co1">${EASYRSA_PKI}</span><span class="sy0">/</span>private<span class="sy0">/</span>client.pem</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;2. Key management&quot;,&quot;hid&quot;:&quot;key_management&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:12,&quot;range&quot;:&quot;1485-2313&quot;} -->
+<h3 class="sectionedit13" id="firewall">3. Firewall</h3>
+<div class="level3">
+
+<p>
+Consider <abbr title="Virtual Private Network">VPN</abbr> network as private.
+Assign <abbr title="Virtual Private Network">VPN</abbr> interface to <abbr title="Local Area Network">LAN</abbr> zone to minimize firewall setup.
+Allow access to <abbr title="Virtual Private Network">VPN</abbr> server from <abbr title="Wide Area Network">WAN</abbr> zone.
+</p>
+<pre class="code bash"><span class="co0"># Configure firewall</span>
+uci rename firewall.<span class="sy0">@</span>zone<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>=<span class="st0">&quot;lan&quot;</span>
+uci rename firewall.<span class="sy0">@</span>zone<span class="br0">&#91;</span><span class="nu0">1</span><span class="br0">&#93;</span>=<span class="st0">&quot;wan&quot;</span>
+uci del_list firewall.lan.device=<span class="st0">&quot;tun+&quot;</span>
+uci add_list firewall.lan.device=<span class="st0">&quot;tun+&quot;</span>
+uci <span class="re5">-q</span> delete firewall.ovpn
+uci <span class="kw1">set</span> firewall.ovpn=<span class="st0">&quot;rule&quot;</span>
+uci <span class="kw1">set</span> firewall.ovpn.name=<span class="st0">&quot;Allow-OpenVPN&quot;</span>
+uci <span class="kw1">set</span> firewall.ovpn.src=<span class="st0">&quot;wan&quot;</span>
+uci <span class="kw1">set</span> firewall.ovpn.dest_port=<span class="st0">&quot;<span class="es3">${VPN_PORT}</span>&quot;</span>
+uci <span class="kw1">set</span> firewall.ovpn.proto=<span class="st0">&quot;<span class="es3">${VPN_PROTO}</span>&quot;</span>
+uci <span class="kw1">set</span> firewall.ovpn.target=<span class="st0">&quot;ACCEPT&quot;</span>
+uci commit firewall
+service firewall restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;3. Firewall&quot;,&quot;hid&quot;:&quot;firewall&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:13,&quot;range&quot;:&quot;2314-2968&quot;} -->
+<h3 class="sectionedit14" id="vpn_service">4. VPN service</h3>
+<div class="level3">
+
+<p>
+Configure <abbr title="Virtual Private Network">VPN</abbr> service and generate client profiles.
+</p>
+<pre class="code bash"><span class="co0"># Configure VPN service and generate client profiles</span>
+<span class="kw3">umask</span> <span class="re2">go</span>=
+<span class="re2">VPN_DH</span>=<span class="st0">&quot;<span class="es4">$(cat ${VPN_PKI}/dh.pem)</span>&quot;</span>
+<span class="re2">VPN_CA</span>=<span class="st0">&quot;<span class="es4">$(openssl x509 -in ${VPN_PKI}/ca.crt)</span>&quot;</span>
+<span class="kw2">ls</span> <span class="co1">${VPN_PKI}</span><span class="sy0">/</span>issued \
+<span class="sy0">|</span> <span class="kw2">sed</span> <span class="re5">-e</span> <span class="st0">&quot;s/\.\w*$//&quot;</span> \
+<span class="sy0">|</span> <span class="kw1">while</span> <span class="kw3">read</span> <span class="re5">-r</span> VPN_ID
+<span class="kw1">do</span>
+<span class="re2">VPN_TC</span>=<span class="st0">&quot;<span class="es4">$(cat ${VPN_PKI}/private/${VPN_ID}.pem)</span>&quot;</span>
+<span class="re2">VPN_KEY</span>=<span class="st0">&quot;<span class="es4">$(cat ${VPN_PKI}/private/${VPN_ID}.key)</span>&quot;</span>
+<span class="re2">VPN_CERT</span>=<span class="st0">&quot;<span class="es4">$(openssl x509 -in ${VPN_PKI}/issued/${VPN_ID}.crt)</span>&quot;</span>
+<span class="re2">VPN_EKU</span>=<span class="st0">&quot;<span class="es4">$(echo &quot;${VPN_CERT}&quot; | openssl x509 -noout -purpose)</span>&quot;</span>
+<span class="kw1">case</span> <span class="co1">${VPN_EKU}</span> <span class="kw1">in</span>
+<span class="br0">&#40;</span><span class="sy0">*</span><span class="st0">&quot;SSL server : Yes&quot;</span><span class="sy0">*</span><span class="br0">&#41;</span>
+<span class="re2">VPN_CONF</span>=<span class="st0">&quot;<span class="es3">${VPN_DIR}</span>/<span class="es3">${VPN_ID}</span>.conf&quot;</span>
+<span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> EOF <span class="sy0">&gt;</span> <span class="co1">${VPN_CONF}</span> <span class="sy0">;;</span>
+user nobody
+group nogroup
+dev tun
+port <span class="co1">${VPN_PORT}</span>
+proto <span class="co1">${VPN_PROTO}</span>
+server <span class="co1">${VPN_POOL}</span>
+topology subnet
+client-to-client
+keepalive <span class="nu0">10</span> <span class="nu0">60</span>
+persist-tun
+persist-key
+push <span class="st0">&quot;dhcp-option DNS <span class="es3">${VPN_DNS}</span>&quot;</span>
+push <span class="st0">&quot;dhcp-option DOMAIN <span class="es3">${VPN_DN}</span>&quot;</span>
+push <span class="st0">&quot;redirect-gateway def1&quot;</span>
+push <span class="st0">&quot;persist-tun&quot;</span>
+push <span class="st0">&quot;persist-key&quot;</span>
+<span class="sy0">&lt;</span><span class="kw2">dh</span><span class="sy0">&gt;</span>
+<span class="co1">${VPN_DH}</span>
+<span class="sy0">&lt;/</span><span class="kw2">dh</span><span class="sy0">&gt;</span>
+EOF
+<span class="br0">&#40;</span><span class="sy0">*</span><span class="st0">&quot;SSL client : Yes&quot;</span><span class="sy0">*</span><span class="br0">&#41;</span>
+<span class="re2">VPN_CONF</span>=<span class="st0">&quot;<span class="es3">${VPN_DIR}</span>/<span class="es3">${VPN_ID}</span>.ovpn&quot;</span>
+<span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> EOF <span class="sy0">&gt;</span> <span class="co1">${VPN_CONF}</span> <span class="sy0">;;</span>
+user nobody
+group nogroup
+dev tun
+nobind
+client
+remote <span class="co1">${VPN_SERV}</span> <span class="co1">${VPN_PORT}</span> <span class="co1">${VPN_PROTO}</span>
+auth-nocache
+remote-cert-tls server
+EOF
+<span class="kw1">esac</span>
+<span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> EOF <span class="sy0">&gt;&gt;</span> <span class="co1">${VPN_CONF}</span>
+<span class="sy0">&lt;</span>tls-crypt-v2<span class="sy0">&gt;</span>
+<span class="co1">${VPN_TC}</span>
+<span class="sy0">&lt;/</span>tls-crypt-v2<span class="sy0">&gt;</span>
+<span class="sy0">&lt;</span>key<span class="sy0">&gt;</span>
+<span class="co1">${VPN_KEY}</span>
+<span class="sy0">&lt;/</span>key<span class="sy0">&gt;</span>
+<span class="sy0">&lt;</span>cert<span class="sy0">&gt;</span>
+<span class="co1">${VPN_CERT}</span>
+<span class="sy0">&lt;/</span>cert<span class="sy0">&gt;</span>
+<span class="sy0">&lt;</span>ca<span class="sy0">&gt;</span>
+<span class="co1">${VPN_CA}</span>
+<span class="sy0">&lt;/</span>ca<span class="sy0">&gt;</span>
+EOF
+<span class="kw1">done</span>
+service openvpn restart
+<span class="kw2">ls</span> <span class="co1">${VPN_DIR}</span><span class="sy0">/*</span>.ovpn</pre>
+
+<p>
+Basic openvpn server configuration is now complete.
+</p>
+<ol>
+<li class="level1"><div class="li"> Perform OpenWrt <a href="/docs/guide-user/troubleshooting/backup_restore" class="wikilink1" title="docs:guide-user:troubleshooting:backup_restore" data-wiki-id="docs:guide-user:troubleshooting:backup_restore">backup</a>.</div>
+</li>
+<li class="level1"><div class="li"> Either extract client profile from the archive file, or use SCP to retrieve the <span style='color:#ed1c24; '>/etc/openvpn/client.ovpn</span> file from the router.  </div>
+</li>
+<li class="level1"><div class="li"> Review/edit the <abbr title="Internet Protocol">IP</abbr> address for the &#039;remote&#039; line contained within the <span style='color:#ed1c24; '>client.ovpn</span> file.  </div>
+</li>
+<li class="level1"><div class="li"> Import the client.ovpn profile into your clients.</div>
+</li>
+</ol>
+
+<p>
+For an additional .ovpn after completing the above:
+</p>
+<ol>
+<li class="level1"><div class="li"> Run this <a href="/docs/guide-user/services/vpn/openvpn/extras#multi-client" class="wikilink1" title="docs:guide-user:services:vpn:openvpn:extras" data-wiki-id="docs:guide-user:services:vpn:openvpn:extras">multi-client</a> script.</div>
+</li>
+<li class="level1"><div class="li"> Now make a script consisting of the “Configuration parameters” of Part 1 above and all of Part 4 above and run it. Note that the “remote” line may be missing in the new ovpn (use the original as a reference for that).</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;4. VPN service&quot;,&quot;hid&quot;:&quot;vpn_service&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:14,&quot;range&quot;:&quot;2969-5174&quot;} -->
+<h2 class="sectionedit15" id="testing">Testing</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;docs:guide-user:services:vpn:wireguard:server&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:16,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__docs:guide-user:services:vpn:wireguard:server">
+<div class="level2">
+
+<p>
+Establish the <abbr title="Virtual Private Network">VPN</abbr> connection.
+Verify your routing with <a href="http://man.cx/traceroute%288%29" class="interwiki iw_man" title="http://man.cx/traceroute%288%29">traceroute</a> and <a href="http://man.cx/traceroute6%288%29" class="interwiki iw_man" title="http://man.cx/traceroute6%288%29">traceroute6</a>.
+</p>
+<pre class="code bash">traceroute openwrt.org
+traceroute6 openwrt.org</pre>
+
+<p>
+Check your <abbr title="Internet Protocol">IP</abbr> and <abbr title="Domain Name System">DNS</abbr> provider.
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="https://ipleak.net/" class="urlextern" title="https://ipleak.net/" rel="ugc nofollow">ipleak.net</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://www.dnsleaktest.com/" class="urlextern" title="https://www.dnsleaktest.com/" rel="ugc nofollow">dnsleaktest.com</a></div>
+</li>
+</ul>
+
+<p>
+On router:
+</p>
+<ul>
+<li class="level1"><div class="li"> Go to <strong>LuCI &gt; Status &gt; Wireguard</strong> and look for peer device connected with an <abbr title="Internet Protocol version 4">IPv4</abbr> or <abbr title="Internet Protocol version 6">IPv6</abbr> address and with a recent handshake time</div>
+</li>
+<li class="level1"><div class="li"> Go to <strong>LuCI &gt; Network &gt; Diagnostics</strong> and <strong>ipv4 ping</strong> client device <abbr title="Internet Protocol">IP</abbr> eg. 10.0.0.10</div>
+</li>
+</ul>
+
+<p>
+On client device depending on wireguard software:
+</p>
+<ul>
+<li class="level1"><div class="li"> Check transfer traffic for tx &amp; rx</div>
+</li>
+<li class="level1"><div class="li"> Ping router internal lan <abbr title="Internet Protocol">IP</abbr></div>
+</li>
+<li class="level1"><div class="li"> Check public <abbr title="Internet Protocol">IP</abbr> address in a browser – <a href="https://whatsmyip.com" class="urlextern" title="https://whatsmyip.com" rel="ugc nofollow">https://whatsmyip.com</a> – should see public <abbr title="Internet Protocol">IP</abbr> address of <abbr title="Internet Service Provider">ISP</abbr> for the router</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;docs:guide-user:services:vpn:wireguard:server&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:17,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Testing&quot;,&quot;hid&quot;:&quot;testing&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:15,&quot;range&quot;:&quot;5175-5292&quot;} -->
+<h2 class="sectionedit18" id="troubleshooting">Troubleshooting</h2>
+<div class="level2">
+
+<p>
+Collect and analyze the following information.
+</p>
+<pre class="code bash"><span class="co0"># Restart services</span>
+service log restart; service openvpn restart; <span class="kw2">sleep</span> <span class="nu0">10</span>
+&nbsp;
+<span class="co0"># Log and status</span>
+logread <span class="re5">-e</span> openvpn; <span class="kw2">netstat</span> <span class="re5">-l</span> <span class="re5">-n</span> <span class="re5">-p</span> <span class="sy0">|</span> <span class="kw2">grep</span> <span class="re5">-e</span> openvpn
+&nbsp;
+<span class="co0"># Runtime configuration</span>
+pgrep <span class="re5">-f</span> <span class="re5">-a</span> openvpn
+<span class="kw2">ip</span> address show; <span class="kw2">ip route</span> show table all
+<span class="kw2">ip rule</span> show; <span class="kw2">ip</span> <span class="re5">-6</span> rule show; nft list ruleset
+&nbsp;
+<span class="co0"># Persistent configuration</span>
+uci show network; uci show firewall; uci show openvpn
+<span class="kw2">head</span> <span class="re5">-v</span> <span class="re5">-n</span> <span class="re5">-0</span> <span class="sy0">/</span>etc<span class="sy0">/</span>openvpn<span class="sy0">/*</span>.conf</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Troubleshooting&quot;,&quot;hid&quot;:&quot;troubleshooting&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:18,&quot;range&quot;:&quot;5293-5786&quot;} -->
+<h2 class="sectionedit19" id="notes">Notes</h2>
+<div class="level2">
+
+<p>
+For beginners to OpenVPN server, this PDF guide may be helpful.  It is based on above cli instructions with additional note and tips.
+<a href="https://www.dropbox.com/s/idjzqs3cyyb1zai/7-OpenVPN%20Server%20for%20HH5A.pdf?dl=0" class="urlextern" title="https://www.dropbox.com/s/idjzqs3cyyb1zai/7-OpenVPN%20Server%20for%20HH5A.pdf?dl=0" rel="ugc nofollow">OpenVPN server setup guide for BT Home Hub 5A</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Notes&quot;,&quot;hid&quot;:&quot;notes&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:19,&quot;range&quot;:&quot;5787-&quot;} -->

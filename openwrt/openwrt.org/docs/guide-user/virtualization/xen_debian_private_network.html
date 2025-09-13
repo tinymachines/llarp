@@ -1,0 +1,349 @@
+
+<h1 class="sectionedit1" id="openwrt_as_domu_in_debian_xen4_in_a_private_network">OpenWrt as DomU in Debian Xen4 in a private network</h1>
+<div class="level1">
+
+<p>
+Based on this other wiki article: <a href="/docs/guide-user/virtualization/xen" class="wikilink1" title="docs:guide-user:virtualization:xen" data-wiki-id="docs:guide-user:virtualization:xen">xen</a>
+</p>
+
+<p>
+The main point of this howto is the network configuration. We are using a dummy0 device from dom0 to communicate with domU openwrt nodes. So the domU network will be isolated from the real one. If we want to provide internet to nodes, we can use <abbr title="Network Address Translation">NAT</abbr> from dom0.
+</p>
+<ul>
+<li class="level1"><div class="li"> Install Debian Squeeze on the computer</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> Install Xen (package version could vary)</div>
+</li>
+</ul>
+<pre class="code">aptitude install linux-image-2.6.32-5-xen-amd64 xen-hypervisor-4.0-amd64 xen-tools xen-utils-4.0 bridge-utils</pre>
+<ul>
+<li class="level1"><div class="li"> Update grub2 and reboot</div>
+</li>
+</ul>
+<pre class="code">mv /etc/grub.d/10_linux /etc/grub.d/50_linux
+update-grub2
+reboot</pre>
+<ul>
+<li class="level1"><div class="li"> Configure file <code>/etc/xen/xend-config.sxp</code>:</div>
+</li>
+</ul>
+<pre class="code">(network-script network-custom)
+(vif-script     vif-custom)</pre>
+
+<p>
+And comment the rest about network and vif
+</p>
+<ul>
+<li class="level1"><div class="li"> Create the scripts</div>
+</li>
+</ul>
+
+<p>
+<code>/etc/xen/scripts/network-custom</code>
+</p>
+<pre class="file"> #!/bin/sh
+ dir=$(dirname &quot;$0&quot;)
+ &quot;$dir/network-route&quot;  &quot;$@&quot; netdev=eth0
+ &quot;$dir/network-bridge&quot; &quot;$@&quot; netdev=dummy0</pre>
+
+<p>
+<code>/etc/xen/scripts/vif-custom</code>
+</p>
+<pre class="file"> #!/bin/sh
+ dir=$(dirname &quot;$0&quot;)
+ IFNUM=$(echo ${vif} | awk -F. &#039;{ print $2 }&#039;)
+ if [[ &quot;$IFNUM&quot; == &quot;0&quot; ]] ; then
+  &quot;$dir/vif-route&quot;  &quot;$@&quot;
+ else
+  &quot;$dir/vif-bridge&quot; &quot;$@&quot;
+ fi</pre>
+<ul>
+<li class="level1"><div class="li"> Configure networking in <code>/etc/network/interfaces</code>:</div>
+</li>
+</ul>
+<pre class="file"> auto dummy0
+ iface dummy0 inet static
+   address 192.168.1.254
+   netmask 255.255.255.0</pre>
+<ul>
+<li class="level1"><div class="li"> Compile OpenWrt for <em>x86</em> and <em>XEN</em> target (consult <a href="/docs/guide-developer/toolchain/start" class="wikilink1" title="docs:guide-developer:toolchain:start" data-wiki-id="docs:guide-developer:toolchain:start">OpenWrt Buildroot – Usage</a>)</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> Example of xen domU configuration</div>
+</li>
+</ul>
+<pre class="file">memory = 256
+name = &quot;25&quot;
+kernel = &quot;/root/VM/25/openwrt-x86-xen_domu-vmlinuz&quot;
+disk = [&quot;file:///root/VM/25/openwrt-x86-xen_domu-rootfs-ext4.img,xvda2,w&quot;]
+vif = [ &#039;mac=00:16:3E:6:11:2&#039; ]
+vcpus = 1
+on_reboot = &#039;restart&#039;
+on_crash = &#039;destroy&#039;
+root = &#039;/dev/xvda2 rw&#039;</pre>
+<ul>
+<li class="level1"><div class="li"> Start domU</div>
+</li>
+</ul>
+<pre class="code">xm create xen_domU.conf -c</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;OpenWrt as DomU in Debian Xen4 in a private network&quot;,&quot;hid&quot;:&quot;openwrt_as_domu_in_debian_xen4_in_a_private_network&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1973&quot;} -->
+<h2 class="sectionedit2" id="script_to_manage_nodes">Script to manage nodes</h2>
+<div class="level2">
+
+<p>
+Using this system you will be able to create as nodes you need using just one command.
+</p>
+
+<p>
+<strong>Create needed directories</strong>
+</p>
+<pre class="code">cd /root/
+mkdir VM
+mkdir config
+mkdir images</pre>
+
+<p>
+<strong>Create this two files:</strong>
+</p>
+<ul>
+<li class="level1"><div class="li"> config/network<pre class="code">config interface loopback
+        option ifname   lo
+        option proto    static
+        option ipaddr   127.0.0.1
+        option netmask  255.0.0.0
+
+config interface lan
+        option ifname   eth0
+        option proto    static
+        option ipaddr   192.168.1.#ID
+        option netmask  255.255.255.0</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> config/template.conf</div>
+</li>
+</ul>
+<pre class="code">memory = 256
+name = &quot;#ID&quot;
+kernel = &quot;/root/VM/#PROFILE/#ID/kernel.img&quot;
+disk = [&quot;file:///root/VM/#PROFILE/#ID/fs.img,xvda2,w&quot;]
+vif = [ &#039;mac=00:16:3E:#R1:#R2:#R3&#039; ]
+vcpus = 1
+on_reboot = &#039;restart&#039;
+on_crash = &#039;destroy&#039;
+root = &#039;/dev/xvda2 rw&#039;</pre>
+
+<p>
+<strong>Put these two images from OpenWrt buildroot inside images directory</strong>
+</p>
+<pre class="code">mv openwrt-x86-xen_domu-rootfs-ext4.img images/fs.img
+mv openwrt-x86-xen_domu-vmlinuz images/kernel.img</pre>
+
+<p>
+<strong>Copy this script to /root/manage_nodes.sh</strong>
+</p>
+<pre class="code">#!/bin/bash
+CONFIG=&quot;config/template.conf&quot;
+NETWORK=&quot;config/network&quot;
+IMAGE_DIR=&quot;images&quot;
+IMAGE_FS=&quot;fs.img&quot;
+IMAGE_KR=&quot;kernel.img&quot;
+VM_DIR=&quot;VM&quot;
+MNT=&quot;/mnt&quot;
+CURRENT_PROFILE=&quot;.xmn_profile&quot;
+PROFILE=&quot;default&quot;
+
+function new_node {
+
+        R1=`echo $RANDOM%16 | bc`
+        R2=`echo $RANDOM%16 | bc`
+        R3=`echo $RANDOM%16 | bc`
+        ID=`echo $RANDOM%100 | bc`
+
+        mkdir -p $VM_DIR/$PROFILE/$ID
+
+        cat $CONFIG | sed -e s/#ID/$ID/g -e s/#PROFILE/$PROFILE/g \
+        -e s/#R1/$R1/g -e s/#R2/$R2/g -e s/#R3/$R3/g &gt; $VM_DIR/$PROFILE/$ID/xen.conf
+
+        cp -f $IMAGE_DIR/$PROFILE/$IMAGE_FS $VM_DIR/$PROFILE/$ID/
+        cp -f $IMAGE_DIR/$PROFILE/$IMAGE_KR $VM_DIR/$PROFILE/$ID/
+
+        config_network $ID
+        start_node $ID
+}
+
+
+function rm_node {
+        read -p &quot;Are you sure you want do destroy node $1? [y|N] &quot; q
+        [ &quot;$q&quot; == &quot;y&quot; ] &amp;&amp; rm -rf $VM_DIR/$PROFILE/$1
+}
+
+function rm_all {
+        read -p &quot;Are you sure you want do destroy all nodes from profile $PROFILE? [y|N] &quot; q
+        [ &quot;$q&quot; == &quot;y&quot; ] &amp;&amp; { stop_all ; rm -rf $VM_DIR/$PROFILE/*; }
+}
+
+
+function multiple_node {
+        [ -z &quot;$1&quot; ] &amp;&amp; { echo &quot;Please, specify the number of nodes you wan to create&quot;; exit 1;} 
+        for i in $(seq 1 $1); do
+                echo &quot;Creating node $i&quot;
+                new_node
+                sleep 3
+        done
+}
+
+function config_network {
+        mount $VM_DIR/$PROFILE/$1/$IMAGE_FS $MNT -o loop
+        [ $? -ne 0 ] &amp;&amp; { echo &quot;Cannot mount image!&quot;; exit 1;}
+        cat $NETWORK | sed s/#ID/$1/g &gt; /mnt/etc/config/network
+        umount $MNT
+}
+
+function dom0_network {
+        ip tuntap add mode tap
+        brctl addbr br0
+        brctl addif br0 tap0
+        ifconfig tap0 0.0.0.0 promisc
+        ifconfig br0 192.168.1.254
+}
+
+function start_node {
+        xm create $VM_DIR/$PROFILE/$1/xen.conf
+        if [ $? -eq 0 ]; then 
+                echo &quot;New node with ID $1 has been created&quot;
+        else
+                echo &quot;Some problem starting node, check previous log&quot;
+        fi
+} 
+
+function list_nodes {
+        ls $VM_DIR/$PROFILE/
+}
+
+function start_all {
+        for m in $(ls $VM_DIR/$PROFILE/); do
+                start_node $m
+        done
+}
+
+function stop_node {
+        xm destroy $1 2&gt;/dev/null
+}
+
+function stop_all {
+        for m in $(ls $VM_DIR/$PROFILE/); do
+                xm destroy $m 2&gt;/dev/null
+        done
+}
+
+function new_profile {
+        profile=&quot;$1&quot;
+        [ -z &quot;$profile&quot; ] &amp;&amp; { echo &quot;You must specify profile name&quot; ; help; }
+        [ -d &quot;$VM_DIR/$profile&quot; ] &amp;&amp; { echo &quot;Profile $profile exists, please remove it&quot;; exit 1; }  
+        mkdir -p $VM_DIR/$profile
+        mkdir -p $IMAGE_DIR/$profile
+        cp -f $IMAGE_DIR/$IMAGE_FS $IMAGE_DIR/$profile/
+        cp -f $IMAGE_DIR/$IMAGE_KR $IMAGE_DIR/$profile/
+        echo &quot;New profile $profile successful created. Now you can use it: $0 profile $profile&quot;
+}
+
+function profile {
+        profile=&quot;$1&quot;
+        [ -z &quot;$profile&quot; ] &amp;&amp; { echo &quot;You must specify profile name&quot; ; help; }
+        [ ! -d &quot;$VM_DIR/$profile&quot; ] &amp;&amp; { echo &quot;This profile does not exist, please create it using: $0 new_profile $profile&quot;; exit 1; }
+        echo &quot;$profile&quot; &gt; $CURRENT_PROFILE
+        echo &quot;Active profile is now $profile&quot;
+}
+
+function rm_profile {
+        [ -z &quot;$1&quot; ] &amp;&amp; help
+        read -p &quot;Are you sure you want do destroy profile $1? [y|N] &quot; q
+        [ &quot;$q&quot; == &quot;y&quot; ] &amp;&amp; { rm -rf $VM_DIR/$1; rm -rf $IMAGE_DIR/$1; }
+        echo &quot;Profile $1 removed&quot;
+}
+
+function show_profile {
+        echo &quot;Current profile is: $PROFILE&quot;
+}
+
+function list_profiles {
+        ls $VM_DIR/
+}
+
+function help {
+        echo &quot;Usage: $0 option [arguments]&quot;
+        echo &quot;&quot;
+        echo &quot;Available options are:&quot;
+        echo &quot;&quot;
+        echo &quot;  profile &lt;name&gt; : Select profile &lt;name&gt;&quot;
+        echo &quot;  new_profile &lt;name&gt; : Create a new profile &lt;name&gt;&quot;
+        echo &quot;  show_profile : Show current profile&quot;
+        echo &quot;  list_profiles : List all available profiles&quot;
+        echo &quot;  rm_profile &lt;name&gt; : Remove profile &lt;name&gt; and all related files&quot;
+        echo &quot;&quot;
+        echo &quot;  new_node : Create a new node&quot;
+        echo &quot;  rm_node &lt;ID&gt; : Remove the node with name ID&quot;
+        echo &quot;  rm_all : Remove all nodes from current profile&quot;
+        echo &quot;  multiple_node &lt;#n&gt; : Create #n nodes&quot;
+        echo &quot;  list_nodes : List all nodes from current profile&quot;
+        echo &quot;&quot;
+        echo &quot;  start_node &lt;#n&gt; : Start node with ID #n&quot;
+        echo &quot;  start_all : Start all nodes from current profile&quot;
+        echo &quot;  stop_node &lt;#n&gt; : Stop node with ID #n&quot;
+        echo &quot;  stop_all : Stop all nodes&quot;
+        echo &quot;&quot;
+        echo &quot;The images used for new virtual machines are placed in $IMAGE_DIR/[CURRENT_PROFILE]/&quot;
+        exit 0
+}
+
+
+
+[ -z &quot;$1&quot; ] &amp;&amp; help
+[ -f &quot;$CURRENT_PROFILE&quot; ] &amp;&amp; PROFILE=&quot;$(cat $CURRENT_PROFILE)&quot;
+$1 $2 $3 $4 $5</pre>
+
+<p>
+Now you can execute it using bash to see help
+</p>
+<pre class="code">root@p4u:~# bash manage_nodes.sh 
+Usage: ./manage_nodes.sh option [arguments]
+
+Available options are:
+
+  profile &lt;name&gt; : Select profile &lt;name&gt;
+  new_profile &lt;name&gt; : Create a new profile &lt;name&gt;
+  show_profile : Show current profile
+  list_profiles : List all available profiles
+  rm_profile &lt;name&gt; : Remove profile &lt;name&gt; and all related files
+
+  new_node : Create a new node
+  rm_node &lt;ID&gt; : Remove the node with name ID
+  rm_all : Remove all nodes from current profile
+  multiple_node &lt;#n&gt; : Create #n nodes
+  list_nodes : List all nodes from current profile
+
+  start_node &lt;#n&gt; : Start node with ID #n
+  start_all : Start all nodes from current profile
+  stop_node &lt;#n&gt; : Stop node with ID #n
+  stop_all : Stop all nodes
+
+The images used for new virtual machines are placed in images/[CURRENT_PROFILE]/</pre>
+
+<p>
+For instance, to create 10 nodes just use:
+</p>
+<pre class="code">./manage_nodes.sh new_profile p4u
+./manage_nodes.sh profile p4u
+./manage_nodes.sh multiple_node 10</pre>
+
+<p>
+You can see them using “xm list”. The name (ID), is the last <abbr title="Internet Protocol">IP</abbr> digit for each one, so node 67 will be 192.168.1.67
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Script to manage nodes&quot;,&quot;hid&quot;:&quot;script_to_manage_nodes&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:2,&quot;range&quot;:&quot;1974-&quot;} -->

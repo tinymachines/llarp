@@ -1,0 +1,15 @@
+# Making OpenWrt releases
+
+- [20.xx](/docs/guide-developer/releases/goals/20.xx "docs:guide-developer:releases:goals:20.xx")
+- [High-level release process](/docs/guide-developer/releases/release-process "docs:guide-developer:releases:release-process")
+- [How to create a major release](/docs/guide-developer/releases/create-major-releases "docs:guide-developer:releases:create-major-releases")
+- [How to create a service release](/docs/guide-developer/releases/making-service-release "docs:guide-developer:releases:making-service-release")
+- [How to prepare buildbot for major release](/docs/guide-developer/releases/buildbot-major-releases "docs:guide-developer:releases:buildbot-major-releases")
+- [Prepare Nitrokey 3A Mini for build artifact signing](/docs/guide-developer/releases/provision-nitrokey3 "docs:guide-developer:releases:provision-nitrokey3")
+- [Release goals for 19.07.4](/docs/guide-developer/releases/goals/19.07.4 "docs:guide-developer:releases:goals:19.07.4")
+- [Release goals for 21.XX](/docs/guide-developer/releases/goals/21.xx "docs:guide-developer:releases:goals:21.xx")
+- [Release goals for 22.03](/docs/guide-developer/releases/goals/22.xx "docs:guide-developer:releases:goals:22.xx")
+- [Release goals for 23.xx](/docs/guide-developer/releases/goals/23.xx "docs:guide-developer:releases:goals:23.xx")
+- [Roadmap and Release Goals for 21.02](/docs/guide-developer/releases/goals/21.02 "docs:guide-developer:releases:goals:21.02")
+- [Update package lists](/docs/guide-developer/releases/update_package_list "docs:guide-developer:releases:update_package_list")
+- [Update wikidata](/docs/guide-developer/releases/update_wikidata "docs:guide-developer:releases:update_wikidata")

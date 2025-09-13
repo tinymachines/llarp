@@ -1,0 +1,206 @@
+
+<h1 class="sectionedit1" id="nodogsplash_captive_portal">NoDogSplash Captive Portal</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;NoDogSplash Captive Portal&quot;,&quot;hid&quot;:&quot;nodogsplash_captive_portal&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-41&quot;} -->
+<h2 class="sectionedit2" id="overview">Overview</h2>
+<div class="level2">
+
+<p>
+NoDogSplash (NDS) is a high performance, small footprint Captive Portal, offering by default a simple splash page restricted Internet connection.
+From version 5.0.0 the Forwarding Authentication Service <abbr title="Application Programming Interface">API</abbr> <strong>(FAS) has been moved to the openNDS package</strong>. This allows NoDogSplash to be optimised for use on devices with very limited resources (eg 8/64 or less). NoDogSplash v5.0.0 and greater will only support templated html splash pages.
+</p>
+
+<p>
+Note1: There has been little or no work in the project since spring 2020. It is not known if the project is still active.
+</p>
+
+<p>
+Note2: Version 5 has incompatibility issues with nftables so cannot be regarded as stable on OpenWrt 22.03.00 onwards.
+</p>
+
+<p>
+For details of the OpenNDS package, see:
+<a href="https://openwrt.org/docs/guide-user/services/captive-portal/opennds" class="urlextern" title="https://openwrt.org/docs/guide-user/services/captive-portal/opennds" rel="ugc nofollow">https://openwrt.org/docs/guide-user/services/captive-portal/opennds</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Overview&quot;,&quot;hid&quot;:&quot;overview&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;42-859&quot;} -->
+<h2 class="sectionedit3" id="documentation">Documentation</h2>
+<div class="level2">
+
+<p>
+Full documentation can be found at:
+</p>
+
+<p>
+<a href="https://nodogsplashdocs.readthedocs.io" class="urlextern" title="https://nodogsplashdocs.readthedocs.io" rel="ugc nofollow">https://nodogsplashdocs.readthedocs.io</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Documentation&quot;,&quot;hid&quot;:&quot;documentation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;860-962&quot;} -->
+<h2 class="sectionedit4" id="official_repository">Official Repository</h2>
+<div class="level2">
+
+<p>
+The official repository can be found here:
+</p>
+
+<p>
+<a href="https://github.com/nodogsplash/nodogsplash" class="urlextern" title="https://github.com/nodogsplash/nodogsplash" rel="ugc nofollow">https://github.com/nodogsplash/nodogsplash</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Official Repository&quot;,&quot;hid&quot;:&quot;official_repository&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;963-1082&quot;} -->
+<h2 class="sectionedit5" id="how_nodogsplash_nds_works">How NoDogSplash (NDS) works</h2>
+<div class="level2">
+
+<p>
+NoDogSplash is a Captive Portal Engine. Any Captive Portal, including NDS, will have two main components:
+</p>
+<ul>
+<li class="level1"><div class="li"> Something that does the capturing, and</div>
+</li>
+<li class="level1"><div class="li"> Something to provide a Portal for client users to log in. </div>
+</li>
+</ul>
+
+<p>
+A wireless router will typically be running OpenWrt or some other Linux distribution.
+</p>
+
+<p>
+A router, by definition, will have two or more interfaces, at least one to connect to the wide area network (<abbr title="Wide Area Network">WAN</abbr>) or Internet feed, and at least one connecting to the local area network (<abbr title="Local Area Network">LAN</abbr>).
+</p>
+
+<p>
+Each <abbr title="Local Area Network">LAN</abbr> interface must also act as the Default <abbr title="Internet Protocol">IP</abbr> Gateway for its <abbr title="Local Area Network">LAN</abbr>, ideally with the interface serving <abbr title="Internet Protocol">IP</abbr> addresses to client devices using <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr>.
+</p>
+
+<p>
+Multiple <abbr title="Local Area Network">LAN</abbr> interfaces can be combined into a single bridge interface. For example, ethernet, 2.4Ghz and 5Ghz networks are typically combined into a single bridge interface. Logical interface names will be assigned such as eth0, wlan0, wlan1 etc. with the combined bridge interface named as br-lan.
+</p>
+
+<p>
+NDS will manage one or more of them of them. This will typically be br-lan, the bridge to both the wireless and wired <abbr title="Local Area Network">LAN</abbr>, but could be, for example, wlan0 if you wanted NDS to work just on the wireless interface.
+</p>
+
+</div>
+
+<h4 id="summary_of_operation">Summary of Operation</h4>
+<div class="level4">
+
+<p>
+By default, NDS blocks everything, but intercepts port 80 requests.
+</p>
+
+<p>
+An initial port 80 request will be generated on a client device, usually automatically by the client device&#039;s built in Captive Portal Detection (CPD), or possibly by the user manually browsing to an http web page.
+</p>
+
+<p>
+This request will of course <strong>be routed by the client device to the Default Gateway</strong> of the local network. The Default Gateway will, as we have seen, be the router interface that NDS is managing.
+</p>
+
+</div>
+
+<h4 id="the_thing_that_does_the_capturing">The Thing That Does the Capturing</h4>
+<div class="level4">
+
+<p>
+ As soon as this initial port 80 request is received on the default gateway interface, NDS will “Capture” it, make a note of the client device identity, allocate a unique token for the client device, then redirect the client browser to the Portal component of NDS.
+</p>
+
+</div>
+
+<h4 id="the_thing_that_provides_the_portal">The Thing That Provides the Portal</h4>
+<div class="level4">
+
+<p>
+ The client browser is redirected to the Portal component. This is a web service that is configured to know how to communicate with the core engine of NDS.
+ This is commonly known as the Splash Page.
+</p>
+
+<p>
+ NDS has its own web server built in and this can be used to serve the Portal “Splash” pages to the client browser, or a separate web server can be used.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;How NoDogSplash (NDS) works&quot;,&quot;hid&quot;:&quot;how_nodogsplash_nds_works&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;1083-3507&quot;} -->
+<h3 class="sectionedit6" id="nodogsplash_supports_templated_html_splash_pages">NoDogSplash supports Templated html splash pages</h3>
+<div class="level3">
+
+<p>
+The default installation contains a fully functional splash page with a “click to continue” button.
+This is served from the included splash.html and splash.css files and can be easily customised by editing these files.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;NoDogSplash supports Templated html splash pages&quot;,&quot;hid&quot;:&quot;nodogsplash_supports_templated_html_splash_pages&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;3508-3788&quot;} -->
+<h3 class="sectionedit7" id="fas_or_forward_authentication_service">FAS, or Forward Authentication Service</h3>
+<div class="level3">
+
+<p>
+From version 5.0.0, the OpenNDS package is required for FAS support.
+</p>
+
+<p>
+See:
+<a href="https://openwrt.org/docs/guide-user/services/captive-portal/opennds" class="urlextern" title="https://openwrt.org/docs/guide-user/services/captive-portal/opennds" rel="ugc nofollow">https://openwrt.org/docs/guide-user/services/captive-portal/opennds</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;FAS, or Forward Authentication Service&quot;,&quot;hid&quot;:&quot;fas_or_forward_authentication_service&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;3789-3985&quot;} -->
+<h3 class="sectionedit8" id="a_note_on_captive_portal_detection_cpd">A Note on Captive Portal Detection (CPD)</h3>
+<div class="level3">
+
+<p>
+All modern mobile devices, most desktop operating systems and most browsers now have a CPD process that automatically issues a port 80 request on connection to a network. NDS detects this and serves a special “splash” web page to the connecting client device.
+</p>
+
+<p>
+The port 80 html request made by the client CPD can be one of many vendor specific URLs.
+</p>
+
+<p>
+Typical CPD URLs used are, for example:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="http://captive.apple.com/hotspot-detect.html" class="urlextern" title="http://captive.apple.com/hotspot-detect.html" rel="ugc nofollow">http://captive.apple.com/hotspot-detect.html</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://connectivitycheck.gstatic.com/generate_204" class="urlextern" title="http://connectivitycheck.gstatic.com/generate_204" rel="ugc nofollow">http://connectivitycheck.gstatic.com/generate_204</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://connectivitycheck.platform.hicloud.com/generate_204" class="urlextern" title="http://connectivitycheck.platform.hicloud.com/generate_204" rel="ugc nofollow">http://connectivitycheck.platform.hicloud.com/generate_204</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://www.samsung.com/" class="urlextern" title="http://www.samsung.com/" rel="ugc nofollow">http://www.samsung.com/</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://detectportal.firefox.com/success.txt" class="urlextern" title="http://detectportal.firefox.com/success.txt" rel="ugc nofollow">http://detectportal.firefox.com/success.txt</a></div>
+</li>
+<li class="level1"><div class="li">  Plus many more</div>
+</li>
+</ul>
+
+<p>
+It is important to remember that CPD is designed primarily for mobile devices to automatically detect the presence of a portal and to trigger the login page, without having to resort to breaking <abbr title="Secure Socket Layer">SSL</abbr>/<abbr title="Transport Layer Security">TLS</abbr> security by requiring the portal to redirect port 443 for example.
+</p>
+
+<p>
+Just about all current CPD implementations work very well but some compromises are necessary depending on the application.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;A Note on Captive Portal Detection (CPD)&quot;,&quot;hid&quot;:&quot;a_note_on_captive_portal_detection_cpd&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:8,&quot;range&quot;:&quot;3986-5092&quot;} -->
+<h3 class="sectionedit9" id="a_note_on_captive_portal_identification_cpi">A Note on Captive Portal Identification (CPI)</h3>
+<div class="level3">
+
+<p>
+Until recently, the vast majority of devices attaching to a typical Captive Portal used CPD.
+</p>
+
+<p>
+More and more devices are beginning to use the new Captive Portal Identification method (CPI) (RFC8910/RFC8908). NoDogSplash does not support CPI.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;A Note on Captive Portal Identification (CPI)&quot;,&quot;hid&quot;:&quot;a_note_on_captive_portal_identification_cpi&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:9,&quot;range&quot;:&quot;5093-&quot;} -->

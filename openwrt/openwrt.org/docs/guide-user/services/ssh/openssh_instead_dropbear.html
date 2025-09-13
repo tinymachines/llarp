@@ -1,0 +1,91 @@
+
+<h1 class="sectionedit1" id="replace_dropbear_to_openssh_sftp">Replace Dropbear to OpenSSH + SFTP</h1>
+<div class="level1">
+
+<p>
+The vanilla OpenWrt out of the box has a small <a href="/docs/guide-user/base-system/dropbear" class="wikilink1" title="docs:guide-user:base-system:dropbear" data-wiki-id="docs:guide-user:base-system:dropbear">Dropbear</a> <abbr title="Secure Shell">SSH</abbr> server.
+But it lacks of some other features.
+You can install another OpenSSH server which is bigger but has more features and default on desktop systems like Ubuntu.
+</p>
+
+<p>
+Many <a href="/docs/guide-user/installation/openwrt-as-stock-firmware" class="wikilink1" title="docs:guide-user:installation:openwrt-as-stock-firmware" data-wiki-id="docs:guide-user:installation:openwrt-as-stock-firmware">routers with OpenWrt as a stock firmware</a> use it out of the box.
+So for this routers you really don&#039;t need anything to do and just start using it.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Replace Dropbear to OpenSSH + SFTP&quot;,&quot;hid&quot;:&quot;replace_dropbear_to_openssh_sftp&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-528&quot;} -->
+<h2 class="sectionedit2" id="installation">Installation</h2>
+<div class="level2">
+
+<p>
+To avoid port conflict we need to first move the existing Dropbear from default <abbr title="Secure Shell">SSH</abbr> port, then install OpenSSH, connect to it and only then remove the Dropbear.
+</p>
+
+<p>
+Just to be safe if the public key authorization will be broken you&#039;ll need to use a password to connect.
+So ensure that the <code>root</code> user has a password by using the <code>passwd</code> command.
+</p>
+
+<p>
+Set a Dropbear&#039;s port to some unused (e.g. 2222) and restart it 
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> dropbear.<span class="sy0">@</span>dropbear<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.Port=<span class="nu0">2222</span>
+uci commit dropbear
+<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>dropbear restart</pre>
+
+<p>
+Reconnect to the <abbr title="Secure Shell">SSH</abbr> using the new port: <code>ssh root@192.168.1.1 -p 2222</code>
+</p>
+
+<p>
+Install OpenSSH server 
+</p>
+<pre class="code bash">opkg update
+opkg <span class="kw2">install</span> openssh-server</pre>
+
+<p>
+Allow root access:
+</p>
+<pre class="code bash"><span class="kw2">sed</span> <span class="re5">-i</span> <span class="st_h">'s/^#PermitRootLogin prohibit-password/PermitRootLogin yes/'</span> <span class="sy0">/</span>etc<span class="sy0">/</span>ssh<span class="sy0">/</span>sshd_config</pre>
+
+<p>
+On connection the Dropbear checks that your public key is allowed in a <code>/etc/dropbear/authorized_keys</code> file.
+But the OpenSSH checks <code>/root/.ssh/authorized_keys</code>.
+So it&#039;s recommended to copy the file:
+</p>
+<pre class="code bash"><span class="kw2">mkdir</span> <span class="sy0">/</span>root<span class="sy0">/</span>.ssh<span class="sy0">/</span>
+<span class="kw2">cp</span> <span class="sy0">/</span>etc<span class="sy0">/</span>dropbear<span class="sy0">/</span>authorized_keys <span class="sy0">/</span>root<span class="sy0">/</span>.ssh<span class="sy0">/</span></pre>
+
+<p>
+Enable the OpenSSH daemon and restart:
+</p>
+<pre class="code bash"><span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>sshd <span class="kw3">enable</span>
+<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>sshd restart</pre>
+
+<p>
+The OpenSSH now use the standard 22 port. Reconnect to <abbr title="Secure Shell">SSH</abbr> over the 22 port <code>ssh root@192.168.1.1</code>
+</p>
+
+<p>
+During installation the OpenSSH will generate a new host keys so you&#039;ll get a warning that host key was changed.
+</p>
+
+<p>
+Once connected now you can disable the Dropbear:
+</p>
+<pre class="code bash"><span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>dropbear disable
+<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>dropbear stop</pre>
+
+<p>
+Recommended step: Install <code>openssh-sftp-server</code> package to support the <a href="/docs/guide-user/services/nas/sftp.server" class="wikilink1" title="docs:guide-user:services:nas:sftp.server" data-wiki-id="docs:guide-user:services:nas:sftp.server">SFTP</a> protocol
+</p>
+<pre class="code bash">opkg update
+opkg <span class="kw2">install</span> openssh-sftp-server</pre>
+
+<p>
+If needed, configure the OpenSSH server in <code>/etc/ssh/sshd_config</code> and restart it <code>/etc/init.d/sshd restart</code>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation&quot;,&quot;hid&quot;:&quot;installation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;529-&quot;} -->

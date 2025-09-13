@@ -1,0 +1,302 @@
+
+<h1 class="sectionedit1" id="dmz_configuration_using_vlans">DMZ configuration using VLANs</h1>
+<div class="level1">
+
+<p>
+The <a href="https://en.wikipedia.org/wiki/DMZ_(computing)" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/DMZ_(computing)">DMZ</a> is a <strong>security concept</strong>.
+It comprises the separation of the <abbr title="Local Area Network">LAN</abbr>-side network into at least two networks: the user <abbr title="Local Area Network">LAN</abbr> and the <abbr title="Demilitarized Zone">DMZ</abbr>.
+Generally the <abbr title="Demilitarized Zone">DMZ</abbr> is imprisoned: only access to certain ports from the Internet are allowed into the <abbr title="Demilitarized Zone">DMZ</abbr>, while the <abbr title="Demilitarized Zone">DMZ</abbr> is  not allowed to establish new connections to the <abbr title="Wide Area Network">WAN</abbr>-side or <abbr title="Local Area Network">LAN</abbr>-side networks.
+That way, if a server inside of the <abbr title="Demilitarized Zone">DMZ</abbr> is hacked the potential damage that can be done remains restricted! The whole point of the <abbr title="Demilitarized Zone">DMZ</abbr> is to cleanly create a unique firewall rule set that dramatically restricts access in to, and out of the, <abbr title="Demilitarized Zone">DMZ</abbr>.
+</p>
+
+<p>
+Publicly accessible servers remain the most vulnerable part of any network, although they are:
+</p>
+<ul>
+<li class="level1"><div class="li"> set up and hardened professionally</div>
+</li>
+<li class="level1"><div class="li"> updated regularly</div>
+</li>
+<li class="level1"><div class="li"> and also thoroughly monitored (mail Log files and read the mail)</div>
+</li>
+</ul>
+
+<p>
+Many of the malicious robots and spiders on the internet scan well-known <abbr title="Transmission Control Protocol">TCP</abbr> ports and then try to exploit vulnerabilities.
+The most used webserver, Apache, has numerous POVs (Point of Vulnerability) that can be exploited.
+See the <a href="http://cve.mitre.org" class="urlextern" title="http://cve.mitre.org" rel="ugc nofollow">CVE database</a> on Apache vulnerabilities or <a href="https://httpd.apache.org/security/vulnerabilities_24.html" class="urlextern" title="https://httpd.apache.org/security/vulnerabilities_24.html" rel="ugc nofollow">Apache 2.4 Vulnerabilities</a> for information - scary!
+</p>
+
+<p>
+For more information on splitting up your OpenWrt <abbr title="Local Area Network">LAN</abbr>-side network (default is a single bridge) into more networks:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="/docs/guide-developer/networking/network.interfaces" class="wikilink1" title="docs:guide-developer:networking:network.interfaces" data-wiki-id="docs:guide-developer:networking:network.interfaces">Network Interfaces</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/network/vlan/switch_configuration" class="wikilink1" title="docs:guide-user:network:vlan:switch_configuration" data-wiki-id="docs:guide-user:network:vlan:switch_configuration">switch_configuration</a>  </div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;DMZ configuration using VLANs&quot;,&quot;hid&quot;:&quot;dmz_configuration_using_vlans&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1552&quot;} -->
+<h2 class="sectionedit2" id="adding_a_vlan">Adding a VLAN</h2>
+<div class="level2">
+
+<p>
+It is possible to set up firewall rules based simply on the <abbr title="Internet Protocol">IP</abbr> addresses of the public servers (see <a href="/docs/guide-user/firewall/fw3_configurations/fw3_nat#lan-side_public_server" class="wikilink1" title="docs:guide-user:firewall:fw3_configurations:fw3_nat" data-wiki-id="docs:guide-user:firewall:fw3_configurations:fw3_nat">NAT for LAN-side Public Server</a>), but this is not the most secure topology.
+If an attack exploits a POV and gains access to the public server all stations behind the firewall could be available to the attacker.
+</p>
+
+<p>
+A more secure topology is to set up a separate <abbr title="Virtual Local Area Network">VLAN</abbr> for the <abbr title="Demilitarized Zone">DMZ</abbr>, stick it into a new firewall zone and groom the firewall rules for only that zone.
+</p>
+
+<p>
+This following switch configuration will assign switch ports specifically to traffic to the stations in the <abbr title="Demilitarized Zone">DMZ</abbr>.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> The <abbr title="Demilitarized Zone">DMZ</abbr> station(s) should be attached to a wired ethernet switch port.
+First for better performance and second for easier <abbr title="Virtual Local Area Network">VLAN</abbr> provisioning.
+</p>
+
+<p>
+Use the switch interface in <a href="/docs/guide-user/base-system/basic-networking" class="wikilink1" title="docs:guide-user:base-system:basic-networking" data-wiki-id="docs:guide-user:base-system:basic-networking">/etc/config/network</a> or through the LuCI <em> Network → Switch </em> page.
+</p>
+
+<p>
+This example is based on, and tested against, the <a href="/docs/guide-user/firewall/fw3_configurations/fw3_ref_topo" class="wikilink1" title="docs:guide-user:firewall:fw3_configurations:fw3_ref_topo" data-wiki-id="docs:guide-user:firewall:fw3_configurations:fw3_ref_topo">Reference Network Topology</a>.
+The <code>STA-server2</code> station is a public webserver accessible from the internet.
+</p>
+
+<p>
+The switch ports are highly dependent on the switch hardware.
+To view how the physical ports are configured, use:
+</p>
+<pre class="code bash">swconfig list
+swconfig dev switch0 show</pre>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Confirm the switch ports align with the physical labeling on the router.
+Sometimes wired ports <code>1,2,3,4</code> are labelled as <code>4,3,2,1</code>.
+</p>
+
+<p>
+The Ethernet switches used in this example have the following switch port mappings (Atheros/Qualcomm):
+</p>
+<ul>
+<li class="level1"><div class="li"> 0: wired port to <abbr title="Wide Area Network">WAN</abbr> (1)</div>
+</li>
+<li class="level1"><div class="li"> 1, 2, 3, 4: wired GigE <abbr title="Local Area Network">LAN</abbr> ports (4)</div>
+</li>
+<li class="level1"><div class="li"> 5: eth1 to the CPU</div>
+</li>
+<li class="level1"><div class="li"> 6: eth0 to the CPU</div>
+</li>
+</ul>
+
+<p>
+So where are the 802.11 WLANs?
+For the DUT, there is only one, a 2.4GHz 802.11n interface integrated on the CPU chip.
+Both the CPU and the <abbr title="Wireless Local Area Network">WLAN</abbr> use the CPU eth0 switch port.
+</p>
+
+<p>
+The original <code>/etc/config/network</code> shows VLAN1 for the <abbr title="Wide Area Network">WAN</abbr>-side and VLAN2 for the <abbr title="Local Area Network">LAN</abbr>-side.
+VLAN1 has port 0 and port 5: the wired <abbr title="Wide Area Network">WAN</abbr> port and eth1 to the CPU.
+VLAN2 has port 1,2,3,4 and 6: the four wired ports and eth0 for the CPU and <abbr title="Wireless Local Area Network">WLAN</abbr> PHY.
+</p>
+<pre class="code bash">config switch
+	option name <span class="st_h">'switch0'</span>
+	option reset <span class="st_h">'1'</span>
+	option enable_vlan <span class="st_h">'1'</span>
+&nbsp;
+config switch_vlan
+	option device <span class="st_h">'switch0'</span>
+	option vlan <span class="st_h">'1'</span>
+	option ports <span class="st_h">'0 5'</span>
+&nbsp;
+config switch_vlan
+	option device <span class="st_h">'switch0'</span>
+	option vlan <span class="st_h">'2'</span>
+	option ports <span class="st_h">'1 2 3 4 6'</span></pre>
+
+<p>
+To split off the <abbr title="Demilitarized Zone">DMZ</abbr> on the <abbr title="Local Area Network">LAN</abbr>-side, pick a port (<code>1</code>) for the <abbr title="Demilitarized Zone">DMZ</abbr> and use it in a vlan.
+Notice both VLANs have <code>6t</code> in the port list.
+In <abbr title="Virtual Local Area Network">VLAN</abbr> 102 this is the CPU and <abbr title="Wireless Local Area Network">WLAN</abbr>, in <abbr title="Virtual Local Area Network">VLAN</abbr> 103 this is just the CPU.
+It <strong>must</strong> be a tagged port to differentiate which <abbr title="Virtual Local Area Network">VLAN</abbr> the packet is on.
+</p>
+<pre class="code bash">config switch_vlan
+        option device <span class="st_h">'switch0'</span>
+        option vlan <span class="st_h">'102'</span>
+        option ports <span class="st_h">'2 3 4 6t'</span>
+	list comment <span class="st_h">'vlan102: LAN ports'</span>
+&nbsp;
+config switch_vlan
+        option device <span class="st_h">'switch0'</span>
+        option vlan <span class="st_h">'103'</span>
+        option ports <span class="st_h">'1 6t'</span>
+	list comment <span class="st_h">'vlan103: LAN-side DMZ'</span></pre>
+
+<p>
+It is very helpful to add a comment using <code>list comment</code> and to assign vlans with some sort of pattern.
+The DUT switch can support up to 4095 VLANs.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> The <code>vid</code> option defaults to the <code>vlan</code> index so no need to specify it also.
+In fact, it is generally just a configuration error source.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> On many Realtek and Atheros switches the ARL table (where the switch stores already learned MACs and the corresponding ports), uses only the MAC address for indexing.
+This has the effect that the switch tries to forward a frame to a port that isn&#039;t part of the current <abbr title="Virtual Local Area Network">VLAN</abbr> (since it learned that the destination is at that port), notes that the destination isn&#039;t part of the current <abbr title="Virtual Local Area Network">VLAN</abbr>, and drops the frame.
+When making changes be sure to flush the router ARL cache when provisioning the new VLANs.
+</p>
+
+<p>
+Next, add the interface for the <abbr title="Demilitarized Zone">DMZ</abbr>:
+</p>
+<pre class="code bash">config <span class="st_h">'interface'</span> dmz
+        option <span class="st_h">'ifname'</span> eth0.103
+        option <span class="st_h">'proto'</span>   static
+        option <span class="st_h">'ipaddr'</span>  192.168.30.1
+        option <span class="st_h">'netmask'</span> 255.255.255.0</pre>
+
+<p>
+Notice the <code>ifname</code> must correspond to the <code>&lt;port&gt;.&lt;vlan&gt;</code>.
+The subnet must be different than the other VLANs.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Adding a VLAN&quot;,&quot;hid&quot;:&quot;adding_a_vlan&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;1553-5719&quot;} -->
+<h3 class="sectionedit3" id="services">Services</h3>
+<div class="level3">
+
+<p>
+Once you set up the firewall, <abbr title="Domain Name System">DNS</abbr> should automatically be available to the new network, <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> will not.
+For <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr>, you need to add a new section to <code><a href="/docs/guide-user/base-system/dhcp" class="wikilink1" title="docs:guide-user:base-system:dhcp" data-wiki-id="docs:guide-user:base-system:dhcp">/etc/config/dhcp</a></code>.
+It is very similar to the <code>lan</code> section.
+</p>
+<pre class="code bash">config dhcp <span class="st_h">'dmz'</span>
+	option interface <span class="st_h">'dmz'</span>
+	option start <span class="st_h">'50'</span>
+	option limit <span class="st_h">'70'</span>
+	option leasetime <span class="st_h">'12h'</span></pre>
+
+<p>
+Additionally, the public server <strong>should</strong> be very static, so it helps to add a static <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> lease.
+First because it makes the firewall rules easier and second to debug future issues:
+</p>
+<pre class="code bash">config host
+	option name <span class="st_h">'STA-server2'</span>
+	option dns <span class="st_h">'1'</span>
+	option mac <span class="st_h">'24:B6:FD:24:59:B9'</span>
+	option <span class="kw2">ip</span> <span class="st_h">'192.168.30.20'</span>
+	option leasetime <span class="st_h">'12h'</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Services&quot;,&quot;hid&quot;:&quot;services&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:3,&quot;range&quot;:&quot;5720-6455&quot;} -->
+<h2 class="sectionedit4" id="setting_up_the_firewall">Setting up the firewall</h2>
+<div class="level2">
+
+<p>
+Now the most important thing, the reason why you split up your network: the firewall rules.
+A typical <abbr title="Demilitarized Zone">DMZ</abbr> can be fully provisioned using the <a href="/docs/guide-user/firewall/overview" class="wikilink1" title="docs:guide-user:firewall:overview" data-wiki-id="docs:guide-user:firewall:overview">firewall application</a>.
+</p>
+
+<p>
+Each <abbr title="Virtual Local Area Network">VLAN</abbr> <strong>should</strong> be a unique firewall zone.
+So create one for the <abbr title="Demilitarized Zone">DMZ</abbr>.
+Nothing is initiated from the DM zone so the policy is to REJECT everything.
+</p>
+<pre class="code bash">config <span class="st_h">'zone'</span>
+       option <span class="st_h">'name'</span> <span class="st_h">'dmz'</span>
+       option <span class="st_h">'input'</span> <span class="st_h">'REJECT'</span>
+       option <span class="st_h">'output'</span> <span class="st_h">'REJECT'</span>
+       option <span class="st_h">'forward'</span> <span class="st_h">'REJECT'</span>
+       option <span class="st_h">'network'</span> <span class="st_h">'dmz'</span></pre>
+
+<p>
+Now, the main goal is to redirect <abbr title="Hypertext Transfer Protocol">HTTP</abbr>/S from the Internet to the <code>STA-server2</code>.
+First, allow DHCPDISCOVER and DHCPOFFER messages for <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> to work properly.
+Next, allow the server to do <abbr title="Domain Name System">DNS</abbr> lookups.
+Finally, for maintenance, allow <abbr title="Secure Shell">SSH</abbr> from any station in the <abbr title="Local Area Network">LAN</abbr> zone.
+</p>
+<pre class="code bash"><span class="co0"># Make STA-server:80 publicly accessible using the public ipv4 of the router</span>
+config redirect             
+        option target <span class="st_h">'DNAT'</span>
+        option src <span class="st_h">'wan'</span>
+        option src_dport <span class="st_h">'80 443'</span>
+        option proto <span class="st_h">'tcp'</span>
+        option family <span class="st_h">'ipv4'</span>
+        option dest <span class="st_h">'dmz'</span>
+        option dest_ip <span class="st_h">'192.168.30.20'</span>
+        option dest_port <span class="st_h">'80'</span>
+        option name <span class="st_h">'DNAT-HTTP-WAN-DNZ'</span>
+        option enabled <span class="st_h">'1'</span>
+&nbsp;
+<span class="co0"># Allow DHCPDISCOVER</span>
+config <span class="st_h">'rule'</span>
+	option src <span class="st_h">'dmz'</span>
+	option proto <span class="st_h">'udp'</span>
+	option family <span class="st_h">'ipv4'</span>
+	option src_port <span class="nu0">68</span>
+	option dest_port <span class="nu0">67</span>
+	option target <span class="st_h">'ACCEPT'</span>
+	option name <span class="st_h">'ACCEPT-DHCPDISCOVER-DMZ'</span>
+	option enabled <span class="st_h">'1'</span>
+&nbsp;
+<span class="co0"># Allow DHCPOFFER</span>
+config <span class="st_h">'rule'</span>
+	option dest <span class="st_h">'dmz'</span>
+	option proto <span class="st_h">'udp'</span>
+	option family <span class="st_h">'ipv4'</span>
+	option src_port <span class="nu0">67</span>
+	option dest_port <span class="nu0">68</span>
+	option target <span class="st_h">'ACCEPT'</span>
+	option name <span class="st_h">'ACCEPT-DHCPOFFER-DMZ'</span>
+	option enabled <span class="st_h">'1'</span>
+&nbsp;
+&nbsp;
+<span class="co0"># Allow the DMZ to access a DNS server</span>
+config <span class="st_h">'rule'</span>
+       option src <span class="st_h">'dmz'</span>
+       option proto <span class="st_h">'tcp udp'</span>
+       option dest <span class="st_h">'wan'</span>
+       option dest_port <span class="nu0">53</span>
+       option target <span class="st_h">'ACCEPT'</span>
+       option name <span class="st_h">'ACCEPT-DNS-DMZ-WAN'</span>
+       option enabled <span class="st_h">'1'</span>
+&nbsp;
+<span class="co0"># Allow all LAN stations to SSH to DMZ stations</span>
+config rule   
+       option src <span class="st_h">'lan'</span>
+       option dest <span class="st_h">'dmz'</span>
+       option proto <span class="st_h">'tcp'</span>
+       option family <span class="st_h">'ipv4'</span>
+       option dest_port <span class="st_h">'22'</span>
+       option target <span class="st_h">'ACCEPT'</span>      
+       option name <span class="st_h">'ACCEPT-SSH-LAN-DMZ'</span>
+       option enabled <span class="st_h">'1'</span></pre>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> What about using LuCI from the <abbr title="Wide Area Network">WAN</abbr> zone now that a public webserver is sitting there? All requests coming in the <abbr title="Wide Area Network">WAN</abbr> to port 80 are going to public web server so LuCI requests from the <abbr title="Wide Area Network">WAN</abbr>-side would do the same.
+</p>
+
+<p>
+If the requirement is to have LuCI access from the <abbr title="Wide Area Network">WAN</abbr>-side, redirect <abbr title="Hypertext Transfer Protocol">HTTP</abbr> to a new <abbr title="Transmission Control Protocol">TCP</abbr> port and use <code><a href="http://dut:8080" class="urlextern" title="http://dut:8080" rel="ugc nofollow">http://dut:8080</a></code> to access the router&#039;s LuCI webserver.
+</p>
+<pre class="code bash">config redirect
+        option target <span class="st_h">'DNAT'</span>
+        option src <span class="st_h">'wan'</span>
+        option src_dport <span class="st_h">'8080'</span>
+        option proto <span class="st_h">'tcp'</span>
+        option family <span class="st_h">'ipv4'</span>
+        option dest_port <span class="st_h">'80'</span>
+        option name <span class="st_h">'DNAT-HTTP-WAN-DEVICE'</span>
+        option enabled <span class="st_h">'1'</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Setting up the firewall&quot;,&quot;hid&quot;:&quot;setting_up_the_firewall&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:4,&quot;range&quot;:&quot;6456-&quot;} -->

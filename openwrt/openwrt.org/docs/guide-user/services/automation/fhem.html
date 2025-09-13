@@ -1,0 +1,264 @@
+
+<h1 class="sectionedit1" id="fhem_on_openwrt">FHEM on OpenWrt</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;FHEM on OpenWrt&quot;,&quot;hid&quot;:&quot;fhem_on_openwrt&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-31&quot;} -->
+<h2 class="sectionedit2" id="introduction">Introduction</h2>
+<div class="level2">
+
+<p>
+FHEM is a software, written in perl, which enables you to manage (eg. EVL) home automation devices over a Webinterface, with the Help of a radio transmitting USB Stick (CUL/CUN). As an alternative to USB Transmitters/Receivers <abbr title="Local Area Network">LAN</abbr>-devices can be used (CUNO/HM-CFG-<abbr title="Local Area Network">LAN</abbr>).
+I installed it on a Buffalo WZR-HP-AG300H, which has plenty of memory and storage. You might have to install it on an <a href="/docs/guide-user/storage/usb-drives" class="wikilink1" title="docs:guide-user:storage:usb-drives" data-wiki-id="docs:guide-user:storage:usb-drives">external usb storage</a> or make a swapfile on the usb drive.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Introduction&quot;,&quot;hid&quot;:&quot;introduction&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;32-542&quot;} -->
+<h2 class="sectionedit3" id="installation">Installation</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation&quot;,&quot;hid&quot;:&quot;installation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;543-568&quot;} -->
+<h3 class="sectionedit4" id="basic_packages">Basic Packages</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="update_packages_list">Update Packages List</h4>
+<div class="level4">
+
+<p>
+First update your Sources.
+</p>
+<pre class="code bash">opkg update</pre>
+
+</div>
+
+<h4 id="required_packages">Required Packages</h4>
+<div class="level4">
+
+<p>
+Get some required Packages to use the USB Port, the Serial to USB Tool (ser2net) and perl.
+</p>
+<pre class="code bash">opkg <span class="kw2">install</span> <span class="kw2">tar</span> <span class="kw2">perl</span> perlbase-autoloader perlbase-config perlbase-dynaloader perlbase-errno perlbase-essential perlbase-fcntl perlbase-file perlbase-io perlbase-math perlbase-posix perlbase-selectsaver perlbase-socket perlbase-symbol perlbase-tie perlbase-time perlbase-xsloader perlbase-mime perlbase-digest perlbase-scalar ser2net kmod-usb-serial kmod-usb-serial-ftdi kmod-usb-acm</pre>
+
+</div>
+
+<h4 id="install_fhem">Install FHEM</h4>
+<div class="level4">
+
+<p>
+Load and install fhem.
+Replace the Version in the wget command, if you want to try another <a href="http://fhem.de/fhem.html#Download" class="urlextern" title="http://fhem.de/fhem.html#Download" rel="ugc nofollow">fhem Version</a>.
+Unzip the archive.
+Copy the fhem.pl to /usr/sbin and the Rest to /usr/lib/fhem.
+The default config file that comes with the archive is best placed in /etc/config/fhem/fhem.cfg.
+At last we create a log directory for fhem in /var/log/fhem. Please bear in mind that /var/log is reset upon every reboot. Thus fhem will complain about missing log-files. This can be resolved by changing the log-path to something else for example external storage /mnt/sda1.
+</p>
+<pre class="code bash"><span class="kw3">cd</span> <span class="sy0">/</span>tmp
+<span class="kw2">wget</span> http:<span class="sy0">//</span>fhem.de<span class="sy0">/</span>fhem-<span class="nu0">5.5</span>.tar.gz
+<span class="kw2">tar</span> xvfz fhem-<span class="nu0">5.5</span>.tar.gz
+<span class="kw3">cd</span> fhem-<span class="nu0">5.5</span>
+<span class="kw2">cp</span> fhem.pl <span class="sy0">/</span>usr<span class="sy0">/</span>sbin
+<span class="kw2">mkdir</span> <span class="re5">-p</span> <span class="sy0">/</span>usr<span class="sy0">/</span>lib<span class="sy0">/</span>fhem
+<span class="kw2">cp</span> <span class="re5">-R</span> <span class="sy0">*</span> <span class="sy0">/</span>usr<span class="sy0">/</span>lib<span class="sy0">/</span>fhem
+<span class="kw2">mkdir</span> <span class="re5">-p</span> <span class="sy0">/</span>etc<span class="sy0">/</span>config<span class="sy0">/</span>fhem
+<span class="kw2">cp</span> fhem.cfg <span class="sy0">/</span>etc<span class="sy0">/</span>config<span class="sy0">/</span>fhem
+<span class="kw2">mkdir</span> <span class="re5">-p</span> <span class="sy0">/</span>var<span class="sy0">/</span>log<span class="sy0">/</span>fhem</pre>
+
+<p>
+Configure the virtual serial Port in /etc/ser2net.conf
+</p>
+<ul>
+<li class="level1"><div class="li"> You should find the device via lsusb and the Port in /dev (try eg. /dev/ttyUSB0)</div>
+</li>
+</ul>
+
+<p>
+Comment out all ports you don&#039;t need. Portnumber is the first one.
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-user/services/automation/fhem?codeblock=3" title="Download Snippet" class="mediafile mf_conf">/etc/ser2net.conf</a></dt>
+<dd><pre class="code bash"><span class="nu0">27073</span>:raw:<span class="nu0">300</span>:<span class="sy0">/</span>dev<span class="sy0">/</span>ttyACM0:<span class="nu0">115200</span> NONE 1STOPBIT 7DATABITS</pre>
+</dd></dl>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Basic Packages&quot;,&quot;hid&quot;:&quot;basic_packages&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;569-2374&quot;} -->
+<h3 class="sectionedit5" id="edit_the_fhem_configuration">Edit the fhem configuration</h3>
+<div class="level3">
+
+<p>
+Here an example file with my devices.
+You need to change the definition of the cul device according to your ser2net port.
+Please change the housecode from 1234 to something else :)
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-user/services/automation/fhem?codeblock=4" title="Download Snippet" class="mediafile mf_">/etc/config/fhem</a></dt>
+<dd><pre class="code bash">attr global modpath <span class="sy0">/</span>usr<span class="sy0">/</span>lib<span class="sy0">/</span>fhem
+attr global pidfilename <span class="sy0">/</span>var<span class="sy0">/</span>run<span class="sy0">/</span>fhem.pid
+attr global statefile <span class="sy0">/</span>var<span class="sy0">/</span>log<span class="sy0">/</span>fhem<span class="sy0">/</span>fhem.save
+attr global logfile <span class="sy0">/</span>var<span class="sy0">/</span>log<span class="sy0">/</span>fhem<span class="sy0">/</span>fhem-<span class="sy0">%</span>Y-<span class="sy0">%</span>m.log
+<span class="co0">#attr global port 7072</span>
+define telnetPort telnet <span class="nu0">7072</span>
+&nbsp;
+<span class="co0">#The USB stick</span>
+<span class="co0">#to try it without ser2net =&gt; define CUL CUL /dev/ttyUSB0@directio 1234</span>
+define CUL CUL 127.0.0.1:<span class="nu0">27073</span> <span class="nu0">4321</span>
+&nbsp;
+<span class="co0">#Die Webinterfaces</span>
+define WEB FHEMWEB <span class="nu0">8083</span> global <span class="co0"># 8083 is the port for the default WebInterface</span>
+attr WEB room hidden
+attr WEB stylesheetPrefix dark
+&nbsp;
+define WEBS FHEMWEB <span class="nu0">8084</span> global <span class="co0"># 8084 is the port for the mobile WebInterface</span>
+attr WEBS room hidden
+attr WEBS smallscreen <span class="nu0">1</span>
+&nbsp;
+<span class="co0">#Die Geraete</span>
+define ledlamp FS20 <span class="nu0">1234</span> <span class="nu0">56</span> <span class="co0"># 1234 is the housecode which is set holding the button while plugging it in</span>
+attr ledlamp model fs20st
+attr ledlamp room Wohnzimmer
+&nbsp;
+<span class="co0"># define &lt;free device name&gt; &lt;predefineddevicename&gt; &lt;freedecimalhousecode&gt; &lt;devicenumber&gt;</span>
+define lamp FS20 <span class="nu0">1234</span> <span class="nu0">57</span>
+<span class="co0"># &lt;attr&gt; &lt;name from define&gt; &lt;model&gt; &lt;modelidfix&gt;</span>
+attr lamp model fs20di
+attr lamp room Dorm
+&nbsp;
+define heating FHT 2d22 <span class="co0"># Is shown in decimal numbers on the device and must be given in hex eg. (1. 45 = 2d and 2nd: 34 = 22 )</span>
+<span class="co0">#attr heating model fht80b</span>
+attr heating room Livingroom</pre>
+</dd></dl>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Edit the fhem configuration&quot;,&quot;hid&quot;:&quot;edit_the_fhem_configuration&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:5,&quot;range&quot;:&quot;2375-3829&quot;} -->
+<h3 class="sectionedit6" id="autostart_scripts">Autostart Scripts</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="fhem_autostart_script">FHEM autostart script</h4>
+<div class="level4">
+
+<p>
+Create an autostart Script in /etc/init.d for fhem
+</p>
+<pre class="code bash"><span class="co0">#!/bin/sh /etc/rc.common</span>
+<span class="co0"># FHEM Init Script</span>
+&nbsp;
+<span class="re2">START</span>=<span class="nu0">11</span>
+<span class="re2">STOP</span>=<span class="nu0">15</span>
+&nbsp;
+start<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  <span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-f</span> <span class="sy0">/</span>var<span class="sy0">/</span>log<span class="sy0">/</span>fhem <span class="br0">&#93;</span>; <span class="kw1">then</span> 
+  <span class="kw2">mkdir</span> <span class="re5">-p</span> <span class="sy0">/</span>var<span class="sy0">/</span>log<span class="sy0">/</span>fhem
+  <span class="kw1">fi</span>
+&nbsp;
+  <span class="sy0">/</span>usr<span class="sy0">/</span>sbin<span class="sy0">/</span>fhem.pl <span class="sy0">/</span>etc<span class="sy0">/</span>config<span class="sy0">/</span>fhem<span class="sy0">/</span>fhem.cfg
+<span class="br0">&#125;</span>
+stop<span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#123;</span>
+  <span class="kw3">echo</span> <span class="st0">&quot;stopping fhem&quot;</span>
+  <span class="kw3">kill</span> <span class="re5">-TERM</span> $<span class="br0">&#40;</span><span class="kw2">cat</span> <span class="sy0">/</span>var<span class="sy0">/</span>run<span class="sy0">/</span>fhem.pid<span class="br0">&#41;</span>
+<span class="br0">&#125;</span>
+restart<span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#123;</span>
+  <span class="kw3">echo</span> <span class="st0">&quot;restarting&quot;</span>
+  <span class="kw3">kill</span> <span class="re5">-TERM</span> $<span class="br0">&#40;</span><span class="kw2">cat</span> <span class="sy0">/</span>var<span class="sy0">/</span>run<span class="sy0">/</span>fhem.pid<span class="br0">&#41;</span>
+  <span class="sy0">/</span>usr<span class="sy0">/</span>sbin<span class="sy0">/</span>fhem.pl <span class="sy0">/</span>etc<span class="sy0">/</span>config<span class="sy0">/</span>fhem<span class="sy0">/</span>fhem.cfg
+<span class="br0">&#125;</span></pre>
+
+<p>
+Make the Script executeable:
+</p>
+<pre class="code bash"><span class="kw2">chmod</span> <span class="nu0">755</span> <span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>fhem</pre>
+
+<p>
+Enable the autostart script via
+</p>
+<pre class="code bash"><span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>fhem <span class="kw3">enable</span></pre>
+
+</div>
+
+<h4 id="ser2net_autostart_script">ser2net autostart script</h4>
+<div class="level4">
+
+<p>
+quite rudimentary...
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-user/services/automation/fhem?codeblock=8" title="Download Snippet" class="mediafile mf_d_ser2net">/etc/init.d/ser2net</a></dt>
+<dd><pre class="code bash"><span class="co0">#!/bin/sh /etc/rc.common</span>
+<span class="co0"># Ser2Net Init Script</span>
+&nbsp;
+<span class="re2">START</span>=<span class="nu0">10</span>
+<span class="re2">STOP</span>=<span class="nu0">15</span>
+&nbsp;
+start<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+   ser2net
+<span class="br0">&#125;</span>
+&nbsp;
+stop<span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#123;</span>
+   <span class="kw2">killall</span> ser2net
+<span class="br0">&#125;</span></pre>
+</dd></dl>
+
+<p>
+Make the Script executeable:
+</p>
+<pre class="code bash"><span class="kw2">chmod</span> <span class="nu0">755</span> <span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>ser2net</pre>
+
+<p>
+Enable the autostart script via
+</p>
+<pre class="code bash"><span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>ser2net <span class="kw3">enable</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Autostart Scripts&quot;,&quot;hid&quot;:&quot;autostart_scripts&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:6,&quot;range&quot;:&quot;3830-4864&quot;} -->
+<h3 class="sectionedit7" id="webinterface">Webinterface</h3>
+<div class="level3">
+
+<p>
+Now you can use the commandline, but you&#039;ve got no Webinterface. As perl brings it&#039;s own webserver you just have to
+place your preferred Webinterface in the folder <code>/usr/lib/fhem/FHEM</code>
+I got my 01_FHEMWEB.pm via ubuntu repositories (apt-get install fhem) from where it installs to /usr/share/fhem/FHEM&#039;&#039;) 
+</p>
+
+<p>
+Since version 5.3 there is a new Webserver included.
+You can define it according to the <a href="http://fhem.de/commandref.html#HTTPSRV" class="urlextern" title="http://fhem.de/commandref.html#HTTPSRV" rel="ugc nofollow">fhem commandref</a> in your fhem.cfg
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-user/services/automation/fhem?codeblock=11" title="Download Snippet" class="mediafile mf_">/etc/config/fhem</a></dt>
+<dd><pre class="code bash">define <span class="sy0">&lt;</span>name<span class="sy0">&gt;</span> <span class="sy0">&lt;</span>infix<span class="sy0">&gt;</span> <span class="sy0">&lt;</span>directory<span class="sy0">&gt;</span> <span class="sy0">&lt;</span>friendlyname<span class="sy0">&gt;</span></pre>
+</dd></dl>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Webinterface&quot;,&quot;hid&quot;:&quot;webinterface&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:7,&quot;range&quot;:&quot;4865-5447&quot;} -->
+<h3 class="sectionedit8" id="troubleshooting">Troubleshooting</h3>
+<div class="level3">
+
+<p>
+<img src="/lib/images/smileys/fixme.svg" class="icon smiley" alt="FIXME" />
+If autostart doesn&#039;t work, link the startup scripts to the appropriate runlevel
+</p>
+<pre class="code bash"><span class="kw2">chmod</span> <span class="nu0">755</span> <span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>fhem
+<span class="kw2">ln</span> <span class="re5">-s</span> <span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>fhem <span class="sy0">/</span>etc<span class="sy0">/</span>rc.d<span class="sy0">/</span>S99fhem
+<span class="kw2">ln</span> <span class="re5">-s</span> <span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>fhem <span class="sy0">/</span>etc<span class="sy0">/</span>rc.d<span class="sy0">/</span>K1fhem</pre>
+
+<p>
+and give the appropriate access rights to the startup script files:
+</p>
+<pre class="code bash"><span class="kw2">chmod</span> <span class="nu0">755</span> <span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>fhem <span class="sy0">&amp;&amp;</span> <span class="kw2">chmod</span> <span class="nu0">755</span> <span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>ser2net</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Troubleshooting&quot;,&quot;hid&quot;:&quot;troubleshooting&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:8,&quot;range&quot;:&quot;5448-5835&quot;} -->
+<h2 class="sectionedit9" id="resources">Resources</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> [0] <a href="https://groups.google.com/forum/#!msg/fhem-users/5hhg43UHlDs/ihV-6s0GCdoJ" class="urlextern" title="https://groups.google.com/forum/#!msg/fhem-users/5hhg43UHlDs/ihV-6s0GCdoJ" rel="ugc nofollow">Google Groups - fhem-users (Gerhard Pfeffer)</a></div>
+</li>
+<li class="level1"><div class="li"> [1] <a href="http://www.fhemwiki.de/wiki/OpenWRT" class="urlextern" title="http://www.fhemwiki.de/wiki/OpenWRT" rel="ugc nofollow">http://www.fhemwiki.de/wiki/OpenWRT</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Resources&quot;,&quot;hid&quot;:&quot;resources&quot;,&quot;codeblockOffset&quot;:14,&quot;secid&quot;:9,&quot;range&quot;:&quot;5836-&quot;} -->

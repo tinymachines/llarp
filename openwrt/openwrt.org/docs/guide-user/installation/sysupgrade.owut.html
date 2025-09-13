@@ -1,0 +1,1228 @@
+
+<h1 class="sectionedit1" id="owutopenwrt_upgrade_tool">owut: OpenWrt Upgrade Tool</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;owut: OpenWrt Upgrade Tool&quot;,&quot;hid&quot;:&quot;owutopenwrt_upgrade_tool&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-42&quot;} -->
+<h2 class="sectionedit2" id="overview">Overview</h2>
+<div class="level2">
+
+<p>
+<code>owut</code> is a tool that you run from the command line of your device to upgrade its OpenWrt firmware, while retaining custom packages and device configuration.  In its simplest form, you just run <code>owut upgrade</code>, a few minutes later your device reboots and is running the latest version of OpenWrt with the most current package versions.  When you need help with <code>owut</code>, check in at the <a href="https://forum.openwrt.org/t/owut-openwrt-upgrade-tool/200035" class="urlextern" title="https://forum.openwrt.org/t/owut-openwrt-upgrade-tool/200035" rel="ugc nofollow">support thread on the forum</a>.
+</p>
+
+<p>
+<code>owut</code> has many sub-commands and options to allow you to check firmware status, modify the list of installed packages and do other upgrade related tasks.  Some examples are
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>owut check --verbose</code> - check latest build status with more detail (or less with <code>--quiet</code>)</div>
+</li>
+<li class="level1"><div class="li"> <code>owut versions</code> - list all the OpenWrt versions available on the upgrade server</div>
+</li>
+<li class="level1"><div class="li"> <code>owut download</code> - download an image without installing it</div>
+</li>
+<li class="level1"><div class="li"> <code>owut install</code> - verify and install an image you previously downloaded</div>
+</li>
+<li class="level1"><div class="li"> <code>owut list</code> - generate lists of installed package for use with <a href="https://firmware-selector.openwrt.org/" class="urlextern" title="https://firmware-selector.openwrt.org/" rel="ugc nofollow">Firmware Selector</a> or source builds</div>
+</li>
+</ul>
+
+<p>
+When generating an image using <code>download</code> or <code>upgrade</code> you can
+</p>
+<ul>
+<li class="level1"><div class="li"> add packages to or remove packages from the build list</div>
+</li>
+<li class="level1"><div class="li"> include a custom <code>uci-defaults</code> script to be run at first boot</div>
+</li>
+</ul>
+
+<p>
+And on x86 miniPCs, ARM/RISC-V SBCs and similar devices, you can
+</p>
+<ul>
+<li class="level1"><div class="li"> specify and retain a larger-than-default root filesystem size</div>
+</li>
+<li class="level1"><div class="li"> change the file system type at upgrade time</div>
+</li>
+</ul>
+
+<p>
+You can specify these options on the command line, or you can use the standard OpenWrt <code>config</code> system to store these values and avoid having to remember and retype them on every upgrade.
+</p>
+
+<p>
+For a more detailed description of the overall OpenWrt upgrade process and alternatives to <code>owut</code>, see the <a href="/docs/guide-user/installation/attended.sysupgrade" class="wikilink1" title="docs:guide-user:installation:attended.sysupgrade" data-wiki-id="docs:guide-user:installation:attended.sysupgrade">Attended Sysupgrade</a> page.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Overview&quot;,&quot;hid&quot;:&quot;overview&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;43-1958&quot;} -->
+<h2 class="sectionedit3" id="installation_and_upgrading_owut">Installation and Upgrading owut</h2>
+<div class="level2">
+
+<p>
+<code>owut</code> is a standard, optional OpenWrt package, available on all platforms supported by SNAPSHOT builds on the main branch, or release builds with version 24.10 and later.
+</p>
+<pre class="code">opkg update  &amp;&amp;  opkg install owut # For 24.10 releases.
+apk -U add owut                    # For main SNAPSHOT builds.</pre>
+
+<p>
+Unlike some packages, <code>owut</code> may be safely upgraded in-place.  If you find that you need a feature or bug fix that is not in your current version of <code>owut</code>, you can upgrade as follows.
+</p>
+<pre class="code">opkg update  &amp;&amp;  opkg upgrade owut # For 24.10 releases.
+apk -U upgrade owut                # For main SNAPSHOT builds.</pre>
+
+<p>
+But note that there is usually no need to specifically upgrade <code>owut</code>, as once installed <code>owut</code> will be upgraded along with everything else whenever you do a full firmware upgrade.
+</p>
+
+<p>
+If you have questions about installation or configuration, <a href="https://forum.openwrt.org/t/owut-openwrt-upgrade-tool/200035" class="urlextern" title="https://forum.openwrt.org/t/owut-openwrt-upgrade-tool/200035" rel="ugc nofollow">post on the support forum thread</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation and Upgrading owut&quot;,&quot;hid&quot;:&quot;installation_and_upgrading_owut&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;1959-2985&quot;} -->
+<h2 class="sectionedit4" id="quick_start">Quick Start</h2>
+<div class="level2">
+
+<p>
+If your goal is simply to upgrade your router&#039;s current firmware, staying on the same version (e.g., 24.10 or SNAPSHOT), then just use the <code>upgrade</code> command.  If there are any problems uncovered by the various pre-build checks, or if an error is detected during the build, then the upgrade will abort with a message indicating the issue.
+</p>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_round wrap_important plugin_wrap" style="width: 100%;">
+<p>
+Your first step is always...
+</p>
+
+<p>
+<strong>Make a backup!</strong>
+</p>
+<ul>
+<li class="level1"><div class="li"> From LuCI, go to <strong>System → Backup/Flash firmware</strong>.  Click <strong>Generate archive</strong>.</div>
+</li>
+<li class="level1"><div class="li"> From CLI use <code>sysupgrade --create-backup /tmp/backup.tar.gz</code> and use <code>scp</code> or some other tool to copy the file to a safe location (usually another host).</div>
+</li>
+</ul>
+
+<p>
+<em>Just do it. Every time...</em>
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:6,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+If <code>owut</code> finds that package downgrades, or no changes were made since your last upgrade, it will tell you this and stop.  You can re-run the command with the <code>--force</code> option, which will proceed with the build and install, keeping all configuration.  If you think you need <code>--force</code> but are not absolutely sure, you should <a href="https://forum.openwrt.org/t/owut-openwrt-upgrade-tool/200035" class="urlextern" title="https://forum.openwrt.org/t/owut-openwrt-upgrade-tool/200035" rel="ugc nofollow">ask on the forum</a>.
+</p>
+
+<p>
+Note that <code>owut</code> is currently available only on main SNAPSHOT or versions 24.x and later.
+</p>
+<pre class="code">$ opkg update &amp;&amp; opkg install owut # For 24.10 releases.
+$ apk -U add owut                  # For main SNAPSHOT builds.
+
+$ owut upgrade
+owut - OpenWrt Upgrade Tool 2024.12.10~e38844ae-r1 (/usr/bin/owut)
+ASU-Server     https://sysupgrade.openwrt.org
+Upstream       https://downloads.openwrt.org
+Target         x86/64
+Profile        generic
+Package-arch   x86_64
+Root-FS-type   ext4
+Sys-type       combined-efi
+Version-from   24.10-SNAPSHOT r28242-1eff737906 (kernel 6.6.67)
+Version-to     24.10-SNAPSHOT r28304-6dacba30a7 (kernel 6.6.69)
+Build-FS-type  ext4
+Build-at       2025-01-04T21:35:37Z (~66 hours ago)
+Image-prefix   openwrt-24.10-snapshot-r28304-6dacba30a7-x86-64-generic
+Image-URL      https://downloads.openwrt.org/releases/24.10-SNAPSHOT/targets/x86/64
+Image-file     openwrt-24.10-snapshot-r28304-6dacba30a7-x86-64-generic-ext4-combined-efi.img.gz
+Installed      284 packages
+Top-level       83 packages
+Default         43 packages
+User-installed  51 packages (top-level only)
+
+Package version changes:
+  kmod-amazon-ena                6.6.67-r1                                  6.6.69-r1
+  kmod-amd-xgbe                  6.6.67-r1                                  6.6.69-r1
+...
+  procd-ujail                    2024.12.17~fd01fb85-r1                     2024.12.22~42d39376-r1
+  ubus                           2024.10.20~252a9b0c-r1                     2025.01.02~afa57cce-r1
+  ubusd                          2024.10.20~252a9b0c-r1                     2025.01.02~afa57cce-r1
+92 packages are out-of-date
+
+Default package analysis:
+  Default                        Provided-by
+  dnsmasq                        dnsmasq-full
+  kmod-dwmac-intel               not installed
+  libustream-mbedtls             not installed
+  nftables                       nftables-json
+
+There are currently package build failures for 24.10-SNAPSHOT x86_64:
+  Feed: telephony
+    freeswitch                   Mon Jan  6 05:37:57 2025 - not installed
+    freeswitch-mod-bcg729        Mon Jan  6 05:46:38 2025 - not installed
+    freetdm                      Mon Jan  6 05:46:40 2025 - not installed
+Failures don&#039;t affect this device, details at
+  https://downloads.openwrt.org/releases/faillogs-24.10/x86_64/
+  
+WARNING: There are 2 missing default packages, confirm this is expected before proceeding
+Request:
+  Version 24.10-SNAPSHOT r28304-6dacba30a7 (kernel 6.6.69)
+Request hash:
+  fc626783b488e9a7e5a5914495a7ebbbf9fb079cff7abbf2a2165a25d02c8eb6
+--
+Status:   queued - 0 ahead of you
+Progress:   0s total =   0s in queue +   0s in build
+--
+Status:   init
+Progress:   1s total =   0s in queue +   1s in build
+--
+Status:   container_setup
+Progress:  17s total =   0s in queue +  17s in build
+--
+Status:   validate_manifest
+Progress: 101s total =   0s in queue + 101s in build
+--
+Status:   building_image
+Progress: 185s total =   0s in queue + 185s in build
+--
+Status:   done
+Progress: 187s total =   0s in queue + 187s in build
+
+Build succeeded in 187s total =   0s in queue + 187s to build:
+  version_number = 24.10-SNAPSHOT
+  version_code   = r28304-6dacba30a7 (requested r28304-6dacba30a7)
+  kernel_version = 6.6.69
+  rootfs_size_mb = default
+  init-script    = no-init-script
+
+Image source: http://asu-dev.brain.lan:8000/store/fc626783b488e9a7e5a5914495a7ebbbf9fb079cff7abbf2a2165a25d02c8eb6/openwrt-24.10-snapshot-r28304-6dacba30a7-8e0b0deb02c0-x86-64-generic-ext4-combined-efi.img.gz
+Image saved : /tmp/firmware.bin
+Manifest    : /tmp/firmware-manifest.json
+Verifying   : /tmp/firmware.bin (32751632 bytes) against /tmp/firmware.sha256sums
+  Saved sha256 matches
+  Tue Jan  7 07:54:20 PST 2025 upgrade: Image metadata not present
+  Tue Jan  7 07:54:20 PST 2025 upgrade: Reading partition table from bootdisk...
+  Tue Jan  7 07:54:20 PST 2025 upgrade: Extract boot sector from the image
+  Tue Jan  7 07:54:21 PST 2025 upgrade: Reading partition table from image...
+Checks complete, image is valid.
+Installing /tmp/firmware.bin and rebooting...
+
+... system reboots ...</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Quick Start&quot;,&quot;hid&quot;:&quot;quick_start&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:4,&quot;range&quot;:&quot;2986-8202&quot;} -->
+<h2 class="sectionedit7" id="usage">Usage</h2>
+<div class="level2">
+<pre class="code bash">$ owut <span class="re5">-h</span>
+owut - OpenWrt Upgrade Tool 2025.01.06~e623a900-r1 <span class="br0">&#40;</span><span class="sy0">/</span>usr<span class="sy0">/</span>bin<span class="sy0">/</span>owut<span class="br0">&#41;</span>
+&nbsp;
+owut is an upgrade tool <span class="kw1">for</span> OpenWrt.
+&nbsp;
+Usage: owut COMMAND <span class="br0">&#91;</span>-V VERSION_TO<span class="br0">&#93;</span> <span class="br0">&#91;</span>-R REV_CODE<span class="br0">&#93;</span> <span class="br0">&#91;</span>-v<span class="br0">&#93;</span> <span class="br0">&#91;</span>-q<span class="br0">&#93;</span> <span class="br0">&#91;</span>-k<span class="br0">&#93;</span> <span class="br0">&#91;</span>--force<span class="br0">&#93;</span> <span class="br0">&#91;</span>-a ADD<span class="br0">&#93;</span> <span class="br0">&#91;</span>-r REMOVE<span class="br0">&#93;</span> <span class="br0">&#91;</span>--ignored-defaults IGNORED_DEFAULTS<span class="br0">&#93;</span> <span class="br0">&#91;</span>-I INIT_SCRIPT<span class="br0">&#93;</span> <span class="br0">&#91;</span>-F FSTYPE<span class="br0">&#93;</span> <span class="br0">&#91;</span>-S ROOTFS_SIZE<span class="br0">&#93;</span> <span class="br0">&#91;</span>-i IMAGE<span class="br0">&#93;</span> <span class="br0">&#91;</span>-f FORMAT<span class="br0">&#93;</span> <span class="br0">&#91;</span>-p PRE_INSTALL<span class="br0">&#93;</span> <span class="br0">&#91;</span>-T POLL_INTERVAL<span class="br0">&#93;</span>
+  -h<span class="sy0">/</span>--help            - Show this message and quit.
+  <span class="re5">--version</span>            - Show the program version and terminate.
+&nbsp;
+  COMMAND - Sub-command to execute, must be one of:
+    check    - Collect all resources and report stats.
+    list     - Show all the packages installed by user.
+    blob     - Display the json blob <span class="kw1">for</span> the ASU build request.
+    download - Build, download and verify an image.
+    verify   - Verify the downloaded image.
+    <span class="kw2">install</span>  - Install the specified <span class="kw3">local</span> image.
+    upgrade  - Build, download, verify and <span class="kw2">install</span> an image.
+    versions - Show available versions.
+    dump     - Collect all resources and dump internal data structures.
+&nbsp;
+  -V<span class="sy0">/</span>--version-to VERSION_TO - Specify the target version, defaults to installed version.
+  -R<span class="sy0">/</span>--rev-code REV_CODE - Specify a <span class="st_h">'version_code'</span>, literal <span class="st_h">'none'</span> allowed, defaults to latest build.
+  -v<span class="sy0">/</span>--verbose         - Print various diagnostics.  Repeat <span class="kw1">for</span> even <span class="kw2">more</span> output.
+  -q<span class="sy0">/</span>--quiet           - Reduce verbosity.  Repeat <span class="kw1">for</span> total silence.
+  -k<span class="sy0">/</span>--keep            - Save all downloaded working files.
+  <span class="re5">--force</span>              - Force a build even when there are downgrades or no changes.
+  -a<span class="sy0">/</span>--add ADD         - New packages to add to build list.
+  -r<span class="sy0">/</span>--remove REMOVE   - Installed packages to remove from build list.
+  <span class="re5">--ignored-defaults</span> IGNORED_DEFAULTS - List of explicitly ignored default package names.
+  <span class="re5">--ignored-changes</span> IGNORED_CHANGES - List of explicitly ignored package changes.
+  -I<span class="sy0">/</span>--init-script INIT_SCRIPT - Path to uci-defaults script to run on first boot <span class="br0">&#40;</span><span class="st_h">'-'</span> use stdin<span class="br0">&#41;</span>.
+  -F<span class="sy0">/</span>--fstype FSTYPE   - Desired root <span class="kw2">file</span> system <span class="kw3">type</span> <span class="br0">&#40;</span>squashfs, ext4, ubifs, jffs2<span class="br0">&#41;</span>.
+  -S<span class="sy0">/</span>--rootfs-size ROOTFS_SIZE - DANGER: See wiki before using<span class="sy0">!</span>  Root <span class="kw2">file</span> system <span class="kw2">size</span> <span class="kw1">in</span> MB <span class="br0">&#40;</span><span class="nu0">1</span>-<span class="nu0">1024</span><span class="br0">&#41;</span>.
+  -i<span class="sy0">/</span>--image IMAGE     - Image name <span class="kw1">for</span> download, verify, <span class="kw2">install</span> and upgrade.
+  -f<span class="sy0">/</span>--format FORMAT   - Format <span class="kw1">for</span> <span class="st_h">'list'</span> output <span class="br0">&#40;</span>fs-user, fs-all, config<span class="br0">&#41;</span>.
+  -p<span class="sy0">/</span>--pre-install PRE_INSTALL - Script to <span class="kw3">exec</span> just prior to launching final sysupgrade.
+  -T<span class="sy0">/</span>--poll-interval POLL_INTERVAL - Poll interval <span class="kw1">for</span> build monitor, <span class="kw1">in</span> milliseconds.
+  <span class="re5">--progress-size</span> PROGRESS_SIZE - Response content-length above <span class="kw2">which</span> we report download progress.
+&nbsp;
+Full documentation
+  https:<span class="sy0">//</span>openwrt.org<span class="sy0">/</span>docs<span class="sy0">/</span>guide-user<span class="sy0">/</span>installation<span class="sy0">/</span>sysupgrade.owut
+&nbsp;
+Questions and discussion
+  https:<span class="sy0">//</span>forum.openwrt.org<span class="sy0">/</span>t<span class="sy0">/</span>owut-openwrt-upgrade-tool<span class="sy0">/</span><span class="nu0">200035</span>
+&nbsp;
+Issues and bug reports
+  https:<span class="sy0">//</span>github.com<span class="sy0">/</span>efahl<span class="sy0">/</span>owut<span class="sy0">/</span>issues</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Usage&quot;,&quot;hid&quot;:&quot;usage&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:7,&quot;range&quot;:&quot;8203-11016&quot;} -->
+<h2 class="sectionedit8" id="sub-commands">Sub-Commands</h2>
+<div class="level2">
+<div class="table sectionedit9"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Sub-Command </th><th class="col1"> Description </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> <code>check</code>    </td><td class="col1"> Downloads all resource files, collects the metadata from the device and the resources, and displays a report on everything found.  This includes available version upgrades on all packages, availability of installed packages, listing of all package build breakages, and so on.  At the end of the report, you&#039;ll see an indication as to whether it is possible to upgrade or not. </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> <code>list</code>     </td><td class="col1"> This sub-command allows you to generate the list of packages installed on your device.  This list is tailored for use with either the <a href="https://firmware-selector.openwrt.org/" class="urlextern" title="https://firmware-selector.openwrt.org/" rel="ugc nofollow">OpenWrt Firmware Selector</a> or for use with source builds.  For more details, see the <code>--format</code> <a href="#list_formatting" title="docs:guide-user:installation:sysupgrade.owut ↵" class="wikilink1">option description</a>, below. </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> <code>blob</code>     </td><td class="col1"> Display the json blob for the ASU build request.  Mostly useful for debugging and satisfying your curiosity. </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> <code>download</code> </td><td class="col1"> Build, download and <code>verify</code> an image.  Used to create an image that you may then archive off-system, before subsequently <code>owut install</code>ing it. </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 leftalign"> <code>verify</code>   </td><td class="col1"> Verify the downloaded image.  After you have <code>download</code>ed an image, <code>verify</code> can be used to make sure it corresponds to the downloaded checksums and is correct according to <code>sysupgrade</code>. </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0 leftalign"> <code>install</code>  </td><td class="col1"> Install the specified image.  Does another <code>verify</code>, then runs <code>sysupgrade</code> to install the image, results in a reboot. </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0 leftalign"> <code>upgrade</code>  </td><td class="col1"> Build, download, verify and install an image.  Short hand way to run all steps involved in upgrading the system, basically a <code>download</code> and <code>install</code> in one command. </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0"> <code>versions</code> </td><td class="col1"> Show available versions according to what the ASU server knows.  This may not be a complete list with respect to what is available on the build servers (aka <code>downloads.openwrt.org</code>), as the ASU server does not deal with archives and discourages use of out-of-date releases. </td>
+	</tr>
+	<tr class="row9">
+		<td class="col0 leftalign"> <code>dump</code>     </td><td class="col1"> Collect all resources and dump internal data structures.  Again, like the <code>blob</code> sub-command, this is for debugging and curious users. </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:9,&quot;range&quot;:&quot;11043-13097&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Sub-Commands&quot;,&quot;hid&quot;:&quot;sub-commands&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:8,&quot;range&quot;:&quot;11017-13099&quot;} -->
+<h2 class="sectionedit10" id="command_line_options">Command Line Options</h2>
+<div class="level2">
+<div class="table sectionedit11"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Option </th><th class="col1"> Default </th><th class="col2"> Description </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> <code>-V/--version-to VERSION</code>    </td><td class="col1"> newest version on current branch </td><td class="col2"> Search for updates for this version or branch.  <a href="#selecting_a_version" title="docs:guide-user:installation:sysupgrade.owut ↵" class="wikilink1">Detailed description.</a></td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> <code>-R/--rev-code REV_CODE</code> </td><td class="col1"> - </td><td class="col2"> Optionally specify the build revision code.  Rarely needed, if you think you need to use it, ask on the forum.</td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> <code>-v/--verbose</code>         </td><td class="col1"> - </td><td class="col2"> Print various diagnostics and operational messages; repeat for even more output. </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"> <code>-q/--quiet</code>           </td><td class="col1"> - </td><td class="col2"> Reduces verbosity and can be repeated for less output. </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 leftalign"> <code>-k/--keep</code>            </td><td class="col1"> false </td><td class="col2"> Save all downloaded working files, primarily for diagnostics and debugging.  Look in <code>/tmp/</code> after using this option; turn on <code>-v</code> to watch as they are saved. </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0 leftalign"> <code>--force</code>              </td><td class="col1"> false </td><td class="col2"> Force <code>download</code> or <code>upgrade</code> when there are package downgrades, or when there are no changes detected. <a href="#forcing_a_build" title="docs:guide-user:installation:sysupgrade.owut ↵" class="wikilink1">Detailed description.</a> </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0 leftalign"> <code>-a/--add ADD</code>         </td><td class="col1"> none </td><td class="col2"> List of new packages to add to build list.  <a href="#about_adding_packages" title="docs:guide-user:installation:sysupgrade.owut ↵" class="wikilink1">Detailed description.</a> </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0 leftalign"> <code>-r/--remove REMOVE</code>   </td><td class="col1"> none </td><td class="col2"> List of installed packages to remove from build list. <a href="#about_removing_packages" title="docs:guide-user:installation:sysupgrade.owut ↵" class="wikilink1">Detailed description.</a> </td>
+	</tr>
+	<tr class="row9">
+		<td class="col0"> <code>--ignored-defaults IGNORED_DEFAULTS</code> </td><td class="col1"> none </td><td class="col2"> List of explicitly ignored default package names.  <a href="#about_ignoring_defaults" title="docs:guide-user:installation:sysupgrade.owut ↵" class="wikilink1">Detailed description.</a></td>
+	</tr>
+	<tr class="row10">
+		<td class="col0"> <code>--ignored-changes IGNORED_CHANGES</code> </td><td class="col1"> none </td><td class="col2"> A list of explicitly ignored package changes.  Be sure to read the whole <a href="#package_changes" title="docs:guide-user:installation:sysupgrade.owut ↵" class="wikilink1">package changes</a> section before using this. </td>
+	</tr>
+	<tr class="row11">
+		<td class="col0"> <code>-I/--init-script INIT_SCRIPT</code> </td><td class="col1"> none </td><td class="col2"> Path to uci-defaults script to run on first boot (&#039;-&#039; use stdin).  <a href="#using_a_uci-defaults_script" title="docs:guide-user:installation:sysupgrade.owut ↵" class="wikilink1">Detailed description.</a> </td>
+	</tr>
+	<tr class="row12">
+		<td class="col0 leftalign"> <code>-F/--fstype FSTYPE</code>   </td><td class="col1"> current </td><td class="col2"> Desired root file system type.  May be one of <code>squashfs</code>, <code>ext4</code>, <code>ubifs</code> or <code>jffs2</code> depending on platform constraints.  <a href="#changing_file_system_type" title="docs:guide-user:installation:sysupgrade.owut ↵" class="wikilink1">Detailed description.</a> </td>
+	</tr>
+	<tr class="row13">
+		<td class="col0"> <code>-S/--rootfs-size ROOTFS_SIZE</code> </td><td class="col1"> current </td><td class="col2"> Root file system size in <abbr title="Megabyte">MB</abbr> (1-1024). <a href="#expanding_root_file_system" title="docs:guide-user:installation:sysupgrade.owut ↵" class="wikilink1">Detailed description.</a> </td>
+	</tr>
+	<tr class="row14">
+		<td class="col0 leftalign"> <code>-i/--image IMAGE</code>     </td><td class="col1"> <code>/tmp/firmware.bin</code> </td><td class="col2"> The image name used for the <code>download</code>, <code>verify</code>, <code>install</code> and <code>upgrade</code> sub-commands. </td>
+	</tr>
+	<tr class="row15">
+		<td class="col0 leftalign"> <code>-f/--format FORMAT</code>   </td><td class="col1"> <code>fs-user</code> </td><td class="col2"> Format for <code>list</code> output.  Valid formats are <code>fs-user</code>, <code>fs-all</code> and <code>config</code>.  <a href="#list_formatting" title="docs:guide-user:installation:sysupgrade.owut ↵" class="wikilink1">Detailed description.</a> </td>
+	</tr>
+	<tr class="row16">
+		<td class="col0"> <code>-p/--pre-install PRE_INSTALL</code> </td><td class="col1"> none </td><td class="col2"> Path to a user-defined script that will be run after image verification and before the actual installation of the image.  <a href="#pre-install_script" title="docs:guide-user:installation:sysupgrade.owut ↵" class="wikilink1">Detailed description.</a> </td>
+	</tr>
+	<tr class="row17">
+		<td class="col0"> <code>-T/--poll-interval POLL_INTERVAL</code> </td><td class="col1"> 2000 </td><td class="col2"> Milliseconds to sleep between checks on build status when running the build. </td>
+	</tr>
+	<tr class="row18">
+		<td class="col0"> <code>--progress-size PROGRESS_SIZE</code> </td><td class="col1"> 0 </td><td class="col2"> Allows the user to display progress of each download by setting a threshold for response content-length above which download progress is shown  <a href="#display_download_progress" title="docs:guide-user:installation:sysupgrade.owut ↵" class="wikilink1">Detailed description.</a> </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table1&quot;,&quot;secid&quot;:11,&quot;range&quot;:&quot;13134-16136&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Command Line Options&quot;,&quot;hid&quot;:&quot;command_line_options&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:10,&quot;range&quot;:&quot;13100-16138&quot;} -->
+<h3 class="sectionedit12" id="selecting_a_version">Selecting a version</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="when_you_don_t_specify_a_version">When you don&#039;t specify a version</h4>
+<div class="level4">
+
+<p>
+When you do not explicitly specify a <code>--version-to</code> value, <code>owut</code> looks for the newest version of the installed branch and sets that as the target version.
+</p>
+
+<p>
+For all examples, assume that latest on the <code>21.02</code> branch is the <code>21.02.7</code> release, and on <code>23.05</code> it&#039;s the <code>23.05.4</code> release.
+</p>
+<div class="table sectionedit13"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Installed Version </th><th class="col1"> Target </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> <code>21.02.2</code>     </td><td class="col1"> <code>21.02.7</code> </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> <code>23.05.0-rc1</code> </td><td class="col1"> <code>23.05.4</code> </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> <code>23.05.3</code>     </td><td class="col1"> <code>23.05.4</code> </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"> <code>23.05.4</code>     </td><td class="col1"> <code>23.05.4</code> </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table2&quot;,&quot;secid&quot;:13,&quot;range&quot;:&quot;16509-16675&quot;} -->
+<p>
+The exception to this is if the installed version is a <code>SNAPSHOT</code>, either release or main, in which case, the version-to target remains at the installed version.
+</p>
+<div class="table sectionedit14"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Installed Version </th><th class="col1"> Target </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> <code>22.03-SNAPSHOT</code> </td><td class="col1"> <code>22.03-SNAPSHOT</code> </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> <code>23.05-SNAPSHOT</code> </td><td class="col1"> <code>23.05-SNAPSHOT</code> </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> <code>SNAPSHOT</code>       </td><td class="col1 leftalign"> <code>SNAPSHOT</code>       </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table3&quot;,&quot;secid&quot;:14,&quot;range&quot;:&quot;16842-17004&quot;} -->
+</div>
+
+<h4 id="when_you_do_specify_a_version">When you do specify a version</h4>
+<div class="level4">
+
+<p>
+When you do specify <code>--version-to</code>, it must name a valid version or branch.  If you provide an invalid value, <code>owut</code> will show you all the available versions (or you can do this manually with <code>owut versions</code>).
+</p>
+
+<p>
+When you specify a full version, then the input is checked against the available versions and left untouched:
+</p>
+<div class="table sectionedit15"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> User specifies </th><th class="col1"> Target </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> <code>--version-to 23.05.3</code>        </td><td class="col1 leftalign"> <code>23.05.3</code>        </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> <code>--version-to 23.05.0-rc2</code>    </td><td class="col1 leftalign"> <code>23.05.0-rc2</code>    </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> <code>--version-to 23.05-snapshot</code> </td><td class="col1"> <code>23.05-SNAPSHOT</code> </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"> <code>--version-to snapshot</code>       </td><td class="col1 leftalign"> <code>SNAPSHOT</code>       </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table4&quot;,&quot;secid&quot;:15,&quot;range&quot;:&quot;17373-17628&quot;} -->
+<p>
+If you specify only a branch (i.e., a version number without the final “dot value”), then the version-to target is set to the latest release on that branch.
+</p>
+<div class="table sectionedit16"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> User specifies </th><th class="col1"> Target </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> <code>--version-to 21.02</code>    </td><td class="col1 leftalign"> <code>21.02.7</code>  </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> <code>--version-to 23.05</code>    </td><td class="col1 leftalign"> <code>23.05.4</code>  </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> <code>--version-to SNAPSHOT</code> </td><td class="col1"> <code>SNAPSHOT</code> </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table5&quot;,&quot;secid&quot;:16,&quot;range&quot;:&quot;17788-17950&quot;} -->
+<p>
+Note that character case is not important in naming the version, <code>owut</code> converts internally to what the upgrade server requires.  You can say <code>snapshot</code>, <code>SnapShot</code> or <code>SNAPSHOT</code> or <code>rc1</code> or <code>rC1</code> and <code>owut</code> knows what to do.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Selecting a version&quot;,&quot;hid&quot;:&quot;selecting_a_version&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:12,&quot;range&quot;:&quot;16139-18192&quot;} -->
+<h3 class="sectionedit17" id="forcing_a_build">Forcing a build</h3>
+<div class="level3">
+
+<p>
+<code>owut</code>&#039;s normal behavior is to avoid doing unneeded work by stopping a build request when no changes are found.  The <code>--force</code> option is used to override this and do a re-build and re-install of the current system.  This might be useful if you have inadvertently deleted packages or something similar, and can&#039;t easily figure out how to recover.
+</p>
+
+<p>
+When <code>owut</code> detects downgrades in packages, it will indicate this by coloring the new version number red in the <code>Package version changes:</code> list and report the number of downgrades at the bottom of the list.  This also causes <code>owut</code> to stop processing any <code>download</code> or <code>upgrade</code> in progress, unless you specify <code>--force</code> option.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Forcing a build&quot;,&quot;hid&quot;:&quot;forcing_a_build&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:17,&quot;range&quot;:&quot;18193-18912&quot;} -->
+<h3 class="sectionedit18" id="adding_and_removing_packages">Adding and removing packages</h3>
+<div class="level3">
+
+<p>
+The <code>--add</code> and <code>--remove</code> options allow you to add packages to or remove packages from the build list submitted by <code>owut</code> to the ASU build server.  These options may only appear once on the command line; if you wish to add or remove more than one package, then separate the package names with commas or group them with quotes.
+</p>
+
+<p>
+For example, if you wanted to upgrade and simultaneously switch to the full versions of <code>dnsmasq</code> and <code>tc</code>, you&#039;d say this.
+</p>
+<pre class="code bash">$ owut upgrade <span class="re5">-r</span> dnsmasq,tc-tiny <span class="re5">-a</span> <span class="st0">&quot;dnsmasq-full tc-full&quot;</span>
+...</pre>
+
+<p>
+As of release 2025.01.06, the command line argument to both <code>--add</code> and <code>--remove</code> may be delimited by either commas or arbitrary white space including newlines (prior to that release, only commas are allowed).  The primary purpose of this is to allow you to use a simple flat file of package names as the input source for the package list, as in this example.
+</p>
+<pre class="code bash">$ <span class="kw2">cat</span> additions
+<span class="kw2">nmap</span>
+bind-dig
+tcpdump
+&nbsp;
+$ owut download <span class="re5">--add</span> <span class="st0">&quot;<span class="es4">$(cat additions)</span>&quot;</span>
+...</pre>
+
+</div>
+
+<h4 id="about_adding_packages">About adding packages</h4>
+<div class="level4">
+<ol>
+<li class="level1"><div class="li"> If you add a package that is already installed, <code>owut</code> silently ignores this and carries on.</div>
+</li>
+<li class="level1"><div class="li"> If you add a package that doesn&#039;t exist, hasn&#039;t been ported to your device or is currently unavailable, then <code>owut</code> reports an error and stops.</div>
+</li>
+</ol>
+
+</div>
+
+<h4 id="about_removing_packages">About removing packages</h4>
+<div class="level4">
+<ol>
+<li class="level1"><div class="li"> If you attempt to remove a package which is not installed, <code>owut</code> reports an error and stops.</div>
+</li>
+<li class="level1"><div class="li"> If you remove one of the default packages for your device, <code>owut</code> will produce a warning, the package will be removed and <code>owut</code> will continue with your request.  <em>Note that this may break things, either during the build or after installing on your device,</em> and you are responsible for ensuring that removal of the package is appropriate.<pre class="code bash">$ owut check <span class="re5">-r</span> kmod-igb
+WARNING: package <span class="st_h">'kmod-igb'</span> is a default package, removal may have unknown side effects
+...</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> If you attempt to remove a package that has dependents (that is a “non-top-level package” -- something that was installed as a requirement for another package), <code>owut</code> will warn you about this, the package will be removed from the build list and <code>owut</code> will proceed.  Note that this typically <em>has no effect</em>, as the package will be pulled back in by the same top-level package that installed it in the first place.<pre class="code bash">$ owut check <span class="re5">-r</span> kernel
+WARNING: package <span class="st_h">'kernel'</span> has dependents and removal will have no effect on the build
+...</pre>
+</div>
+</li>
+</ol>
+
+</div>
+
+<h4 id="about_ignoring_defaults">About ignoring defaults</h4>
+<div class="level4">
+
+<p>
+If the <code>Default package analysis:</code> shows you default packages you have removed but wish to ignore, simply supply them as arguments to the <code>--ignored-defaults</code> option to suppress the warnings about missing defaults.
+</p>
+<pre class="code">$ owut check
+...
+Default package analysis:
+  Default                        Provided-by
+  dnsmasq                        dnsmasq-full
+  kmod-drm-i915                  not installed
+  kmod-dwmac-intel               not installed
+  nftables                       nftables-json
+...
+WARNING: There are 2 missing default packages, confirm this is expected before proceeding</pre>
+
+<p>
+Note that the packages are still listed in the analysis table, confirming your choice, but no warning message is shown.
+</p>
+<pre class="code">$ owut check --ignored-defaults kmod-drm-i915,kmod-dwmac-intel
+...
+Default package analysis:
+  Default                        Provided-by
+  dnsmasq                        dnsmasq-full
+  kmod-drm-i915                  user ignored
+  kmod-dwmac-intel               user ignored
+  nftables                       nftables-json</pre>
+
+<p>
+You can add these packages to the config file, eliminating the need to type them on the command line every time.
+</p>
+<pre class="code">$ cat /etc/config/attendedsysupgrade
+...
+config owut &#039;owut&#039;
+        option verbosity      1
+        option poll_interval  2000
+        list   ignored_defaults &quot;kmod-drm-i915&quot;
+        list   ignored_defaults &quot;kmod-dwmac-intel&quot;</pre>
+
+<p>
+Note that this is quite useful when dealing with packages such as <code>wpad-basic-mbedtls</code> and its many alternatives, as the package dependencies are such that <code>owut</code> and other ASU clients are unable to determine if the missing default has been replaced by something else or if it&#039;s truly missing.  For example, if you simply replace the default with <code>wpad-mbedtls</code> (the “full” version), you&#039;ll see
+</p>
+<pre class="code">Default package analysis:
+  Default                      Provided-by
+  nftables                     nftables-json
+  wpad-basic-mbedtls           not installed
+
+WARNING: There are 1 missing default packages, confirm this is expected before proceeding</pre>
+
+<p>
+When you see this, first verify that you have the proper replacement installed, then just add 
+</p>
+<pre class="code">        list   ignored_defaults &#039;wpad-basic-mbedtls&#039;</pre>
+
+<p>
+to the <code>owut</code> section of <code>/etc/config/attendedsysupgrade</code> so that <code>owut</code> stops warning you.
+</p>
+<pre class="code">Default package analysis:
+  Default                      Provided-by
+  nftables                     nftables-json
+  wpad-basic-mbedtls           user ignored
+
+It is safe to proceed with an upgrade</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Adding and removing packages&quot;,&quot;hid&quot;:&quot;adding_and_removing_packages&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:18,&quot;range&quot;:&quot;18913-24022&quot;} -->
+<h3 class="sectionedit19" id="package_changes">Package Changes</h3>
+<div class="level3">
+
+<p>
+The Attended Sysupgrade (ASU) server provides metadata about version upgrades that is utilized by various ASU clients (including the LuCI ASU app, <code>owut</code>, and <code>owut</code>&#039;s predecessor <code>auc</code>).  This metadata is contained in the <a href="https://sysupgrade.openwrt.org/json/v1/overview.json" class="urlextern" title="https://sysupgrade.openwrt.org/json/v1/overview.json" rel="ugc nofollow">overview.json file</a>, where you can see information about each branch available via the server.  For example, under <code>branches.SNAPSHOT.package_changes</code>, there is information regarding the transition from <code>firewall</code> to <code>firewall4</code>, which happened at revision 18611.
+</p>
+
+<p>
+This table is used by <code>owut</code> to automatically replace packages during an upgrade across release boundaries (note that <code>owut</code> does not handle downgrades across these same boundaries; if you run into an issue because of this, <a href="https://forum.openwrt.org/t/owut-openwrt-upgrade-tool/200035" class="urlextern" title="https://forum.openwrt.org/t/owut-openwrt-upgrade-tool/200035" rel="ugc nofollow">ask on the forum</a>).  
+</p>
+
+<p>
+Using the <code>firewall</code> example, assume you have an old installation prior to revision 18611 (see below for how to determine your current revision) and that you are upgrading to a more recent one.  When <code>owut</code> scans your installed packages, it will use the <code>package_changes</code> information as follows:
+</p>
+<ol>
+<li class="level1"><div class="li"> Is the package under consideration a <code>source</code> entry in the <code>package_changes</code> list for this branch?</div>
+</li>
+<li class="level1"><div class="li"> If so, is the current revision less than or equal to the package change revision?</div>
+</li>
+<li class="level1 node"><div class="li"> If so, then </div>
+<ol>
+<li class="level2"><div class="li"> remove the current package;</div>
+</li>
+<li class="level2"><div class="li"> if the <code>target</code> is empty, we&#039;re done (the current package was deleted or merged into another one);</div>
+</li>
+<li class="level2"><div class="li"> otherwise, add the <code>target</code> package.</div>
+</li>
+</ol>
+</li>
+</ol>
+
+<p>
+This makes splitting, merging, replacement and deletion of packages across an upgrade mostly seamless, and generally you won&#039;t need to worry about it.
+</p>
+
+<p>
+Problems arise when
+</p>
+<ol>
+<li class="level1"><div class="li"> A package change is made in OpenWrt but it is not registered in the <code>package_changes</code> table.  This is a bug and should be reported, either on the <a href="https://forum.openwrt.org/t/owut-openwrt-upgrade-tool/200035" class="urlextern" title="https://forum.openwrt.org/t/owut-openwrt-upgrade-tool/200035" rel="ugc nofollow">forum</a> or at <a href="https://github.com/openwrt/asu/issues" class="urlextern" title="https://github.com/openwrt/asu/issues" rel="ugc nofollow">https://github.com/openwrt/asu/issues</a></div>
+</li>
+<li class="level1"><div class="li"> You actually require that one or more package change should not be applied.</div>
+</li>
+</ol>
+
+<p>
+For the latter, you can use the <code>--ignored-changes</code> option when running <code>owut</code> to suppress this behavior on a package-by-package basis.  Again using the <code>firewall</code> example, you would specify that you wish to keep <code>firewall</code> as follows, receiving confirmation with an informational message.
+</p>
+<pre class="code">$ owut upgrade --ignored-changes firewall
+owut - OpenWrt Upgrade Tool 2025.03.14~52e7d44c-r1 (/root/bin/owut)
+Ignoring package change firewall to firewall4
+...</pre>
+
+<p>
+Note that the <code>--ignored-changes</code> option uses the same argument parsing as the <code>--add</code> and <code>--remove</code> options, i.e., a single string with package names separated by commas or whitespace (see those commands for more detail).
+</p>
+
+<p>
+This can be made “permanent” by adding that option as a list element to the config file, which causes <code>owut</code> to use the data from the config instead of the command line:
+</p>
+<pre class="code">$ uci add_list attendedsysupgrade.owut.ignored_changes=&#039;firewall&#039;
+$ uci commit attendedsysupgrade
+$ uci show attendedsysupgrade
+attendedsysupgrade.owut=owut
+attendedsysupgrade.owut.verbosity=&#039;1&#039;
+attendedsysupgrade.owut.poll_interval=&#039;2000&#039;
+attendedsysupgrade.owut.ignored_changes=&#039;firewall&#039;</pre>
+
+</div>
+
+<h5 id="finding_your_current_revision">Finding your current revision</h5>
+<div class="level5">
+
+<p>
+You can determine your current revision using the following.  It is the number between <code>r</code> and <code>-</code>, so in this example 28521.  (Or if you already have <code>owut</code> installed, just run <code>owut check | grep Version-</code> and it will show both the installed version and the version to which you&#039;d be upgrading.)
+</p>
+<pre class="code">$ ubus call system board | jsonfilter -e &#039;$.release.revision&#039;
+r28521-f3a210b742</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Package Changes&quot;,&quot;hid&quot;:&quot;package_changes&quot;,&quot;codeblockOffset&quot;:14,&quot;secid&quot;:19,&quot;range&quot;:&quot;24023-27763&quot;} -->
+<h3 class="sectionedit20" id="using_a_uci-defaults_script">Using a uci-defaults script</h3>
+<div class="level3">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:21,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_round wrap_important plugin_wrap" style="width: 100%;">
+<p>
+<strong>Do not put sensitive information in the <code>init-script</code> file.</strong>
+</p>
+
+<p>
+The text you provide in the <code>init-script</code> file is sent to the build server as part of the build configuration.  This exposes it to potential disclosure as the build request traverses the internet.  Once the build has completed, the file&#039;s contents are stored on the build server in the generated image, where anyone with knowledge of the build hash may download and access it.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:22,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+If you are not familiar with <code>uci-defaults</code> (aka “first boot scripts”), you can read up here: <a href="/docs/guide-developer/uci-defaults" class="wikilink1" title="docs:guide-developer:uci-defaults" data-wiki-id="docs:guide-developer:uci-defaults">UCI defaults</a>.  The underlying mechanism that implements <code>owut</code> (and <code>auc</code> and LuCI Attended Sysupgrade and Firmware Selector) builds is the Image Builder, so its description may also be useful: <a href="/docs/guide-user/additional-software/imagebuilder#custom_files" class="wikilink1" title="docs:guide-user:additional-software:imagebuilder" data-wiki-id="docs:guide-user:additional-software:imagebuilder">Image builder - Custom files</a>.
+</p>
+
+<p>
+The <code>--init-script</code> option allows you to specify the name of a file containing a <code>uci-defaults</code> script, which is to be executed at first boot.  The ASU server takes your init-script source and places it in the image in <code>/etc/uci-defaults/99-asu-defaults</code> (there is no means to change this name).  On immutable file systems (say <code>squashfs</code>), this also results in the file being stored in <code>/rom/etc/uci-defaults/99-asu-defaults</code>, which comes into play with LuCI Attended Sysupgrade.
+</p>
+
+<p>
+Here&#039;s a comparison of <code>owut</code> with how other upgrade tools implement this functionality.
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>auc</code> does not implement this ability (but <a href="https://github.com/openwrt/packages/pull/22144" class="urlextern" title="https://github.com/openwrt/packages/pull/22144" rel="ugc nofollow">the patch</a> exists).</div>
+</li>
+<li class="level1"><div class="li"> Firmware Selector behaves identically to <code>owut</code> with its <code>Script to run on first boot (uci-defaults)</code> input field.</div>
+</li>
+<li class="level1"><div class="li"> LuCI Attended Sysupgrade implements this by looking for <code>/rom/etc/uci-defaults/99-asu-defaults</code> and then relays the contents of that file implicitly.  LuCI ASU&#039;s shortcoming is that it doesn&#039;t allow you to delete or change what&#039;s already there. <code>owut</code> makes this explicit, if you want the script included in your new image, then you must specify it when you request a build.</div>
+</li>
+</ul>
+
+<p>
+The terms used in the following two scenarios (comprising seven use cases) are:
+</p>
+<ul>
+<li class="level1"><div class="li"> “mutable system” - A device using a read-write file system for its main storage.  Typically in OpenWrt, this is an <code>ext4</code> file system.<pre class="code">$ mount | grep &#039;(ro&#039;
+... no output ...</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> “immutable system” - A device which has a read-only partition mounted on <code>/rom</code>, where the original system image is stored.  Usually, but not always, this is a <code>squashfs</code> file system.<pre class="code">$ mount | grep &#039;(ro&#039;
+/dev/root on /rom type squashfs (ro,relatime,errors=continue)</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> “asu-defaults” - The file <code>/rom/etc/uci-defaults/99-asu-defaults</code>, which only exists on devices with an immutable file system and whose images have been built by the ASU build server.</div>
+</li>
+</ul>
+
+<p>
+On an immutable system, there are five cases to consider:
+</p>
+<ol>
+<li class="level1"><div class="li"> An asu-defaults file does not exist and you don&#039;t need or want one:<pre class="code">owut upgrade</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> An asu-defaults file exists and you want to keep it unchanged:<pre class="code">owut upgrade --init-script /rom/etc/uci-defaults/99-asu-defaults</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> An asu-defaults file exists and you want to modify it:<pre class="code">cp /rom/etc/uci-defaults/99-asu-defaults my-modified-init-script.sh
+vi my-modified-init-script.sh  # Change it.
+owut upgrade --init-script my-modified-init-script.sh</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> An asu-defaults file does not exist but you want to add one:<pre class="code">vi my-new-init-script.sh
+owut upgrade --init-script my-new-init-script.sh</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> An asu-defaults file exists and you want to delete it from build:<pre class="code">owut upgrade  # Just ignore the warning.</pre>
+</div>
+</li>
+</ol>
+
+<p>
+On a mutable system, since there is no <code>/rom/etc/uci-defaults</code>, you only have two choices:
+</p>
+<ol>
+<li class="level1"><div class="li"> You don&#039;t want to create an asu-defaults file in your build:<pre class="code">owut upgrade</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> You do want to create one:<pre class="code">owut upgrade --init-script my-init-script.sh</pre>
+</div>
+</li>
+</ol>
+
+<p>
+Note that for all of the above cases, if you do use asu-defaults, then you are responsible for keeping a backup.  For best practices, see the <a href="#persistent_uci-defaults" title="docs:guide-user:installation:sysupgrade.owut ↵" class="wikilink1">persistent defaults example</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Using a uci-defaults script&quot;,&quot;hid&quot;:&quot;using_a_uci-defaults_script&quot;,&quot;codeblockOffset&quot;:17,&quot;secid&quot;:20,&quot;range&quot;:&quot;27764-31977&quot;} -->
+<h3 class="sectionedit23" id="changing_file_system_type">Changing file system type</h3>
+<div class="level3">
+
+<p>
+On rare occasion, it might be desirable to change the file system type of an installation.  Usually this is done on devices with expandable file systems, x86, RISC-V and ARM SBCs, where the storage device is not fixed size FLASH memory (in fact, if you try to change the file system type on an all-in-one, FLASH-based device, the build will almost always fail).
+</p>
+
+<p>
+But, say for example, you have an x86 with an SSD and want to switch from the current <code>squashfs</code> to use <code>ext4</code>.  Simply upgrade with the desired file system, and upon reboot you&#039;ll be running the targeted file system.
+</p>
+<pre class="code">$ owut upgrade --fstype ext4
+...
+Target         x86/64
+Profile        generic
+Package-arch   x86_64
+Root-FS-type   squashfs                   &lt;&lt;&lt; Installed
+Version-from   SNAPSHOT r26504-d4acd05218 (kernel 6.6.32)
+Version-to     SNAPSHOT r26733-2b6772c82c (kernel 6.6.34)
+Build-FS-type  ext4                       &lt;&lt;&lt;  Requested
+...</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Changing file system type&quot;,&quot;hid&quot;:&quot;changing_file_system_type&quot;,&quot;codeblockOffset&quot;:26,&quot;secid&quot;:23,&quot;range&quot;:&quot;31978-32949&quot;} -->
+<h3 class="sectionedit24" id="expanding_root_file_system">Expanding root file system</h3>
+<div class="level3">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:25,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_round wrap_alert plugin_wrap" style="width: 100%;">
+<p>
+Changing your root file system size often causes <code>owut</code>&#039;s final installation performed by <code>sysupgrade</code> to lose your configuration, so be prepared to recover with a backup.  Note that if you lose <code>/etc/config/network</code>, the <abbr title="Local Area Network">LAN</abbr> <abbr title="Internet Protocol">IP</abbr> of the device may change, so think about how you&#039;ll attach to the device before you proceed.
+</p>
+
+<p>
+This has been observed repeatedly on x86 installation, but ARM-based devices sometimes “just work” without wiping the configuration; you&#039;ll have to experiment and find out (when you do, please <a href="https://forum.openwrt.org/t/owut-openwrt-upgrade-tool/200035/551" class="urlextern" title="https://forum.openwrt.org/t/owut-openwrt-upgrade-tool/200035/551" rel="ugc nofollow">report both successes and failures on this thread</a> so we can determine which targets need work to overcome this issue).
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:26,&quot;range&quot;:&quot;0-&quot;} --><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:27,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_round wrap_info plugin_wrap" style="width: 100%;">
+<p>
+As of about 2025-05-31 (LuCI build 25.151), the LuCI Attended Sysupgrade app is aware of the <code>rootfs_size</code> setting in the <code>owut</code> config, and applies it during build requests.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:28,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+The <code>--rootfs-size</code> option allows those devices with expandable file systems (again, typically x86, RISC-V and ARM SBCs) to specify the size of the root file system.  The default value varies depending on target, but is often 104 <abbr title="Megabyte">MB</abbr> and the <code>--rootfs-size</code> option allow you to increase that up to 1024 <abbr title="Megabyte">MB</abbr> (see note below), thus allowing more or bigger packages to be installed.
+</p>
+
+<p>
+Best practice is to define this value in the config so that:
+</p>
+<ol>
+<li class="level1"><div class="li"> You avoid typing it on the command line every time you upgrade;</div>
+</li>
+<li class="level1"><div class="li"> You don&#039;t forget and resize back to 104MB, losing your config or failing the upgrade.</div>
+</li>
+</ol>
+
+<p>
+Example commands to set the value to 256 <abbr title="Megabyte">MB</abbr>, modify the value to suit:
+</p>
+<pre class="code">$ uci set attendedsysupgrade.owut=owut
+$ uci set attendedsysupgrade.owut.rootfs_size=256
+$ uci commit
+$ uci show attendedsysupgrade.owut
+attendedsysupgrade.owut=owut
+attendedsysupgrade.owut.rootfs_size=&#039;256&#039;</pre>
+
+<p>
+Note that the maximum value allowed for <code>rootfs_size</code> is a function of the ASU server.  For example, max rootfs partition size on OpenWrt is 1024 <abbr title="Megabyte">MB</abbr>.  You should verify the value by looking on the various sysupgrade servers, it will be listed as the <code>Maximum requested root filesystem size:</code> under the Server Configuration section at the bottom of the page.
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="https://sysupgrade.openwrt.org/" class="urlextern" title="https://sysupgrade.openwrt.org/" rel="ugc nofollow">OpenWrt Sysupgrade Server</a> - 1024 <abbr title="Megabyte">MB</abbr> as of 2025-08-15</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://sysupgrade.antennine.org" class="urlextern" title="https://sysupgrade.antennine.org" rel="ugc nofollow">LibreMesh Sysupgrade Server</a> - 1024 <abbr title="Megabyte">MB</abbr> as of 2025-08-15</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://sysupgrade.kyarucloud.moe" class="urlextern" title="https://sysupgrade.kyarucloud.moe" rel="ugc nofollow">ImmortalWrt Sysupgrade Server</a> - 4096 <abbr title="Megabyte">MB</abbr> as of 2025-08-15</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Expanding root file system&quot;,&quot;hid&quot;:&quot;expanding_root_file_system&quot;,&quot;codeblockOffset&quot;:27,&quot;secid&quot;:24,&quot;range&quot;:&quot;32950-35489&quot;} -->
+<h3 class="sectionedit29" id="list_formatting">List formatting</h3>
+<div class="level3">
+
+<p>
+The owut list command uses the <code>--format</code> option that takes one of the following values.
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>fs-user</code> - (the default) produces a package list for use by the Firmware Selector that contains only the top-level, user-installed package modifications. You&#039;d copy and paste this <em>after</em> the default list in the FS &#039;Installed Packages&#039; field.</div>
+</li>
+<li class="level1"><div class="li"> <code>fs-all</code> - produces a package list for FS containing all top-level packages, which you&#039;d paste <em>over</em> the values in the FS &#039;Installed Packages&#039; field.</div>
+</li>
+<li class="level1"><div class="li"> <code>config</code> - produces a build <code>.config</code> snippet of user-installed, top-level packages that you can use when doing source builds. Each output line looks like <code>CONFIG_PACKAGE_collectd-mod-thermal=y</code>.</div>
+</li>
+</ul>
+
+<p>
+The <code>fs-*</code> options generate lists in the Image Builder syntax, where mentioning a package name adds it to the list, and prefixing a package name with a dash removes it.
+</p>
+
+<p>
+For example, if you have installed <code>dnsmasq-full</code>, then the default <code>dnsmasq</code> basic package must be removed.  That would look like this (trimmed down for clarity):
+</p>
+<pre class="code bash">$ owut list
+... dnsmasq-full ... <span class="re5">-dnsmasq</span> ...</pre>
+
+<p>
+There are several packages provided by the defaults that are named using a generic package name, and actually provided by something with a different name, <code>nftables</code> is a prominent one (it is provided by either <code>nftables-json</code> or <code>nftables-nojson</code>, there is no <code>nftables</code> package).  <code>owut</code> appears to be removing it, but it really is just saying, “use the default, whatever that is”.  In the following example, we see only the <code>-nftables</code> removal, but not default package <code>nftables-json</code> as it will be added implicitly.
+</p>
+<pre class="code bash">$ opkg whatprovides nftables  <span class="co0"># Or 'apk list --providers nftables'</span>
+What provides nftables
+    nftables-json
+&nbsp;
+$ owut list
+... <span class="re5">-nftables</span> ...</pre>
+
+<p>
+This can happen for other files that appear to be “deleted from nowhere” due to dependencies.  As an example of this, if you are using <code>luci-ssl-openssl</code>, then the list output will contain <code>-libustream-mbedtls</code> which would otherwise be added by defaults resulting in an “impossible package selection” error.
+</p>
+
+<p>
+You&#039;ll often see other evidence of these mappings when using <code>check</code> in the default package analysis results:
+</p>
+<pre class="code">$ owut check
+...
+Default package analysis:
+  Default                        Provided-by
+  dnsmasq                        dnsmasq-full
+  kmod-dwmac-intel               not installed
+  nftables                       nftables-json
+...</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;List formatting&quot;,&quot;hid&quot;:&quot;list_formatting&quot;,&quot;codeblockOffset&quot;:28,&quot;secid&quot;:29,&quot;range&quot;:&quot;35490-38002&quot;} -->
+<h3 class="sectionedit30" id="pre-install_script">Pre-install Script</h3>
+<div class="level3">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:31,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_round wrap_tip plugin_wrap" style="width: 100%;">
+<p>
+TIP
+</p>
+
+<p>
+For the most up-to-date examples, see the latest version of the pre-install script in the <a href="https://github.com/efahl/owut/blob/main/files/pre-install.sh" class="urlextern" title="https://github.com/efahl/owut/blob/main/files/pre-install.sh" rel="ugc nofollow">github source</a>.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:32,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+<code>owut</code> has a hook between image verification and image install, allowing you to do automatic backups, archiving of build artifacts or any other final modifications to the system prior to the installation.  Use the <code>--pre-install /path/to/script</code> option from the command line.  Once you&#039;re satisfied with how your script work, best practice is to add <code>option pre_install &#039;/path/to/script</code>&#039; to the <code>owut</code> section of the config file.
+</p>
+
+<p>
+The standard installation of <code>owut</code> provides several examples in <code>/etc/owut.d/pre-install.sh</code>.  If you come up with other interesting uses, please share them.
+</p>
+
+</div>
+
+<h4 id="note_1_-_backup">Note 1 - Backup</h4>
+<div class="level4">
+
+<p>
+Note that the directory <code>/etc/owut.d/</code> is part of the standard sysupgrade backup, so any files you store there will become part of system backups and persist across upgrades (assuming you “keep config”).  You can check this with <code>sysupgrade -l | grep owut.d</code>, which should show all the files in that directory.
+</p>
+
+<p>
+The example script mentioned in the above tip uses <code>/etc/owut.d/</code> as the destination for archives for this reason.
+</p>
+
+</div>
+
+<h4 id="note_2_-_execution_environment">Note 2 - Execution environment</h4>
+<div class="level4">
+
+<p>
+When the pre-install script is executed, it is spawned with a minimal environment.  You cannot count on <code>HOME</code> or other environment variables being carried in from the context in which <code>owut</code> was started.  The only variable you can rely on is <code>PATH</code>, which will point to all the usual system locations.  This means that testing your script outside <code>owut</code> should be performed using an empty environment, as shown here:
+</p>
+<pre class="code bash"><span class="kw2">env</span> <span class="re5">-i</span>  <span class="re2">PATH</span>=<span class="sy0">/</span>usr<span class="sy0">/</span>sbin:<span class="sy0">/</span>usr<span class="sy0">/</span>bin:<span class="sy0">/</span>sbin:<span class="sy0">/</span>bin  <span class="sy0">/</span>path<span class="sy0">/</span>to<span class="sy0">/</span>your<span class="sy0">/</span>pre-install-script</pre>
+
+<p>
+If you need to run processes that are out of your control, but require specific variables, you must define then in your pre-install script explicitly.  Also, if you use scripts or executables that are not in the standard system locations, you&#039;ll need to specify them by their full path (or extend <code>PATH</code>).
+</p>
+<pre class="code bash"><span class="co0">#!/bin/sh</span>
+&nbsp;
+<span class="kw3">export</span> <span class="re2">HOME</span>=<span class="sy0">/</span>root
+<span class="kw3">export</span> <span class="re2">USER</span>=root
+&nbsp;
+<span class="sy0">/</span>root<span class="sy0">/</span>bin<span class="sy0">/</span>helper.sh  <span class="co0"># Run my helper script from ~/bin.</span>
+&nbsp;
+...</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Pre-install Script&quot;,&quot;hid&quot;:&quot;pre-install_script&quot;,&quot;codeblockOffset&quot;:31,&quot;secid&quot;:30,&quot;range&quot;:&quot;38003-40301&quot;} -->
+<h3 class="sectionedit33" id="display_download_progress">Display download progress</h3>
+<div class="level3">
+
+<p>
+If your <abbr title="Internet Service Provider">ISP</abbr> provides you with very low bandwidth, this can make downloading the image appear as if <code>owut</code> has locked up.  If that happens to you, add <code>--progress-size 1000</code> to the <code>owut</code> command line, which will display progress of each download when its response length is over 1000 bytes.
+</p>
+
+<p>
+The default of <code>0</code> means no progress status is shown, but any value greater than <code>0</code> will display progress for downloads over that size.  This allows you to show progress for large files, but not be bothered by smaller ones; using a small size will show all downloads.  
+</p>
+
+<p>
+You can determine the best size for your use by experimentation, then set your desired value as the dynamic default in the config, so you don&#039;t need to supply it on the command line, as follows.  As usual, supplying a value on the command line supercedes the value in the config file.
+</p>
+<pre class="code bash">$ uci <span class="kw1">set</span> attendedsysupgrade.owut.progress_size=<span class="nu0">25000</span>
+$ uci commit</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Display download progress&quot;,&quot;hid&quot;:&quot;display_download_progress&quot;,&quot;codeblockOffset&quot;:33,&quot;secid&quot;:33,&quot;range&quot;:&quot;40302-41287&quot;} -->
+<h2 class="sectionedit34" id="configuration">Configuration</h2>
+<div class="level2">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:35,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_round wrap_important plugin_wrap" style="width: 100%;">
+<p>
+Note that although you can store any of the command line options in the config file, doing so with certain options may be confusing.  Use your discretion when setting defaults: as an example, setting <code>option force true</code> is probably not a good idea.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:36,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+Any of the command line options may be stored in the <code>owut</code> section of <code>/etc/config/attendedsysupgrade</code>.  For example, if you are using <code>--rootfs-size 256</code> on the command line on every upgrade, you could edit the config and add that option as follows:
+</p>
+<pre class="code">config server &#039;server&#039;
+        option url &#039;https://sysupgrade.openwrt.org&#039;
+
+config owut &#039;owut&#039;
+       option rootfs_size 256</pre>
+
+<p>
+Note that the dashes in the command line “long” option names are turned into underscores in the config option name, but beyond that the syntax is pretty much identical.
+</p>
+
+<p>
+There is one exception to the naming convention, command line <code>--verbose</code> and <code>--quiet</code> both map to <code>verbosity</code> in the config file.  The config file value for <code>verbosity</code> is an integer; every mention of <code>-v</code> on the command line simply increments it, and <code>-q</code> decrements it: <code>option verbosity 1</code>, then <code>owut check -v -v -q -v</code> results in an output verbosity of 3 (i.e., more output than you ever thought possible).
+</p>
+
+<p>
+A convenient way to see what the default values are and to verify that any changes you made to the config file are correct is to <code>owut dump</code> and examine the <code>options</code> section of the output.
+</p>
+<pre class="code json">$ owut dump | head -20
+{
+&quot;version&quot;: &quot;owut/2025.01.06~e623a900-r1&quot;,
+&quot;options&quot;: {
+  &quot;command&quot;: &quot;dump&quot;,
+  &quot;version_to&quot;: null,
+  &quot;rev_code&quot;: null,
+  &quot;verbosity&quot;: 1,
+  &quot;keep&quot;: false,
+  &quot;force&quot;: false,
+  &quot;add&quot;: null,
+  &quot;remove&quot;: null,
+  &quot;init_script&quot;: null,
+  &quot;fstype&quot;: null,
+  &quot;rootfs_size&quot;: 256,
+  &quot;image&quot;: &quot;/tmp/firmware.bin&quot;,
+  &quot;format&quot;: null,
+  &quot;pre_install&quot;: &quot;/etc/owut.d/pre-install.sh&quot;,
+  &quot;poll_interval&quot;: 10000,
+  &quot;device&quot;: null
+},</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:34,&quot;secid&quot;:34,&quot;range&quot;:&quot;41288-43253&quot;} -->
+<h3 class="sectionedit37" id="configuration_examples">Configuration Examples</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="stay_on_a_given_release">Stay on a given release</h4>
+<div class="level4">
+
+<p>
+You can force the default for the <code>--version-to</code> by setting this option in the config.  Note that this is redundant with <code>owut</code>&#039;s default behavior (see the details of <a href="#selecting_a_version" title="docs:guide-user:installation:sysupgrade.owut ↵" class="wikilink1">Selecting a version</a>, above).
+</p>
+<pre class="code">config owut &#039;owut&#039;
+        option version_to &#039;24.10&#039;</pre>
+
+</div>
+
+<h4 id="setting_root_file_system_size">Setting root file system size</h4>
+<div class="level4">
+
+<p>
+Before you set this one, please read about <a href="#expanding_root_file_system" title="docs:guide-user:installation:sysupgrade.owut ↵" class="wikilink1">expanding the root file system</a>, above, as this may not apply to your device.
+</p>
+
+<p>
+For devices with expandable storage, typically x86, RISC-V and ARM SBCs, you may find it useful to expand the root file system size thus allowing you to easily install a larger number of packages or store more persistent data.
+</p>
+<pre class="code">config owut &#039;owut&#039;
+        option rootfs_size 512</pre>
+
+</div>
+
+<h4 id="persistent_uci-defaults">Persistent uci-defaults</h4>
+<div class="level4">
+
+<p>
+If you&#039;ve used custom <code>uci-defaults</code>, you are probably aware that the scripts are deleted from <code>/etc/uci-defaults/</code> on first boot.  For an immutable installation, typically using a <code>squashfs</code> file system, you can view and recover your custom script from <code>/rom/etc/uci-defaults/</code>, but on an <code>ext4</code> file system, there is no <code>rom</code> partition, and the files are gone forever.
+</p>
+
+<p>
+<code>owut</code> addresses this issue by allowing you to place your script on a persistent location, and then setting up the config file so that it becomes part of the installed image*.
+</p>
+<ol>
+<li class="level1"><div class="li"> Create your init-script in a persistent location. <pre class="code">$ mkdir /etc/owut.d/
+$ echo &quot;# My first boot script.&quot; &gt; /etc/owut.d/custom-init.sh</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Make sure it is carried over in all <code>sysupgrade</code> backups. <pre class="code"># The /etc/owut.d/ directory is part of standard backups, lets make sure...
+$ sysupgrade -l | grep custom
+/etc/owut.d/custom-init.sh</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Configure <code>owut</code> to include the script into your builds. <pre class="code">$ uci set attendedsysupgrade.owut=owut
+$ uci set attendedsysupgrade.owut.init_script=/etc/owut.d/custom-init.sh
+$ uci commit
+$ uci show attendedsysupgrade.owut
+attendedsysupgrade.owut=owut
+attendedsysupgrade.owut.init_script=&#039;/etc/owut.d/custom-init.sh&#039;</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Verify that everything is set up properly.  Your script should appear in the json as the <code>defaults</code> entry. <pre class="code">$ owut blob
+{
+  &quot;client&quot;: &quot;owut/%%VERSION%%&quot;,
+  &quot;target&quot;: &quot;x86/64&quot;,
+  &quot;profile&quot;: &quot;generic&quot;,
+  &quot;version&quot;: &quot;SNAPSHOT&quot;,
+  &quot;version_code&quot;: &quot;r26773-85d9fd6f0e&quot;,
+  &quot;filesystem&quot;: &quot;ext4&quot;,
+  &quot;diff_packages&quot;: true,
+  &quot;packages&quot;: [
+    &quot;base-files&quot;,
+    &quot;btop&quot;,
+    &quot;busybox&quot;,
+    ... a bunch more packages ...
+    &quot;ucode-mod-uloop&quot;,
+    &quot;urandom-seed&quot;,
+    &quot;urngd&quot;
+  ],
+  &quot;defaults&quot;: &quot;# My first boot script.\n&quot;
+}</pre>
+</div>
+</li>
+</ol>
+
+<p>
+* - As of June 2024, you can also accomplish this latter part by creating an image with the <a href="https://firmware-selector.openwrt.org/" class="urlextern" title="https://firmware-selector.openwrt.org/" rel="ugc nofollow">OpenWrt Firmware Selector</a>, manually pasting the script into its <code>Script to run on first boot (uci-defaults)</code> field.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration Examples&quot;,&quot;hid&quot;:&quot;configuration_examples&quot;,&quot;codeblockOffset&quot;:36,&quot;secid&quot;:37,&quot;range&quot;:&quot;43254-46180&quot;} -->
+<h2 class="sectionedit38" id="faq">FAQ</h2>
+<div class="level2">
+
+<p>
+Q: There&#039;s no option in <code>owut</code> to upgrade <em>without</em> keeping the config.  I can do it with <code>auc -n</code>, why not <code>owut</code>?
+</p>
+
+<p>
+A: This is (or should be) a rare thing to do, so it is intentionally made difficult with <code>owut</code>.  The solution is to simply use <code>owut</code> to create the image and then run <code>sysupgrade</code> stating your desire to throw away the configuration.  Leaving it thus makes sure you really mean to do this, as it is highly destructive.
+</p>
+<pre class="code bash">$ owut download
+...
+$ sysupgrade <span class="re5">-n</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>firmware.bin</pre>
+<hr />
+
+<p>
+Q: I have a big miniPC as my router.  Why can&#039;t I create an image with <code>--rootfs-size 120000</code> and use all of my 128 <abbr title="Gigabyte">GB</abbr> drive?
+</p>
+
+<p>
+A: The upper bound is dictated to be 1024 <abbr title="Megabyte">MB</abbr> by the ASU server for practical reasons.  The way the partitions are created on some devices requires that the full-sized image be created and then compressed, which takes a <em>lot</em> of RAM, disk and time.  
+</p>
+
+<p>
+As a test, I did a few imagebuilder runs with rootfs partitions ranging from the default (for x86) of 104 <abbr title="Megabyte">MB</abbr> up to 20000 <abbr title="Megabyte">MB</abbr> to see how long they would take.
+</p>
+<div class="table sectionedit39"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> ROOTFS_PARTSIZE= </th><th class="col1"> real </th><th class="col2"> user </th><th class="col3"> img size </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 rightalign">     104 </td><td class="col1 rightalign">   26s </td><td class="col2 rightalign">   18s </td><td class="col3 rightalign">  12M </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 rightalign">     512 </td><td class="col1 rightalign">   48s </td><td class="col2 rightalign">   25s </td><td class="col3 rightalign">  13M </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 rightalign">     1024 </td><td class="col1 rightalign">   74s </td><td class="col2 rightalign">   33s </td><td class="col3 rightalign">  13M </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 rightalign">   10000 </td><td class="col1 rightalign">  11m47s </td><td class="col2 rightalign">  4m36s </td><td class="col3 rightalign">  32M </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 rightalign">   20000 </td><td class="col1 rightalign">  28m15s </td><td class="col2 rightalign">  13m9s </td><td class="col3 rightalign">  32M </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table6&quot;,&quot;secid&quot;:39,&quot;range&quot;:&quot;47270-47497&quot;} -->
+<p>
+Those last two rows should make fairly clear why increasing the upper limit is infeasible, until such time as the build process is reworked to reduce the time required to create larger images.
+</p>
+
+<p>
+Note: the above tests were all run on an AMD R9 7950x 5.8GHz CPU with 64GB CL6000 RAM and PCIe 4 SSD, which is generally 3x faster than the ASU server hardware, so these numbers are <em>well</em> below what you&#039;d see if using ASU server.
+</p>
+
+<p>
+You can run your own build timing tests by <a href="https://downloads.openwrt.org" class="urlextern" title="https://downloads.openwrt.org" rel="ugc nofollow">downloading</a> and installing an imagebuilder, running <code>make info</code> to select a profile, then running the following.
+</p>
+<pre class="code bash"><span class="re2">profile</span>=generic  <span class="co0"># Set this to your desired profile from 'make info'.</span>
+<span class="kw1">for</span> <span class="kw2">size</span> <span class="kw1">in</span> <span class="nu0">104</span> <span class="nu0">256</span> <span class="nu0">512</span> <span class="nu0">1024</span> <span class="nu0">2048</span> <span class="nu0">4096</span> <span class="nu0">10240</span>; <span class="kw1">do</span>
+    <span class="kw3">printf</span> <span class="st0">&quot;Part size: %s&quot;</span> <span class="st0">&quot;<span class="es2">$size</span>&quot;</span>
+    <span class="kw1">time</span> <span class="sy0">/</span>usr<span class="sy0">/</span>bin<span class="sy0">/</span><span class="kw2">make</span> image <span class="re2">PROFILE</span>=<span class="re1">$profile</span> <span class="re2">ROOTFS_PARTSIZE</span>=<span class="re1">$size</span> <span class="nu0">2</span><span class="sy0">&amp;&gt;</span><span class="nu0">1</span> <span class="sy0">|</span> <span class="kw2">grep</span> <span class="re5">-i</span> error
+<span class="kw1">done</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;FAQ&quot;,&quot;hid&quot;:&quot;faq&quot;,&quot;codeblockOffset&quot;:42,&quot;secid&quot;:38,&quot;range&quot;:&quot;46181-48386&quot;} -->
+<h2 class="sectionedit40" id="references">References</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <code>owut</code> - <a href="https://github.com/efahl/owut" class="urlextern" title="https://github.com/efahl/owut" rel="ugc nofollow">github source</a>, <a href="https://github.com/openwrt/packages/tree/master/utils/owut" class="urlextern" title="https://github.com/openwrt/packages/tree/master/utils/owut" rel="ugc nofollow">OpenWrt packaging</a></div>
+</li>
+<li class="level1"><div class="li"> ASU server - <a href="https://github.com/openwrt/asu" class="urlextern" title="https://github.com/openwrt/asu" rel="ugc nofollow">github source</a>, <a href="https://sysupgrade.openwrt.org/ui/" class="urlextern" title="https://sysupgrade.openwrt.org/ui/" rel="ugc nofollow">API documentation</a></div>
+</li>
+<li class="level1"><div class="li"> <code>auc</code> - <a href="/docs/guide-user/installation/attended.sysupgrade#from_the_cli" class="wikilink1" title="docs:guide-user:installation:attended.sysupgrade" data-wiki-id="docs:guide-user:installation:attended.sysupgrade">wiki page</a>, see <a href="https://github.com/openwrt/packages/commit/3a998e10218c318511b41739f276e572c1ede967" class="urlextern" title="https://github.com/openwrt/packages/commit/3a998e10218c318511b41739f276e572c1ede967" rel="ugc nofollow">final commit</a> removing <code>auc</code> from the package feed</div>
+</li>
+<li class="level1"><div class="li"> LuCI Attended Sysupgrade - <a href="/docs/guide-user/installation/attended.sysupgrade#from_luci_web_page" class="wikilink1" title="docs:guide-user:installation:attended.sysupgrade" data-wiki-id="docs:guide-user:installation:attended.sysupgrade">wiki page</a>, <a href="https://github.com/openwrt/luci/tree/master/applications/luci-app-attendedsysupgrade" class="urlextern" title="https://github.com/openwrt/luci/tree/master/applications/luci-app-attendedsysupgrade" rel="ugc nofollow">github source</a></div>
+</li>
+<li class="level1"><div class="li"> Firmware Selector - <a href="https://github.com/openwrt/firmware-selector-openwrt-org" class="urlextern" title="https://github.com/openwrt/firmware-selector-openwrt-org" rel="ugc nofollow">github source</a>, <a href="https://firmware-selector.openwrt.org/" class="urlextern" title="https://firmware-selector.openwrt.org/" rel="ugc nofollow">build site</a></div>
+</li>
+<li class="level1"><div class="li"> Docker container builds - <a href="https://github.com/openwrt/docker" class="urlextern" title="https://github.com/openwrt/docker" rel="ugc nofollow">github source</a></div>
+</li>
+<li class="level1"><div class="li"> OpenWrt buildbots - <a href="https://github.com/openwrt/buildbot" class="urlextern" title="https://github.com/openwrt/buildbot" rel="ugc nofollow">github source</a></div>
+</li>
+<li class="level1"><div class="li"> Downloads site - <a href="https://downloads.openwrt.org/" class="urlextern" title="https://downloads.openwrt.org/" rel="ugc nofollow">OpenWrt build artifacts and release archive</a></div>
+</li>
+<li class="level1"><div class="li"> Dashboards - <a href="https://buildbot.staging.openwrt.org/" class="urlextern" title="https://buildbot.staging.openwrt.org/" rel="ugc nofollow">OpenWrt buildbot dashboards</a></div>
+</li>
+<li class="level1"><div class="li"> <code>ucode</code> - <a href="https://ucode.mein.io/" class="urlextern" title="https://ucode.mein.io/" rel="ugc nofollow">Reference Manual</a></div>
+</li>
+<li class="level1"><div class="li"> <code>ucode-mod-uclient</code> - <a href="https://github.com/openwrt/uclient/blob/master/ucode.c" class="urlextern" title="https://github.com/openwrt/uclient/blob/master/ucode.c" rel="ugc nofollow">github source</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;References&quot;,&quot;hid&quot;:&quot;references&quot;,&quot;codeblockOffset&quot;:44,&quot;secid&quot;:40,&quot;range&quot;:&quot;48387-&quot;} -->

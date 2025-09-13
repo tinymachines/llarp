@@ -1,0 +1,383 @@
+
+<h1 class="sectionedit1" id="network_traffic_monitor_with_vnstat">Network Traffic Monitor with vnStat</h1>
+<div class="level1">
+
+<p>
+vnStat is a console-based network traffic monitor for Linux and BSD that keeps a log of network traffic for the selected interface(s). It uses the network interface statistics provided by the kernel as information source. This means that vnStat won&#039;t actually be sniffing any traffic and also ensures light use of system resources. <a href="http://humdi.net/vnstat/" class="urlextern" title="http://humdi.net/vnstat/" rel="ugc nofollow">As it says on their website</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Network Traffic Monitor with vnStat&quot;,&quot;hid&quot;:&quot;network_traffic_monitor_with_vnstat&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-441&quot;} -->
+<h2 class="sectionedit2" id="installing">Installing</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installing&quot;,&quot;hid&quot;:&quot;installing&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;442-464&quot;} -->
+<h3 class="sectionedit3" id="base">Base</h3>
+<div class="level3">
+<pre class="code bash">opkg update
+opkg <span class="kw2">install</span> vnstat</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Base&quot;,&quot;hid&quot;:&quot;base&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;465-532&quot;} -->
+<h3 class="sectionedit4" id="luci_webgui_integration_optional">LuCI Webgui Integration (optional)</h3>
+<div class="level3">
+<pre class="code bash">opkg update
+opkg <span class="kw2">install</span> vnstati luci-app-vnstat</pre>
+
+<p>
+If you want language translation for the LuCI Webgui Integration then install the following:
+</p>
+<pre class="code bash">opkg update
+opkg <span class="kw2">install</span> luci-i18n-vnstat-<span class="br0">&#40;</span>YOUR_COUNTRY_CODE<span class="br0">&#41;</span></pre>
+
+<p>
+If you dont know which language codes are available you can search it with the following command:
+</p>
+<pre class="code bash">opkg list <span class="sy0">|</span> <span class="kw2">grep</span> luci-i18n-vnstat-<span class="sy0">*</span></pre>
+
+<p>
+An example to Install German Translation for LuCI Webgui:
+</p>
+<pre class="code bash">opkg update
+opkg <span class="kw2">install</span> luci-i18n-vnstat-de</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;LuCI Webgui Integration (optional)&quot;,&quot;hid&quot;:&quot;luci_webgui_integration_optional&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:4,&quot;range&quot;:&quot;533-1105&quot;} -->
+<h2 class="sectionedit5" id="configuring">Configuring</h2>
+<div class="level2">
+
+<p>
+The only configuring it really needs is to tell it what interface(s) to monitor, and some method of updating the database such as a cronjob. You might want to backup your database file. The vnstati package comes with a &#039;restore&#039; and init.d script that downloads the backup from a webserver upon reboot. Its up to you to chose how to backup/restore the data( via <abbr title="Hypertext Transfer Protocol">HTTP</abbr>/<abbr title="File Transfer Protocol">FTP</abbr>/<abbr title="Secure Shell">SSH</abbr>/ETC)
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuring&quot;,&quot;hid&quot;:&quot;configuring&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:5,&quot;range&quot;:&quot;1106-1510&quot;} -->
+<h3 class="sectionedit6" id="setup">Setup</h3>
+<div class="level3">
+<div class="table sectionedit7"><table class="inline">
+	<tr class="row0">
+		<td class="col0"> <img src="/_media/meta/icons/tango/dialog-information.png" class="media" loading="lazy" alt="" /> </td><td class="col1"> <strong>This step is required for vnStat to function.</strong> </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:7,&quot;range&quot;:&quot;1527-1634&quot;} -->
+<p>
+The common choice for monitoring is your <abbr title="Wide Area Network">WAN</abbr> interface. 
+</p>
+
+<p>
+First, you have to find out which is your <abbr title="Wide Area Network">WAN</abbr> Interface:
+</p>
+<pre class="code bash">. <span class="sy0">/</span>lib<span class="sy0">/</span>functions<span class="sy0">/</span>network.sh; <span class="kw1">if</span> network_get_device if_wan wan; <span class="kw1">then</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Your WAN Interface is: <span class="es2">$if_wan</span>&quot;</span>; <span class="kw1">else</span> <span class="kw3">echo</span> <span class="st0">&quot;Cant find a active WAN Connection, please activate it&quot;</span>; <span class="kw1">fi</span></pre>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> The interface must be active for the above command to work.  See ticket <a href="https://dev.openwrt.org/ticket/19116" class="urlextern" title="https://dev.openwrt.org/ticket/19116" rel="ugc nofollow">19116</a>.
+</p>
+
+<p>
+If you have an already activated <abbr title="Wide Area Network">WAN</abbr> connection, you will get the following output, for example:
+</p>
+
+<p>
+Your <abbr title="Wide Area Network">WAN</abbr> Interface is: pppoe-wan.
+Now edit <em class="u">/etc/vnstat.conf</em> with your favourite editor and change the following two Lines:
+</p>
+<pre class="code bash">Interface <span class="st0">&quot;pppoe-wan&quot;</span>
+MaxBandwidth <span class="nu0">1000</span></pre>
+
+<p>
+“Interface” is your <abbr title="Wide Area Network">WAN</abbr> Interface you found out above and “MaxBandwidth” is the max possible bandwidth (in mbit) speed.<br/>
+
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> MaxBandwidth must have the correct value, otherwise you will get wrong statistics from vnstat.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> MaxBandwidth means: How fast is your <abbr title="Wide Area Network">WAN</abbr> Interface at most. <em class="u">MaxBandwidth 1000 = 1000 Mbit</em> and <em class="u">MaxBandwidth 100 = 100 Mbit</em> ! It has nothing to do with your Internet speed !
+</p>
+
+<p>
+Then edit or create <em class="u">/etc/config/vnstat</em> and change (or add) the following lines:
+</p>
+<pre class="code bash">config vnstat
+        list interface <span class="st_h">'pppoe-wan'</span></pre>
+
+<p>
+<strong>Please Note:</strong> “pppoe-wan” is your <abbr title="Wide Area Network">WAN</abbr> Interface you found out above !
+</p>
+
+<p>
+Now you have to create the Database with this command:
+</p>
+<pre class="code bash">vnstat <span class="re5">-u</span> <span class="re5">-i</span> pppoe-wan</pre>
+
+<p>
+<strong>Hint:</strong> vnStat normally uses “IEC prefixes” (MiB, GiB and so on). If you want old binary prefixes (<abbr title="Megabyte">MB</abbr>, <abbr title="Gigabyte">GB</abbr>) change the following in <em class="u">/etc/vnstat.conf</em> : <code>UnitMode 1</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Setup&quot;,&quot;hid&quot;:&quot;setup&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:6,&quot;range&quot;:&quot;1511-3279&quot;} -->
+<h3 class="sectionedit8" id="database_updating">Database Updating</h3>
+<div class="level3">
+<div class="table sectionedit9"><table class="inline">
+	<tr class="row0">
+		<td class="col0"> <img src="/_media/meta/icons/tango/dialog-information.png" class="media" loading="lazy" alt="" /> </td><td class="col1"> <strong>This step is required for vnStat to function.</strong> The package doesn&#039;t setup database updating at all. Its up to you to configure when vnStat will update. Use the daemon or a cron job. </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table1&quot;,&quot;secid&quot;:9,&quot;range&quot;:&quot;3308-3549&quot;} -->
+</div>
+
+<h4 id="using_included_daemon">Using included daemon:</h4>
+<div class="level4">
+
+<p>
+Edit <em class="u">/etc/vnstat.conf</em> and search for “UpdateInterval”. Change “UpdateInterval” to the following: <code>UpdateInterval 300</code>.
+</p>
+
+<p>
+UpdateInterval tells the daemon to update the Database every 300 seconds (5 minutes). If you want another Interval you can change it for your needs.
+</p>
+
+<p>
+Run these commands to enable the daemon. This will also auto start the daemon if you reboot your device:
+</p>
+<pre class="code bash"><span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>vnstat <span class="kw3">enable</span>
+<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>vnstat start</pre>
+<div class="table sectionedit10"><table class="inline">
+	<tr class="row0">
+		<td class="col0"> <img src="/_media/meta/icons/tango/dialog-error.png" class="media" loading="lazy" alt="" /> </td><td class="col1"> <strong><code>/etc/config/vnstat</code></strong> is the database restore config, <em class="u">not the vnstatd config.</em> vnstatd config is also located at <strong><code>/etc/vnstat.conf</code></strong> </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table2&quot;,&quot;secid&quot;:10,&quot;range&quot;:&quot;4033-4230&quot;} -->
+<p>
+This same init.d script will automatically download a database backup if you configured <code>/etc/config/vnstat</code> corrrectly. Useful for recovering db after a router reboot. Down side is that there is no implemented upload method using the uci config. You will need to write a script that cron will run to do all the uploading, so why not use the same protocol for downloading too? I suggest rsync, ftp, or scp.
+</p>
+
+</div>
+
+<h4 id="using_a_cronjob">Using a cronjob</h4>
+<div class="level4">
+
+<p>
+Update the crontab:
+</p>
+<pre class="code bash"><span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>crontabs<span class="sy0">/</span>root
+<span class="sy0">*/</span><span class="nu0">5</span> <span class="sy0">*</span> <span class="sy0">*</span> <span class="sy0">*</span> <span class="sy0">*</span> vnstat <span class="re5">-u</span>
+EOF
+<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>cron restart</pre>
+<div class="table sectionedit11"><table class="inline">
+	<tr class="row0">
+		<td class="col0"> <img src="/_media/meta/icons/tango/dialog-error.png" class="media" loading="lazy" alt="" /> </td><td class="col1"> <strong>I don&#039;t recommend using crontab to update the vnStat Database.</strong><br/>
+Because if you update the Database with cron you will get weird statistics like: 16777216.00 TiB in one day.<br/>
+<br/>
+See: <a href="https://bugzilla.redhat.com/show_bug.cgi?id=711383" class="urlextern" title="https://bugzilla.redhat.com/show_bug.cgi?id=711383" rel="ugc nofollow">https://bugzilla.redhat.com/show_bug.cgi?id=711383</a> </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table3&quot;,&quot;secid&quot;:11,&quot;range&quot;:&quot;4793-5083&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Database Updating&quot;,&quot;hid&quot;:&quot;database_updating&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:8,&quot;range&quot;:&quot;3280-5084&quot;} -->
+<h3 class="sectionedit12" id="image_generation">Image Generation</h3>
+<div class="level3">
+
+<p>
+You can install webif and it will generate images. But thats not lightweight so RealOpty developed scripts based off webif code that will generate the images without webif.
+</p>
+
+<p>
+You might want to setup a crontab to execute this script every 15 min.
+</p>
+
+<p>
+I always output the images to the tmpfs so it dont always write to flash.
+</p>
+<pre class="code bash"><span class="co0">#!/bin/sh</span>
+<span class="co0"># vnstati image generation script.</span>
+<span class="co0"># Source: http://code.google.com/p/x-wrt/source/browse/trunk/package/webif/files/www/cgi-bin/webif/graphs-vnstat.sh</span>
+&nbsp;
+<span class="re2">WWW_D</span>=<span class="sy0">/</span>tmp<span class="sy0">/</span>www<span class="sy0">/</span>vnstat <span class="co0"># output images to here</span>
+<span class="re2">LIB_D</span>=<span class="sy0">/</span>var<span class="sy0">/</span>lib<span class="sy0">/</span>vnstat <span class="co0"># db location</span>
+<span class="re2">BIN</span>=<span class="sy0">/</span>usr<span class="sy0">/</span>bin<span class="sy0">/</span>vnstati  <span class="co0"># which vnstati</span>
+&nbsp;
+<span class="re2">outputs</span>=<span class="st0">&quot;s h d t m&quot;</span>   <span class="co0"># what images to generate</span>
+&nbsp;
+<span class="co0"># Sanity checks</span>
+<span class="br0">&#91;</span> <span class="re5">-d</span> <span class="st0">&quot;<span class="es2">$WWW_D</span>&quot;</span> <span class="br0">&#93;</span> <span class="sy0">||</span> <span class="kw2">mkdir</span> <span class="re5">-p</span> <span class="st0">&quot;<span class="es2">$WWW_D</span>&quot;</span> <span class="co0"># make the folder if it dont exist.</span>
+&nbsp;
+<span class="co0"># You might want to setup a link if it dont exist.</span>
+<span class="co0"># [ -L /www/vnstat ] || ln -sf /www/vnstat /tmp/www/</span>
+&nbsp;
+<span class="co0"># End of config changes</span>
+<span class="re2">interfaces</span>=<span class="st0">&quot;<span class="es4">$(ls -1 $LIB_D)</span>&quot;</span>
+&nbsp;
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-z</span> <span class="st0">&quot;<span class="es2">$interfaces</span>&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;No database found, nothing to do.&quot;</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;A new database can be created with the following command: &quot;</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;    vnstat -u -i eth0&quot;</span>
+    <span class="kw3">exit</span> <span class="nu0">0</span>
+<span class="kw1">else</span>
+    <span class="kw1">for</span> interface <span class="kw1">in</span> <span class="re1">$interfaces</span>; <span class="kw1">do</span>
+        <span class="kw1">for</span> output <span class="kw1">in</span> <span class="re1">$outputs</span>; <span class="kw1">do</span>
+            <span class="re1">$BIN</span> -<span class="co1">${output}</span> <span class="re5">-i</span> <span class="re1">$interface</span> <span class="re5">-o</span> <span class="re1">$WWW_D</span><span class="sy0">/</span>vnstat_<span class="co1">${interface}</span>_<span class="co1">${output}</span>.png
+        <span class="kw1">done</span>
+    <span class="kw1">done</span>
+<span class="kw1">fi</span>
+&nbsp;
+<span class="kw3">exit</span> <span class="nu0">1</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Image Generation&quot;,&quot;hid&quot;:&quot;image_generation&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:12,&quot;range&quot;:&quot;5085-6420&quot;} -->
+<h3 class="sectionedit13" id="sample_html">Sample HTML</h3>
+<div class="level3">
+<pre class="code html4strict"><span class="sc2">&lt;<a href="http://december.com/html/4/element/meta.html"><span class="kw2">META</span></a> <span class="kw3">HTTP-EQUIV</span><span class="sy0">=</span><span class="st0">&quot;refresh&quot;</span> <span class="kw3">CONTENT</span><span class="sy0">=</span><span class="st0">&quot;300&quot;</span>&gt;</span>
+<span class="sc2">&lt;<a href="http://december.com/html/4/element/html.html"><span class="kw2">html</span></a>&gt;</span>
+  <span class="sc2">&lt;<a href="http://december.com/html/4/element/head.html"><span class="kw2">head</span></a>&gt;</span>
+    <span class="sc2">&lt;<a href="http://december.com/html/4/element/title.html"><span class="kw2">title</span></a>&gt;</span>Traffic of Interface eth1<span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/title.html"><span class="kw2">title</span></a>&gt;</span>
+  <span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/head.html"><span class="kw2">head</span></a>&gt;</span>
+  <span class="sc2">&lt;<a href="http://december.com/html/4/element/body.html"><span class="kw2">body</span></a>&gt;</span>
+    <span class="sc2">&lt;<a href="http://december.com/html/4/element/h2.html"><span class="kw2">h2</span></a>&gt;</span>Traffic of Interface eth1<span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/h2.html"><span class="kw2">h2</span></a>&gt;</span>
+    <span class="sc2">&lt;<a href="http://december.com/html/4/element/table.html"><span class="kw2">table</span></a>&gt;</span>
+        <span class="sc2">&lt;<a href="http://december.com/html/4/element/tbody.html"><span class="kw2">tbody</span></a>&gt;</span>
+            <span class="sc2">&lt;<a href="http://december.com/html/4/element/tr.html"><span class="kw2">tr</span></a>&gt;</span>
+                <span class="sc2">&lt;<a href="http://december.com/html/4/element/td.html"><span class="kw2">td</span></a>&gt;</span>
+                    <span class="sc2">&lt;<a href="http://december.com/html/4/element/img.html"><span class="kw2">img</span></a> <span class="kw3">src</span><span class="sy0">=</span><span class="st0">&quot;vnstat_eth1_s.png&quot;</span> <span class="kw3">alt</span><span class="sy0">=</span><span class="st0">&quot;eth1 Summary&quot;</span> <span class="sy0">/</span>&gt;</span>
+                <span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/td.html"><span class="kw2">td</span></a>&gt;</span>
+                <span class="sc2">&lt;<a href="http://december.com/html/4/element/td.html"><span class="kw2">td</span></a>&gt;</span>
+&nbsp;
+                    <span class="sc2">&lt;<a href="http://december.com/html/4/element/img.html"><span class="kw2">img</span></a> <span class="kw3">src</span><span class="sy0">=</span><span class="st0">&quot;vnstat_eth1_h.png&quot;</span> <span class="kw3">alt</span><span class="sy0">=</span><span class="st0">&quot;eth1 Hourly&quot;</span> <span class="sy0">/</span>&gt;</span>
+                <span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/td.html"><span class="kw2">td</span></a>&gt;</span>
+            <span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/tr.html"><span class="kw2">tr</span></a>&gt;</span>
+            <span class="sc2">&lt;<a href="http://december.com/html/4/element/tr.html"><span class="kw2">tr</span></a>&gt;</span>
+                <span class="sc2">&lt;<a href="http://december.com/html/4/element/td.html"><span class="kw2">td</span></a> <span class="kw3">valign</span><span class="sy0">=</span><span class="st0">&quot;top&quot;</span>&gt;</span>
+                    <span class="sc2">&lt;<a href="http://december.com/html/4/element/img.html"><span class="kw2">img</span></a> <span class="kw3">src</span><span class="sy0">=</span><span class="st0">&quot;vnstat_eth1_d.png&quot;</span> <span class="kw3">alt</span><span class="sy0">=</span><span class="st0">&quot;eth1 Daily&quot;</span> <span class="sy0">/</span>&gt;</span>
+                <span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/td.html"><span class="kw2">td</span></a>&gt;</span>
+                <span class="sc2">&lt;<a href="http://december.com/html/4/element/td.html"><span class="kw2">td</span></a> <span class="kw3">valign</span><span class="sy0">=</span><span class="st0">&quot;top&quot;</span>&gt;</span>
+                    <span class="sc2">&lt;<a href="http://december.com/html/4/element/img.html"><span class="kw2">img</span></a> <span class="kw3">src</span><span class="sy0">=</span><span class="st0">&quot;vnstat_eth1_t.png&quot;</span> <span class="kw3">alt</span><span class="sy0">=</span><span class="st0">&quot;eth1 Top 10&quot;</span> <span class="sy0">/</span>&gt;</span>
+                    <span class="sc2">&lt;<a href="http://december.com/html/4/element/br.html"><span class="kw2">br</span></a> <span class="sy0">/</span>&gt;</span>
+                    <span class="sc2">&lt;<a href="http://december.com/html/4/element/img.html"><span class="kw2">img</span></a> <span class="kw3">src</span><span class="sy0">=</span><span class="st0">&quot;vnstat_eth1_m.png&quot;</span> <span class="kw3">alt</span><span class="sy0">=</span><span class="st0">&quot;eth1 Monthly&quot;</span> <span class="sy0">/</span>&gt;</span>
+                <span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/td.html"><span class="kw2">td</span></a>&gt;</span>
+            <span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/tr.html"><span class="kw2">tr</span></a>&gt;</span>
+        <span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/tbody.html"><span class="kw2">tbody</span></a>&gt;</span>
+    <span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/table.html"><span class="kw2">table</span></a>&gt;</span>
+  <span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/body.html"><span class="kw2">body</span></a>&gt;</span>
+<span class="sc2">&lt;<span class="sy0">/</span><a href="http://december.com/html/4/element/html.html"><span class="kw2">html</span></a>&gt;</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Sample HTML&quot;,&quot;hid&quot;:&quot;sample_html&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:13,&quot;range&quot;:&quot;6421-7347&quot;} -->
+<h3 class="sectionedit14" id="persistent_stats">Persistent stats</h3>
+<div class="level3">
+
+<p>
+vnStat stores stats to /var/lib/vnstat by default and information will not persist across restarts. This means that one might want to relocate the database directory to other forms of persistent storage like your device&#039;s flash or external thumb drives.
+</p>
+
+<p>
+By default, vnStat is configured to write to the directory in volatile memory every 30 minutes. Both the directory and the interval can be adjusted in vnStat&#039;s configuration. However, keep in mind that frequent writes to flash memory will deteriorate and potentially damage flash memory. Changing the directory to write to flash memory without changing the interval will result in around 17500 write operations each year, a number that could potentially cause problems.
+</p>
+
+<p>
+Additionally, the database may not persist across firmware flashes.
+</p>
+
+</div>
+
+<h4 id="method_1">Method 1</h4>
+<div class="level4">
+
+<p>
+To store the database on the thumb drive, ensure that <a href="/docs/guide-user/storage/usb-drives" class="wikilink1" title="docs:guide-user:storage:usb-drives" data-wiki-id="docs:guide-user:storage:usb-drives">usb-drives</a> is working. Then, edit DatabaseDir in /etc/vnstat.conf to point to your flash drive, you may also want to modify SaveInterval to a larger value (the default 30min is still a good value) to minimise writes to flash.
+</p>
+
+</div>
+
+<h4 id="method_2">Method 2</h4>
+<div class="level4">
+
+<p>
+This method automatically backs up the vnStat database to flash memory as <strong>/etc/vnstat_backup.tar.gz</strong> on router shutdown and restores it on startup. Note that this cannot work when the router unexpectedly loses power (unplugging, turning off a hardware power switch, power outage). You can use a cronjob to backup in regular intervals while the router is running.
+</p>
+
+</div>
+
+<h5 id="script">Script</h5>
+<div class="level5">
+<pre class="code bash"><span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>vnstat_backup
+<span class="co0">#!/bin/sh /etc/rc.common</span>
+&nbsp;
+<span class="re2">EXTRA_COMMANDS</span>=<span class="st0">&quot;backup restore&quot;</span>
+<span class="re2">EXTRA_HELP</span>=<span class="co2">&lt;&lt;EOI
+        backup  Backup vnstat database
+        restore Restore vnstat database
+EOI</span>
+&nbsp;
+<span class="re2">START</span>=<span class="nu0">98</span>
+<span class="re2">STOP</span>=<span class="nu0">10</span>
+&nbsp;
+vnstat_option<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+	<span class="kw2">sed</span> <span class="re5">-ne</span> <span class="st0">&quot;s/^[[:space:]]*$1[[:space:]]*['<span class="es1">\&quot;</span>]\([^'<span class="es1">\&quot;</span>]*\)['<span class="es1">\&quot;</span>].*/\1/p&quot;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>vnstat.conf
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="re2">BACKUP_FILE</span>=<span class="sy0">/</span>etc<span class="sy0">/</span>vnstat_backup.tar.gz
+<span class="re2">LOGGER_TAG</span>=vnstat_backup
+<span class="re2">VNSTAT_DIR</span>=<span class="st0">&quot;<span class="es4">$(vnstat_option DatabaseDir)</span>&quot;</span>
+&nbsp;
+backup_database<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+	<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="sy0">!</span> <span class="re5">-d</span> <span class="re1">$VNSTAT_DIR</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+		logger <span class="re5">-t</span> <span class="re1">$LOGGER_TAG</span> <span class="re5">-p</span> err <span class="st0">&quot;cannot backup, data directory <span class="es2">$VNSTAT_DIR</span> does not exist (yet)&quot;</span>
+	<span class="kw1">else</span>
+		logger <span class="re5">-t</span> <span class="re1">$LOGGER_TAG</span> <span class="re5">-p</span> info <span class="st0">&quot;backing up database&quot;</span>
+		<span class="sy0">/</span>bin<span class="sy0">/</span><span class="kw2">tar</span> <span class="re5">-zcf</span> <span class="re1">$BACKUP_FILE</span> <span class="re5">-C</span> <span class="re1">$VNSTAT_DIR</span> .
+	<span class="kw1">fi</span>
+<span class="br0">&#125;</span>
+&nbsp;
+restore_database<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+	<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="sy0">!</span> <span class="re5">-f</span> <span class="re1">$BACKUP_FILE</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+		logger <span class="re5">-t</span> <span class="re1">$LOGGER_TAG</span> <span class="re5">-p</span> err <span class="st0">&quot;cannot restore, backup file does not exist (yet)&quot;</span>
+	<span class="kw1">else</span>
+		logger <span class="re5">-t</span> <span class="re1">$LOGGER_TAG</span> <span class="re5">-p</span> info <span class="st_h">'restoring database'</span>
+		<span class="br0">&#91;</span> <span class="sy0">!</span> <span class="re5">-d</span> <span class="re1">$VNSTAT_DIR</span> <span class="br0">&#93;</span> <span class="sy0">&amp;&amp;</span> <span class="kw2">mkdir</span> <span class="re1">$VNSTAT_DIR</span>
+		<span class="sy0">/</span>bin<span class="sy0">/</span><span class="kw2">tar</span> <span class="re5">-xzf</span> <span class="re1">$BACKUP_FILE</span> <span class="re5">-C</span> <span class="re1">$VNSTAT_DIR</span>
+	<span class="kw1">fi</span>
+<span class="br0">&#125;</span>
+&nbsp;
+start<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+	restore_database
+<span class="br0">&#125;</span>
+&nbsp;
+stop<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+	backup_database
+<span class="br0">&#125;</span>
+&nbsp;
+backup<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+	backup_database
+<span class="br0">&#125;</span>
+&nbsp;
+restore<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+	restore_database
+<span class="br0">&#125;</span>
+EOF
+<span class="kw2">chmod</span> +x <span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>vnstat_backup
+<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>vnstat_backup <span class="kw3">enable</span></pre>
+
+<p>
+And for good measure, create an initial backup:
+</p>
+<pre class="code bash"><span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>vnstat_backup backup</pre>
+
+</div>
+
+<h5 id="add_for_cron_and_for_init">Add for cron and for init</h5>
+<div class="level5">
+
+<p>
+The below commands will add a cronjob entry that triggers a backup every 6 hours every day, if necessary adjust to an interval you feel comfortable with:
+</p>
+<pre class="code bash"><span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>crontabs<span class="sy0">/</span>root
+<span class="nu0">0</span> <span class="sy0">*/</span><span class="nu0">6</span> <span class="sy0">*</span> <span class="sy0">*</span> <span class="sy0">*</span> <span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>vnstat_backup backup
+EOF
+<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>cron restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Persistent stats&quot;,&quot;hid&quot;:&quot;persistent_stats&quot;,&quot;codeblockOffset&quot;:13,&quot;secid&quot;:14,&quot;range&quot;:&quot;7348-&quot;} -->

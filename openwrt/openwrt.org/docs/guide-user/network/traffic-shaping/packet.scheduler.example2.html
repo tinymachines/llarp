@@ -1,0 +1,32 @@
+
+<h1 class="sectionedit1" id="example2plain_simple_bandwidthtraffic_sharing_with_htb">Example2: plain simple bandwidth/traffic sharing with HTB</h1>
+<div class="level1">
+<pre class="code bash"><span class="co0">#!/bin/sh</span>
+<span class="co0"># We have 1000kbit upload and want to guarantee each user a certain amount of it.</span>
+<span class="co0"># If one user does not use its full quota, the unused quota get evenly distributed amongst the other users.</span>
+&nbsp;
+<span class="co0"># Variables</span>
+<span class="re2">IF_DSL</span>=pppoe-dsl
+<span class="re2">TC</span>=$<span class="br0">&#40;</span><span class="kw2">which</span> tc<span class="br0">&#41;</span>
+<span class="re2">IPT</span>=$<span class="br0">&#40;</span><span class="kw2">which</span> iptables<span class="br0">&#41;</span>
+<span class="re2">IPTMOD</span>=<span class="st0">&quot;<span class="es2">$IPT</span> -t mangle -A POSTROUTING -o <span class="es2">$IF_DSL</span>&quot;</span>
+<span class="re2">IP_USER1</span>=10.0.0.1
+<span class="re2">IP_USER2</span>=10.0.0.2
+<span class="re2">IP_USER3</span>=10.0.0.3
+<span class="re2">IP_USER4</span>=10.0.0.4
+&nbsp;
+insmod sch_htb
+&nbsp;
+<span class="re1">$TC</span> qdisc add dev <span class="re1">$IF_DSL</span> root       handle <span class="nu0">1</span>:    htb default <span class="nu0">40</span>
+<span class="re1">$TC</span> class add dev <span class="re1">$IF_DSL</span> parent <span class="nu0">1</span>:  classid <span class="nu0">1</span>:<span class="nu0">1</span>  htb rate 1000kbit
+<span class="re1">$TC</span> class add dev <span class="re1">$IF_DSL</span> parent <span class="nu0">1</span>:<span class="nu0">1</span> classid <span class="nu0">1</span>:<span class="nu0">10</span> htb rate 250kbit <span class="co0">#-- 25% to user1</span>
+<span class="re1">$TC</span> class add dev <span class="re1">$IF_DSL</span> parent <span class="nu0">1</span>:<span class="nu0">1</span> classid <span class="nu0">1</span>:<span class="nu0">20</span> htb rate 250kbit <span class="co0">#-- 25% to user2</span>
+<span class="re1">$TC</span> class add dev <span class="re1">$IF_DSL</span> parent <span class="nu0">1</span>:<span class="nu0">1</span> classid <span class="nu0">1</span>:<span class="nu0">30</span> htb rate 350kbit <span class="co0">#-- 35% to user3</span>
+<span class="re1">$TC</span> class add dev <span class="re1">$IF_DSL</span> parent <span class="nu0">1</span>:<span class="nu0">1</span> classid <span class="nu0">1</span>:<span class="nu0">40</span> htb rate 150kbit <span class="co0">#-- 15% to user4</span>
+&nbsp;
+<span class="re1">$IPTMOD</span> <span class="re5">-s</span> <span class="re1">$IP_USER1</span> <span class="re5">-j</span> CLASSIFY <span class="re5">--set-class</span> <span class="nu0">1</span>:<span class="nu0">10</span>
+<span class="re1">$IPTMOD</span> <span class="re5">-s</span> <span class="re1">$IP_USER2</span> <span class="re5">-j</span> CLASSIFY <span class="re5">--set-class</span> <span class="nu0">1</span>:<span class="nu0">20</span>
+<span class="re1">$IPTMOD</span> <span class="re5">-s</span> <span class="re1">$IP_USER3</span> <span class="re5">-j</span> CLASSIFY <span class="re5">--set-class</span> <span class="nu0">1</span>:<span class="nu0">30</span>
+<span class="re1">$IPTMOD</span> <span class="re5">-s</span> <span class="re1">$IP_USER4</span> <span class="re5">-j</span> CLASSIFY <span class="re5">--set-class</span> <span class="nu0">1</span>:<span class="nu0">40</span></pre>
+
+</div>

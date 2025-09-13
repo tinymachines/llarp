@@ -1,0 +1,297 @@
+
+<h1 class="sectionedit1" id="umdns_for_local_device_discovery">umdns for Local Device Discovery</h1>
+<div class="level1">
+
+<p>
+The <a href="/packages/pkgdata/umdns" class="wikilink1" title="packages:pkgdata:umdns" data-wiki-id="packages:pkgdata:umdns">umdns</a> package creates a local <abbr title="Domain Name System">DNS</abbr> name for your router. When <code>umdns</code> is installed, the router and all its services are available using the name <em>hostname.local</em> instead of requiring the router&#039;s <abbr title="Internet Protocol">IP</abbr> address. 
+</p>
+
+<p>
+<code>umdns</code> relies on mDNS (“multicast <abbr title="Domain Name System">DNS</abbr>”) also known as Bonjour, zero-configuration networking (ZeroConf) or <abbr title="Domain Name System">DNS</abbr> Service Discovery (<abbr title="Domain Name System">DNS</abbr>-SD). mDNS enables automatic discovery of computers, devices, and services on the local network. It is an internet standard documented in <a href="https://tools.ietf.org/html/rfc6762" class="urlextern" title="https://tools.ietf.org/html/rfc6762" rel="ugc nofollow">RFC6762</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;umdns for Local Device Discovery&quot;,&quot;hid&quot;:&quot;umdns_for_local_device_discovery&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-610&quot;} -->
+<h2 class="sectionedit2" id="installation">Installation</h2>
+<div class="level2">
+
+<p>
+The <a href="/packages/pkgdata/umdns" class="wikilink1" title="packages:pkgdata:umdns" data-wiki-id="packages:pkgdata:umdns">umdns</a> package provides a compact implementation of this standard, well integrated with the OpenWrt system environment. It requires no configuration to work “right out of the box”. <code>umdns</code> is available using LuCI web interface, or with <code>opkg install umdns</code> (OpenWRT 17 and later).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation&quot;,&quot;hid&quot;:&quot;installation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;611-945&quot;} -->
+<h3 class="sectionedit3" id="configuration">Configuration</h3>
+<div class="level3">
+
+<p>
+<strong>I NEED HELP NAILING DOWN THE DEFAULT, AND THE CORRECT DESCRIPTION OF ALL THE FOLLOWING LINES</strong>
+</p>
+
+<p>
+<strong>Hostname:</strong> <code>umdns</code> advertises the hostname that is present in <code>/etc/config/system</code>. 
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-developer/mdns?codeblock=0" title="Download Snippet" class="mediafile mf_">/etc/config/system</a></dt>
+<dd><pre class="code bash">option <span class="kw2">hostname</span> <span class="st_h">'your_openwrt_device'</span>      <span class="co0"># sets the mDNS name to your_openwrt_device.local</span></pre>
+</dd></dl>
+
+<p>
+<strong>Local domain:</strong> OpenWrt uses <code>.lan</code> by default. There is an <a href="https://forum.openwrt.org/t/use-home-arpa-as-default-tld-for-local-network/165056/" class="urlextern" title="https://forum.openwrt.org/t/use-home-arpa-as-default-tld-for-local-network/165056/" rel="ugc nofollow">ongoing discussion</a> about the proper suffix for the local domain - <code>.local</code>, <code>.lan</code>, or even <code>.home.arpa</code>. Choose one, and everything in your network will interoperate.
+</p>
+
+<p>
+Configure the local domain in LuCI in the <strong>Network → <abbr title="Domain Name System">DNS</abbr> and <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr></strong> in the <strong>Local domain</strong> field, or by editing <code>/etc/config/dhcp</code>.
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-developer/mdns?codeblock=1" title="Download Snippet" class="mediafile mf_">/etc/config/dhcp</a></dt>
+<dd><pre class="code bash">config dnsmasq
+	...
+	option <span class="kw3">local</span> <span class="st_h">'/lan/'</span>
+	option domain <span class="st_h">'lan'</span>
+	...</pre>
+</dd></dl>
+
+<p>
+<strong>umdns configuration:</strong> <code>umdns</code> has its own configuration file. 
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-developer/mdns?codeblock=2" title="Download Snippet" class="mediafile mf_">/etc/config/umdns</a></dt>
+<dd><pre class="code bash">config umdns
+	option jail <span class="nu0">1</span> <span class="co0"># enables jail - see procd</span>
+	list network lan
+	list network dmz <span class="co0"># Provides visibility into both networks, but does not act as a repeater</span></pre>
+</dd></dl>
+
+<p>
+<strong>Notes:</strong>
+</p>
+<ul>
+<li class="level1"><div class="li"> The <code>option jail</code> <strong>DOES WHAT?</strong></div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> The <code>list network</code> lines indicate the interfaces where <code>umdns</code> advertises its names. The interface name is found from <code>/etc/config/network</code>, not the device name shown by <code>ifconfig</code>. So if the network configuration file contains <code>config interface &#039;vlan1&#039;</code> in your <code>/etc/config/network</code>, use <code>vlan1</code>. To test for the correct name name use <code>ifstatus</code>. </div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> It is considered unsafe to enable umdns on <code>wan</code> interface because it makes those hosts more visible to the external world.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;946-2718&quot;} -->
+<h3 class="sectionedit4" id="firewall">Firewall</h3>
+<div class="level3">
+
+<p>
+mDNS requires <abbr title="User Datagram Protocol">UDP</abbr> port 5353. If you choose to advertise on <code>wan</code> (see security warning above) or other networks, open that port in the firewall:
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-developer/mdns?codeblock=3" title="Download Snippet" class="mediafile mf_">/etc/config/firewall</a></dt>
+<dd><pre class="code bash">config rule
+        option src_port <span class="st_h">'5353'</span>
+        option src <span class="st_h">'*'</span>
+        option name <span class="st_h">'Allow-mDNS'</span>
+        option target <span class="st_h">'ACCEPT'</span>
+        option dest_ip <span class="st_h">'224.0.0.251'</span>
+        option dest_port <span class="st_h">'5353'</span>
+        option proto <span class="st_h">'udp'</span></pre>
+</dd></dl>
+
+<p>
+To configure from <abbr title="Graphical User Interface">GUI</abbr> see “Firewall rules” section of <a href="https://blog.christophersmart.com/2020/03/30/resolving-mdns-across-vlans-with-avahi-on-openwrt/" class="urlextern" title="https://blog.christophersmart.com/2020/03/30/resolving-mdns-across-vlans-with-avahi-on-openwrt/" rel="ugc nofollow">Resolving mDNS across VLANs with Avahi on OpenWRT</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Firewall&quot;,&quot;hid&quot;:&quot;firewall&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:4,&quot;range&quot;:&quot;2719-3357&quot;} -->
+<h3 class="sectionedit5" id="mdns_alternatives">mDNS Alternatives</h3>
+<div class="level3">
+
+<p>
+As noted above, the <a href="/packages/pkgdata/umdns" class="wikilink1" title="packages:pkgdata:umdns" data-wiki-id="packages:pkgdata:umdns">umdns</a> package works well with the OpenWrt system environment, and is suitable for most straightforward environments.
+</p>
+
+<p>
+If you know you need additional capabilities, there are several other packages that can provide mDNS services. They are described on the <a href="/docs/guide-user/network/zeroconfig/zeroconf" class="wikilink1" title="docs:guide-user:network:zeroconfig:zeroconf" data-wiki-id="docs:guide-user:network:zeroconfig:zeroconf">Zero configuration networking in OpenWrt</a> page.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;mDNS Alternatives&quot;,&quot;hid&quot;:&quot;mdns_alternatives&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:5,&quot;range&quot;:&quot;3358-3777&quot;} -->
+<h2 class="sectionedit6" id="for_developers">For Developers</h2>
+<div class="level2">
+
+<p>
+The following information is useful if you are developing a service that uses mDNS.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;For Developers&quot;,&quot;hid&quot;:&quot;for_developers&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:6,&quot;range&quot;:&quot;3778-3890&quot;} -->
+<h3 class="sectionedit7" id="browsing_announced_services">Browsing announced services</h3>
+<div class="level3">
+
+<p>
+Almost all interaction with the daemon is via <a href="/docs/guide-developer/ubus" class="wikilink1" title="docs:guide-developer:ubus" data-wiki-id="docs:guide-developer:ubus">ubus</a>.
+</p>
+<pre class="code">$ ubus call umdns update
+# wait a second or two
+$ ubus call umdns browse
+# big json dump example...
+        ....
+	&quot;_printer._tcp&quot;: {
+		&quot;HP\\032Color\\032LaserJet\\032CP2025dn\\032(28A6CC)&quot;: {
+			&quot;port&quot;: 515,
+			&quot;txt&quot;: &quot;txtvers=1&quot;,
+			&quot;txt&quot;: &quot;qtotal=1&quot;,
+			&quot;txt&quot;: &quot;rp=RAW&quot;,
+			&quot;txt&quot;: &quot;ty=HP Color LaserJet CP2025dn&quot;,
+			&quot;txt&quot;: &quot;product=(HP Color LaserJet CP2025dn)&quot;,
+			&quot;txt&quot;: &quot;priority=50&quot;,
+			&quot;txt&quot;: &quot;adminurl=http:\/\/NPI28A6CC.local.&quot;,
+			&quot;txt&quot;: &quot;Transparent=T&quot;,
+			&quot;txt&quot;: &quot;Binary=T&quot;,
+			&quot;txt&quot;: &quot;TBCP=T&quot;
+		},
+		&quot;HP\\032LaserJet\\032P3010\\032Series\\032[46A14F]&quot;: {
+			&quot;port&quot;: 515,
+			&quot;txt&quot;: &quot;txtvers=1&quot;,
+			&quot;txt&quot;: &quot;qtotal=4&quot;,
+			&quot;txt&quot;: &quot;rp=RAW&quot;,
+			&quot;txt&quot;: &quot;pdl=application\/postscript,application\/vnd.hp-PCL,application\/vnd.hp-PCLXL&quot;,
+			&quot;txt&quot;: &quot;ty=HP LaserJet P3010 Series&quot;,
+			&quot;txt&quot;: &quot;product=(HP LaserJet P3010 Series)&quot;,
+			&quot;txt&quot;: &quot;usb_MFG=Hewlett-Packard&quot;,
+			&quot;txt&quot;: &quot;usb_MDL=HP LaserJet P3010 Series&quot;,
+			&quot;txt&quot;: &quot;priority=52&quot;,
+			&quot;txt&quot;: &quot;adminurl=http:\/\/NPI46A14F.local.&quot;
+      },
+   ....
+$ ubus call umdns hosts 
+#Show hosts discovered via mDns
+        &quot;SteakPrinter.local&quot;: {
+                &quot;ipv4&quot;: &quot;192.168.1.159&quot;
+        },
+        &quot;Upstairs.local&quot;: {
+                &quot;ipv4&quot;: &quot;192.168.1.151&quot;
+        },</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Browsing announced services&quot;,&quot;hid&quot;:&quot;browsing_announced_services&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:7,&quot;range&quot;:&quot;3891-5242&quot;} -->
+<h3 class="sectionedit8" id="issuesbugs">Issues/Bugs</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> <abbr title="Internet Protocol">IP</abbr> addresses are missing.</div>
+</li>
+<li class="level1"><div class="li"> TXT records aren&#039;t valid json in the dump, so jsonfilter can&#039;t be used.</div>
+</li>
+<li class="level1"><div class="li"> How long is data cached? What causes it to update? No idea.</div>
+</li>
+<li class="level1"><div class="li"> You may not see locally advertised services with <code>ubus call umdns browse</code>. See the <a href="https://forum.openwrt.org/t/how-to-announce-service-with-umdns/5029/7" class="urlextern" title="https://forum.openwrt.org/t/how-to-announce-service-with-umdns/5029/7" rel="ugc nofollow">discussion</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Issues\/Bugs&quot;,&quot;hid&quot;:&quot;issuesbugs&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:8,&quot;range&quot;:&quot;5243-5610&quot;} -->
+<h3 class="sectionedit9" id="announcing_local_services">Announcing local services</h3>
+<div class="level3">
+
+<p>
+The umdns scans all the services listed in ubus (<code>ubus call service list</code>) and looks for <code>mdns</code> objects in their data object. You can view this more selectively for example with:
+</p>
+<pre class="code"># ubus call service list | jsonfilter -e &quot;$[*][&#039;instances&#039;][*][&#039;data&#039;][&#039;mdns&#039;]&quot;
+{ &quot;ssh_22&quot;: { &quot;service&quot;: &quot;_ssh._tcp.local&quot;, &quot;port&quot;: 22, &quot;txt&quot;: [ &quot;daemon=dropbear&quot; ] } }</pre>
+
+<p>
+Here we can see that ssh is being advertised locally.
+</p>
+
+<p>
+If you want to advertise your own service, your service needs to be a <a href="/docs/guide-developer/procd" class="wikilink1" title="docs:guide-developer:procd" data-wiki-id="docs:guide-developer:procd">procd</a> managed service. You can use the <code>procd_add_mdns</code> call to provide a basic definition.
+</p>
+<pre class="code">procd_open_instance
+....
+procd_add_mdns &lt;service&gt; &lt;proto&gt; &lt;port&gt; [&lt;textkey=textvalue&gt; ... ]
+...
+procd_close_instance</pre>
+
+<p>
+As an example, the following call
+</p>
+<pre class="code bash">procd_add_mdns <span class="st0">&quot;webdav&quot;</span> <span class="st0">&quot;tcp&quot;</span> <span class="st0">&quot;80&quot;</span> <span class="st0">&quot;path=/nextcloud/remote.php/dav/files/YOUR_USER/&quot;</span> <span class="st0">&quot;u=YOUR_USER&quot;</span></pre>
+
+<p>
+advertises <code>_webdav._tcp.local</code> with two text records.
+In the example we published a WebDAV folder from Nextcloud and now it can be seen in Network folder of a file manager in GNOME and KDE and can be <a href="https://kodi.wiki/view/Avahi_Zeroconf" class="urlextern" title="https://kodi.wiki/view/Avahi_Zeroconf" rel="ugc nofollow">discovered from a Kodi media player</a>.
+The service names may be taken from the <a href="https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml" class="urlextern" title="https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml" rel="ugc nofollow">IANA register</a> and the txt-records may be taken from the official <abbr title="Domain Name System">DNS</abbr>-SD keys (see <a href="http://www.dns-sd.org/ServiceTypes.html" class="urlextern" title="http://www.dns-sd.org/ServiceTypes.html" rel="ugc nofollow">ServiceTypes</a> under “Defined TXT keys”.
+</p>
+
+<p>
+If you wish to create a more complicated mdns information block, see <code>procd_add_mdns_service</code> in <code>/lib/functions/procd.sh</code> but be warned that umdns probably can&#039;t automatically support everything you can represent in json.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Announcing local services&quot;,&quot;hid&quot;:&quot;announcing_local_services&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:9,&quot;range&quot;:&quot;5611-7357&quot;} -->
+<h3 class="sectionedit10" id="service_description_files_inetcumdns">Service description files in /etc/umdns</h3>
+<div class="level3">
+
+<p>
+umdns advertises the services whose <code>*.json</code> files are found in <code>/etc/umdns</code>. This is similar to how Avahi advertises <code>*.service</code> files in <code>/etc/avahi/services/</code>.
+</p>
+
+<p>
+<strong>IMPORTANT!</strong> Keep the json formating as in the following examples, i.e. the service definition needs to be a one-liner, otherwise it won&#039;t work!
+</p>
+
+<p>
+For example the same WebDAV service description:
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-developer/mdns?codeblock=8" title="Download Snippet" class="mediafile mf_json">/etc/umdns/nextcloud_webdav.json</a></dt>
+<dd><pre class="code yaml"><span class="br0">&#123;</span><span class="co3">
+  &quot;nextcloud_webdav&quot;</span><span class="sy2">: </span><span class="br0">&#123;</span> <span class="st0">&quot;service&quot;</span><span class="sy2">: </span><span class="st0">&quot;_webdav._tcp.local&quot;</span>, <span class="st0">&quot;port&quot;</span><span class="sy2">: </span>80, <span class="st0">&quot;txt&quot;</span><span class="sy2">: </span><span class="br0">&#91;</span> <span class="st0">&quot;path=/nextcloud/remote.php/dav/files/YOUR_USER/&quot;</span>, <span class="st0">&quot;u=YOUR_USER&quot;</span> <span class="br0">&#93;</span> <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+</dd></dl>
+
+<p>
+Or you can advertise <abbr title="SSH File Transfer Protocol">SFTP</abbr> and <abbr title="Secure Shell">SSH</abbr>:
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-developer/mdns?codeblock=9" title="Download Snippet" class="mediafile mf_json">/etc/umdns/ssh.json</a></dt>
+<dd><pre class="code yaml"><span class="br0">&#123;</span><span class="co3">
+  &quot;ssh_login&quot;</span><span class="sy2">: </span><span class="br0">&#123;</span> <span class="st0">&quot;service&quot;</span><span class="sy2">: </span><span class="st0">&quot;_ssh._tcp.local&quot;</span>, <span class="st0">&quot;port&quot;</span><span class="sy2">: </span>22, <span class="st0">&quot;txt&quot;</span><span class="sy2">: </span><span class="br0">&#91;</span> <span class="st0">&quot;u=root&quot;</span> <span class="br0">&#93;</span> <span class="br0">&#125;</span>,<span class="co3">
+  &quot;sftp_share&quot;</span><span class="sy2">: </span><span class="br0">&#123;</span> <span class="st0">&quot;service&quot;</span><span class="sy2">: </span><span class="st0">&quot;_sftp-ssh._tcp.local&quot;</span>, <span class="st0">&quot;port&quot;</span><span class="sy2">: </span>22, <span class="st0">&quot;txt&quot;</span><span class="sy2">: </span><span class="br0">&#91;</span> <span class="st0">&quot;path=/&quot;</span>, <span class="st0">&quot;u=root&quot;</span> <span class="br0">&#93;</span> <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+</dd></dl>
+
+<p>
+See more examples in <a href="https://git.openwrt.org/?p=project/mdnsd.git;a=tree;f=json;hb=HEAD" class="interwiki iw_commit" title="https://git.openwrt.org/?p=project/mdnsd.git;a=tree;f=json;hb=HEAD">umdns sources</a>
+</p>
+
+<p>
+The reload the umdns service with: <code>ubus call umdns reload</code> or <code>service umdns reload</code>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Service description files in \/etc\/umdns&quot;,&quot;hid&quot;:&quot;service_description_files_inetcumdns&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:10,&quot;range&quot;:&quot;7358-8419&quot;} -->
+<h3 class="sectionedit11" id="testing">Testing</h3>
+<div class="level3">
+
+<p>
+To see that service was advertised you may use <code>avahi-discover</code> <abbr title="Graphical User Interface">GUI</abbr> application.
+To see from a command line use <code>avahi-browse --all</code>.
+To find a specific service use: <code>avahi-browse -d local _webdav._tcp</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Testing&quot;,&quot;hid&quot;:&quot;testing&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:11,&quot;range&quot;:&quot;8420-8647&quot;} -->
+<h3 class="sectionedit12" id="links">Links</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> <a href="https://git.openwrt.org/?p=project/mdnsd.git;a=tree;hb=HEAD" class="interwiki iw_commit" title="https://git.openwrt.org/?p=project/mdnsd.git;a=tree;hb=HEAD">Sources</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/openwrt/mdnsd/" class="urlextern" title="https://github.com/openwrt/mdnsd/" rel="ugc nofollow">Sources on GitHub</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Links&quot;,&quot;hid&quot;:&quot;links&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:12,&quot;range&quot;:&quot;8648-&quot;} -->

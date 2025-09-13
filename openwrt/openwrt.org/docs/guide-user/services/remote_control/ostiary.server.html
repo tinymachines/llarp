@@ -1,0 +1,182 @@
+
+<h1 class="sectionedit1" id="ostiary_daemon_run_a_fixed_set_of_commands_remotely">Ostiary Daemon (run a fixed set of commands remotely)</h1>
+<div class="level1">
+
+<p>
+Ostiaryd is designed to allow you to run a fixed set of commands remotely, without giving everyone else access to the same commands. 
+</p>
+
+<p>
+The following are the key design goals:
+</p>
+<ul>
+<li class="level1"><div class="li"> “First, do no harm.” It should not be possible to use the Ostiary system itself to damage the host it&#039;s running on. In particular, it&#039;s willing to accept false negatives (denying access to legitimate users) in order to prevent false positives (allowing access to invalid users).</div>
+</li>
+<li class="level3"><div class="li"> Insofar as possible, eliminate any possibility of bugs causing undesired operations. Buffer overflows, timing attacks, etc. should be impossible for an external attacker to execute. There&#039;s no point in installing security software if it makes you less secure.</div>
+</li>
+<li class="level3"><div class="li"> Be extremely modest in memory and CPU requirements. (eg. running on a Mac SE/30, a 16MHz 68030 machine) and connecting from a Palm Pilot (a 16MHz 68000 machine). </div>
+</li>
+<li class="level3"><div class="li"> Keep things simple. This is not an ssh replacement. Each successful challenge/response will result in executing a corresponding script.</div>
+</li>
+<li class="level3"><div class="li"> It is immune to replay attacks</div>
+</li>
+</ul>
+
+<p>
+This wiki is a quick summary of the author&#039;s documentation followed by openwrt specific usage instructions. For any technical info you may wish to view the author&#039;s site: <a href="http://ingles.homeunix.net/software/ost/index.html" class="urlextern" title="http://ingles.homeunix.net/software/ost/index.html" rel="ugc nofollow">http://ingles.homeunix.net/software/ost/index.html</a> .
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Ostiary Daemon (run a fixed set of commands remotely)&quot;,&quot;hid&quot;:&quot;ostiary_daemon_run_a_fixed_set_of_commands_remotely&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1387&quot;} -->
+<h2 class="sectionedit2" id="how_it_works">How it works</h2>
+<div class="level2">
+
+<p>
+The algorithm used is as follows:
+</p>
+<ol>
+<li class="level1"><div class="li"> Ostiaryd waits on a port for connections from remote machines. When one is received, ostiaryd checks to see if the ip address is locked out. (If compiled in, it will consult /etc/hosts.allow and hosts.deny, too.) If so, it drops the connection immediately.</div>
+</li>
+<li class="level1"><div class="li"> If the address is not locked out, ostiaryd sends a seed value. Currently this is a SHA256 hash (32 bytes) of the the current time, plus either the output of random() or (if available) bytes from /dev/urandom, plus the process&#039; PID.</div>
+</li>
+<li class="level1"><div class="li"> The client takes the seed value and hashes it, HMAC-style, with the password the user provides.</div>
+</li>
+<li class="level1"><div class="li"> Ostiaryd then reads the response (32 bytes), and closes the connection.</div>
+</li>
+<li class="level1"><div class="li"> Now ostiaryd goes through a list of passwords, and hashes them (HMAC style) with the hash value it sent. It compares these new hashes with the response it received.</div>
+</li>
+<li class="level1"><div class="li"> If it finds a match, the command corresponding to that password is run. (E.g., it could start up sshd so you could log in remotely.) The ip address of the client is given as an argument to the command.</div>
+</li>
+<li class="level1"><div class="li"> If the hash does not match any of the listed hashes, the ip address that the bogus hash was sent from gets put on a list of bad addresses. If it exceeds the a defined limit of bad connections, that address is locked out and no further communication is accepted.</div>
+</li>
+<li class="level1"><div class="li"> Now, ostiaryd sleeps a user-defined interval, at least one second.</div>
+</li>
+<li class="level1"><div class="li"> Finally, it jumps back to step 1. </div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;How it works&quot;,&quot;hid&quot;:&quot;how_it_works&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;1388-2875&quot;} -->
+<h2 class="sectionedit3" id="how_to_get_it">How to get it</h2>
+<div class="level2">
+
+<p>
+Grab it from the repository (Note, it has only been added to the master &#039;snapshot&#039; builds, not versioned builds eg. &#039;18.06&#039;, ensure your <a href="/docs/guide-user/additional-software/opkg" class="wikilink1" title="docs:guide-user:additional-software:opkg" data-wiki-id="docs:guide-user:additional-software:opkg">opkg configuration</a> includes the snapshot/packages/&lt;arch&gt;/packages path)
+</p>
+<pre class="code">$ opkg update
+$ opkg install ostiary</pre>
+
+<p>
+This package installs both the <a href="/docs/guide-user/services/remote_control/ostiary.server" class="wikilink1" title="docs:guide-user:services:remote_control:ostiary.server" data-wiki-id="docs:guide-user:services:remote_control:ostiary.server">ostiaryd</a> service, and the <a href="/docs/guide-user/services/remote_control/ostiary.client" class="wikilink1" title="docs:guide-user:services:remote_control:ostiary.client" data-wiki-id="docs:guide-user:services:remote_control:ostiary.client">ostclient</a> client. Both located in /usr/bin
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;How to get it&quot;,&quot;hid&quot;:&quot;how_to_get_it&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;2876-3378&quot;} -->
+<h2 class="sectionedit4" id="service_configuration">Service Configuration</h2>
+<div class="level2">
+
+<p>
+The configuration file is installed by default at /etc/ostiary.cfg
+</p>
+
+<p>
+At a minimum, you will need to set at least the following sections:
+</p>
+<ul>
+<li class="level1"><div class="li"> PORT=????</div>
+</li>
+<li class="level1"><div class="li"> KILL=panicpassword</div>
+</li>
+<li class="level1"><div class="li"> ACTION=“secretpassword”,“/full/path/to/script”, “uid”, “gid”</div>
+</li>
+</ul>
+
+<p>
+(upto 8 ACTION scripts are allowed by default. More can be added but you would need to edit the header file ost.h and recompile. See author&#039;s site <a href="http://ingles.homeunix.net/software/ost/install.html#use" class="urlextern" title="http://ingles.homeunix.net/software/ost/install.html#use" rel="ugc nofollow">here</a>.)
+</p>
+
+<p>
+Eg:
+</p>
+<pre class="code">ACTION=&quot;SecretP@ssword&quot;,&quot;/path/to/script.sh&quot;,&quot;0&quot;,&quot;0&quot;                      </pre>
+
+<p>
+<strong>Be sure to always restart the ostiaryd daemon after making any changes!</strong>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Service Configuration&quot;,&quot;hid&quot;:&quot;service_configuration&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;3379-4041&quot;} -->
+<h2 class="sectionedit5" id="stopping_and_starting_ostiaryd">Stopping and Starting ostiaryd</h2>
+<div class="level2">
+<pre class="code">/etc/init.d/ostiaryd ARGUMENT</pre>
+
+<p>
+where ARGUMENT is one of “stop”, “start”, or “restart”.  
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Stopping and Starting ostiaryd&quot;,&quot;hid&quot;:&quot;stopping_and_starting_ostiaryd&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:5,&quot;range&quot;:&quot;4042-4186&quot;} -->
+<h2 class="sectionedit6" id="action_scripts">&quot;Action&quot; Scripts</h2>
+<div class="level2">
+
+<p>
+Each “secret” passphrase you defined above needs a corresponding action script (i.e. one-to-one).
+</p>
+
+<p>
+Actions scripts can invoke anything you could run from a command line, such as:
+</p>
+<ul>
+<li class="level1"><div class="li"> Start/Stop a service </div>
+</li>
+<li class="level1"><div class="li"> Execute/kill a process/send a signal</div>
+</li>
+<li class="level1"><div class="li"> Add/remove a firewall rule (or <a href="/docs/guide-user/firewall/fw3_configurations/fw3_config_ipset" class="wikilink1" title="docs:guide-user:firewall:fw3_configurations:fw3_config_ipset" data-wiki-id="docs:guide-user:firewall:fw3_configurations:fw3_config_ipset">IPSET</a> entry)</div>
+</li>
+</ul>
+
+<p>
+so long as the command is either fixed, or will only vary depending on your ostiary client <abbr title="Internet Protocol">IP</abbr>.
+</p>
+
+<p>
+If your scripts run successfully as root, but fail under Ostiary (test using <a href="/docs/guide-user/services/remote_control/ostiary.client" class="wikilink1" title="docs:guide-user:services:remote_control:ostiary.client" data-wiki-id="docs:guide-user:services:remote_control:ostiary.client">ostclient</a>), ensure that you have set uid/gid to 0 for that action; or set appropriate filesystem permissions.
+</p>
+
+<p>
+Note: By the author&#039;s <a href="http://ingles.homeunix.net/software/ost/install.html#use" class="urlextern" title="http://ingles.homeunix.net/software/ost/install.html#use" rel="ugc nofollow">design</a>, you can&#039;t inline a shell command into the ACTION script definition. You need to put your command(s) into a separate file, make it executable, and then call the file using the syntax above. (I know, I wasted a couple of hours on this one...)
+</p>
+
+<p>
+Remember to add your scripts&#039; location to the folders kept during sysupgrade in <a href="/docs/guide-user/base-system/notuci.config#etcsysupgradeconf" class="wikilink1" title="docs:guide-user:base-system:notuci.config" data-wiki-id="docs:guide-user:base-system:notuci.config">/etc/sysupgrade.conf</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;\&quot;Action\&quot; Scripts&quot;,&quot;hid&quot;:&quot;action_scripts&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:6,&quot;range&quot;:&quot;4187-5421&quot;} -->
+<h2 class="sectionedit7" id="clients">Clients</h2>
+<div class="level2">
+
+<p>
+Clients for connecting to the ostiaryd service are listed below. 
+</p>
+<ol>
+<li class="level1 node"><div class="li"> <a href="/docs/guide-user/services/remote_control/ostiary.client" class="wikilink1" title="docs:guide-user:services:remote_control:ostiary.client" data-wiki-id="docs:guide-user:services:remote_control:ostiary.client">ostclient</a> </div>
+<ul>
+<li class="level2"><div class="li"> included in the package you just installed at /usr/bin/ostclient (It can be deleted if you dont need it or really need the 9kb space back... )</div>
+</li>
+<li class="level2"><div class="li"> available in RPM and Debian packages, plus source <a href="http://ingles.homeunix.net/software/ost/get.html#latest" class="urlextern" title="http://ingles.homeunix.net/software/ost/get.html#latest" rel="ugc nofollow">from the author&#039;s site</a></div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> <a href="http://ingles.homeunix.net/software/ost/latest/Ostiary.apk" class="urlextern" title="http://ingles.homeunix.net/software/ost/latest/Ostiary.apk" rel="ugc nofollow">Andriod</a> </div>
+</li>
+<li class="level1"><div class="li"> <a href="http://itunes.apple.com/ye/app/ostiary/id463229304" class="urlextern" title="http://itunes.apple.com/ye/app/ostiary/id463229304" rel="ugc nofollow">iOS</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://ingles.homeunix.net/software/ost/latest/winclient-4.0.zip" class="urlextern" title="http://ingles.homeunix.net/software/ost/latest/winclient-4.0.zip" rel="ugc nofollow">Windows</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://ingles.homeunix.net/software/ost/get.html#latest" class="urlextern" title="http://ingles.homeunix.net/software/ost/get.html#latest" rel="ugc nofollow">Java (generic)</a></div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Clients&quot;,&quot;hid&quot;:&quot;clients&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:7,&quot;range&quot;:&quot;5422-&quot;} -->

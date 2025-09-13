@@ -1,0 +1,179 @@
+
+<h1 class="sectionedit1" id="openwrt_buildroot_technical_reference">OpenWrt Buildroot – Technical Reference</h1>
+<div class="level1">
+
+<p>
+See also: <a href="/docs/guide-developer/start#using_the_toolchain" class="wikilink1" title="docs:guide-developer:start" data-wiki-id="docs:guide-developer:start">Using the toolchain</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;OpenWrt Buildroot \u2013 Technical Reference&quot;,&quot;hid&quot;:&quot;openwrt_buildroot_technical_reference&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-138&quot;} -->
+<h2 class="sectionedit2" id="kernel_related_options">Kernel related options</h2>
+<div class="level2">
+
+<p>
+The available Kernel version are listed in include/kernel-version.mk:
+</p>
+
+<p>
+Example:
+</p>
+<pre class="code"># Use the default kernel version if the Makefile doesn&#039;t override it
+
+LINUX_RELEASE?=1
+
+LINUX_VERSION-3.18 = .20
+LINUX_VERSION-4.0 = .9
+LINUX_VERSION-4.1 = .5
+
+LINUX_KERNEL_MD5SUM-3.18.20 = 952c9159acdf4efbc96e08a27109d994
+LINUX_KERNEL_MD5SUM-4.0.9 = 40fc5f6e2d718e539b45e6601c71985b
+LINUX_KERNEL_MD5SUM-4.1.5 = f23e1d4ce8f63e46db81d56e36281885
+
+ifdef KERNEL_PATCHVER
+  LINUX_VERSION:=$(KERNEL_PATCHVER)$(strip $(LINUX_VERSION-$(KERNEL_PATCHVER)))
+endif
+
+split_version=$(subst ., ,$(1))
+merge_version=$(subst $(space),.,$(1))
+KERNEL_BASE=$(firstword $(subst -, ,$(LINUX_VERSION)))
+KERNEL=$(call merge_version,$(wordlist 1,2,$(call split_version,$(KERNEL_BASE))))
+KERNEL_PATCHVER ?= $(KERNEL)
+
+# disable the md5sum check for unknown kernel versions
+LINUX_KERNEL_MD5SUM:=$(LINUX_KERNEL_MD5SUM-$(strip $(LINUX_VERSION)))
+LINUX_KERNEL_MD5SUM?=x</pre>
+
+<p>
+Kernel code is added with contents of generic/files and selectively &lt;arch&gt;/files/ subdirs.
+</p>
+
+<p>
+It is patched with generic/patches-&lt;Kernel version&gt; and &lt;arch&gt;/patches-&lt;Kernel version&gt;
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Kernel related options&quot;,&quot;hid&quot;:&quot;kernel_related_options&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;139-1294&quot;} -->
+<h3 class="sectionedit3" id="config_external_kernel_tree">CONFIG_EXTERNAL_KERNEL_TREE</h3>
+<div class="level3">
+
+<p>
+OpenWrt will create a symlink to a Kernel repository in the file system.
+</p>
+
+<p>
+The target can be a local git kernel repository.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> You should patch your tree to contain OpenWrt changes - builds might fail to compile or fail at boot.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Musl libc need patches to kernel headers that fix redifinitions errors with user space headers. uclibc and glibc don&#039;t need these changes.
+</p>
+
+<p>
+Example:
+</p>
+<pre class="code">095-api-fix-compatibility-of-linux-in.h-with-netinet-in..patch
+270-uapi-kernel.h-glibc-specific-inclusion-of-sysinfo.h.patch
+271-uapi-libc-compat.h-do-not-rely-on-__GLIBC__.patch
+272-uapi-if_ether.h-prevent-redefinition-of-struct-ethhd.patch</pre>
+
+<p>
+see <a href="http://wiki.musl-libc.org/wiki/Building_Busybox" class="urlextern" title="http://wiki.musl-libc.org/wiki/Building_Busybox" rel="ugc nofollow">http://wiki.musl-libc.org/wiki/Building_Busybox</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;CONFIG_EXTERNAL_KERNEL_TREE&quot;,&quot;hid&quot;:&quot;config_external_kernel_tree&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;1295-2031&quot;} -->
+<h3 class="sectionedit4" id="openwrt_buildroot_build_sequence">OpenWrt Buildroot – Build sequence</h3>
+<div class="level3">
+<pre class="code">  tools – automake, autoconf, sed, cmake
+  toolchain/binutils – as, ld, …
+  toolchain/gcc – gcc, g++, cpp, …
+  target/linux – kernel modules
+  package – core and feed packages
+  target/linux – kernel image
+  target/linux/image – firmware image file generation</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;OpenWrt Buildroot \u2013 Build sequence&quot;,&quot;hid&quot;:&quot;openwrt_buildroot_build_sequence&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:4,&quot;range&quot;:&quot;2032-2373&quot;} -->
+<h3 class="sectionedit5" id="make_sequence">Make sequence</h3>
+<div class="level3">
+
+<p>
+Top command <code>make world</code> calls the following sequence of the commands:<br/>
+
+<code>make target/compile</code><br/>
+
+<code>make package/cleanup</code><br/>
+
+<code>make package/compile</code><br/>
+
+<code>make package/install</code><br/>
+
+<code>make package/preconfig</code><br/>
+
+<code>make target/install</code><br/>
+
+<code>make package/index</code>
+</p>
+
+<p>
+You may run each command independently. For example, if the process of compilation of packages stops on error, you may fix the problem and next continue without cleanup:<br/>
+
+<code>make package/compile</code><br/>
+
+<code>make package/install</code><br/>
+
+<code>make package/preconfig</code><br/>
+
+<code>make target/install</code><br/>
+
+<code>make package/index</code>
+</p>
+
+<p>
+see <a href="/docs/guide-developer/packages" class="wikilink1" title="docs:guide-developer:packages" data-wiki-id="docs:guide-developer:packages">packages</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Make sequence&quot;,&quot;hid&quot;:&quot;make_sequence&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:5,&quot;range&quot;:&quot;2374-3002&quot;} -->
+<h3 class="sectionedit6" id="warnings_errors_and_tracing">Warnings, errors and tracing</h3>
+<div class="level3">
+
+<p>
+The parameter <code>V=x</code> specifies level of messages in the process of the build.
+</p>
+<pre class="code">    V=99 and V=1 are now deprecated in favor of a new verbosity class system,
+    though the old flags are still supported.
+    You can set the V variable on the command line (or OPENWRT_VERBOSE in the
+    environment) to one or more of the following characters:
+    
+    - s: stdout+stderr (equal to the old V=99)
+    - c: commands (for build systems that suppress commands by default, e.g. kbuild, cmake)
+    - w: warnings/errors only (equal to the old V=1)</pre>
+
+<p>
+source: <a href="https://dev.openwrt.org/changeset/31484" class="urlextern" title="https://dev.openwrt.org/changeset/31484" rel="ugc nofollow">https://dev.openwrt.org/changeset/31484</a>
+</p>
+
+<p>
+old options:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>1</code> - print a messages containing the working directory before and after other processing.</div>
+</li>
+<li class="level1"><div class="li"> <code>99</code> - trace of the build, ordinary messages yellow, error messages red, debug - black;</div>
+</li>
+</ul>
+
+<p>
+Examples:
+</p>
+<pre class="code">make V=sc</pre>
+<pre class="code">make V=sw</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Warnings, errors and tracing&quot;,&quot;hid&quot;:&quot;warnings_errors_and_tracing&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:6,&quot;range&quot;:&quot;3003-&quot;} -->

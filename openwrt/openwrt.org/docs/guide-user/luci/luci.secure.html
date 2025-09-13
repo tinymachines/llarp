@@ -1,0 +1,447 @@
+
+<h1 class="sectionedit1" id="accessing_luci_web_interface_securely">Accessing LuCI web interface securely</h1>
+<div class="level1">
+
+<p>
+If you are doing admin things via LuCI web interface, there is a risk that a user of your OpenWrt network is sniffing your traffic.
+You are at risk of giving away your LuCI web credentials to attacker.
+There are some ways to mitigate this risk.
+</p>
+
+<p>
+Note that you need to choose wisely which of these methods suit your security needs.
+Don&#039;t be so attached about one method that you despise others in favor of your preferred methods.
+<em>Security is about doing things securely.</em>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Accessing LuCI web interface securely&quot;,&quot;hid&quot;:&quot;accessing_luci_web_interface_securely&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-527&quot;} -->
+<h2 class="sectionedit2" id="about_https_on_openwrt">About HTTPS on OpenWrt</h2>
+<div class="level2">
+
+<p>
+This is the standardized practice to secure <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> protocol.
+</p>
+<div class="table sectionedit3"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> # </th><th class="col1"> Advantages </th><th class="col2"> Disadvantages </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> 1 </td><td class="col1"> Simple access </td><td class="col2"> Bloated for devices with low storage </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> 2 </td><td class="col1"> Standardized protocol </td><td class="col2"> Non-properly signed certificate triggers browser warning </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;624-808&quot;} -->
+<p>
+The main advantage of <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> is a standardized protocol for securing <abbr title="Hypertext Transfer Protocol">HTTP</abbr> connection.
+To access an <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> page is just typing <a href="https://openwrt.lan/" class="urlextern" title="https://openwrt.lan/" rel="ugc nofollow">https://openwrt.lan/</a> instead of <del><a href="http://openwrt.lan/" class="urlextern" title="http://openwrt.lan/" rel="ugc nofollow">http://openwrt.lan/</a></del>.
+It&#039;s simple.
+Just make sure that luci-ssl and its dependencies are <a href="/docs/guide-user/luci/luci.essentials#installation" class="wikilink1" title="docs:guide-user:luci:luci.essentials" data-wiki-id="docs:guide-user:luci:luci.essentials">installed</a>.
+</p>
+
+<p>
+There are some disadvantages, though.
+Here are some of them.
+</p>
+
+<p>
+1. External libraries makes a bloated installation.
+</p>
+
+<p>
+On systems with just 4 <abbr title="Megabyte">MB</abbr> of flash, it&#039;s not possible to enable <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> for LuCI web interface.
+Why?
+Because with <abbr title="Transport Layer Security">TLS</abbr> libraries integrated, the resulting image doesn&#039;t fit 4 <abbr title="Megabyte">MB</abbr> of flash.
+Unless you have done some workaround such as expanding overlayfs size, it&#039;s unpractical.
+</p>
+
+<p>
+2. Browser warning on non-properly signed certificate.
+</p>
+
+<p>
+Well, this is a good browser feature.
+Unless the self signed root CA has been imported to the browser, this warning creeps you out!
+Why bother with commercial CA when your need is just securing your own router management interface for your own use?
+</p>
+
+<p>
+Of course, you can just buy a properly signed certificate for your own openwrt.lan domain and ip address to get rid of the annoying browser warning.
+You can also just import the self-signed root CA used for certificate creation to your browser certificate store.
+</p>
+
+<p>
+See also: <a href="/docs/guide-user/luci/getting_rid_of_luci_https_certificate_warnings" class="wikilink1" title="docs:guide-user:luci:getting_rid_of_luci_https_certificate_warnings" data-wiki-id="docs:guide-user:luci:getting_rid_of_luci_https_certificate_warnings">How to get rid of LuCI HTTPS certificate warnings</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;About HTTPS on OpenWrt&quot;,&quot;hid&quot;:&quot;about_https_on_openwrt&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;528-2223&quot;} -->
+<h2 class="sectionedit4" id="enable_luci_https_redirect_from_http">Enable LuCI HTTPS redirect from HTTP</h2>
+<div class="level2">
+
+<p>
+Since OpenWrt 21.02 is LuCI now available over <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> in addition to <abbr title="Hypertext Transfer Protocol">HTTP</abbr> by default, without installing any additional packages. There is no automatic redirection to <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> on a fresh OpenWrt 21.02 installation, however, redirection <em>will</em> be enabled after upgrading from OpenWrt 19.07 to OpenWrt 21.02.
+</p>
+
+<p>
+It is always possible to activate or deactivate the redirection to <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> like this:
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> uhttpd.main.redirect_https=<span class="nu0">1</span>     <span class="co0"># 1 to enable redirect, 0 to disable redirect</span>
+uci commit uhttpd
+service uhttpd reload</pre>
+
+<p>
+NOTE: Redirect needs to be off if you will be <abbr title="Secure Shell">SSH</abbr> tunneling
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Enable LuCI HTTPS redirect from HTTP&quot;,&quot;hid&quot;:&quot;enable_luci_https_redirect_from_http&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;2224-2872&quot;} -->
+<h2 class="sectionedit5" id="tunneling_luci_http_protocol_through_ssh">Tunneling LuCI HTTP protocol through SSH</h2>
+<div class="level2">
+
+<p>
+This little hack is convenient for devices with very limited storage.
+</p>
+<div class="table sectionedit6"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> # </th><th class="col1"> Advantages </th><th class="col2"> Disadvantages </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> 1 </td><td class="col1"> Secure encryption over <abbr title="Secure Shell">SSH</abbr> tunnel </td><td class="col2"> More complicated to setup </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> 2 </td><td class="col1"> No additional <abbr title="Transport Layer Security">TLS</abbr> libraries needed </td><td class="col2"> </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table1&quot;,&quot;secid&quot;:6,&quot;range&quot;:&quot;2997-3146&quot;} -->
+<p>
+On standard OpenWrt installation, an <abbr title="Secure Shell">SSH</abbr> server daemon is always available.
+This is good news for limited-storage devices , since it&#039;s not necessary to install additional <abbr title="Transport Layer Security">TLS</abbr> libraries.
+Just use your favorite <abbr title="Secure Shell">SSH</abbr> client to setup port forwarding and all LuCI <abbr title="Hypertext Transfer Protocol">HTTP</abbr> connection will be encapsulated within <abbr title="Secure Shell">SSH</abbr> packets.
+</p>
+
+<p>
+This means that you get the same level protection of <abbr title="Secure Shell">SSH</abbr>, while getting rid of those <abbr title="Transport Layer Security">TLS</abbr> disadvantages for OpenWrt devices with low storage.
+Of course, there is disadvantages for this method.
+It requires more work to be done on <abbr title="Secure Shell">SSH</abbr>-client to setup the <abbr title="Secure Shell">SSH</abbr>-tunnel.
+I think the setup complexity is for the first time only.
+Later, it will be more simple to start the tunnel.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Tunneling LuCI HTTP protocol through SSH&quot;,&quot;hid&quot;:&quot;tunneling_luci_http_protocol_through_ssh&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:5,&quot;range&quot;:&quot;2873-3836&quot;} -->
+<h3 class="sectionedit7" id="securing_against_brute-force_attacks">Securing against brute-force attacks</h3>
+<div class="level3">
+
+<p>
+<a href="/docs/guide-user/services/webserver/uhttpd" class="wikilink1" title="docs:guide-user:services:webserver:uhttpd" data-wiki-id="docs:guide-user:services:webserver:uhttpd">uHTTPd</a> is the web server responsible of hosting the Luci web interface.
+By default uHTTPd listens to <code>0.0.0.0</code> which makes it accessible from the local network.
+</p>
+
+<p>
+To prevent LuCI web interface from being brute-forced from attackers already in the local network, we are going to edit the uHTTPd config file and change its settings, so it only listens to <code>localhost</code>.
+</p>
+<pre class="code bash">uci <span class="re5">-q</span> delete uhttpd.main.listen_http
+uci add_list uhttpd.main.listen_http=<span class="st0">&quot;127.0.0.1:80&quot;</span>
+uci add_list uhttpd.main.listen_http=<span class="st0">&quot;[::1]:80&quot;</span>
+uci <span class="re5">-q</span> delete uhttpd.main.listen_https
+uci add_list uhttpd.main.listen_https=<span class="st0">&quot;127.0.0.1:443&quot;</span>
+uci add_list uhttpd.main.listen_https=<span class="st0">&quot;[::1]:443&quot;</span>
+uci commit uhttpd
+<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>uhttpd restart</pre>
+
+<p>
+NOTE: You may have to add a uHTTPd restart in your local startup (<code>/etc/rc.local</code>) : <code>/etc/init.d/uhttpd restart</code> due to on boot uHTTPd throwing an error becuause <code>localhost</code> is not setup yet.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Securing against brute-force attacks&quot;,&quot;hid&quot;:&quot;securing_against_brute-force_attacks&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:7,&quot;range&quot;:&quot;3837-4845&quot;} -->
+<h3 class="sectionedit8" id="setting_up_the_ssh-tunnel">Setting up the SSH-tunnel</h3>
+<div class="level3">
+
+<p>
+If you are willing to spend a little effort to setup <abbr title="Secure Shell">SSH</abbr>-tunnel, here is a simple guide for some popular <abbr title="Secure Shell">SSH</abbr> clients.
+This guide is just about setting up a local port forwarding to LuCI web interface.
+</p>
+
+<p>
+This setup will forward all traffic passing through port 8000 from 127.0.0.1 on your local machine (desktop or laptop) to port 80 of your OpenWrt device, which has a local address of 127.0.0.1.
+You may understand better by viewing this graph.
+</p>
+<div class="table sectionedit9"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Local machine </th><th class="col1"> OpenWrt device </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> 127.0.0.1:8000 </td><td class="col1"> 127.0.0.1:80 </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> sending packets → </td><td class="col1"> receiving packets </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> receiving response </td><td class="col1"> ← sending response </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table2&quot;,&quot;secid&quot;:9,&quot;range&quot;:&quot;5328-5484&quot;} -->
+<p>
+All traffic bypassing through port 8000 on local machine will be forwarded to port 80 on the remote machine.
+That&#039;s why this <abbr title="Secure Shell">SSH</abbr>-tunnel setup is called local port forwarding.
+</p>
+
+</div>
+
+<h4 id="openssh_client">OpenSSH client</h4>
+<div class="level4">
+
+<p>
+This is the standard <abbr title="Secure Shell">SSH</abbr> client for GNU/Linux and BSD distributions.
+To establish an <abbr title="Secure Shell">SSH</abbr> tunnel for LuCI web interface access, just add a local port forwarding options to the command line.
+Make necessary adjustments if needed (hostname, port, identity file, etc).
+</p>
+<pre class="code bash"><span class="kw2">ssh</span> -L127.0.0.1:<span class="nu0">8000</span>:127.0.0.1:<span class="nu0">80</span> root<span class="sy0">@</span>openwrt.lan</pre>
+
+<p>
+The <abbr title="Secure Shell">SSH</abbr>-tunnel is active as long as the <abbr title="Secure Shell">SSH</abbr> session is active.
+</p>
+
+<p>
+For convenient setup, you may create host profile for this setup.
+Edit <code>~/.ssh/config</code> file and add the following line.
+For more explanation about all available configuration, refer to <a href="http://man.cx/ssh_config" class="interwiki iw_man" title="http://man.cx/ssh_config">ssh_config</a>.
+Be sure to make necessary adjustments if needed.
+</p>
+<pre class="code vim">Host luci<span class="sy0">-</span>tunnel
+	Hostname openwrt<span class="sy0">.</span>lan
+	Port <span class="nu0">22</span>
+	<span class="kw3">User</span> root
+	LocalForward 127<span class="sy0">.</span>0<span class="sy0">.</span>0<span class="sy0">.</span>1<span class="sy0">:</span><span class="nu0">8000</span> 127<span class="sy0">.</span>0<span class="sy0">.</span>0<span class="sy0">.</span>1<span class="sy0">:</span><span class="nu0">80</span></pre>
+
+<p>
+After creating the above configuration, the <abbr title="Secure Shell">SSH</abbr>-tunnel can be started by issuing the following command.
+</p>
+<pre class="code bash"><span class="kw2">ssh</span> luci-tunnel</pre>
+
+<p>
+The command will read <code>luci-tunnel</code> host profile and set up the <abbr title="Secure Shell">SSH</abbr>-tunnel accordingly.
+</p>
+
+</div>
+
+<h4 id="putty">PuTTY</h4>
+<div class="level4">
+
+<p>
+PuTTY is popular Windows <abbr title="Secure Shell">SSH</abbr> client.
+To establish <abbr title="Secure Shell">SSH</abbr>-tunnel, you need to perform more steps.
+</p>
+<ol>
+<li class="level1"><div class="li"> Navigate to <em>Connection</em> ⇒ <em><abbr title="Secure Shell">SSH</abbr></em> ⇒ <em>Tunnels</em>.</div>
+</li>
+<li class="level1"><div class="li"> Fill <strong>8000</strong> on the <em>Source port</em> field.</div>
+</li>
+<li class="level1"><div class="li"> Fill <strong>127.0.0.1:80</strong> on the <em>Destination</em> field.</div>
+</li>
+<li class="level1"><div class="li"> Click <em>Add</em> until the port forwarding setup appears on <em>Forwarded ports</em> section. Typically, the shown forwarding setup is <strong>L8000 127.0.0.1:80</strong>.</div>
+</li>
+<li class="level1"><div class="li"> Navigate to <em>Session</em>. Fill <strong>root@openwrt.lan</strong> on <em>Host Name</em> field and <strong>22</strong> on <em>Port</em> field. If you have modified your OpenWrt hostname and <abbr title="Secure Shell">SSH</abbr> listen port, you need to adjust the value accordingly.</div>
+</li>
+<li class="level1"><div class="li"> On the <em>Saved Sessions</em> field, type a unique name, such as <strong>OpenWrt LuCI Tunnel</strong>. Click <em>Save</em>, so that you don&#039;t need to repeat this setup for future use.</div>
+</li>
+<li class="level1"><div class="li"> To start the <abbr title="Secure Shell">SSH</abbr>-tunnel session, click <em>Open</em>. The tunnel will be active as long as the <abbr title="Secure Shell">SSH</abbr> session is active.</div>
+</li>
+<li class="level1"><div class="li"> To start the <abbr title="Secure Shell">SSH</abbr>-tunnel in the future, just select <strong>OpenWrt LuCI Tunnel</strong> on the PuTTY new session dialog, click <em>Load</em> and then click <em>Open</em>.</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Setting up the SSH-tunnel&quot;,&quot;hid&quot;:&quot;setting_up_the_ssh-tunnel&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:8,&quot;range&quot;:&quot;4846-7771&quot;} -->
+<h3 class="sectionedit10" id="accessing_luci_via_ssh-tunnel">Accessing LuCI via SSH-tunnel</h3>
+<div class="level3">
+
+<p>
+To access LuCI web interface securely, type <strong><a href="http://127.0.0.1:8000/" class="urlextern" title="http://127.0.0.1:8000/" rel="ugc nofollow">http://127.0.0.1:8000/</a></strong> instead of <del><a href="http://openwrt.lan/" class="urlextern" title="http://openwrt.lan/" rel="ugc nofollow">http://openwrt.lan/</a></del> or <del><a href="http://192.168.1.1/" class="urlextern" title="http://192.168.1.1/" rel="ugc nofollow">http://192.168.1.1/</a></del>.
+The traffic between your browser to uHTTPd webserver is encapsulated within <abbr title="Secure Shell">SSH</abbr>-tunnel, so that the http traffic gains the same level of <abbr title="Secure Shell">SSH</abbr> traffic encryption.
+</p>
+
+<p>
+If you have finished accessing LuCI web interface, don&#039;t forget to end the <abbr title="Secure Shell">SSH</abbr> session.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Accessing LuCI via SSH-tunnel&quot;,&quot;hid&quot;:&quot;accessing_luci_via_ssh-tunnel&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:10,&quot;range&quot;:&quot;7772-8210&quot;} -->
+<h3 class="sectionedit11" id="more_secure_configuration">More secure configuration</h3>
+<div class="level3">
+
+<p>
+For additional security, you may disable the uHTTPd webserver altogether and start it via <abbr title="Secure Shell">SSH</abbr> only when needed.
+</p>
+<pre class="code bash"><span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>uhttpd disable
+<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>uhttpd stop</pre>
+
+<p>
+With this setup, you minimize the risk of the uHTTPd webserver being brute-forced and prevent unauthorized access to LuCI web interface, as long as your <abbr title="Secure Shell">SSH</abbr> setup is secure (disabling password and using only public key authentication).
+</p>
+
+<p>
+As a bonus, your OpenWrt device performance may increase because of some system resources (memory, swap, and cpu usage) freed from uhttpd process.
+</p>
+
+<p>
+See also: <a href="/docs/guide-user/base-system/managing_services" class="wikilink1" title="docs:guide-user:base-system:managing_services" data-wiki-id="docs:guide-user:base-system:managing_services">Managing services</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;More secure configuration&quot;,&quot;hid&quot;:&quot;more_secure_configuration&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:11,&quot;range&quot;:&quot;8211-8895&quot;} -->
+<h3 class="sectionedit12" id="allow_access_from_internet">Allow access from Internet</h3>
+<div class="level3">
+
+<p>
+If you have a public <abbr title="Internet Protocol">IP</abbr> address then you can access your device&#039;s Luci or <abbr title="Secure Shell">SSH</abbr> shell remotely from the Internet.
+You can set up a <a href="/docs/guide-user/services/vpn/start" class="wikilink1" title="docs:guide-user:services:vpn:start" data-wiki-id="docs:guide-user:services:vpn:start">VPN server</a> like <a href="/docs/guide-user/services/vpn/wireguard/server" class="wikilink1" title="docs:guide-user:services:vpn:wireguard:server" data-wiki-id="docs:guide-user:services:vpn:wireguard:server">WireGuard</a> or <a href="/docs/guide-user/services/vpn/openvpn/server" class="wikilink1" title="docs:guide-user:services:vpn:openvpn:server" data-wiki-id="docs:guide-user:services:vpn:openvpn:server">OpenVPN</a> then connect to a network and access the OpenWrt device as from a local network.
+</p>
+
+<p>
+But if you really wish to access the device directly then you must make a few configuration steps.
+By default all traffic from the external <abbr title="Wide Area Network">WAN</abbr> interface is blocked by a firewall.
+So if you wish to get an access you have to allow the specific port to be accessed by a firewall rule.
+</p>
+
+<p>
+<strong>But you better not to do this because the public internet access is not safe and you may attacked!</strong>
+There are many scanning bots that are looking for open ports and tries to crack a password or sends exploits.
+The traffic should be encrypted so only <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> (based on <abbr title="Transport Layer Security">TLS</abbr>) or <abbr title="Secure Shell">SSH</abbr> may be used safely.
+Even if you have a good security with strong passwords and encryption you still may be attacked by <abbr title="Distributed Denial of Service">DDoS</abbr> but that will cost a lot for an attacker.
+</p>
+
+<p>
+<strong>You must be 100% sure what are you doing.</strong>
+</p>
+
+<p>
+For example, if you have a Transmission UI on a separate port, then it should be generally ok to allow the <abbr title="Wide Area Network">WAN</abbr> access.
+But the <abbr title="Wide Area Network">WAN</abbr> access to Luci is potentially more dangerous.
+</p>
+
+<p>
+You may want to add some restrictions like:
+</p>
+<ol>
+<li class="level1"><div class="li"> <abbr title="Internet Protocol">IP</abbr> allow list or <a href="/docs/guide-user/services/banip" class="wikilink1" title="docs:guide-user:services:banip" data-wiki-id="docs:guide-user:services:banip">banip</a></div>
+</li>
+<li class="level1"><div class="li"> Use upfront external WAF and <abbr title="Distributed Denial of Service">DDoS</abbr> prevention services <a href="https://www.cloudflare.com/" class="urlextern" title="https://www.cloudflare.com/" rel="ugc nofollow">Cloudflare Proxy</a></div>
+</li>
+<li class="level1 node"><div class="li"> Use tunnels or Zero Trust VPNs that at least adds an encryption. Most popular are:</div>
+<ol>
+<li class="level2"><div class="li"> <a href="/docs/guide-user/services/ssh/sshtunnel" class="wikilink1" title="docs:guide-user:services:ssh:sshtunnel" data-wiki-id="docs:guide-user:services:ssh:sshtunnel">SSH tunnel</a></div>
+</li>
+<li class="level2"><div class="li"> <a href="/docs/guide-user/services/tor/hs" class="wikilink1" title="docs:guide-user:services:tor:hs" data-wiki-id="docs:guide-user:services:tor:hs">Tor onion service</a>.</div>
+</li>
+<li class="level2"><div class="li"> <a href="/docs/guide-user/services/vpn/zerotier" class="wikilink1" title="docs:guide-user:services:vpn:zerotier" data-wiki-id="docs:guide-user:services:vpn:zerotier">ZeroTier</a></div>
+</li>
+<li class="level2"><div class="li"> <a href="/docs/guide-user/services/vpn/cloudfare_tunnel" class="wikilink1" title="docs:guide-user:services:vpn:cloudfare_tunnel" data-wiki-id="docs:guide-user:services:vpn:cloudfare_tunnel">Cloudflare Zero Trust</a></div>
+</li>
+<li class="level2"><div class="li"> <a href="/docs/guide-user/services/vpn/tailscale/start" class="wikilink1" title="docs:guide-user:services:vpn:tailscale:start" data-wiki-id="docs:guide-user:services:vpn:tailscale:start">Tailscale</a></div>
+</li>
+</ol>
+</li>
+</ol>
+
+</div>
+
+<h4 id="allow_https_access_from_internet">Allow HTTPS access from Internet</h4>
+<div class="level4">
+
+<p>
+So you do want to open an external access to your Luci e.g. on web server (uhttpd). 
+First of all you better to have a domain (at least a free <a href="/docs/guide-user/services/ddns/client" class="wikilink1" title="docs:guide-user:services:ddns:client" data-wiki-id="docs:guide-user:services:ddns:client">DDNS</a>) and point it to your <abbr title="Internet Protocol">IP</abbr>.
+</p>
+
+<p>
+Now you need to add a firewall rule to open <abbr title="Hypertext Transfer Protocol">HTTP</abbr> on 80 port and <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> (443):
+</p>
+<pre class="code">config rule &#039;wan_https_allow&#039;
+	option name &#039;Allow external access from WAN to HTTP and HTTPS ports&#039;
+	option enabled &#039;1&#039;
+	option target &#039;ACCEPT&#039;
+	option dest_port &#039;80 443&#039;
+	option proto &#039;tcp&#039;
+	option src &#039;wan&#039;</pre>
+
+<p>
+To create the rule and reload firewall use:
+</p>
+<pre class="code bash"><span class="co0"># create a new section of the rule in /etc/config/firewall</span>
+uci add firewall wan_https_allow
+uci <span class="kw1">set</span> firewall.wan_https_allow=rule
+uci <span class="kw1">set</span> firewall.wan_https_allow.name=<span class="st_h">'Allow HTTP, HTTPS from WAN'</span>
+uci <span class="kw1">set</span> firewall.wan_https_allow.src=<span class="st_h">'wan'</span>
+uci <span class="kw1">set</span> firewall.wan_https_allow.proto=<span class="st_h">'tcp'</span>
+uci <span class="kw1">set</span> firewall.wan_https_allow.dest_port=<span class="st_h">'80 443'</span>
+uci <span class="kw1">set</span> firewall.wan_https_allow.target=<span class="st_h">'ACCEPT'</span>
+<span class="co0"># save the new section to /etc/config/firewall</span>
+uci commit firewall
+<span class="co0"># reload the firewall to pick up the new rule</span>
+<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>firewall reload</pre>
+
+<p>
+These commands use the OpenWrt <a href="/docs/techref/uci" class="wikilink1" title="docs:techref:uci" data-wiki-id="docs:techref:uci">uci command</a>, a brilliant way to parse, get, set, and edit values and sections from config files. It makes scripting OpenWrt a breeze.
+</p>
+
+<p>
+Here you may see that we also allowed the raw unencrypted <abbr title="Hypertext Transfer Protocol">HTTP</abbr> on 80 port.
+This is needed because some browsers may still use the <abbr title="Hypertext Transfer Protocol">HTTP</abbr> by default when you type in address bar.
+The ACME webroot validation is also use the <abbr title="Hypertext Transfer Protocol">HTTP</abbr> port but.
+</p>
+
+<p>
+The plain <abbr title="Hypertext Transfer Protocol">HTTP</abbr> should not be used and you should enable a web server (uhttpd) the redirect requests from <abbr title="Hypertext Transfer Protocol">HTTP</abbr> to <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr>.
+For the uhttpd this is made easily with one option:
+</p>
+<pre class="code">uci set uhttpd.main.redirect_https=1
+uci commit
+/etc/init.d/uhttpd restart</pre>
+
+<p>
+Now enable uhttpd to respond to requests to your domain (e.g. example.com or example.duckdns.org) from devices on your private <abbr title="Local Area Network">LAN</abbr>.
+This is required because uhttpd by default rejects any requests from a private <abbr title="Local Area Network">LAN</abbr> host to the <abbr title="Wide Area Network">WAN</abbr> address, which is what your domain resolves to.
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> uhttpd.main.rfc1918<span class="re2">_filter</span>=<span class="st_h">'0'</span>
+uci commit uhttpd
+<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>uhttpd restart</pre>
+
+<p>
+By default the OpenWrt device has a Luci with a configured “snake oil” self signed <abbr title="Transport Layer Security">TLS</abbr> certificate so you should be able to open it.
+Your browser will show a warning that it can&#039;t trust to the certificate.
+For a better security and convenience you should configure a <a href="/docs/guide-user/services/tls/acmesh" class="wikilink1" title="docs:guide-user:services:tls:acmesh" data-wiki-id="docs:guide-user:services:tls:acmesh">TLS cert issuing with ACME</a>.
+</p>
+
+</div>
+
+<h4 id="allow_ssh_access_from_internet">Allow SSH access from Internet</h4>
+<div class="level4">
+
+<p>
+Create a firewall rule to allow access to <abbr title="Secure Shell">SSH</abbr> (port 22):
+</p>
+<pre class="code bash">uci add firewall wan_ssh_allow
+uci <span class="kw1">set</span> firewall.wan_ssh_allow=rule
+uci <span class="kw1">set</span> firewall.wan_ssh_allow.name=<span class="st_h">'Allow SSH from WAN'</span>
+uci <span class="kw1">set</span> firewall.wan_ssh_allow.src=<span class="st_h">'wan'</span>
+uci <span class="kw1">set</span> firewall.wan_ssh_allow.proto=<span class="st_h">'tcp'</span>
+uci <span class="kw1">set</span> firewall.wan_ssh_allow.dest_port=<span class="st_h">'22'</span>
+uci <span class="kw1">set</span> firewall.wan_ssh_allow.target=<span class="st_h">'ACCEPT'</span></pre>
+
+<p>
+Please read <a href="/docs/guide-user/base-system/dropbear#security_considerations" class="wikilink1" title="docs:guide-user:base-system:dropbear" data-wiki-id="docs:guide-user:base-system:dropbear">Security considerations</a> for the <abbr title="Secure Shell">SSH</abbr> sever.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Allow access from Internet&quot;,&quot;hid&quot;:&quot;allow_access_from_internet&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:12,&quot;range&quot;:&quot;8896-&quot;} -->

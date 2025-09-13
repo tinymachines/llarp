@@ -1,0 +1,395 @@
+
+<h1 class="sectionedit1" id="ipsec_basics">IPsec basics</h1>
+<div class="level1">
+
+<p>
+A quick starters guide based on OpenWrt Barrier Breaker 14.07.
+Maybe it will save you and me time if one has to setup an IPsec <abbr title="Virtual Private Network">VPN</abbr> in the future.
+Hopefully it will encourage other people to use OpenWrt as an IPsec <abbr title="Virtual Private Network">VPN</abbr> router.
+We cannot provide a graphical user interface at the moment but at least it is a solid alternative to commercial IPsec appliances. 
+strongSwan is a recommended IPsec implementation.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;IPsec basics&quot;,&quot;hid&quot;:&quot;ipsec_basics&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-435&quot;} -->
+<h2 class="sectionedit2" id="packages">Packages</h2>
+<div class="level2">
+
+<p>
+If not already installed on your router you need the following packages.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Packages&quot;,&quot;hid&quot;:&quot;packages&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;436-529&quot;} -->
+<h3 class="sectionedit3" id="required">Required</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> strongswan-default: everything needed for IPsec tunnels </div>
+</li>
+<li class="level1"><div class="li"> ip: Required to make scripting easier</div>
+</li>
+<li class="level1"><div class="li"> iptables-mod-nat-extra: For <abbr title="Virtual Private Network">VPN</abbr> networks with <a href="/docs/guide-user/services/vpn/strongswan/overlappingsubnets" class="wikilink1" title="docs:guide-user:services:vpn:strongswan:overlappingsubnets" data-wiki-id="docs:guide-user:services:vpn:strongswan:overlappingsubnets">overlapping IP addresses</a></div>
+</li>
+<li class="level1"><div class="li"> djbdns-tools: for simpler name resolving than nslookup</div>
+</li>
+</ul>
+<pre class="code bash">opkg <span class="kw2">install</span> strongswan-default <span class="kw2">ip</span> iptables-mod-nat-extra djbdns-tools</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Required&quot;,&quot;hid&quot;:&quot;required&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;530-939&quot;} -->
+<h3 class="sectionedit4" id="optional">Optional</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> strongswan-utils: only if you are running Chaos Calmer or you experience “ipsec: not found” error.</div>
+</li>
+</ul>
+<pre class="code bash">opkg <span class="kw2">install</span> strongswan-utils</pre>
+<ul>
+<li class="level1"><div class="li"> kmod-crypto-echainiv: only for Turris Omnia if you receive an “SAD entry with SPI” error.</div>
+</li>
+</ul>
+<pre class="code bash">opkg <span class="kw2">install</span> kmod-crypto-echainiv</pre>
+
+<p>
+Altogether those packages will eat up about some <abbr title="Megabyte">MB</abbr> of your router&#039;s flash memory. Maybe it is time for an <a href="/docs/guide-user/additional-software/extroot_configuration" class="wikilink1" title="docs:guide-user:additional-software:extroot_configuration" data-wiki-id="docs:guide-user:additional-software:extroot_configuration">extroot_configuration</a> installation?
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Optional&quot;,&quot;hid&quot;:&quot;optional&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:4,&quot;range&quot;:&quot;940-1443&quot;} -->
+<h2 class="sectionedit5" id="configuration_concept">Configuration concept</h2>
+<div class="level2">
+
+<p>
+If you already worked with strongSwan you should know the different files you need to configure.
+They include:
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong>/etc/strongswan.conf</strong>: Central configuration file </div>
+</li>
+<li class="level1"><div class="li"> <strong>/etc/ipsec.conf</strong>: Tunnel definitions</div>
+</li>
+<li class="level1"><div class="li"> <strong>/etc/ipsec.secrets</strong>: List of preshared keys</div>
+</li>
+<li class="level1"><div class="li"> <strong>/etc/ipsec.d</strong>: Folder for certificates</div>
+</li>
+</ul>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Remark! If youwant to stay with that configuration you have reached the wrong place. 
+</p>
+
+<p>
+The major challenge is handling all of those files automatically with a clean integration into the OpenWrt configuration concept. To solve this we will use a hierarchical configuration process.
+That involves:
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong>/etc/config/ipsec</strong>: The OpenWrt configuration file for strongSwan</div>
+</li>
+<li class="level1"><div class="li"> <strong>/etc/init.d/ipsec</strong>: The Strongswan start script. It will generate the required configuration files for strongSwan</div>
+</li>
+<li class="level1"><div class="li"> <strong>/var/ipsec.conf</strong>: The generated Strongswan config</div>
+</li>
+<li class="level1"><div class="li"> <strong>/var/ipsec.secrets</strong> : The generated file with preshared keys</div>
+</li>
+<li class="level1"><div class="li"> <strong>/var/strongswan.conf</strong> : The generated central configuration file</div>
+</li>
+</ul>
+
+<p>
+Here is a short example of the configuration methodology when having two <abbr title="Virtual Private Network">VPN</abbr> tunnels to ACME and Yabadoo networks 
+</p>
+<pre class="code">#/etc/config/ipsec
+config &#039;remote&#039; &#039;ACME&#039;
+  option &#039;enabled&#039; &#039;1&#039;
+  option &#039;gateway&#039; &#039;1.2.3.4&#039;
+  list   &#039;tunnel&#039; &#039;acme_lan&#039;
+  ...
+
+config &#039;tunnel&#039; &#039;acme_lan&#039;
+  option &#039;local_subnet&#039; &#039;192.168.213.64/26&#039;
+  option &#039;remote_subnet&#039; &#039;192.168.10.0/24&#039;
+  ...
+
+config &#039;remote&#039; &#039;Yabadoo&#039;
+  option &#039;enabled&#039; &#039;1&#039;
+  option &#039;gateway&#039; &#039;5.6.7.8&#039;</pre>
+
+<p>
+Read more about the complete syntax for <a href="/docs/guide-user/services/vpn/strongswan/configuration" class="wikilink1" title="docs:guide-user:services:vpn:strongswan:configuration" data-wiki-id="docs:guide-user:services:vpn:strongswan:configuration">/etc/config/ipsec</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration concept&quot;,&quot;hid&quot;:&quot;configuration_concept&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:5,&quot;range&quot;:&quot;1444-3060&quot;} -->
+<h2 class="sectionedit6" id="ike_daemon">IKE Daemon</h2>
+<div class="level2">
+
+<p>
+To let Charon run as a background daemon we can place a hook in the init environment. Therefore create the file <strong>/etc/init.d/ipsec</strong> and set the executable bit. Remark: This script is in an early alpha state. It currently works for site to site tunnels with preshared keys. Feel free to enhance it.
+</p>
+<pre class="code bash"><span class="co0">#!/bin/sh /etc/rc.common</span>
+<span class="co0">#/etc/init.d/ipsec - version 6 - 2016/09/13</span>
+&nbsp;
+<span class="re2">NAME</span>=ipsec
+<span class="re2">START</span>=<span class="nu0">60</span>
+<span class="re2">STOP</span>=<span class="nu0">60</span>
+&nbsp;
+. <span class="re1">$IPKG_INSTROOT</span><span class="sy0">/</span>lib<span class="sy0">/</span>functions.sh
+. <span class="re1">$IPKG_INSTROOT</span><span class="sy0">/</span>lib<span class="sy0">/</span>functions<span class="sy0">/</span>service.sh
+&nbsp;
+<span class="re2">FileSecrets</span>=<span class="sy0">/</span>var<span class="sy0">/</span>ipsec<span class="sy0">/</span>ipsec.secrets
+<span class="re2">FileConn</span>=<span class="sy0">/</span>var<span class="sy0">/</span>ipsec<span class="sy0">/</span>ipsec.conf
+<span class="re2">FileCommon</span>=<span class="sy0">/</span>var<span class="sy0">/</span>ipsec<span class="sy0">/</span>strongswan.conf
+&nbsp;
+<span class="re2">FolderCerts</span>=<span class="sy0">/</span>var<span class="sy0">/</span>ipsec<span class="sy0">/</span>ipsec.d
+&nbsp;
+<span class="re2">Connections</span>=<span class="st0">&quot;&quot;</span>
+&nbsp;
+ConfigUser<span class="br0">&#40;</span><span class="br0">&#41;</span>
+<span class="br0">&#123;</span>
+  <span class="kw3">local</span> enabled
+  <span class="kw3">local</span> xauth
+  <span class="kw3">local</span> name
+  <span class="kw3">local</span> password
+  <span class="kw3">local</span> crt_subject
+&nbsp;
+  config_get_bool enabled <span class="re4">$1</span> enabled <span class="nu0">0</span>
+  <span class="br0">&#91;</span><span class="br0">&#91;</span> <span class="st0">&quot;<span class="es2">$enabled</span>&quot;</span> == <span class="st0">&quot;0&quot;</span> <span class="br0">&#93;</span><span class="br0">&#93;</span> <span class="sy0">&amp;&amp;</span> <span class="kw3">return</span>
+&nbsp;
+  config_get_bool xauth       <span class="re4">$1</span> xauth       <span class="nu0">0</span>
+  config_get      name        <span class="re4">$1</span> name        <span class="st0">&quot;&quot;</span>
+  config_get      password    <span class="re4">$1</span> password    <span class="st0">&quot;&quot;</span>
+&nbsp;
+  <span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re1">$xauth</span> <span class="re5">-eq</span> <span class="nu0">1</span> <span class="re5">-a</span> <span class="st0">&quot;<span class="es2">$name</span>&quot;</span> <span class="sy0">!</span>= <span class="st0">&quot;&quot;</span> <span class="re5">-a</span> <span class="st0">&quot;<span class="es2">$password</span>&quot;</span> <span class="sy0">!</span>= <span class="st0">&quot;&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;<span class="es2">$name</span> : XAUTH <span class="es1">\&quot;</span><span class="es2">$password</span><span class="es1">\&quot;</span>&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileSecrets</span>
+  <span class="kw1">fi</span>
+<span class="br0">&#125;</span>
+&nbsp;
+ConfigPhase1<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  <span class="kw3">local</span> encryption_algorithm
+  <span class="kw3">local</span> hash_algorithm
+  <span class="kw3">local</span> dh_group
+&nbsp;
+  config_get encryption_algorithm  <span class="st0">&quot;$1&quot;</span> encryption_algorithm
+  config_get hash_algorithm        <span class="st0">&quot;$1&quot;</span> hash_algorithm
+  config_get dh_group              <span class="st0">&quot;$1&quot;</span> dh_group
+&nbsp;
+  <span class="re2">Phase1Proposal</span>=<span class="co1">${Phase1Proposal}</span><span class="st0">&quot;,&quot;</span><span class="co1">${encryption_algorithm}</span>-<span class="co1">${hash_algorithm}</span>-<span class="co1">${dh_group}</span>
+<span class="br0">&#125;</span>
+&nbsp;
+WriteOption<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  <span class="kw3">echo</span> <span class="st0">&quot;  $1&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileConn</span>
+<span class="br0">&#125;</span>
+&nbsp;
+ConfigTunnel<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  <span class="kw3">local</span> local_subnet
+  <span class="kw3">local</span> local_nat
+  <span class="kw3">local</span> remote_subnet
+  <span class="kw3">local</span> p2_proposal
+  <span class="kw3">local</span> pfs_group
+  <span class="kw3">local</span> encryption_algorithm
+  <span class="kw3">local</span> authentication_algorithm
+  <span class="kw3">local</span> <span class="re2">remote_name</span>=<span class="st0">&quot;$2&quot;</span>
+&nbsp;
+  config_get local_subnet             <span class="st0">&quot;$1&quot;</span>           local_subnet
+  config_get local_nat                <span class="st0">&quot;$1&quot;</span>           local_nat <span class="st0">&quot;&quot;</span>
+  config_get remote_subnet            <span class="st0">&quot;$1&quot;</span>           remote_subnet
+  config_get p2_proposal              <span class="st0">&quot;$1&quot;</span>           p2_proposal
+  config_get pfs_group                <span class="st0">&quot;<span class="es2">$p2_proposal</span>&quot;</span> pfs_group
+  config_get encryption_algorithm     <span class="st0">&quot;<span class="es2">$p2_proposal</span>&quot;</span> encryption_algorithm
+  config_get authentication_algorithm <span class="st0">&quot;<span class="es2">$p2_proposal</span>&quot;</span> authentication_algorithm
+&nbsp;
+  <span class="br0">&#91;</span><span class="br0">&#91;</span> <span class="st0">&quot;<span class="es2">$local_nat</span>&quot;</span> <span class="sy0">!</span>= <span class="st0">&quot;&quot;</span> <span class="br0">&#93;</span><span class="br0">&#93;</span> <span class="sy0">&amp;&amp;</span> <span class="re2">local_subnet</span>=<span class="re1">$local_nat</span>
+&nbsp;
+  <span class="re2">p2_proposal</span>=<span class="st0">&quot;<span class="es3">${encryption_algorithm}</span>-<span class="es3">${authentication_algorithm}</span>-<span class="es3">${pfs_group}</span>&quot;</span>
+&nbsp;
+  <span class="re2">Connections</span>=<span class="st0">&quot;<span class="es2">$Connections</span> <span class="es2">$ConfigName</span>-$1&quot;</span>
+&nbsp;
+  <span class="kw3">echo</span> <span class="st0">&quot;conn <span class="es2">$ConfigName</span>-$1&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileConn</span>
+  <span class="kw3">echo</span> <span class="st0">&quot;  keyexchange=ikev1&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileConn</span>
+  <span class="kw3">echo</span> <span class="st0">&quot;  left=<span class="es2">$LocalGateway</span>&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileConn</span>
+  <span class="kw3">echo</span> <span class="st0">&quot;  right=<span class="es2">$RemoteGateway</span>&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileConn</span>
+  <span class="kw3">echo</span> <span class="st0">&quot;  leftsubnet=<span class="es2">$local_subnet</span>&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileConn</span>
+  <span class="kw1">if</span> <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es2">$AuthenticationMethod</span>&quot;</span> = <span class="st0">&quot;psk&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;  leftauth=psk&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileConn</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;  rightauth=psk&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileConn</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;  rightsubnet=<span class="es2">$remote_subnet</span>&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileConn</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;  auto=route&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileConn</span>
+  <span class="kw1">elif</span> <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es2">$AuthenticationMethod</span>&quot;</span> = <span class="st0">&quot;xauth_psk_server&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;  authby=xauthpsk&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileConn</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;  xauth=server&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileConn</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;  modeconfig=pull&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileConn</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;  rightsourceip=<span class="es2">$remote_subnet</span>&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileConn</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;  auto=add&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileConn</span>
+  <span class="kw1">fi</span>
+  <span class="kw1">if</span> <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es2">$LocalIdentifier</span>&quot;</span> <span class="sy0">!</span>= <span class="st0">&quot;&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;  leftid=<span class="es2">$LocalIdentifier</span>&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileConn</span>
+  <span class="kw1">fi</span>
+  <span class="kw1">if</span> <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es2">$RemoteIdentifier</span>&quot;</span> <span class="sy0">!</span>= <span class="st0">&quot;&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;  rightid=<span class="es2">$RemoteIdentifier</span>&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileConn</span>
+  <span class="kw1">fi</span>
+&nbsp;
+  <span class="kw3">echo</span> <span class="st0">&quot;  esp=<span class="es2">$p2_proposal</span>&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileConn</span>
+  <span class="kw3">echo</span> <span class="st0">&quot;  ike=<span class="es2">$Phase1Proposal</span>&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileConn</span>
+  <span class="kw3">echo</span> <span class="st0">&quot;  type=tunnel&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileConn</span>
+  config_list_foreach <span class="st0">&quot;$2&quot;</span> extra_option WriteOption 
+<span class="br0">&#125;</span>
+&nbsp;
+ConfigRemote<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  <span class="kw3">local</span> enabled
+  <span class="kw3">local</span> gateway
+  <span class="kw3">local</span> pre_shared_key
+  <span class="kw3">local</span> authentication_method
+  <span class="kw3">local</span> local_identifier
+  <span class="kw3">local</span> remote_identifier
+  <span class="kw3">local</span> local_gateway
+&nbsp;
+  <span class="re2">ConfigName</span>=<span class="re4">$1</span>
+&nbsp;
+  config_get_bool enabled <span class="st0">&quot;$1&quot;</span> enabled <span class="nu0">0</span>
+  <span class="br0">&#91;</span><span class="br0">&#91;</span> <span class="st0">&quot;<span class="es2">$enabled</span>&quot;</span> == <span class="st0">&quot;0&quot;</span> <span class="br0">&#93;</span><span class="br0">&#93;</span> <span class="sy0">&amp;&amp;</span> <span class="kw3">return</span>
+&nbsp;
+  config_get gateway               <span class="st0">&quot;$1&quot;</span> gateway
+  config_get pre_shared_key        <span class="st0">&quot;$1&quot;</span> pre_shared_key
+  config_get authentication_method <span class="st0">&quot;$1&quot;</span> authentication_method
+  config_get local_identifier      <span class="st0">&quot;$1&quot;</span> local_identifier
+  config_get remote_identifier     <span class="st0">&quot;$1&quot;</span> remote_identifier
+  config_get local_gateway         <span class="st0">&quot;$1&quot;</span> local_gateway
+&nbsp;
+  <span class="re2">AuthenticationMethod</span>=<span class="re1">$authentication_method</span>
+  <span class="re2">LocalIdentifier</span>=<span class="re1">$local_identifier</span>
+  <span class="re2">RemoteIdentifier</span>=<span class="re1">$remote_identifier</span>
+&nbsp;
+  <span class="re2">RemoteGateway</span>=<span class="re1">$gateway</span>
+  <span class="kw1">if</span> <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es2">$RemoteGateway</span>&quot;</span> = <span class="st0">&quot;any&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+    <span class="re2">RemoteGateway</span>=<span class="st0">&quot;%any&quot;</span>
+    <span class="re2">LocalGateway</span>=<span class="sy0">`</span><span class="kw2">ip route</span> get 1.1.1.1 <span class="sy0">|</span> <span class="kw2">awk</span> <span class="re5">-F</span><span class="st0">&quot;src&quot;</span> <span class="st_h">'/src/{gsub(/ /,&quot;&quot;);print $2}'</span><span class="sy0">`</span>
+  <span class="kw1">else</span>
+    <span class="re2">LocalGateway</span>=<span class="sy0">`</span><span class="kw2">ip route</span> get <span class="re1">$RemoteGateway</span> <span class="sy0">|</span> <span class="kw2">awk</span> <span class="re5">-F</span><span class="st0">&quot;src&quot;</span> <span class="st_h">'/src/{gsub(/ /,&quot;&quot;);print $2}'</span><span class="sy0">`</span>
+  <span class="kw1">fi</span>
+  <span class="br0">&#91;</span> <span class="re5">-z</span> <span class="st0">&quot;<span class="es2">$local_gateway</span>&quot;</span> <span class="br0">&#93;</span> <span class="sy0">||</span> <span class="re2">LocalGateway</span>=<span class="st0">&quot;<span class="es2">$local_gateway</span>&quot;</span>
+&nbsp;
+  <span class="kw3">echo</span> <span class="st0">&quot;<span class="es2">$LocalGateway</span> <span class="es2">$RemoteGateway</span> : PSK <span class="es1">\&quot;</span><span class="es2">$pre_shared_key</span><span class="es1">\&quot;</span>&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileSecrets</span>
+&nbsp;
+  <span class="re2">Phase1Proposal</span>=<span class="st0">&quot;&quot;</span>
+  config_list_foreach <span class="st0">&quot;$1&quot;</span> p1_proposal ConfigPhase1
+  <span class="re2">Phase1Proposal</span>=<span class="sy0">`</span><span class="kw3">echo</span> <span class="re1">$Phase1Proposal</span> <span class="sy0">|</span> <span class="kw2">cut</span> <span class="re5">-b</span> <span class="nu0">2</span>-<span class="sy0">`</span>
+&nbsp;
+  config_list_foreach <span class="st0">&quot;$1&quot;</span> tunnel ConfigTunnel <span class="st0">&quot;$1&quot;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+PrepareEnvironment<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  <span class="kw3">local</span> debug
+&nbsp;
+  <span class="kw1">for</span> d <span class="kw1">in</span> cacerts aacerts ocspcerts crls acerts; <span class="kw1">do</span>
+    <span class="kw2">mkdir</span> <span class="re5">-p</span> <span class="re1">$FolderCerts</span><span class="sy0">/</span><span class="re1">$d</span> <span class="nu0">2</span><span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null
+  <span class="kw1">done</span>
+&nbsp;
+  <span class="kw1">if</span> <span class="br0">&#91;</span> <span class="sy0">!</span> <span class="re5">-L</span> <span class="sy0">/</span>etc<span class="sy0">/</span>ipsec.d <span class="br0">&#93;</span>; <span class="kw1">then</span>
+    <span class="kw2">rm</span> <span class="re5">-rf</span> <span class="sy0">/</span>etc<span class="sy0">/</span>ipsec.d <span class="nu0">2</span><span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null
+    <span class="kw2">ln</span> <span class="re5">-s</span> <span class="re1">$FolderCerts</span> <span class="sy0">/</span>etc<span class="sy0">/</span>ipsec.d
+  <span class="kw1">fi</span>
+&nbsp;
+  <span class="kw1">if</span> <span class="br0">&#91;</span> <span class="sy0">!</span> <span class="re5">-L</span> <span class="sy0">/</span>etc<span class="sy0">/</span>ipsec.secrets <span class="br0">&#93;</span>; <span class="kw1">then</span>
+    <span class="kw2">rm</span> <span class="sy0">/</span>etc<span class="sy0">/</span>ipsec.secrets <span class="nu0">2</span><span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null
+    <span class="kw2">ln</span> <span class="re5">-s</span> <span class="re1">$FileSecrets</span> <span class="sy0">/</span>etc<span class="sy0">/</span>ipsec.secrets
+  <span class="kw1">fi</span>
+&nbsp;
+  <span class="kw1">if</span> <span class="br0">&#91;</span> <span class="sy0">!</span> <span class="re5">-L</span> <span class="sy0">/</span>etc<span class="sy0">/</span>strongswan.conf <span class="br0">&#93;</span>; <span class="kw1">then</span>
+    <span class="kw2">rm</span> <span class="sy0">/</span>etc<span class="sy0">/</span>strongswan.conf <span class="nu0">2</span><span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null
+    <span class="kw2">ln</span> <span class="re5">-s</span> <span class="re1">$FileCommon</span> <span class="sy0">/</span>etc<span class="sy0">/</span>strongswan.conf
+  <span class="kw1">fi</span>
+&nbsp;
+  <span class="kw1">if</span> <span class="br0">&#91;</span> <span class="sy0">!</span> <span class="re5">-L</span> <span class="sy0">/</span>etc<span class="sy0">/</span>ipsec.conf <span class="br0">&#93;</span>; <span class="kw1">then</span>
+    <span class="kw2">rm</span> <span class="sy0">/</span>etc<span class="sy0">/</span>ipsec.conf <span class="nu0">2</span><span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null
+    <span class="kw2">ln</span> <span class="re5">-s</span> <span class="re1">$FileConn</span> <span class="sy0">/</span>etc<span class="sy0">/</span>ipsec.conf
+  <span class="kw1">fi</span>
+&nbsp;
+  <span class="kw3">echo</span> <span class="st0">&quot;# generated by /etc/init.d/ipsec&quot;</span> <span class="sy0">&gt;</span> <span class="re1">$FileConn</span>
+  <span class="kw3">echo</span> <span class="st0">&quot;version 2&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileConn</span>
+  <span class="kw3">echo</span> <span class="st_h">'config setup'</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileConn</span>
+  config_list_foreach <span class="st0">&quot;$1&quot;</span> setup_option WriteOption 
+&nbsp;
+  <span class="kw3">echo</span> <span class="st0">&quot;# generated by /etc/init.d/ipsec&quot;</span> <span class="sy0">&gt;</span> <span class="re1">$FileSecrets</span>
+&nbsp;
+  config_get debug <span class="st0">&quot;$1&quot;</span> debug <span class="nu0">0</span>
+&nbsp;
+  <span class="kw3">echo</span> <span class="st0">&quot;# generated by /etc/init.d/ipsec&quot;</span> <span class="sy0">&gt;</span> <span class="re1">$FileCommon</span>
+  <span class="kw3">echo</span> <span class="st0">&quot;charon {&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileCommon</span>
+  <span class="kw3">echo</span> <span class="st0">&quot;  load = aes des sha1 sha2 md5 gmp random nonce hmac stroke kernel-netlink socket-default updown&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileCommon</span>
+  <span class="kw3">echo</span> <span class="st0">&quot;  filelog {&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileCommon</span>
+  <span class="kw3">echo</span> <span class="st0">&quot;    /var/log/charon.log {&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileCommon</span>
+  <span class="kw3">echo</span> <span class="st0">&quot;      time_format = %b %e %T&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileCommon</span>
+  <span class="kw3">echo</span> <span class="st0">&quot;      ike_name = yes&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileCommon</span>
+  <span class="kw3">echo</span> <span class="st0">&quot;      append = no&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileCommon</span>
+  <span class="kw3">echo</span> <span class="st0">&quot;      default = &quot;</span> <span class="re1">$debug</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileCommon</span>
+  <span class="kw3">echo</span> <span class="st0">&quot;      flush_line = yes&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileCommon</span>
+  <span class="kw3">echo</span> <span class="st0">&quot;    }&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileCommon</span>
+  <span class="kw3">echo</span> <span class="st0">&quot;  }&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileCommon</span>
+  <span class="kw3">echo</span> <span class="st0">&quot;}&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$FileCommon</span>
+&nbsp;
+<span class="br0">&#125;</span>
+&nbsp;
+CheckInstallation<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  <span class="kw1">if</span> <span class="br0">&#91;</span> <span class="sy0">!</span> <span class="re5">-x</span> $<span class="br0">&#40;</span><span class="kw2">which</span> <span class="kw2">ip</span><span class="br0">&#41;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+    <span class="kw3">echo</span> <span class="kw2">ip</span> is missing
+    <span class="kw3">echo</span> <span class="kw2">install</span> with <span class="co3">\&quot;</span>opkg <span class="kw2">install</span> <span class="kw2">ip</span><span class="co3">\&quot;</span> or <span class="co3">\&quot;</span>opkg <span class="kw2">install</span> ip-tiny<span class="co3">\&quot;</span>
+    <span class="kw3">exit</span>
+  <span class="kw1">fi</span>
+&nbsp;
+  <span class="kw1">for</span> f <span class="kw1">in</span> aes authenc cbc hmac md5 sha1 sha256; <span class="kw1">do</span>
+    <span class="kw1">if</span> <span class="br0">&#91;</span> <span class="sy0">`</span>opkg list kmod-crypto-<span class="re1">$f</span> <span class="sy0">|</span> <span class="kw2">wc</span> -l<span class="sy0">`</span> <span class="re5">-eq</span> <span class="nu0">0</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+      <span class="kw3">echo</span> kmod-crypto-<span class="re1">$f</span> missing
+      <span class="kw3">echo</span> <span class="kw2">install</span> with  <span class="co3">\&quot;</span>opkg <span class="kw2">install</span> kmod-crypto-<span class="re1">$f</span> <span class="re5">--nodeps</span><span class="co3">\&quot;</span>
+      <span class="kw3">exit</span>
+    <span class="kw1">fi</span>
+  <span class="kw1">done</span>
+&nbsp;
+  <span class="kw1">for</span> f <span class="kw1">in</span> aes gmp hmac kernel-netlink md5 random sha1 sha2 updown attr resolve; <span class="kw1">do</span>
+    <span class="kw1">if</span> <span class="br0">&#91;</span> <span class="sy0">!</span> <span class="re5">-f</span> <span class="sy0">/</span>usr<span class="sy0">/</span>lib<span class="sy0">/</span>ipsec<span class="sy0">/</span>plugins<span class="sy0">/</span>libstrongswan-<span class="co1">${f}</span>.so <span class="br0">&#93;</span>; <span class="kw1">then</span>
+      <span class="kw3">echo</span> <span class="sy0">/</span>usr<span class="sy0">/</span>lib<span class="sy0">/</span>ipsec<span class="sy0">/</span>plugins<span class="sy0">/</span><span class="re1">$f</span> missing
+      <span class="kw3">echo</span> <span class="kw2">install</span> with <span class="co3">\&quot;</span>opkg <span class="kw2">install</span> strongswan-mod-<span class="re1">$f</span> <span class="re5">--nodeps</span><span class="co3">\&quot;</span>
+      <span class="kw3">exit</span>
+    <span class="kw1">fi</span>
+  <span class="kw1">done</span>
+<span class="br0">&#125;</span>
+&nbsp;
+start<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  CheckInstallation
+&nbsp;
+  config_load ipsec
+  config_foreach PrepareEnvironment ipsec
+  config_foreach ConfigRemote remote
+&nbsp;
+  config_load <span class="kw2">users</span>
+  config_foreach ConfigUser user
+&nbsp;
+  <span class="sy0">/</span>usr<span class="sy0">/</span>sbin<span class="sy0">/</span>ipsec start
+  <span class="kw2">sleep</span> <span class="nu0">2</span>
+  <span class="kw1">for</span> conn <span class="kw1">in</span> <span class="re1">$Connections</span>; <span class="kw1">do</span>
+    ipsec up <span class="st0">&quot;<span class="es2">$conn</span>&quot;</span>
+  <span class="kw1">done</span>
+<span class="br0">&#125;</span>
+&nbsp;
+stop<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  <span class="sy0">/</span>usr<span class="sy0">/</span>sbin<span class="sy0">/</span>ipsec stop
+<span class="br0">&#125;</span></pre>
+
+<p>
+Before you start Charon with the web interface you should make a dry run from command line. This will show you if there are any errors in your generated configuration file <strong>/etc/ipsec.conf</strong>. Afterwards you can control startup behaviour with LuCI.
+</p>
+
+<p>
+<a href="/_detail/doc/howto/ipsec_daemon.png?id=docs%3Aguide-user%3Aservices%3Avpn%3Astrongswan%3Abasics" class="media" title="doc:howto:ipsec_daemon.png"><img src="/_media/doc/howto/ipsec_daemon.png" class="media" loading="lazy" alt="" /></a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;IKE Daemon&quot;,&quot;hid&quot;:&quot;ike_daemon&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:6,&quot;range&quot;:&quot;3061-10682&quot;} -->
+<h2 class="sectionedit7" id="what_s_next">What&#039;s next</h2>
+<div class="level2">
+
+<p>
+After the basic setup you should make sure you understand the <a href="/docs/guide-user/services/vpn/strongswan/performance" class="wikilink1" title="docs:guide-user:services:vpn:strongswan:performance" data-wiki-id="docs:guide-user:services:vpn:strongswan:performance">expected performance</a> of low budget routers.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;What&#039;s next&quot;,&quot;hid&quot;:&quot;what_s_next&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:7,&quot;range&quot;:&quot;10683-&quot;} -->

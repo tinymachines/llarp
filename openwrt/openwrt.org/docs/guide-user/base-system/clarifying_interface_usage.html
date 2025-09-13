@@ -1,0 +1,78 @@
+
+<h1 class="sectionedit1" id="clarifying_the_term_interface">Clarifying the term &quot;Interface&quot;</h1>
+<div class="level1">
+
+<p>
+See also: <a href="/docs/guide-user/network/dsa/dsa-mini-tutorial#unfinished_bits_to_be_incorporated_if_still_relevant" class="wikilink1" title="docs:guide-user:network:dsa:dsa-mini-tutorial" data-wiki-id="docs:guide-user:network:dsa:dsa-mini-tutorial">DSA Mini-Tutorial &gt; Unfinished bits to be incorporated if still relevant</a>
+</p>
+
+<p>
+If you come from some Linux distribution or a router like pfSense, the usage of the term “interface” may be a bit confusing.
+</p>
+
+<p>
+An “Interface” in the OpenWrt configuration must not be mixed up with a physical interface.
+It is tempting.
+As Unix administrator you know about the <code>ifconfig</code> command, so the natural assumption is that e.g. <code>config interface lan</code> does what you&#039;d do with <code>ifconfig</code>.
+Well, this is only partially true.
+</p>
+
+<p>
+To clarify things (hopefully) let&#039;s avoid the term interface and replace it with something more neutral.
+What we actually configure in OpenWrt could be named a “Connector”.
+The configuration of a “Connector” combines all properties that are required to attach the device running OpenWrt to a network.
+This include a physical device (to avoid the term interface altogether, I&#039;ll call this a “controller”) and setup information that configures the controller in such a way that it allows the device to join the network.
+</p>
+<pre class="code bash"><span class="co0"># This is not valid configuration code</span>
+config connector <span class="st_h">'lan'</span>
+	option controller <span class="st_h">'eth0'</span>
+	option setup <span class="st_h">'static'</span>
+	option ipaddr <span class="st_h">'192.168.1.1'</span>
+	option netmask <span class="st_h">'255.255.255.0'</span></pre>
+
+<p>
+If you already know the OpenWrt syntax a bit, you can see that I have replaced <code>interface</code> with <code>connector</code>, <code>device</code> with <code>controller</code> and <code>proto</code> with <code>setup</code> to avoid “interface” and anything related.
+</p>
+
+<p>
+Of course, this configuration information has an influence on the controller, and you can see the effects with a command such as <code>ifconfig</code> or better <code>ip a s eth0</code>.
+But beware that this is not the complete configuration of <code>eth0</code>.
+There may be more connectors to other networks that involve the same controller.
+And, depending on the chosen setup, the connector configuration may have effects on other configurable items besides the controller.
+</p>
+
+<p>
+As an example, consider <abbr title="Internet Protocol version 6">IPv6</abbr> connectivity.
+<abbr title="Internet Protocol version 4">IPv4</abbr> and <abbr title="Internet Protocol version 6">IPv6</abbr> define distinct networks.
+Devices with an <abbr title="Internet Protocol version 4">IPv4</abbr> address cannot talk to devices with an <abbr title="Internet Protocol version 6">IPv6</abbr> address.
+Therefore, if we want our box to talk to other <abbr title="Internet Protocol version 6">IPv6</abbr> devices, we need an additional connector.
+</p>
+<pre class="code bash"><span class="co0"># This is not valid configuration code</span>
+config connector <span class="st_h">'lan6'</span>
+	option controller <span class="st_h">'eth0'</span>
+	option setup <span class="st_h">'dhcp6'</span></pre>
+
+<p>
+This configures another network connector that happens to use the same controller. <sup><a href="#fn__1" id="fnt__1" class="fn_top">1)</a></sup> as the previous connector, but uses a different setup strategy, an automatic strategy using dhcp (for <abbr title="Internet Protocol version 6">IPv6</abbr>).
+Therefore this configuration does not only influence the controller, but also helper processes (in this case <code>odhcpd</code>).
+</p>
+
+<p>
+To summarize, when reading or writing an OpenWrt network configuration keep in mind that:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>config interface</code> is not the configuration of a physical interface, but rather the specification of a connector to some network.</div>
+</li>
+<li class="level1"><div class="li"> <code>device</code> is usually not the name of something configured with <code>config interface</code>, but the name of a physical interface. <sup><a href="#fn__2" id="fnt__2" class="fn_top">2)</a></sup></div>
+</li>
+<li class="level1"><div class="li"> <code>proto</code> is not the protocol used in the network, but the protocol used to setup the physical interface in such a way that it can participate in the network that it is supposed to connect to.</div>
+</li>
+</ul>
+
+</div>
+<div class="footnotes">
+<div class="fn"><sup><a href="#fnt__1" id="fn__1" class="fn_bot">1)</a></sup> 
+<div class="content">Luckily, using <abbr title="Internet Protocol version 6">IPv6</abbr> does not require new physical devices.</div></div>
+<div class="fn"><sup><a href="#fnt__2" id="fn__2" class="fn_bot">2)</a></sup> 
+<div class="content">I&#039;m not really sure about this feature, but it seems that you can use <code>device @&lt;devname&gt;</code> as a shortcut to refer to the physical interfaces used in another interface configuration.</div></div>
+</div>

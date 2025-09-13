@@ -1,0 +1,393 @@
+
+<h1 class="sectionedit1" id="wi-fi_extenderrepeater_with_wds">Wi-Fi Extender/Repeater with WDS</h1>
+<div class="level1">
+
+<p>
+This network setup features a wireless access point and a wireless repeater. The access point connects to the main network via a wired connection and provides internet access. The repeater connects wirelessly to the access point as a client device, creating a point-to-point link that extends network and internet access to any devices connected to the repeater, whether wireless or wired. This configuration is ideal for extending Wi-Fi coverage in your area.
+</p>
+
+<p>
+<img src="/_media/media/doc/802.11-wds-bridge.png" class="media" loading="lazy" alt="" />
+</p>
+
+<p>
+<em><strong>Note</strong></em>: This wiki article was originally located <a href="/docs/guide-user/network/wifi/atheroswds" class="wikilink1" title="docs:guide-user:network:wifi:atheroswds" data-wiki-id="docs:guide-user:network:wifi:atheroswds">at this location.</a> You can view the original contribution history <a href="/docs/guide-user/network/wifi/atheroswds?do=revisions" class="wikilink1" title="docs:guide-user:network:wifi:atheroswds" data-wiki-id="docs:guide-user:network:wifi:atheroswds">here</a>.
+</p>
+
+<p>
+The setup described in this article establishes a backhaul link at layer 2 of the OSI model, allowing all broadcast packets, such as <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> requests, to be transmitted in both directions over the link. The original MAC addresses of devices on both sides are preserved across the bridge.
+</p>
+
+<p>
+Devices connected to both the access point and the repeater will share the same subnet, enabling visibility between them and facilitating the use of protocols like Zeroconf. Both the access point and the repeater remain accessible over the network.
+</p>
+
+<p>
+Two wireless protocols can be used to achieve this: <abbr title="Wireless distribution system">WDS</abbr> and 802.11s mesh.
+</p>
+
+<p>
+This document focuses on <abbr title="Wireless distribution system">WDS</abbr>. For 802.11s mesh, refer to <a href="/docs/guide-user/network/wifi/mesh/802-11s" class="wikilink1" title="docs:guide-user:network:wifi:mesh:802-11s" data-wiki-id="docs:guide-user:network:wifi:mesh:802-11s">802-11s</a>.
+</p>
+
+<p>
+<abbr title="Wireless distribution system">WDS</abbr> (Wireless Distribution System) is required to create a network connection over a wireless link between the access point and the repeater. Although the IEEE 802.11-1999 standard defines <abbr title="Wireless distribution system">WDS</abbr> as a mechanism using a 4-address format, it does not specify implementation details, leading to potential issues when using <abbr title="Wireless distribution system">WDS</abbr> between devices from different chipset or firmware vendors. Therefore, <strong>it is recommended to use OpenWrt on both the access point and repeater</strong> to ensure compatibility and optimal performance. Most wireless drivers in OpenWrt support <abbr title="Wireless distribution system">WDS</abbr> mode.
+</p>
+
+<p>
+If <abbr title="Wireless distribution system">WDS</abbr> or 802.11s mesh is not an option due to access point limitations, consider using <a href="/docs/guide-user/network/wifi/relay_configuration" class="wikilink1" title="docs:guide-user:network:wifi:relay_configuration" data-wiki-id="docs:guide-user:network:wifi:relay_configuration">Relayd - Wireless Repeater/Extender</a> or a <a href="/docs/guide-user/network/wifi/connect_client_wifi" class="wikilink1" title="docs:guide-user:network:wifi:connect_client_wifi" data-wiki-id="docs:guide-user:network:wifi:connect_client_wifi">simple wireless client</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Wi-Fi Extender\/Repeater with WDS&quot;,&quot;hid&quot;:&quot;wi-fi_extenderrepeater_with_wds&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-2331&quot;} -->
+<h2 class="sectionedit2" id="configuration">Configuration</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Tested with OpenWrt 12.09 using a TP-Link TL-WR1043ND as the upstream wireless access point and a Rosewill RNX-N300RT as the repeater.</div>
+</li>
+<li class="level1"><div class="li"> Tested with OpenWrt 15.05 using two TP-Link TL-WR1043ND.</div>
+</li>
+<li class="level1"><div class="li"> Tested with OpenWrt 15.05.1 using a Netgear WNDR3700v4 as the upstream access point and a Nexx WT3020 as the repeater.</div>
+</li>
+<li class="level1"><div class="li"> Tested with OpenWrt 19.07.2 to 19.07.6 using a Netgear R6220 as the upstream access point and a Wavlink WL-WN575A3 as the repeater. There were some glitches in 19.07.5 on the R6220, but seemingly not related to <abbr title="Wireless distribution system">WDS</abbr>.</div>
+</li>
+<li class="level1"><div class="li"> Tested with OpenWrt 21.02.1 with both a TP-Link EAP235-Wall V1 and a Netgear R6800 as upstream wireless access point, and D-Link DIR-878 A1 as the repeater (all MediaTek 802.11ac devices).</div>
+</li>
+<li class="level1"><div class="li"> Tested with OpenWrt 21.02.3 with Linksys WRT1900ACS v2 as upstream wireless access point, and Linksys EA8500 as the repeater.</div>
+</li>
+<li class="level1"><div class="li"> Tested with OpenWrt 22.03.2 with Banana PI BPI-R64 as upstream wireless access point, and Banana PI BPI-R2 as the repeater (AsiaRF AW7915-NP1 cards on both sides).</div>
+</li>
+<li class="level1"><div class="li"> Tested with OpenWrt 24.10.0 with GL.iNet GL-MT6000 (Flint 2) as upstream wireless access point, and TP-Link Archer C7 AC1750 v2 as the repeater.</div>
+</li>
+<li class="level1"><div class="li"> Tested with OpenWrt 24.10.1 with OpenWrt One as upstream wireless access point, and Mi Router 3 Pro as the repeater.</div>
+</li>
+</ul>
+
+<p>
+The network configuration process may be performed both via the command line (with <a href="/docs/guide-user/base-system/uci" class="wikilink1" title="docs:guide-user:base-system:uci" data-wiki-id="docs:guide-user:base-system:uci">uci</a> and <abbr title="Secure Shell">SSH</abbr>) and via a <abbr title="Graphical User Interface">GUI</abbr> (with <a href="/docs/guide-user/luci/luci.essentials" class="wikilink1" title="docs:guide-user:luci:luci.essentials" data-wiki-id="docs:guide-user:luci:luci.essentials">luci</a> and a web browser). It is split in two sections:
+</p>
+<ol>
+<li class="level1"><div class="li"> The access point or <abbr title="Access Point">AP</abbr>.</div>
+</li>
+<li class="level1"><div class="li"> The station or STA.</div>
+</li>
+</ol>
+
+<p>
+It is important to follow the order of the steps as failure to do so could render the routers inoperable.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;2332-4068&quot;} -->
+<h3 class="sectionedit3" id="using_the_command_line_over_ssh">Using the command line over SSH</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="the_upstream_access_point">The upstream access point</h4>
+<div class="level4">
+
+<p>
+Open a terminal and connect to this device over <abbr title="Secure Shell">SSH</abbr>. Make sure that this router has already been set up as a regular wireless access point and that wireless clients can connect to it fine. The procedure to do so is described at <a href="/docs/guide-quick-start/basic_wifi" class="wikilink1" title="docs:guide-quick-start:basic_wifi" data-wiki-id="docs:guide-quick-start:basic_wifi">Enabling a Wi-Fi access point on OpenWrt</a>.
+</p>
+
+<p>
+Now, open the <a href="/docs/guide-user/network/wifi/basic" class="wikilink1" title="docs:guide-user:network:wifi:basic" data-wiki-id="docs:guide-user:network:wifi:basic">/etc/config/wireless</a> configuration file and add the following line to the <code>wifi-iface</code> section in use by the access point for operational network functionality:
+</p>
+<pre class="code">option wds &#039;1&#039;</pre>
+
+<p>
+Note that there may be multiple <code>wifi-iface</code> sections in this file, especially if the router is a dual-band device, in which case you need to ensure that you are editing the correct section.
+</p>
+
+<p>
+This is an example of the <a href="/docs/guide-user/network/wifi/basic" class="wikilink1" title="docs:guide-user:network:wifi:basic" data-wiki-id="docs:guide-user:network:wifi:basic">/etc/config/wireless</a> file on an access point for the 2.4 <abbr title="Gigahertz">GHz</abbr> band:
+</p>
+
+<p>
+/etc/config/wireless
+</p>
+<pre class="code">config wifi-device &#039;radio0&#039;
+	option type &#039;mac80211&#039;
+	option path &#039;platform/ahb/18100000.wmac&#039;
+	option band &#039;2g&#039;
+	option country &#039;US&#039;
+
+config wifi-iface &#039;wifinet1&#039;
+	option device &#039;radio0&#039;
+	option network &#039;lan&#039;
+	option mode &#039;ap&#039;
+	option ssid &#039;My WiFi&#039;
+	option encryption &#039;psk2&#039;
+	option key &#039;MyWiFiPassword&#039;
+	option wds &#039;1&#039;</pre>
+
+<p>
+Once that is done, save the file and reboot the device to apply the new network settings. Make sure that wireless clients are able to connect to this wireless access point and access the internet as well as they did with the old network configuration.
+</p>
+
+<p>
+The <code>ip address</code> command should display a new network interface whose name is in the form of: “wlan.sta<strong>N</strong>”; where <strong>N</strong> is a number. This new interface must exist alongside the base “wlan<strong>N</strong>” wireless network interface. For example, if you get the “wlan.sta1” network interface, the base interface is “wlan1”.
+</p>
+
+<p>
+<strong>Note:</strong> when tested on Barrier Breaker, there was no new interface created, neither on the <abbr title="Access Point">AP</abbr> nor on the STA, despite <abbr title="Wireless distribution system">WDS</abbr> working properly.
+</p>
+
+<p>
+<strong>Note:</strong> The new wlan.staN interface will <strong>not</strong> be bridged by default with the originating <abbr title="Wireless Local Area Network">WLAN</abbr> interface if that interface is not itself part of a bridge. To correct this problem, you will need to create a new bridge interface in the wireless access point and associate only its <abbr title="Wireless Local Area Network">WLAN</abbr> interface to it.
+</p>
+
+</div>
+
+<h4 id="the_repeater">The repeater</h4>
+<div class="level4">
+
+<p>
+Initially, you might need to use an Ethernet cable to connect directly to the repeater and configure it. Open a terminal and connect to this device over <abbr title="Secure Shell">SSH</abbr>.
+</p>
+
+<p>
+There are some important settings on the repeater to take into account before creating the wireless link between the repeater and the access point. For starters, the repeater must have its <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> server disabled (assuming there is already a different <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> server working on the network). On fresh-installs of OpenWrt, the <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> server is usually enabled by default on the <abbr title="Local Area Network">LAN</abbr> interface, so to disable it you need to change the network settings of the repeater.
+</p>
+
+<p>
+Open the <a href="/docs/guide-user/base-system/dhcp" class="wikilink1" title="docs:guide-user:base-system:dhcp" data-wiki-id="docs:guide-user:base-system:dhcp">/etc/config/dhcp</a> file and add the following line to the <code>config dhcp &#039;lan&#039;</code> section:
+</p>
+<pre class="code">option ignore &#039;1&#039;</pre>
+
+<p>
+This line will disable the <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> server on the <abbr title="Local Area Network">LAN</abbr> interface. The <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> server should be already disabled on the <abbr title="Wireless Local Area Network">WLAN</abbr> interface, so save and close the file.
+</p>
+
+<p>
+<strong>Note:</strong> On Chaos Calmer 15.05 / LuCI (git-15.248.30277-3836b45), the DHCP6 server had to be disabled as well, by changing <code>option dhcpv6 &#039;server&#039;</code> to <code>option dhcpv6 &#039;disabled&#039;</code>.
+</p>
+
+<p>
+Now, you need to assign a network address other than the default static <abbr title="Internet Protocol">IP</abbr> assignment of 192.168.1.1/24 to the <abbr title="Local Area Network">LAN</abbr> interface, if it is already being used by a different device on your network. Open the <a href="/docs/guide-user/base-system/basic-networking" class="wikilink1" title="docs:guide-user:base-system:basic-networking" data-wiki-id="docs:guide-user:base-system:basic-networking">/etc/config/network</a> file and change the <abbr title="Internet Protocol">IP</abbr> address to one from the same subnet. For example, to 192.168.1.2/24.
+This is an example of the configuration file:
+</p>
+
+<p>
+/etc/config/network
+</p>
+<pre class="code">config device
+	option name &#039;br-lan&#039;
+	option type &#039;bridge&#039;
+	list ports &#039;eth0.1&#039;
+
+config interface &#039;lan&#039;
+	option device &#039;br-lan&#039;
+	option proto &#039;static&#039;
+	option ipaddr &#039;192.168.1.2&#039;
+	option netmask &#039;255.255.255.0&#039;</pre>
+
+<p>
+Alternatively, you may want to configure the repeater to fetch an <abbr title="Internet Protocol">IP</abbr> address via <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> from the access point, but that may leave the repeater inaccessible if the <abbr title="Wireless distribution system">WDS</abbr> connection does not work and it becomes unable to configure its network settings with <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr>. You would need to set the interface protocol to <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr>:
+</p>
+
+<p>
+/etc/config/network
+</p>
+<pre class="code">config device
+	option name &#039;br-lan&#039;
+	option type &#039;bridge&#039;
+	list ports &#039;eth0.1&#039;
+
+config interface &#039;lan&#039;
+	option device &#039;br-lan&#039;
+	option proto &#039;dhcp&#039;</pre>
+
+<p>
+Reboot the repeater to apply the new network settings. After it has restarted, remember to reconnect to the repeater via <abbr title="Secure Shell">SSH</abbr> on its new <abbr title="Internet Protocol">IP</abbr> address. Keep in mind that the <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> server is now disabled on its <abbr title="Local Area Network">LAN</abbr> network interface, so you might need to set a static <abbr title="Internet Protocol">IP</abbr> address and subnet mask on the device you are using to configure the repeater.
+</p>
+
+<p>
+<strong>Note:</strong> If you have set the <abbr title="Local Area Network">LAN</abbr> interface to use a dynamic <abbr title="Internet Protocol">IP</abbr> address (<abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> client), you will need to search for the repeater&#039;s <abbr title="Internet Protocol">IP</abbr> address every time you reboot it.
+</p>
+
+<p>
+It is time to setup the actual wireless link. Open the <a href="/docs/guide-user/network/wifi/basic" class="wikilink1" title="docs:guide-user:network:wifi:basic" data-wiki-id="docs:guide-user:network:wifi:basic">/etc/config/wireless</a> file and make sure the corresponding settings in the <code>radio<strong>N</strong></code> section (where <strong>N</strong> is a number) match the values in the same file of the access point. For example, to use the same band and country code.
+</p>
+
+<p>
+Additionally, in this file, modify the <code>wifi-iface</code> section to set it in “sta” (client) mode, include the desired SSID to which to connect (the one broadcasted by the access point) and ensure <abbr title="Wireless distribution system">WDS</abbr> is enabled by setting this value to 1. The specific options may be different depending on the hardware but the SSID, channel, encryption type and password must match the access point, and <abbr title="Wireless distribution system">WDS</abbr> mode must be turned on.
+</p>
+
+<p>
+<strong>If you want to enable wireless access</strong> to the repeater and, therefore, <strong>to the main network and the Internet</strong>, which you might want to do if your use case is <strong>expanding the Wi-Fi coverage on your location, an additional wireless interface (<code>wifi-iface</code>) is required in this file</strong>. Copy over the previous wifi-iface and:
+</p>
+<ul>
+<li class="level1"><div class="li"> Change the mode from <code>sta</code> to <code>ap</code>.</div>
+</li>
+<li class="level1"><div class="li"> Remove the <code>option wds &#039;1&#039;</code> line.</div>
+</li>
+</ul>
+
+<p>
+In this new Wi-Fi interface on the repeater, the SSID and the secret key may be the same as the access points to allow transparent roaming, but they can also be different. As long as you connect this new interface to the <abbr title="Local Area Network">LAN</abbr> network, which is the default, your other wireless devices connecting through this <abbr title="Access Point">AP</abbr> will also be seen as part of the big network.
+</p>
+
+<p>
+This is an example of the <a href="/docs/guide-user/network/wifi/basic" class="wikilink1" title="docs:guide-user:network:wifi:basic" data-wiki-id="docs:guide-user:network:wifi:basic">/etc/config/wireless</a> configuration file on a repeater for the 2.4 <abbr title="Gigahertz">GHz</abbr> band.
+</p>
+
+<p>
+/etc/config/wireless
+</p>
+<pre class="code">config wifi-device &#039;radio0&#039;
+	option type &#039;mac80211&#039;
+	option path &#039;platform/ahb/18100000.wmac&#039;
+	option band &#039;2g&#039;
+	option country &#039;US&#039;
+
+config wifi-iface &#039;wifinet1&#039;
+	option device &#039;radio0&#039;
+	option network &#039;lan&#039;
+	option mode &#039;sta&#039;
+	option ssid &#039;My WiFi&#039;
+	option encryption &#039;psk2&#039;
+	option key &#039;MyWiFiPassword&#039;
+	option wds &#039;1&#039;
+
+config wifi-iface &#039;wifinet2&#039;
+	option device &#039;radio0&#039;
+	option network &#039;lan&#039;
+	option mode &#039;ap&#039;
+	option ssid &#039;My WiFi&#039;
+	option encryption &#039;psk2&#039;
+	option key &#039;MyWiFiPassword&#039;</pre>
+
+<p>
+See the <a href="/docs/guide-user/network/wifi/encryption" class="wikilink1" title="docs:guide-user:network:wifi:encryption" data-wiki-id="docs:guide-user:network:wifi:encryption">Configure Wi-Fi encryption</a> wiki page for a reference on how to specify encryption and keys.
+</p>
+
+<p>
+Disconnect the repeater from the wired network and reboot it, for example, by using its power button.
+</p>
+
+<p>
+The repeater should boot and connect automatically to the access point wirelessly via <abbr title="Wireless distribution system">WDS</abbr>. It may take a few minutes for the repeater to associate and connect to the access point. Once this has happened, and if you decided to enable the <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> client on the <abbr title="Local Area Network">LAN</abbr> interface (dynamic address), the wired interface of the repeater should succeed in getting a <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> address through the new wireless backhaul connection. The wireless interface on the repeater does not get an <abbr title="Internet Protocol">IP</abbr> address as it is now acting as a transparent bridge.
+</p>
+
+<p>
+Any client devices connected to the repeater via an Ethernet cable (wired clients) should now be transparently connected into the main network over the wireless (<abbr title="Wireless distribution system">WDS</abbr>) link.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Using the command line over SSH&quot;,&quot;hid&quot;:&quot;using_the_command_line_over_ssh&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;4069-12414&quot;} -->
+<h3 class="sectionedit4" id="luci">LuCI</h3>
+<div class="level3">
+
+<p>
+Everything shown in the command-line configuration with <abbr title="Secure Shell">SSH</abbr> section should be reproducible using LuCI in OpenWrt.
+</p>
+
+</div>
+
+<h4 id="the_upstream_access_point1">The upstream access point</h4>
+<div class="level4">
+
+<p>
+<img src="/_media/media/doc/howtos/wds-screenshot-1.png" class="media" loading="lazy" alt="" />
+</p>
+<ol>
+<li class="level1"><div class="li"> Open LuCI in a browser.</div>
+</li>
+<li class="level1"><div class="li"> Go to the “Network” tab then select “Wireless” from the dropdown.</div>
+</li>
+<li class="level1"><div class="li"> Click “Edit” on the radio.</div>
+</li>
+<li class="level1"><div class="li"> Under “Interface Configuration”, set the Mode to “Access Point (<abbr title="Wireless distribution system">WDS</abbr>)”.</div>
+</li>
+<li class="level1"><div class="li"> Click the green “Save” button at the bottom of the popup.</div>
+</li>
+<li class="level1"><div class="li"> Click the blue “Save &amp; Apply” button at the bottom of the page.</div>
+</li>
+</ol>
+
+</div>
+
+<h4 id="the_repeater1">The repeater</h4>
+<div class="level4">
+
+<p>
+On the <abbr title="Local Area Network">LAN</abbr> network interface of the repeater, change the default <abbr title="Internet Protocol">IP</abbr> to a different one from the same subnet as upstream access point. &#039;Save &amp; Apply&#039; the change.
+</p>
+
+<p>
+<img src="/_media/media/doc/howtos/wds-screenshot-2.png" class="media" loading="lazy" alt="" />
+</p>
+
+<p>
+Reconnect to the repeater at its new <abbr title="Local Area Network">LAN</abbr> <abbr title="Internet Protocol">IP</abbr> address, and disable the <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> server.
+</p>
+
+<p>
+<img src="/_media/media/doc/howtos/wds-screenshot-3.png" class="media" loading="lazy" alt="" />
+</p>
+
+<p>
+For a wireless interface working on the same frequency band as the access point, click <strong>Scan</strong>, join the previously created wireless network and when asked, set the firewall zone to <code>lan</code>.
+</p>
+
+<p>
+The wireless mode should be <code>Client (<abbr title="Wireless distribution system">WDS</abbr>)</code> and the <strong>Network</strong> in <strong>Interface Configuration</strong> has to be changed from <code>wwan</code> to <code>lan</code>.
+</p>
+
+<p>
+<img src="/_media/media/doc/howtos/wds-screenshot-4.png" class="media" loading="lazy" alt="" />
+</p>
+
+<p>
+Go to <strong>Network</strong>, <strong><abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> and <abbr title="Domain Name System">DNS</abbr></strong>, <strong>Forwards</strong>. Set <code><abbr title="Domain Name System">DNS</abbr> forwardings</code> to the <abbr title="Internet Protocol">IP</abbr> address of the access point.
+</p>
+
+<p>
+Go to <strong>Network</strong>, <strong>Interfaces</strong>, <strong>lan</strong>, <strong>Edit</strong>. Set <code><abbr title="Internet Protocol version 4">IPv4</abbr> gateway</code> to the <abbr title="Internet Protocol">IP</abbr> address of the access point.
+</p>
+
+<p>
+Go to <strong>Network</strong>, <strong>Interfaces</strong>, <strong>Devices</strong> tab, <strong>Configure...</strong> on br-lan, <strong>Advanced device options</strong>  and enable <code>STP</code>. Failing to do so can allow a network loop to form that will take down all routers.
+</p>
+
+<p>
+Finally, add a new Wi-Fi network if you want to enable wireless access to the network. It can have the same name (SSID), password and settings as the access point, to allow transparent roaming, or they can be different. When creating the new Wi-Fi network, under <strong>General Setup</strong>, ensure that <strong>Mode</strong>  is <code>Access Point</code> and <strong>Network</strong> is set to <code>lan</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;LuCI&quot;,&quot;hid&quot;:&quot;luci&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:4,&quot;range&quot;:&quot;12415-14527&quot;} -->
+<h2 class="sectionedit5" id="old_stuff">Old Stuff</h2>
+<div class="level2">
+
+<p>
+Relevant configuration files:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/network/wifi/basic" class="wikilink1" title="docs:guide-user:network:wifi:basic" data-wiki-id="docs:guide-user:network:wifi:basic">/etc/config/wireless</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/firewall/start" class="wikilink1" title="docs:guide-user:firewall:start" data-wiki-id="docs:guide-user:firewall:start">/etc/config/firewall</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/base-system/dhcp" class="wikilink1" title="docs:guide-user:base-system:dhcp" data-wiki-id="docs:guide-user:base-system:dhcp">/etc/config/dhcp</a></div>
+</li>
+</ul>
+
+<p>
+Multiple <em><abbr title="Wireless distribution system">WDS</abbr> Stations</em> can connect to a single <em><abbr title="Wireless distribution system">WDS</abbr> Access Point</em>.
+</p>
+<ul>
+<li class="level1"><div class="li"> On the access point, add <code>option wds &#039;1&#039;</code> to the existing <code>wifi-iface</code> section and proceed with configuring SSID, channel, encryption etc.</div>
+</li>
+<li class="level1"><div class="li"> On the client, set <code>option mode &#039;sta&#039;</code> and add <code>option wds &#039;1&#039;</code> to the <code>wifi-iface</code> section. Disable the <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> server by adding <code>option ignore &#039;1&#039;</code> for the <abbr title="Local Area Network">LAN</abbr> interface in /etc/config/dhcp.</div>
+</li>
+<li class="level1"><div class="li"> To create a repeater, add a <abbr title="Wireless distribution system">WDS</abbr> access point along with the <abbr title="Wireless distribution system">WDS</abbr> station on the client (with the same ssid and key, or not). Do not forget to add the newly created <abbr title="Access Point">AP</abbr> to the <abbr title="Local Area Network">LAN</abbr> firewall Zone.  </div>
+</li>
+</ul>
+
+<p>
+On MAC80211, OpenWrt uses 4 address (option wds 1) (with ap or sta mode) and not repeater mode.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Old Stuff&quot;,&quot;hid&quot;:&quot;old_stuff&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:5,&quot;range&quot;:&quot;14528-&quot;} -->

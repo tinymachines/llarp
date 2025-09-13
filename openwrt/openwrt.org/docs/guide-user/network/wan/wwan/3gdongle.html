@@ -1,0 +1,789 @@
+
+<h1 class="sectionedit1" id="use_3gumts_usb_dongle_for_wan_connection">Use 3G/UMTS USB Dongle for WAN connection</h1>
+<div class="level1">
+
+<p>
+This tutorial explains how to setup and configure OpenWrt for using a USB 3G/UMTS modem or a smartphone for <abbr title="Wide Area Network">WAN</abbr> connection using legacy (and slow) <strong> PPP</strong> protocol.<br/>
+
+Most modern 4G(LTE) and 5G(NR) USB modems provide newer <strong>QMI</strong>, <strong>MBIM</strong>, <strong>NCM</strong>, <strong>ECM</strong>, <strong>RNDIS</strong> protocols for connection instead of obsolete <strong>PPP</strong> protocol, they are faster and better, overall recommended. For more information:
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong>QMI</strong> and <strong>MBIM</strong>, see <a href="/docs/guide-user/network/wan/wwan/ltedongle" class="wikilink1" title="docs:guide-user:network:wan:wwan:ltedongle" data-wiki-id="docs:guide-user:network:wan:wwan:ltedongle">How to Use LTE modem in QMI mode for WAN connection</a></div>
+</li>
+<li class="level1"><div class="li"> <strong>NCM</strong>, see <a href="/docs/guide-user/network/wan/wwan/ethernetoverusb_ncm" class="wikilink1" title="docs:guide-user:network:wan:wwan:ethernetoverusb_ncm" data-wiki-id="docs:guide-user:network:wan:wwan:ethernetoverusb_ncm">How To use LTE modem in NCM mode for WAN connection</a></div>
+</li>
+<li class="level1"><div class="li"> <strong>ECM</strong>, see <a href="/docs/guide-user/network/wan/wwan/ethernetoverusb_cdc" class="wikilink1" title="docs:guide-user:network:wan:wwan:ethernetoverusb_cdc" data-wiki-id="docs:guide-user:network:wan:wwan:ethernetoverusb_cdc">Use cdc_ether driver based dongles for WAN connection</a></div>
+</li>
+<li class="level1"><div class="li"> <strong>RNDIS</strong>, see <a href="/docs/guide-user/network/wan/wwan/ethernetoverusb_rndis" class="wikilink1" title="docs:guide-user:network:wan:wwan:ethernetoverusb_rndis" data-wiki-id="docs:guide-user:network:wan:wwan:ethernetoverusb_rndis">How To use LTE modem in RNDIS mode for WAN connection</a></div>
+</li>
+</ul>
+
+<p>
+You may want to checkout the <a href="/docs/guide-user/network/wan/multiwan/mwan3" class="wikilink1" title="docs:guide-user:network:wan:multiwan:mwan3" data-wiki-id="docs:guide-user:network:wan:multiwan:mwan3">mwan3</a> (Multi <abbr title="Wide Area Network">WAN</abbr> load balancing/failover) package to use this simultaneously with other connections to the Internet.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Cellular mobile telephony can be intercepted very easily. Remember this is a wireless connection.  
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Most mobile ISPs do not provide <em>public</em> <abbr title="Internet Protocol">IP</abbr> addresses, so configuring <em>port forwarding</em> makes no sense.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> If you&#039;ve got a Huawei E367 (which will work), or a Huawei E585 (which does not currently work), you may want to read the following tutorial (which includes info on why you may not be able to get the on-board micro-SD card to function):
+<a href="http://www.draisberghof.de/usb_modeswitch/bb/viewtopic.php?t=836" class="urlextern" title="http://www.draisberghof.de/usb_modeswitch/bb/viewtopic.php?t=836" rel="ugc nofollow">http://www.draisberghof.de/usb_modeswitch/bb/viewtopic.php?t=836</a>
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> If you have the Leadtek FlashOFDM card (Flarion) from T-Mobile in Slovakia and the Asus WL-500g Premium, you may use the image on <a href="http://www.accalio.com/index.php?id=301" class="urlextern" title="http://www.accalio.com/index.php?id=301" rel="ugc nofollow">http://www.accalio.com/index.php?id=301</a>. If you wish to get more information, or another distribution with the driver, please contact Accalio <a href="http://www.accalio.com" class="urlextern" title="http://www.accalio.com" rel="ugc nofollow">http://www.accalio.com</a>
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Serial device modes: If a dongle in already configured for serial mode, it is not necessary to install <code>usb-modeswitch</code> onto your router device. Modem sticks are commonly equipped with a flash storage containing drivers and software and/or provide a slot for a microSD card. These features (like the &#039;NO-CD&#039; feature) can be configured in various ways. These configurations may be stored permanently. In that case a modeswitch will behave in an unpredictable way.
+A modem stick, that was previously configured as a modem, will show up as serial devices (like <code>/dev/ttyUSBx</code>). A default setting in combination with modeswitch may additionally show the SD-card reader. See the Troubleshooting section in this document for further information.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Use 3G\/UMTS USB Dongle for WAN connection&quot;,&quot;hid&quot;:&quot;use_3gumts_usb_dongle_for_wan_connection&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-2751&quot;} -->
+<h2 class="sectionedit2" id="preparations">Preparations</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Preparations&quot;,&quot;hid&quot;:&quot;preparations&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;2752-2776&quot;} -->
+<h3 class="sectionedit3" id="required_packages">Required Packages</h3>
+<div class="level3">
+
+<p>
+First install required packages:
+</p>
+<ul>
+<li class="level1"><div class="li"><em>comgt</em></div>
+</li>
+<li class="level1 node"><div class="li">Appropriate host controller interface for your USB hardware (precompiled images will most likely already contain the correct one)</div>
+<ul>
+<li class="level2"><div class="li"><em>kmod-usb2</em> (aka EHCI)</div>
+</li>
+<li class="level2"><div class="li"><em>kmod-usb-ohci</em></div>
+</li>
+<li class="level2"><div class="li"><em>kmod-usb-uhci</em> (for example VIA chips)</div>
+</li>
+</ul>
+</li>
+<li class="level1 node"><div class="li">Support for serial communication; needed to send control commands to the dongle and receive its responses:</div>
+<ul>
+<li class="level2"><div class="li"><em>kmod-usb-serial</em>, and</div>
+</li>
+<li class="level2"><div class="li"><em>kmod-usb-serial-option</em>, and</div>
+</li>
+<li class="level2"><div class="li"><em>kmod-usb-serial-wwan</em>, or</div>
+</li>
+<li class="level2"><div class="li"><em>kmod-usb-acm</em> i.s.o. the last two, depending on dongle/phone hardware. </div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"><em>usb-modeswitch</em>, if your modem initially presents itself as a storage device and it needs to be switched into a <em>modem</em> mode</div>
+</li>
+<li class="level1"><div class="li"> <em>luci-proto-3g</em> for web-based configuration</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Required Packages&quot;,&quot;hid&quot;:&quot;required_packages&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;2777-3558&quot;} -->
+<h3 class="sectionedit4" id="dependencies">Dependencies</h3>
+<div class="level3">
+
+<p>
+If you are doing an offline installation, you might need some of these packages handy
+</p>
+<ul>
+<li class="level1"><div class="li"><em>kmod-usb-core</em>, usually already in the default install</div>
+</li>
+<li class="level1"><div class="li"><em>chat</em>, dependency of <em>comgt</em></div>
+</li>
+<li class="level1"><div class="li"><em>ppp</em>, dependency of <em>chat</em>, usually already in the default install</div>
+</li>
+<li class="level1"><div class="li"><em>kmod-usb-serial</em>, dependency of <em>kmod-usb-serial-option</em></div>
+</li>
+<li class="level1"><div class="li"><em>libusb</em> <a href="http://www.draisberghof.de/usb_modeswitch/#download" class="urlextern" title="http://www.draisberghof.de/usb_modeswitch/#download" rel="ugc nofollow">or the &quot;compatible&quot; library</a> from <em>libusb-1.0</em>, dependency of <em>usb-modeswitch</em></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Dependencies&quot;,&quot;hid&quot;:&quot;dependencies&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;3559-4057&quot;} -->
+<h2 class="sectionedit5" id="installation">Installation</h2>
+<div class="level2">
+
+<p>
+First install needed packages:
+</p>
+<pre class="code">opkg update
+opkg install comgt kmod-usb-serial kmod-usb-serial-option kmod-usb-serial-wwan usb-modeswitch</pre>
+
+<p>
+Now plug your USB Dongle to the USB port and restart the router.
+</p>
+
+<p>
+Check dmesg for:
+</p>
+<pre class="code">USB Serial support registered for generic
+usbserial_generic 1-1:1.0: generic converter detected
+USB Serial support registered for generic
+usbserial_generic 1-1:1.0: generic converter detected
+usb 1-1: generic converter now attached to ttyUSB0
+usbserial_generic 1-1:1.1: generic converter detected
+usb 1-1: generic converter now attached to ttyUSB1
+...
+usbcore: registered new interface driver usbserial_generic
+usbserial: USB Serial Driver core
+USB Serial support registered for GSM modem (1-port)
+usbcore: registered new interface driver option
+option: v0.7.2:USB Driver for GSM modems</pre>
+
+<p>
+If above lines do not appear in dmesg, but instead you see something like:
+</p>
+<pre class="code">scsi1 : SCSI emulation for USB Mass Storage devices
+usb-storage: device found at 4
+usb-storage: waiting for device to settle before scanning
+scsi 1:0:0:0: CD-ROM            Novatel  Mass Storage     2.31 PQ: 0 ANSI: 0
+scsi 1:0:0:0: Attached scsi generic sg1 type 5
+usb-storage: device scan complete</pre>
+
+<p>
+then, depending on your modem, you have to switch device mode (described below).
+</p>
+
+<p>
+If you can&#039;t see <code>usbserial_generic</code> go to <a href="/docs/guide-user/network/wan/wwan/3gdongle#usbserial_generic_missing_in_dmesg" class="wikilink1" title="docs:guide-user:network:wan:wwan:3gdongle" data-wiki-id="docs:guide-user:network:wan:wwan:3gdongle">usbserial_generic missing in dmesg</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation&quot;,&quot;hid&quot;:&quot;installation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;4058-5556&quot;} -->
+<h3 class="sectionedit6" id="switching_usb_mode">Switching USB mode</h3>
+<div class="level3">
+
+<p>
+Install <a href="/packages/pkgdata/usb-modeswitch" class="wikilink1" title="packages:pkgdata:usb-modeswitch" data-wiki-id="packages:pkgdata:usb-modeswitch">usb-modeswitch</a> package if that is needed for switching the modem into a “working” state. More about: <a href="/docs/guide-user/network/wan/wwan/usb-modeswitching" class="wikilink1" title="docs:guide-user:network:wan:wwan:usb-modeswitching" data-wiki-id="docs:guide-user:network:wan:wwan:usb-modeswitching">USB mode switch</a>.
+<br/>
+
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Switching USB mode&quot;,&quot;hid&quot;:&quot;switching_usb_mode&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:6,&quot;range&quot;:&quot;5557-5792&quot;} -->
+<h2 class="sectionedit7" id="manual_configuration">Manual Configuration</h2>
+<div class="level2">
+
+<p>
+The shown configuration replaces the <abbr title="Wide Area Network">WAN</abbr> line, so no further changes are needed to the firewall/other configuration. Note that if you also want to use the <abbr title="Wide Area Network">WAN</abbr> port, you have to define it as WAN2 in the configuration. If you define the 3g connection as WAN2, you have to do more changes to other parts, like firewall and so on.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Manual Configuration&quot;,&quot;hid&quot;:&quot;manual_configuration&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:7,&quot;range&quot;:&quot;5793-6153&quot;} -->
+<h3 class="sectionedit8" id="network_configuration">Network configuration</h3>
+<div class="level3">
+
+<p>
+Edit your <code>/etc/config/network</code> file: (see <a href="/docs/guide-user/network/wan/wan_interface_protocols#protocol_3g_ppp_over_ev-do_cdma_umts_or_gprs" class="wikilink1" title="docs:guide-user:network:wan:wan_interface_protocols" data-wiki-id="docs:guide-user:network:wan:wan_interface_protocols">network 3G section</a> for more details)
+</p>
+<pre class="code bash">config interface wan
+<span class="co0">#        option ifname  ppp0 # on some carriers enable this line</span>
+        option pincode <span class="nu0">1234</span>
+        option device  <span class="sy0">/</span>dev<span class="sy0">/</span>ttyUSB0
+        option apn     your.apn
+        option service umts
+        option proto   3g</pre>
+
+<p>
+Replace &#039;pincode&#039; with the correct pincode of your SIM card. Note that a disabled pincode on the SIM card is problematic, please enable it.
+If you are connecting to a phone where the pincode has already been entered, there is no need for this.
+</p>
+
+<p>
+Replace &#039;device&#039; with the correct USB port of your modem. On a phone this might for example be <code>/dev/ttyACM0</code>.
+</p>
+
+<p>
+Replace &#039;apn&#039; with the correct APN of your 3G/umts provider.
+</p>
+
+<p>
+Note in case your APN also requires an username/password, you can configure this too, just add to the network configuration file:
+</p>
+<pre class="code bash">    option username yourusername
+    option password yourpassword</pre>
+
+<p>
+Replace &#039;username&#039; and &#039;password&#039; with the correct username/password you received from your 3g provider. You can also look for this information (apn, username and password) in the <a href="http://git.gnome.org/browse/mobile-broadband-provider-info/tree/serviceproviders.xml" class="urlextern" title="http://git.gnome.org/browse/mobile-broadband-provider-info/tree/serviceproviders.xml" rel="ugc nofollow">mobile-broadband-provider-info database</a> from the Gnome project.
+</p>
+
+<p>
+For some providers, apparently it is necessary to add <code>noipdefault</code> to <code>pppd_options</code>. If <code>logread</code> shows that the connection was established and CHAP authentication was successful, but the connection was immediately dropped after, then try:
+</p>
+<pre class="code bash">    option <span class="st_h">'pppd_options'</span> <span class="st_h">'noipdefault'</span></pre>
+
+<p>
+If your provider supports PAP authentication only then you need to disable all other protocols via these added options:
+</p>
+<pre class="code bash">    option <span class="st_h">'pppd_options'</span> <span class="st_h">'noipdefault refuse-chap refuse-mschap refuse-mschap-v2 refuse-eap'</span> </pre>
+
+<p>
+Now you have configured the network interface.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Network configuration&quot;,&quot;hid&quot;:&quot;network_configuration&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:8,&quot;range&quot;:&quot;6154-8195&quot;} -->
+<h3 class="sectionedit9" id="chat_configuration">Chat configuration</h3>
+<div class="level3">
+
+<p>
+Now we need to check if the default chatscript does work with your 3g provider or not.
+</p>
+
+<p>
+You can find it here &#039;/etc/chatscripts/3g.chat&#039;, it looks like this:
+</p>
+<pre class="code">ABORT   BUSY
+ABORT   &#039;NO CARRIER&#039;
+ABORT   ERROR
+REPORT  CONNECT
+TIMEOUT 12
+&quot;&quot;      &quot;AT&amp;F&quot;
+OK      &quot;ATE1&quot;
+OK      &#039;AT+CGDCONT=1,&quot;IP&quot;,&quot;$USE_APN&quot;&#039;
+ABORT   &#039;NO CARRIER&#039;
+TIMEOUT 15
+OK      &quot;ATD*99***1#&quot;
+CONNECT &#039; &#039;</pre>
+
+<p>
+If your modem needs a special AT command, your can add it to this file.
+You may have to edit the dial number of the ATD command to fit in with your provider&#039;s settings (for example “*99#” instead of “*99***11#”). 
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Chat configuration&quot;,&quot;hid&quot;:&quot;chat_configuration&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:9,&quot;range&quot;:&quot;8196-8827&quot;} -->
+<h2 class="sectionedit10" id="establishing_connection">Establishing connection</h2>
+<div class="level2">
+
+<p>
+Just type on console &#039;ifup wan&#039;
+</p>
+
+<p>
+Now check <del>dmesg</del> logread for successful connect:
+</p>
+<pre class="code">pppd 2.4.4 started by root, uid 0
+abort on (BUSY)
+abort on (ERROR)
+report (CONNECT)
+timeout set to 12 seconds
+send (AT&amp;F^M)
+expect (OK)
+AT&amp;F^M^M
+OK
+ -- got it
+send (ATE1^M)
+expect (OK)
+^M
+ATE1^M^M
+OK
+ -- got it
+send (AT+CGDCONT=1,&quot;IP&quot;,&quot;your.apn&quot;^M)
+abort on (NO CARRIER)
+timeout set to 15 seconds
+expect (OK)
+^M
+AT+CGDCONT=1,&quot;IP&quot;,&quot;your.apn&quot;^M^M
+OK
+ -- got it
+send (ATD*99***1#^M)
+expect (CONNECT)
+^M
+ATD*99***1#^M^M
+CONNECT
+ -- got it
+send ( ^M)
+Serial connection established.
+Using interface 3g-wan
+Connect: 3g-wan &lt;--&gt; /dev/ttyUSB0
+Could not determine remote IP address: defaulting to x.x.x.x
+local  IP address x.x.x.x
+remote IP address  x.x.x.x
+primary   DNS address  x.x.x.x
+secondary DNS address  x.x.x.x
+adding wan (3g-wan) to firewall zone wan</pre>
+
+<p>
+That&#039;s it, now you should be connected.
+</p>
+
+<p>
+If you want an permanent connect from startup, add &#039;ifup wan&#039; command to &#039;/etc/rc.local&#039; file.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Establishing connection&quot;,&quot;hid&quot;:&quot;establishing_connection&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:10,&quot;range&quot;:&quot;8828-9859&quot;} -->
+<h2 class="sectionedit11" id="debugging_signal_strength_issues">Debugging signal strength issues</h2>
+<div class="level2">
+
+<p>
+For troubleshooting or locating the best position for the USB Dongle, you can use 
+</p>
+<pre class="code">gcom info -d /dev/ttyUSBx</pre>
+
+<p>
+ from the console. This tool will report signal strength, but also network registration and SIM status. If it returns a port-in-use error because your connection is already up, try 
+</p>
+<pre class="code">gcom -d /dev/ttyUSBx</pre>
+
+<p>
+ where <code>x</code> represents a port number not used by the wan connection itself.
+</p>
+
+<p>
+<code>gcom</code> returns the signal quality in RSSI (<a href="https://en.wikipedia.org/wiki/Received signal strength indication" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Received signal strength indication">Received signal strength indication</a>) and in BER (<a href="https://en.wikipedia.org/wiki/Bit error rate" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Bit error rate">Bit error rate</a>, reported in percent). A higher RSSI value represents a stronger signal - scale is from 0 to 99, where 1 is the lowest detectable signal and 31 a very good signal. Don&#039;t expect your signal to go all the way up to 99, though. If BER returns 99 it means not known or not detectable.
+</p>
+
+<p>
+If your 3G modem is e.g. a ZTE K3565-Z featuring a LED SSI indicator to show it&#039;s status (Not Connected, GPRS, UMTS) you may be mislead to believe, that a strong signal strength of e.g. 17 may be better, while you only get GPRS, but a value of 4 allows for UMTS access. This is owed to the circumstance, that the device may switch over to another cell. The only method to prevent a handover between a GPRS and an UMTS station during the process of optimizing, is to initiate the device to use &#039;UMTS only&#039; in the first place.
+</p>
+
+<p>
+You can also add the AT command 
+</p>
+<pre class="code">&quot;&quot;      &quot;AT+CSQ&quot;</pre>
+
+<p>
+to your <a href="/docs/guide-user/network/wan/wwan/3gdongle#chatconfiguration" class="wikilink1" title="docs:guide-user:network:wan:wwan:3gdongle" data-wiki-id="docs:guide-user:network:wan:wwan:3gdongle">chat script</a> to check signal quality. 
+</p>
+
+<p>
+Command return is “+CSQ: &lt;rssi&gt;,&lt;ber&gt;” and looks like this in <code>logread</code>:
+</p>
+<pre class="code">send (AT+CSQ^M)
+expect (OK)
+^M
+AT+CSQ^M^M
++CSQ: 11,99^M
+^M
+OK
+-- got it</pre>
+
+<p>
+If you have problems establishing a connection and multiple modem devices (<code>/dev/ttyUSB0</code>, <code>/dev/ttyUSB1</code>, ...) are present, try <strong>all</strong> of them. Some may not work at all while others seem to work at first, but will give a <code>NO CARRIER</code> during the connection process.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Debugging signal strength issues&quot;,&quot;hid&quot;:&quot;debugging_signal_strength_issues&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:11,&quot;range&quot;:&quot;9860-11861&quot;} -->
+<h2 class="sectionedit12" id="aiccu_interaction">AICCU interaction</h2>
+<div class="level2">
+
+<p>
+<code>/etc/hotplug.d/iface/30-aiccu</code> starts aiccu when the <abbr title="Wide Area Network">WAN</abbr> connection is established. It seems however that, in the case of 3G connections, the start scripts are started just a bit too early and the start of aiccu fails. I have butchered the script a bit:
+</p>
+<pre class="code">#!/bin/sh
+
+[ &quot;$ACTION&quot; = &quot;ifup&quot; -a &quot;$INTERFACE&quot; = &quot;wan&quot; ] &amp;&amp; /etc/init.d/aiccu enabled &amp;&amp; sleep 15; /etc/init.d/aiccu restart</pre>
+
+<p>
+Note that sixxs really frowns upon quick re-re-restarts of aiccu, it may get your account blocked for unjust use of resources. Be careful with these scripts.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;AICCU interaction&quot;,&quot;hid&quot;:&quot;aiccu_interaction&quot;,&quot;codeblockOffset&quot;:13,&quot;secid&quot;:12,&quot;range&quot;:&quot;11862-12450&quot;} -->
+<h2 class="sectionedit13" id="installing_multiple_3g_dongles">Installing multiple 3G dongles</h2>
+<div class="level2">
+
+<p>
+You can use multiple USB 3G dongles easily by using an active USB hub.
+</p>
+
+<p>
+Prepare for the next steps:
+We assume you have at least one 3G dongle configured. You will need an active internet connection in order to install modules for 3g support.
+</p>
+
+<p>
+1. Connect an active USB hub to the OpenWrt router. You need to assure, that the power supply will deliver sufficient power for all of your 3G dongles. A proper estimation is, that you will need 500+ mA per one 3G dongle. Remember that modem can slightly exceed its declared power consumption in HDSPA+ modes. Be generous and pick USB hub with some power source overhead.
+</p>
+
+<p>
+2. Connect all 3G dongles and start.
+</p>
+
+<p>
+3. Browse through <code>logread</code> output (or System Log in Luci) to check if modems are properly recognized and <code>/dev/ttyUSBx</code> ports are assigned.
+</p>
+
+<p>
+4. Usually a 3G modem has a few <em>serial</em> ports - one for control/configuration, another for PPP data service, etc. Exeplum gratum: A Huawei E1750 has three ports. The first one is a communication port and last is a service port. If you only have one modem, it will be recognized as <code>/dev/ttyUSB0 /dev/ttyUSB1 /dev/ttyUSB2</code>. You need to configure interface using <code>/dev/ttyUSB0</code> (the first one). A Huawei E372 has five ports, but similar to other Huawei devices, the communication port (or “PC UI” as they call it) is the first one.
+</p>
+
+<p>
+5. You need to configure the interfaces, an example of “/etc/config/network” could look like this: 
+</p>
+<pre class="code bash">config <span class="st_h">'interface'</span> <span class="st_h">'wan'</span>
+	option <span class="st_h">'proto'</span> <span class="st_h">'3g'</span>
+	option <span class="st_h">'service'</span> <span class="st_h">'umts'</span>
+	option <span class="st_h">'device'</span> <span class="st_h">'/dev/ttyUSB0'</span>
+	option <span class="st_h">'apn'</span> <span class="st_h">'internet'</span>
+	option <span class="st_h">'pincode'</span> <span class="st_h">''</span>
+	option <span class="st_h">'username'</span> <span class="st_h">''</span>
+	option <span class="st_h">'password'</span> <span class="st_h">''</span></pre>
+
+<p>
+Usually you need to provide an APN name in “option &#039;apn&#039; &#039;Name-Of-APN-HERE&#039;”.
+If your SIM card is locked with a PIN, or if your provider requires to use a username and/or password, add it accordingly.
+</p>
+
+<p>
+6. Check <code>logread</code> output for other [pre-]existing <code>/dev/ttyUSBx</code> ports. In my case I have second modem starting with /ttyUSB3 (previous one use /ttyUSB0 to /ttyUSB2) so second interface looks like this:
+</p>
+<pre class="code bash">config <span class="st_h">'interface'</span> <span class="st_h">'wan2'</span>
+	option <span class="st_h">'proto'</span> <span class="st_h">'3g'</span>
+	option <span class="st_h">'service'</span> <span class="st_h">'umts'</span>
+	option <span class="st_h">'maxwait'</span> <span class="st_h">'0'</span>
+	option <span class="st_h">'device'</span> <span class="st_h">'/dev/ttyUSB3'</span>
+	option <span class="st_h">'apn'</span> <span class="st_h">'internet'</span>
+	option <span class="st_h">'pincode'</span> <span class="st_h">''</span>
+	option <span class="st_h">'username'</span> <span class="st_h">''</span>
+	option <span class="st_h">'password'</span> <span class="st_h">''</span></pre>
+
+<p>
+7. Remember to add a new interface to the “wan” zone in the firewall&#039;s config file “/etc/config/firewall” (it may differ in your case): 
+</p>
+<pre class="code bash">config <span class="st_h">'zone'</span>
+	option <span class="st_h">'name'</span> <span class="st_h">'wan'</span>
+	option <span class="st_h">'input'</span> <span class="st_h">'REJECT'</span>
+	option <span class="st_h">'output'</span> <span class="st_h">'ACCEPT'</span>
+	option <span class="st_h">'forward'</span> <span class="st_h">'REJECT'</span>
+	option <span class="st_h">'masq'</span> <span class="st_h">'1'</span>
+	option <span class="st_h">'mtu_fix'</span> <span class="st_h">'1'</span>
+	option <span class="st_h">'network'</span> <span class="st_h">'wan wan2'</span></pre>
+
+<p>
+Look at last line - there is wan2 added.
+</p>
+
+<p>
+8. Now you have both interfaces configured and they should work.
+</p>
+
+<p>
+9. You can use both interfaces as a failover.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installing multiple 3G dongles&quot;,&quot;hid&quot;:&quot;installing_multiple_3g_dongles&quot;,&quot;codeblockOffset&quot;:14,&quot;secid&quot;:13,&quot;range&quot;:&quot;12451-15292&quot;} -->
+<h2 class="sectionedit14" id="additional_dns_configuration">Additional DNS configuration</h2>
+<div class="level2">
+
+<p>
+Follow: <a href="/docs/guide-user/base-system/dhcp_configuration" class="wikilink1" title="docs:guide-user:base-system:dhcp_configuration" data-wiki-id="docs:guide-user:base-system:dhcp_configuration">DNS and DHCP configuration examples</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Additional DNS configuration&quot;,&quot;hid&quot;:&quot;additional_dns_configuration&quot;,&quot;codeblockOffset&quot;:17,&quot;secid&quot;:14,&quot;range&quot;:&quot;15293-15429&quot;} -->
+<h2 class="sectionedit15" id="easy_configuration_using_luci_web_interface">Easy Configuration Using Luci Web Interface</h2>
+<div class="level2">
+
+<p>
+<a href="/docs/guide-user/luci/luci.essentials" class="wikilink1" title="docs:guide-user:luci:luci.essentials" data-wiki-id="docs:guide-user:luci:luci.essentials">Luci</a> has supported 3G configuration. Be sure to have <strong>luci</strong> and <strong>luci-proto-3g</strong> installed.
+</p>
+
+<p>
+To create a new 3g connection, go to Luci web interface. Navigate to Network ⇒ interfaces. Click on <strong>Add new interface</strong> button. Give a simple name to the interface, for example <strong>3g</strong> and choose <strong>UMTS/GPRS/EVDO</strong> as its protocol.
+</p>
+
+<p>
+Here is basic configuration to get the connection working.
+</p>
+<pre class="code"># General Setup
+Protocol : UMTS/GPRS/EVDO
+Modem device : /dev/ttyUSB0
+Service type : UMTS only (You may prefer UMTS/GPRS if you wish)
+APN : internet (Not needed for CDMA/EVDO)
+PIN : 1234 (Leave it blank if you don&#039;t use pin)
+PAP/CHAP username : &lt;ask your 3G provider&gt;
+PAP/CHAP password : &lt;ask your 3G provider&gt; 
+
+# Advanced Settings (leave them as default)
+
+# Firewall Settings
+Create / Assign firewall zone : wan</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Easy Configuration Using Luci Web Interface&quot;,&quot;hid&quot;:&quot;easy_configuration_using_luci_web_interface&quot;,&quot;codeblockOffset&quot;:17,&quot;secid&quot;:15,&quot;range&quot;:&quot;15430-16346&quot;} -->
+<h2 class="sectionedit16" id="obtaining_ipv6_address">Obtaining IPv6 address</h2>
+<div class="level2">
+
+<p>
+If you want to enable <abbr title="Internet Protocol version 6">IPv6</abbr> on 3G connection, make sure that your dongle supports PDPv6<sup><a href="#fn__1" id="fnt__1" class="fn_top">1)</a></sup> and your 3G provider is providing <abbr title="Internet Protocol version 6">IPv6</abbr> service.
+</p>
+
+<p>
+To enable <abbr title="Internet Protocol version 6">IPv6</abbr> negotiation on the PPP link, issue the following command.
+</p>
+<pre class="code">uci set network.3g.ipv6=1
+uci commit network.3g</pre>
+
+<p>
+Be sure to replace <em>3g</em> with the correct name of 3G interface.
+</p>
+
+<p>
+In addition, be sure to edit file <code>/etc/chatscripts/3g.chat</code> for PDPv6 configuration as currently there is no <a href="/docs/techref/uci" class="wikilink1" title="docs:techref:uci" data-wiki-id="docs:techref:uci">UCI</a> entry for PDPv6.
+</p>
+<pre class="code">ABORT   BUSY
+ABORT   &#039;NO CARRIER&#039;
+ABORT   ERROR
+REPORT  CONNECT
+TIMEOUT 10
+&quot;&quot;      &quot;AT&amp;F&quot;
+OK      &quot;ATE1&quot;
+OK      &#039;AT+CGDCONT=1,&quot;IPV6&quot;,&quot;$USE_APN&quot;&#039;
+SAY     &quot;Calling UMTS/GPRS&quot;
+TIMEOUT 30
+OK      &quot;ATD$DIALNUMBER&quot;
+CONNECT &#039; &#039;</pre>
+
+<p>
+You may use the following chatscript for PDPv4v6 configuration. Make sure that your dongle supports PDv4v6<sup><a href="#fn__2" id="fnt__2" class="fn_top">2)</a></sup> before attempting to modify the chatscript.
+</p>
+<pre class="code">ABORT   BUSY
+ABORT   &#039;NO CARRIER&#039;
+ABORT   ERROR
+REPORT  CONNECT
+TIMEOUT 10
+&quot;&quot;      &quot;AT&amp;F&quot;
+OK      &quot;ATE1&quot;
+OK      &#039;AT+CGDCONT=1,&quot;IPV4V6&quot;,&quot;$USE_APN&quot;&#039;
+SAY     &quot;Calling UMTS/GPRS&quot;
+TIMEOUT 30
+OK      &quot;ATD$DIALNUMBER&quot;
+CONNECT &#039; &#039;</pre>
+
+<p>
+If you are using Luci, be sure to check <em>Enable <abbr title="Internet Protocol version 6">IPv6</abbr> negotiation on the PPP link</em> and optionally <em>Use builtin <abbr title="Internet Protocol version 6">IPv6</abbr>-management</em> on the <em>Advanced settings</em> section of the 3G interface configuration page. Also, be sure to modify /etc/chatscripts/3g.chat file for PDPv6 as explained above.
+</p>
+
+<p>
+Of course you can use other methods to obtain <abbr title="Internet Protocol version 6">IPv6</abbr> instead of relying on PPP negotiation. See <a href="/docs/guide-user/network/ipv6/start" class="wikilink1" title="docs:guide-user:network:ipv6:start" data-wiki-id="docs:guide-user:network:ipv6:start">IPv6</a> for more explanation.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Obtaining IPv6 address&quot;,&quot;hid&quot;:&quot;obtaining_ipv6_address&quot;,&quot;codeblockOffset&quot;:18,&quot;secid&quot;:16,&quot;range&quot;:&quot;16347-18293&quot;} -->
+<h2 class="sectionedit17" id="compile_things_yourself">Compile things yourself</h2>
+<div class="level2">
+
+<p>
+If you want to build an own firmware containing support for a UMTS Modem, maybe this BuildHowTo will help you: <a href="/docs/guide-developer/build-image-with-3g-dongle-support" class="wikilink1" title="docs:guide-developer:build-image-with-3g-dongle-support" data-wiki-id="docs:guide-developer:build-image-with-3g-dongle-support">Wireless router with a 3G dongle and multiwan for failover on Wired, Wireless client (routed) and 3G</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Compile things yourself&quot;,&quot;hid&quot;:&quot;compile_things_yourself&quot;,&quot;codeblockOffset&quot;:21,&quot;secid&quot;:17,&quot;range&quot;:&quot;18294-18602&quot;} -->
+<h2 class="sectionedit18" id="troubleshooting">Troubleshooting</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Troubleshooting&quot;,&quot;hid&quot;:&quot;troubleshooting&quot;,&quot;codeblockOffset&quot;:21,&quot;secid&quot;:18,&quot;range&quot;:&quot;18603-18630&quot;} -->
+<h3 class="sectionedit19" id="howto_activate_serial_mode_through_web_browser_on_cdc-ethernet_devices">Howto activate serial mode through web browser on CDC-Ethernet devices</h3>
+<div class="level3">
+
+<p>
+WARNING - this will deactivate WEB-<abbr title="Graphical User Interface">GUI</abbr> access on these devices!!!
+You need to know howto submit AT commands to a modem in order to restore the <abbr title="Graphical User Interface">GUI</abbr>.
+</p>
+
+</div>
+
+<h4 id="huawei">Huawei</h4>
+<div class="level4">
+
+<p>
+Browse to <a href="http://192.168.1.1/html/switchProjectMode.html" class="urlextern" title="http://192.168.1.1/html/switchProjectMode.html" rel="ugc nofollow">http://192.168.1.1/html/switchProjectMode.html</a> with JavaScript enabled browser.
+</p>
+
+</div>
+
+<h4 id="zte">ZTE</h4>
+<div class="level4">
+
+<p>
+Browse to <a href="http://192.168.0.1/goform/goform_process?goformId=MODE_SWITCH&amp;switchCmd=FACTORY" class="urlextern" title="http://192.168.0.1/goform/goform_process?goformId=MODE_SWITCH&amp;switchCmd=FACTORY" rel="ugc nofollow">http://192.168.0.1/goform/goform_process?goformId=MODE_SWITCH&amp;switchCmd=FACTORY</a> with JavaScript enabled browser.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Howto activate serial mode through web browser on CDC-Ethernet devices&quot;,&quot;hid&quot;:&quot;howto_activate_serial_mode_through_web_browser_on_cdc-ethernet_devices&quot;,&quot;codeblockOffset&quot;:21,&quot;secid&quot;:19,&quot;range&quot;:&quot;18631-19100&quot;} -->
+<h3 class="sectionedit20" id="howto_restore_cdc_mode_on_cdc-ethernet_capable_devices">Howto restore CDC mode on CDC-Ethernet capable devices</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="huawei1">Huawei</h4>
+<div class="level4">
+
+<p>
+<code>AT^U2DIAG=255</code> or <code>AT+U2DIAG=276</code>, see <a href="http://www.3g-modem-wiki.com/page/Huawei+AT-commands" class="urlextern" title="http://www.3g-modem-wiki.com/page/Huawei+AT-commands" rel="ugc nofollow">http://www.3g-modem-wiki.com/page/Huawei+AT-commands</a>
+</p>
+
+</div>
+
+<h4 id="zte1">ZTE</h4>
+<div class="level4">
+
+<p>
+<code>AT+ZCDRUN=9</code>
+</p>
+
+<p>
+<code>AT+ZCDRUN=F</code>
+</p>
+
+<p>
+Sources: <sup><a href="#fn__3" id="fnt__3" class="fn_top">3)</a></sup><sup><a href="#fn__4" id="fnt__4" class="fn_top">4)</a></sup>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Howto restore CDC mode on CDC-Ethernet capable devices&quot;,&quot;hid&quot;:&quot;howto_restore_cdc_mode_on_cdc-ethernet_capable_devices&quot;,&quot;codeblockOffset&quot;:21,&quot;secid&quot;:20,&quot;range&quot;:&quot;19101-19454&quot;} -->
+<h3 class="sectionedit21" id="workarounds_for_specific_devices">Workarounds for specific devices</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="huawei_e220chaos_calmer">Huawei E220/Chaos Calmer</h4>
+<div class="level4">
+
+<p>
+If you encounter problems with an undetected Huawei E220, you can try the following - 
+this resets the E220 to its factory defaults, so it can again be handled by the new JSON-based modeswitch.
+This will re-enable the CD-ROM Mode.
+</p>
+
+<p>
+1. Make the modem work once, by manually telling the kernel to use generic (option) drivers.
+</p>
+<pre class="code">echo &#039;12d1 1003 ff&#039; &gt; /sys/bus/usb-serial/drivers/generic/new_id</pre>
+
+<p>
+2. Shutdown <abbr title="Wireless Wide Area Network">WWAN</abbr> (necessary only if <abbr title="Wireless Wide Area Network">WWAN</abbr> was previously configured)
+</p>
+<pre class="code">ifdown WWAN</pre>
+
+<p>
+3. Modes of the E220
+Modem + PC UI
+</p>
+<pre class="code">echo  &quot;AT^U2DIAG=0&quot; &gt;/dev/ttyUSB0</pre>
+
+<p>
+Modem + CD
+</p>
+<pre class="code">echo  &quot;AT^U2DIAG=1&quot; &gt;/dev/ttyUSB0</pre>
+
+<p>
+4. Reboot
+</p>
+<pre class="code">reboot</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Workarounds for specific devices&quot;,&quot;hid&quot;:&quot;workarounds_for_specific_devices&quot;,&quot;codeblockOffset&quot;:21,&quot;secid&quot;:21,&quot;range&quot;:&quot;19455-20198&quot;} -->
+<h3 class="sectionedit22" id="usbserial_generic_missing_in_dmesg">usbserial_generic missing in dmesg</h3>
+<div class="level3">
+
+<p>
+If you can&#039;t see usbserial_generic in dmesg, try loading the usbserial module (&lt;vid&gt; and &lt;pid&gt; are Vendor and Product ID of your device):
+</p>
+<pre class="code">rmmod usbserial #optional
+insmod /lib/modules/`uname -r`/usbserial.ko vendor=0x&lt;vid&gt; product=0x&lt;pid&gt;</pre>
+
+<p>
+Alternatively, you can also use option GSM driver on your dongle. Option driver is more reliable, as it can distinguish between serial port and storage port.
+</p>
+<pre class="code">insmod option #skip this if option driver is loaded already
+echo &#039;&lt;vid&gt; &lt;pid&gt; ff&#039; &gt; /sys/bus/usb-serial/drivers/option1/new_id</pre>
+
+<p>
+To automate the process of attaching option serial driver on boot, just edit <code>/etc/rc.local</code> and place
+</p>
+<pre class="code">echo &#039;&lt;vid&gt; &lt;pid&gt; ff&#039; &gt; /sys/bus/usb-serial/drivers/option1/new_id</pre>
+
+<p>
+before the exit code
+</p>
+<pre class="code">exit 0</pre>
+
+<p>
+Adding the above to hotplug instead of rc.local:
+You can easily integrate this into hotplug in the following way - in this example we will use a fictional “3G Dongie HSPA+” Dongle:
+</p>
+
+<p>
+Create and edit the file /etc/hotplug.d/usb/22-dongie_hspaplus:
+</p>
+<pre class="code">#!/bin/sh                                                                       
+...
+                                                                                
+DONGIEHSPAPLUS_PRODID=&quot;0815/9000/0&quot;                                                
+if [ &quot;${PRODUCT}&quot; = &quot;${DONGIEHSPAPLUS_PRODID}&quot; ]; then                             
+        if [ &quot;${ACTION}&quot; = &quot;add&quot; ]; then                           
+...             
+                echo &#039;0815 9000 ff&#039; &gt; /sys/bus/usb-serial/drivers/option1/new_id
+...</pre>
+
+<p>
+If your modem&#039;s switched product id is 0815:9000, the above will work.
+So for your modem you will have to replace all appearances of the variable DONGIEHSPAPLUS_PRODID and all appearance of “0815” and “9000” in the above example with your matching product&#039;s name, vendor and product id.
+</p>
+
+<p>
+Check dmesg again for:
+</p>
+<pre class="code">usbcore: registered new interface driver usbserial
+USB Serial support registered for generic
+usbserial_generic 1-1.3:1.0: generic converter detected
+usb 1-1.3: generic converter now attached to ttyUSB0
+usbserial_generic 1-1.3:1.1: generic converter detected
+usb 1-1.3: generic converter now attached to ttyUSB1
+usbcore: registered new interface driver usbserial_generic
+usbserial: USB Serial Driver core</pre>
+
+<p>
+Also check kernel USB debug for loaded drivers
+</p>
+<pre class="code">root@OpenWrt:~# cat /sys/kernel/debug/usb/devices
+
+T:  Bus=01 Lev=01 Prnt=01 Port=00 Cnt=01 Dev#=  3 Spd=480  MxCh= 0
+D:  Ver= 2.00 Cls=00(&gt;ifc ) Sub=00 Prot=00 MxPS=64 #Cfgs=  1
+P:  Vendor=1c9e ProdID=9800 Rev= 0.00
+S:  Manufacturer=USB Modem
+S:  Product=USB Modem
+S:  SerialNumber=1234567890ABCDEF
+C:* #Ifs= 4 Cfg#= 1 Atr=e0 MxPwr=500mA
+I:* If#= 0 Alt= 0 #EPs= 2 Cls=ff(vend.) Sub=ff Prot=ff Driver=option
+E:  Ad=81(I) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+E:  Ad=01(O) Atr=02(Bulk) MxPS= 512 Ivl=4ms
+I:* If#= 1 Alt= 0 #EPs= 3 Cls=ff(vend.) Sub=ff Prot=ff Driver=option
+E:  Ad=82(I) Atr=03(Int.) MxPS=  64 Ivl=2ms
+E:  Ad=83(I) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+E:  Ad=02(O) Atr=02(Bulk) MxPS= 512 Ivl=4ms
+I:* If#= 2 Alt= 0 #EPs= 2 Cls=ff(vend.) Sub=ff Prot=ff Driver=option
+E:  Ad=84(I) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+E:  Ad=03(O) Atr=02(Bulk) MxPS= 512 Ivl=4ms
+I:* If#= 3 Alt= 0 #EPs= 2 Cls=08(stor.) Sub=06 Prot=50 Driver=usb-storage
+E:  Ad=04(O) Atr=02(Bulk) MxPS= 512 Ivl=0ms
+E:  Ad=85(I) Atr=02(Bulk) MxPS= 512 Ivl=0ms</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;usbserial_generic missing in dmesg&quot;,&quot;hid&quot;:&quot;usbserial_generic_missing_in_dmesg&quot;,&quot;codeblockOffset&quot;:26,&quot;secid&quot;:22,&quot;range&quot;:&quot;20199-&quot;} --><div class="footnotes">
+<div class="fn"><sup><a href="#fnt__1" id="fn__1" class="fn_bot">1)</a></sup> 
+<div class="content">To check if your dongle support PDPv6, open up serial terminal (Putty, screen, minicom, microcom, or picocom), and type <strong>AT+CGDCONT=?</strong>. If the response shows a line containing “IPV6”, for example <strong>+CGDCONT: (1-11),“IPV6”,,,(0-2),(0-3)</strong>, your dongle supports PDPv6. Otherwise, your dongle is stuck with <abbr title="Internet Protocol version 4">IPv4</abbr>.</div></div>
+<div class="fn"><sup><a href="#fnt__2" id="fn__2" class="fn_bot">2)</a></sup> 
+<div class="content">See previous note.</div></div>
+<div class="fn"><sup><a href="#fnt__3" id="fn__3" class="fn_bot">3)</a></sup> 
+<div class="content"><a href="http://www.techytalk.info/disable-virtu" class="urlextern" title="http://www.techytalk.info/disable-virtu" rel="ugc nofollow">http://www.techytalk.info/disable-virtu</a> … m-devices/</div></div>
+<div class="fn"><sup><a href="#fnt__4" id="fn__4" class="fn_bot">4)</a></sup> 
+<div class="content"><a href="https://www.semanticlab.net/index.php/UMTS_with_OpenWRT" class="urlextern" title="https://www.semanticlab.net/index.php/UMTS_with_OpenWRT" rel="ugc nofollow">https://www.semanticlab.net/index.php/UMTS_with_OpenWRT</a></div></div>
+</div>

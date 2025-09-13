@@ -1,0 +1,370 @@
+
+<h1 class="sectionedit1" id="luci_on_lighttpd">LuCI on lighttpd</h1>
+<div class="level1">
+
+<p>
+LuCI is the main web administration utility for OpenWrt. <strong>By default LuCI uses <a href="/docs/guide-user/services/webserver/http.uhttpd" class="wikilink1" title="docs:guide-user:services:webserver:http.uhttpd" data-wiki-id="docs:guide-user:services:webserver:http.uhttpd">uHTTPd</a></strong>. 
+</p>
+
+<p>
+You can use other web servers for LuCI. There are a couple available in the OpenWrt archives: <a href="/docs/guide-user/services/webserver/start" class="wikilink1" title="docs:guide-user:services:webserver:start" data-wiki-id="docs:guide-user:services:webserver:start">webserver</a> This article explains how to run the <a href="/docs/techref/luci" class="wikilink1" title="docs:techref:luci" data-wiki-id="docs:techref:luci">LuCI</a> web interface on the <a href="/docs/guide-user/services/webserver/lighttpd" class="wikilink1" title="docs:guide-user:services:webserver:lighttpd" data-wiki-id="docs:guide-user:services:webserver:lighttpd">lighttpd</a> web server. 
+</p>
+
+<p>
+See also:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/services/webserver/lighttpd" class="wikilink1" title="docs:guide-user:services:webserver:lighttpd" data-wiki-id="docs:guide-user:services:webserver:lighttpd">lighttpd</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/luci/luci.essentials" class="wikilink1" title="docs:guide-user:luci:luci.essentials" data-wiki-id="docs:guide-user:luci:luci.essentials">luci.essentials</a> </div>
+</li>
+</ul>
+
+<p>
+Please be aware that versions from <strong>version 1.4.56</strong> to <strong>version 1.4.59</strong> had a <a href="https://redmine.lighttpd.net/issues/3078" class="urlextern" title="https://redmine.lighttpd.net/issues/3078" rel="ugc nofollow">problem</a> in <abbr title="Hypertext Transfer Protocol">HTTP</abbr>/2 implementation, which might influence loading of LuCI page (F5 refresh was necessary to get the page loaded correctly and working). The problem was fixed in <strong>version 1.4.59-2</strong>, so updating is recommended.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;LuCI on lighttpd&quot;,&quot;hid&quot;:&quot;luci_on_lighttpd&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-927&quot;} -->
+<h2 class="sectionedit2" id="installation">Installation</h2>
+<div class="level2">
+
+<p>
+The following procedure brings you a minimal LuCI-Installation (instead of the full installation that is obtained when using the meta-package “<strong>luci</strong>” or “<strong>luci-ssl</strong>”, which also automatically installs the webserver “<strong>uHTTPd</strong>”)
+</p>
+
+<p>
+First, install lighttpd and LuCI packages:
+</p>
+<pre class="code">opkg update
+opkg install lighttpd lighttpd-mod-cgi luci-mod-admin-full libiwinfo</pre>
+
+<p>
+<strong>NOTE</strong>: The <strong>libiwinfo</strong> package is only needed if your router has wireless. 
+</p>
+
+<p>
+Since lighttpd package version 1.4.56 the <strong><abbr title="Secure Socket Layer">SSL</abbr></strong> module is not installed by default and you need to install one:
+</p>
+<pre class="code"># Check the up-to-date list of lighttpd modules
+opkg list lighttpd*
+# Choose one and install it, version 1.4.56 offers lighttpd-mod-gnutls, lighttpd-mod-mbedtls, lighttpd-mod-nss, lighttpd-mod-openssl, lighttpd-mod-wolfssl
+opkg install lighttpd-mod-openssl</pre>
+
+<p>
+Then choose a LuCI theme
+</p>
+<pre class="code">opkg install luci-theme-openwrt</pre>
+
+<p>
+or
+</p>
+<pre class="code">opkg install luci-theme-bootstrap</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation&quot;,&quot;hid&quot;:&quot;installation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;928-1920&quot;} -->
+<h2 class="sectionedit3" id="configuration">Configuration</h2>
+<div class="level2">
+
+<p>
+Either go on with default configuration and make few changes, or add a file, which does the same. In order to understand the changes, lets start with default configuration (the more complicated way).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:3,&quot;range&quot;:&quot;1921-2148&quot;} -->
+<h3 class="sectionedit4" id="using_default_configuration_more_changes">Using default configuration (more changes)</h3>
+<div class="level3">
+
+<p>
+Check that <code>/etc/lighttpd/conf.d/30-cgi.conf</code> loads the <strong>mod_cgi</strong>-module:
+</p>
+<pre class="code">server.modules += ( &quot;mod_cgi&quot; )</pre>
+
+<p>
+Now we need to tell lighttpd to process requests for the web interface using CGI. The LuCI administation package installs files in <code>/cgi-bin</code>, which is the default CGI gateway for LuCI. The main script <code>luci</code> is a script (with shebang line) that can run LuCI independently and calls Lua by itself. Other files <code>cgi-backup</code>, <code>cgi-download</code> and <code>cgi-upload</code> are symbolic links to <code>cgi-io</code> executable. To tell lighttpd that it needs to execute scripts in <code>/cgi-bin</code> we need to add
+</p>
+<pre class="code">&quot;/cgi-bin/luci&quot; =&gt; &quot;&quot;,
+&quot;/cgi-bin/cgi-backup&quot; =&gt; &quot;&quot;,
+&quot;/cgi-bin/cgi-download&quot; =&gt; &quot;&quot;,
+&quot;/cgi-bin/cgi-exec&quot; =&gt; &quot;&quot;,
+&quot;/cgi-bin/cgi-upload&quot; =&gt; &quot;&quot;</pre>
+
+<p>
+to the cgi configuration file (<code>/etc/lighttpd/conf.d/30-cgi.conf</code>):
+</p>
+<pre class="code">cgi.assign                 = ( &quot;.pl&quot;  =&gt; &quot;/usr/bin/perl&quot;,
+                               &quot;.cgi&quot; =&gt; &quot;/usr/bin/perl&quot;,
+                               &quot;.rb&quot;  =&gt; &quot;/usr/bin/ruby&quot;,
+                               &quot;.erb&quot; =&gt; &quot;/usr/bin/eruby&quot;,
+                               &quot;.py&quot;  =&gt; &quot;/usr/bin/python&quot;,
+                               &quot;/cgi-bin/luci&quot; =&gt; &quot;&quot;,
+                               &quot;/cgi-bin/cgi-backup&quot; =&gt; &quot;&quot;,
+                               &quot;/cgi-bin/cgi-download&quot; =&gt; &quot;&quot;,
+                               &quot;/cgi-bin/cgi-exec&quot; =&gt; &quot;&quot;,
+                               &quot;/cgi-bin/cgi-upload&quot; =&gt; &quot;&quot;,
+                                )</pre>
+
+<p>
+This makes LuCI work as a CGI process. See <a href="http://redmine.lighttpd.net/projects/1/wiki/docs_modcgi" class="urlextern" title="http://redmine.lighttpd.net/projects/1/wiki/docs_modcgi" rel="ugc nofollow">http://redmine.lighttpd.net/projects/1/wiki/docs_modcgi</a> for an explanation of the <code>cgi.assign</code> syntax.
+Note that the <code>index.html</code> file in the document root <code>/www</code> that comes with the LuCI package redirects to <code>/cgi-bin/luci</code>, thereby allowing access to the web interface by just loading the address of your OpenWrt device (e.g. 192.168.1.1 instead of having to load 192.168.1.1/cgi-bin/luci).
+</p>
+
+<p>
+LuCI needs root privileges to access configuration, so lighttpd needs to run as root too, so edit the configuration file <code>/etc/lighttpd/lighttpd.conf</code>:
+</p>
+<pre class="code">#server.username             = &quot;http&quot;
+#server.groupname            = &quot;www-data&quot;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Using default configuration (more changes)&quot;,&quot;hid&quot;:&quot;using_default_configuration_more_changes&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:4,&quot;range&quot;:&quot;2149-4378&quot;} -->
+<h3 class="sectionedit5" id="using_easy_configuration">Using easy configuration</h3>
+<div class="level3">
+
+<p>
+The same effect as the previous changes could be made, if you create file <code>/etc/lighttpd/99-luci.conf</code> and put all changes there:
+</p>
+<pre class="code">## Necessary LUCI configuration
+cgi.assign += ( &quot;/cgi-bin/luci&quot; =&gt; &quot;&quot;,
+                &quot;/cgi-bin/cgi-backup&quot; =&gt; &quot;&quot;,
+                &quot;/cgi-bin/cgi-download&quot; =&gt; &quot;&quot;,
+                &quot;/cgi-bin/cgi-exec&quot; =&gt; &quot;&quot;,
+                &quot;/cgi-bin/cgi-upload&quot; =&gt; &quot;&quot; )
+
+server.username := &quot;&quot;
+server.groupname := &quot;&quot;</pre>
+
+<p>
+Or specify CGI execution as a default for a whole <code>/cgi-bin</code> <abbr title="Uniform Resource Locator">URL</abbr>:
+</p>
+<pre class="code">## Necessary LUCI configuration
+$HTTP[&quot;url&quot;] =~ &quot;^/cgi-bin&quot; {
+    cgi.assign += ( &quot;&quot; =&gt; &quot;&quot; )
+}
+
+server.username := &quot;&quot;
+server.groupname := &quot;&quot;</pre>
+
+<p>
+☝ The key to understand it is that <code>+=</code> merges the values, <code>:=</code> replaces/overwrites previously assigned value and <code>=</code> simply assigns a value if not set already (see <a href="https://redmine.lighttpd.net/projects/lighttpd/wiki/Docs_Configuration" class="urlextern" title="https://redmine.lighttpd.net/projects/lighttpd/wiki/Docs_Configuration" rel="ugc nofollow">lighttpd configuration documentation</a>).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Using easy configuration&quot;,&quot;hid&quot;:&quot;using_easy_configuration&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:5,&quot;range&quot;:&quot;4379-5376&quot;} -->
+<h3 class="sectionedit6" id="finalizing_the_configuration">Finalizing the configuration</h3>
+<div class="level3">
+
+<p>
+If you want lighttpd&#039;s logs in the output of “<strong>logread</strong>”, add this (to <code>/etc/lighttpd/lighttpd.conf</code> or <code>/etc/lighttpd/99-luci.conf</code>, or your own config file):
+</p>
+<pre class="code">## enable syslog
+server.errorlog-use-syslog = &quot;enable&quot;</pre>
+
+<p>
+Add the following for the server to listen on ipv4 and ipv6 (create for example <code>/etc/lighttpd/50-http.conf</code>):
+</p>
+<pre class="code">#Listen on ipv4
+$SERVER[&quot;socket&quot;] == &quot;:80&quot; {
+}
+#Listen on ipv6
+$SERVER[&quot;socket&quot;] == &quot;[::]:80&quot; {
+        server.use-ipv6 = &quot;enable&quot;
+}</pre>
+
+<p>
+Enable lighttpd (so that it will be started at every boot) and start it:
+</p>
+<pre class="code">/etc/init.d/lighttpd enable
+/etc/init.d/lighttpd start</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Finalizing the configuration&quot;,&quot;hid&quot;:&quot;finalizing_the_configuration&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:6,&quot;range&quot;:&quot;5377-6061&quot;} -->
+<h2 class="sectionedit7" id="ssl_redirect">SSL Redirect</h2>
+<div class="level2">
+
+<p>
+If you want to redirect to <abbr title="Secure Socket Layer">SSL</abbr>, install <code>lighttpd-mod-redirect</code> package:
+</p>
+<pre class="code">opkg update
+opkg install lighttpd-mod-redirect</pre>
+
+<p>
+Next, create <code>/etc/lighttpd/conf.d/50-https.conf</code> with the following content:
+</p>
+<pre class="code">$SERVER[&quot;socket&quot;] == &quot;:443&quot; {
+    ssl.engine                  = &quot;enable&quot;
+    ssl.pemfile                 = &quot;/etc/lighttpd/ssl/your_private_and_public_key.pem&quot;
+} else $HTTP[&quot;scheme&quot;] == &quot;http&quot; {
+    $HTTP[&quot;host&quot;] =~ &quot;.*&quot; {
+        url.redirect = (&quot;.*&quot; =&gt; &quot;https://%0$0&quot;)
+    }
+}</pre>
+
+<p>
+And if you have <abbr title="Secure Socket Layer">SSL</abbr> certificate from any authority without hostname-only alias, you can redirect like the following (replace <code>hostname</code> with your hostname and <code>hostname.domain</code> with your fully qualified domain name):
+</p>
+<pre class="code">$SERVER[&quot;socket&quot;] == &quot;:443&quot; {
+    ssl.engine                  = &quot;enable&quot;
+    ssl.pemfile                 = &quot;/etc/lighttpd/ssl/your_private_and_public_key.pem&quot;
+} else $HTTP[&quot;scheme&quot;] == &quot;http&quot; {
+    $HTTP[&quot;host&quot;] == &quot;hostname&quot; {
+        url.redirect = (&quot;.*&quot; =&gt; &quot;https://hostname.domain$0&quot;)
+    } else $HTTP[&quot;host&quot;] =~ &quot;.*&quot; {
+        url.redirect = (&quot;.*&quot; =&gt; &quot;https://%0$0&quot;)
+    }
+}</pre>
+
+<p>
+Unfortunately redirecting from <a href="https://hostname" class="urlextern" title="https://hostname" rel="ugc nofollow">https://hostname</a> to <a href="https://hostname.domain" class="urlextern" title="https://hostname.domain" rel="ugc nofollow">https://hostname.domain</a> does not work well, so it is not shown in the example above -- the reason is that the <abbr title="Secure Socket Layer">SSL</abbr> channel is set-up based on SNI (i.e. hostname) before the redirection could happen, so certificate is matched against hostname and not hostname.domain.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;SSL Redirect&quot;,&quot;hid&quot;:&quot;ssl_redirect&quot;,&quot;codeblockOffset&quot;:13,&quot;secid&quot;:7,&quot;range&quot;:&quot;6062-7537&quot;} -->
+<h2 class="sectionedit8" id="luci_and_another_website_simultaneously_on_lighttpd_listening_on_multiple_ports">LuCI and Another Website Simultaneously on lighttpd (Listening on Multiple Ports)</h2>
+<div class="level2">
+
+<p>
+You can easily add other content to the document root and use it as your website. For example, you might aggregate the web interfaces of other OpenWrt programs under the same socket listening instance in lighttpd. However, you may want to have the web interface LuCI listening on another socket altogether. This is useful for example if you want to run a website next to the LuCI interface on another port. Or if you want to run an <abbr title="Secure Socket Layer">SSL</abbr> website next to a regular one. Another reason is to prevent people that visit your website to see the LuCI log in screen, if they happen to access the document root, which normally accesses LuCI. (Another way to just prevent this, is to hide it a bit more by not serving LuCI on the docroot by removing the redirect <abbr title="HyperText Markup Language">HTML</abbr> file explained above. And instead of putting the CGI script under <code>/cgi-bin/luci</code> you might come up with a more secret path for that as well.)
+</p>
+
+<p>
+Listening on a second port with its own document root is very straigtforward in lighttpd. Here we consider the case where we run a simple static website next the LuCI web interface.
+</p>
+
+<p>
+Suppose we make a directory for the website that we want to run next to LuCI and put some content in it:
+</p>
+<pre class="code">mkdir /website
+echo &quot;&lt;P&gt;It works!&lt;/P&gt;&quot; &gt; /website/index.html</pre>
+
+<p>
+Now we simply need to use lighttpd&#039;s “matching on socket” mechanism (see <a href="http://redmine.lighttpd.net/projects/1/wiki/Docs_Configuration#Conditional-Configuration" class="urlextern" title="http://redmine.lighttpd.net/projects/1/wiki/Docs_Configuration#Conditional-Configuration" rel="ugc nofollow">the documentation on conditional configuration</a>), for which you have to put the following somewhere in your lighttpd.conf:
+</p>
+<pre class="code">$SERVER[&quot;socket&quot;] == &quot;:80&quot; {
+  server.document-root = &quot;/website/&quot;
+}</pre>
+
+<p>
+After restarting lighttpd your website is on port 81 and LuCI is still on port 80 using lighttpd. Naturally, you can interchange these two ports such that the website is on the default <abbr title="Hypertext Transfer Protocol">HTTP</abbr> port 80 and set the web interface on port 81.
+</p>
+
+<p>
+You can of course also add other statements to this conditional configuration (conditional on listening and serving requests on another port), such as another CGI package or a different PHP configuration. For more information, see the following from the lighttpd website:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="http://redmine.lighttpd.net/projects/1/wiki/docs_modcgi" class="urlextern" title="http://redmine.lighttpd.net/projects/1/wiki/docs_modcgi" rel="ugc nofollow">http://redmine.lighttpd.net/projects/1/wiki/docs_modcgi</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://redmine.lighttpd.net/projects/1/wiki/Docs_Configuration" class="urlextern" title="http://redmine.lighttpd.net/projects/1/wiki/Docs_Configuration" rel="ugc nofollow">http://redmine.lighttpd.net/projects/1/wiki/Docs_Configuration</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://redmine.lighttpd.net/projects/1/wiki/Docs_SSL" class="urlextern" title="http://redmine.lighttpd.net/projects/1/wiki/Docs_SSL" rel="ugc nofollow">http://redmine.lighttpd.net/projects/1/wiki/Docs_SSL</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://redmine.lighttpd.net/projects/lighttpd/wiki/HowToRedirectHttpToHttps/9" class="urlextern" title="http://redmine.lighttpd.net/projects/lighttpd/wiki/HowToRedirectHttpToHttps/9" rel="ugc nofollow">http://redmine.lighttpd.net/projects/lighttpd/wiki/HowToRedirectHttpToHttps/9</a></div>
+</li>
+</ul>
+
+<p>
+<em>Remark:</em> Instead of opening a 2nd port for lighttpd it should be possible to activate the module “<strong>mod_simple_vhost</strong>” and serve your website (in a vhost) in friendly coexistence of LuCI via port 80. Please document this here if you get it to work.
+</p>
+
+<p>
+  
+</p>
+
+<p>
+<em>‌&gt; Please document this here if you get it to work.</em>
+</p>
+
+<p>
+Some hints for achieving “friendly coexistence” of luci, ssl and php-based website, but without using mod_simple_vhost:
+First, file layout (notice the luci → /www links):
+</p>
+<pre class="code">root@OpenWrt / # tree /srv/www 
+/srv/www
+|-- default
+|   |-- example.org -&gt; ../example.org
+|   `-- luci -&gt; /www
+`-- example.org
+    |-- index.html
+    |-- luci -&gt; /www
+    `-- phpinfo.php</pre>
+
+<p>
+luci-related (and php-related) lines in /etc/lighttpd/lighttpd.conf
+</p>
+<pre class="code">server.modules = (
+        &quot;mod_rewrite&quot;, # needed for luci
+        &quot;mod_fastcgi&quot;, # needed for php
+        &quot;mod_cgi&quot; # needed for luci
+)
+
+# luci - no handler means invoking the file
+cgi.assign = ( &quot;cgi-bin/luci&quot; =&gt; &quot;&quot; )
+
+# php via socket-driven fastcgi.
+# to get cgi-php working one needs to comment out (or update
+# accordingly) doc_root and user_dir in /etc/php.ini
+fastcgi.server = (
+        &quot;.php&quot; =&gt;
+        ((
+                &quot;bin-path&quot; =&gt; &quot;/usr/bin/php-fcgi&quot;,
+                &quot;socket&quot; =&gt; &quot;/tmp/php.socket&quot;
+        ))
+)
+
+# port 80 is default, so this line can be commented out
+server.port = 80
+
+# this enables https
+$SERVER[&quot;socket&quot;] == &quot;0.0.0.0:443&quot; { 
+        ssl.engine = &quot;enable&quot;
+        ssl.pemfile = &quot;/etc/lighttpd/server.pem&quot;
+}
+
+# I prefer to keep sites here
+server.document-root = &quot;/srv/www/default/&quot;
+
+# rewrites to keep luci code untouched 
+url.rewrite = ( &quot;^/luci$&quot; =&gt; &quot;/luci/&quot;, # helper only
+                &quot;^/cgi-bin/luci.*&quot; =&gt; &quot;/luci$0&quot;,
+                &quot;^/luci-static/.*&quot; =&gt; &quot;/luci$0&quot; )
+
+# block to catch accessing luci via http and &quot;kind&quot; redirect to https
+$HTTP[&quot;scheme&quot;] == &quot;http&quot; {
+        $HTTP[&quot;url&quot;] =~ &quot;^/(cgi-bin/)?luci&quot; {
+                url.redirect = (&quot;.*&quot; =&gt; &quot;https://%0$0&quot; )
+        }
+}
+
+# rules for lan access
+$HTTP[&quot;host&quot;] =~ &quot;^10.0.0.1(\:[0-9]*)?$&quot; {
+        dir-listing.activate = &quot;enable&quot;
+}
+
+# rules for remote acces by example.org and www.example.org
+$HTTP[&quot;host&quot;] =~ &quot;^(www.)?example.org(\:[0-9]*)?$&quot; {
+        server.document-root = &quot;/srv/www/example.org/&quot;
+}</pre>
+
+<p>
+ 
+</p>
+
+<p>
+The “minimalistic” setup for putting own page in <strong>/srv/www/</strong> and getting luci by http:/‌/…/luci I expect to work is to execute
+</p>
+<pre class="code">mkdir -p /srv/www
+ln -s /www /srv/www/luci</pre>
+
+<p>
+and add to /etc/lighttpd/lighttpd.conf file the following:
+</p>
+<pre class="code">server.document-root = &quot;/srv/www/&quot;
+server.modules += (&quot;mod_rewrite&quot;, &quot;mod_cgi&quot;)
+cgi.assign = ( &quot;cgi-bin/luci&quot; =&gt; &quot;&quot; )
+url.rewrite = ( &quot;^/luci$&quot; =&gt; &quot;/luci/&quot;,
+                &quot;^/cgi-bin/luci.*&quot; =&gt; &quot;/luci$0&quot;,
+                &quot;^/luci-static/.*&quot; =&gt; &quot;/luci$0&quot; )</pre>
+
+
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;LuCI and Another Website Simultaneously on lighttpd (Listening on Multiple Ports)&quot;,&quot;hid&quot;:&quot;luci_and_another_website_simultaneously_on_lighttpd_listening_on_multiple_ports&quot;,&quot;codeblockOffset&quot;:16,&quot;secid&quot;:8,&quot;range&quot;:&quot;7538-&quot;} -->

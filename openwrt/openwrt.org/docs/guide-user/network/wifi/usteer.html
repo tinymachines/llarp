@@ -1,0 +1,722 @@
+
+<h1 class="sectionedit1" id="setting_up_usteer_and_band-steering">Setting up usteer and band-steering</h1>
+<div class="level1">
+
+<p>
+<a href="https://git.openwrt.org/project/usteer.git" class="interwiki iw_commit" title="https://git.openwrt.org/project/usteer.git">usteer</a> is a daemon for sharing wifi client information amongst APs on the same network, and can be used for band steering.
+</p>
+
+<p>
+This can be useful for improved WiFi performance when you have a network with multiple APs. Especially on EAP networks, it is highly recommended to set up <a href="/docs/guide-user/network/wifi/basic#fast_bss_transition_options_80211r" class="wikilink1" title="docs:guide-user:network:wifi:basic" data-wiki-id="docs:guide-user:network:wifi:basic">802.11r</a> also.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Setting up usteer and band-steering&quot;,&quot;hid&quot;:&quot;setting_up_usteer_and_band-steering&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-449&quot;} -->
+<h2 class="sectionedit2" id="wifi_roaming">WiFi Roaming</h2>
+<div class="level2">
+
+<p>
+An summary of WiFi roaming technologies can be found on the <a href="/docs/guide-user/network/wifi/roaming" class="wikilink1" title="docs:guide-user:network:wifi:roaming" data-wiki-id="docs:guide-user:network:wifi:roaming">roaming</a> page.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;WiFi Roaming&quot;,&quot;hid&quot;:&quot;wifi_roaming&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;450-583&quot;} -->
+<h2 class="sectionedit3" id="prerequisites">Prerequisites</h2>
+<div class="level2">
+
+<p>
+The following items are prerequisite to set up usteer:
+</p>
+<ul>
+<li class="level1"><div class="li"> One or more OpenWrt based APs (and routers)</div>
+</li>
+<li class="level1"><div class="li"> install the full version of wpad</div>
+</li>
+<li class="level1"><div class="li"> usteer package installed on each</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Prerequisites&quot;,&quot;hid&quot;:&quot;prerequisites&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;584-789&quot;} -->
+<h2 class="sectionedit4" id="setting_up_usteer">Setting up usteer</h2>
+<div class="level2">
+
+<p>
+To set up usteer:
+</p>
+<ul>
+<li class="level1"><div class="li"> configure 802.11k and 802.11v on all WiFi <abbr title="Access Point">AP</abbr>-nodes.</div>
+</li>
+<li class="level1"><div class="li"> install and configure required packages for usteer</div>
+</li>
+<li class="level1"><div class="li"> reboot all nodes (or just restart the network if no wpad packages have been changed).</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Setting up usteer&quot;,&quot;hid&quot;:&quot;setting_up_usteer&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;790-1041&quot;} -->
+<h3 class="sectionedit5" id="configure_80211k_and_80211v_on_all_ap-nodes">Configure 802.11k and 802.11v on all AP-nodes</h3>
+<div class="level3">
+
+<p>
+<abbr title="Secure Shell">SSH</abbr> into each of your wifi/<abbr title="Access Point">AP</abbr> nodes and add the following config-lines in <code>/etc/config/wireless</code> to each of your SSIDs:
+</p>
+<pre class="code">      option bss_transition &#039;1&#039;
+      option ieee80211k &#039;1&#039;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configure 802.11k and 802.11v on all AP-nodes&quot;,&quot;hid&quot;:&quot;configure_80211k_and_80211v_on_all_ap-nodes&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;1042-1286&quot;} -->
+<h3 class="sectionedit6" id="install_and_configure_required_packages">Install and configure required packages</h3>
+<div class="level3">
+
+<p>
+We need to install usteer. This is as simple as:
+</p>
+<pre class="code"> opkg update &amp;&amp; opkg install usteer</pre>
+
+<p>
+At this point you have all the packages you need, but they may be in need of additional configuration.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Install and configure required packages&quot;,&quot;hid&quot;:&quot;install_and_configure_required_packages&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;1287-1530&quot;} -->
+<h3 class="sectionedit7" id="configuring_usteer">Configuring usteer</h3>
+<div class="level3">
+
+<p>
+usteer&#039;s config-file <em>/etc/config/usteer</em> specifies which interface it will listen on for other nodes. By default this is <em>lan</em>.
+</p>
+
+</div>
+
+<h4 id="config_options">Config options</h4>
+<div class="level4">
+<div class="table sectionedit8"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Name </th><th class="col1"> Type </th><th class="col2"> Required </th><th class="col3"> Default </th><th class="col4"> Description </th><td class="col5"></td><td class="col6"></td>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> <em>network</em> </td><td class="col1"> string </td><td class="col2"> yes </td><td class="col3"> <em>lan</em> </td><td class="col4"> The network interface for inter-<abbr title="Access Point">AP</abbr> communication </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> <em>syslog</em> </td><td class="col1"> boolean </td><td class="col2"> yes </td><td class="col3"> 1 </td><td class="col4"> Log messages to syslog (0/1) </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> <em>ipv6</em> </td><td class="col1"> boolean </td><td class="col2"> yes </td><td class="col3"> 0 </td><td class="col4"> Use <abbr title="Internet Protocol version 6">IPv6</abbr> for remote exchange </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> <em>debug_level</em> </td><td class="col1"> integer </td><td class="col2"> yes </td><td class="col3"> 2 </td><td class="col4"> Minimum level of logged messages. 0 = Fatal, 1 = Info, 2 = Verbose, 3 = some debug messages, 4 = network packet information, 5 = all debug messages </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row5">
+		<td class="col0"> <em>max_neighbour_reports</em> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> 8 </td><td class="col4"> Maximum number of neighbor reports set for a node </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row6">
+		<td class="col0"> <em>sta_block_timeout</em> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> 30000 </td><td class="col4"> Maximum amount of time (ms) a station may be blocked due to policy decisions </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row7">
+		<td class="col0"> <em>local_sta_timeout</em> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> 120000 </td><td class="col4"> Maximum amount of time (ms) a local unconnected station is tracked </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row8">
+		<td class="col0"> <em>measurement_report_timeout</em> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> 120000 </td><td class="col4"> Maximum amount of time (ms) a measurement report is stored </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row9">
+		<td class="col0"> <em>local_sta_update</em> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> 1000 </td><td class="col4"> Local station information update interval (ms) </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row10">
+		<td class="col0"> <em>max_retry_band</em> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> 5 </td><td class="col4"> Maximum number of consecutive times a station may be blocked by policy </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row11">
+		<td class="col0"> <em>seen_policy_timeout</em> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> 30000 </td><td class="col4"> Maximum idle time of a station entry (ms) to be considered for policy decisions </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row12">
+		<td class="col0"> <em>load_balancing_threshold</em> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> 0 </td><td class="col4"> Minimum number of stations delta between APs before load balancing policy is active </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row13">
+		<td class="col0"> <em>band_steering_threshold</em> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> 5 </td><td class="col4"> Minimum number of stations delta between bands before band steering policy is active. Only used if <a href="https://github.com/openwrt/usteer/blob/e218150979b40a1b3c59ad0aaa3bbb943814db1e/policy.c#L32-L33" class="urlextern" title="https://github.com/openwrt/usteer/blob/e218150979b40a1b3c59ad0aaa3bbb943814db1e/policy.c#L32-L33" rel="ugc nofollow">load_balancing_threshold is set</a>. </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row14">
+		<td class="col0"> <em>remote_update_interval</em> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> 1000 </td><td class="col4"> Interval (ms) between sending state updates to other APs </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row15">
+		<td class="col0"> <em>remote_node_timeout</em> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> 10 </td><td class="col4"> Number of remote update intervals after which a remote-node is deleted </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row16">
+		<td class="col0"> <em>assoc_steering</em> </td><td class="col1"> boolean </td><td class="col2"> no </td><td class="col3"> 0 </td><td class="col4"> Allow rejecting assoc requests for steering purposes (0/1) </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row17">
+		<td class="col0"> <em>probe_steering</em> </td><td class="col1"> boolean </td><td class="col2"> no </td><td class="col3"> 0 </td><td class="col4"> Allow ignoring probe requests for steering purposes (0/1) </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row18">
+		<td class="col0"> <em>min_connect_snr</em> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> 0 </td><td class="col4"> Minimum signal-to-noise ratio or signal level (dBm) to allow connections </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row19">
+		<td class="col0"> <em>min_snr</em> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> <em>0</em> </td><td class="col4"> Minimum signal-to-noise ratio or signal level (dBm) to remain connected </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row20">
+		<td class="col0"> <em>min_snr_kick_delay</em> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> 5000 </td><td class="col4"> Timeout after which a station with snr &lt; min_snr will be kicked </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row21">
+		<td class="col0"> <em>roam_process_timeout</em> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> 5000 </td><td class="col4"> Timeout (in ms) after which a association following a disassociation is not seen as a roam </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row22">
+		<td class="col0"> <em>roam_scan_snr</em> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> 0 </td><td class="col4"> Minimum signal-to-noise ratio or signal level (dBm) before attempting to trigger client scans for roam </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row23">
+		<td class="col0"> <em>roam_scan_tries </em> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> 3 </td><td class="col4"> Maximum number of client roaming scan trigger attempts </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row24">
+		<td class="col0"> <em>roam_scan_timeout</em> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> 0 </td><td class="col4"> Retry scanning when roam_scan_tries is exceeded after this timeout (in ms). In case this option is set to 0, the client is kicked instead </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row25">
+		<td class="col0"> <em>roam_scan_interval</em> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> 10000 </td><td class="col4"> Minimum time (ms) between client roaming scan trigger attempts </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row26">
+		<td class="col0"> <em>roam_trigger_snr</em> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> 0 </td><td class="col4"> Minimum signal-to-noise ratio or signal level (dBm) before attempting to trigger forced client roaming </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row27">
+		<td class="col0"> <em>roam_trigger_interval</em> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> 60000 </td><td class="col4"> Minimum time (ms) between client roaming trigger attempts </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row28">
+		<td class="col0"> <em>roam_kick_delay</em> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> 100 </td><td class="col4"> Timeout (in 100ms beacon intervals) for client roam requests </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row29">
+		<td class="col0"> <em>signal_diff_threshold</em> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> 0 </td><td class="col4"> Minimum signal strength difference until <abbr title="Access Point">AP</abbr> steering policy is active </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row30">
+		<td class="col0"> <em>initial_connect_delay</em> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> 0 </td><td class="col4"> Initial delay (ms) before responding to probe requests (to allow other APs to see packets as well) </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row31">
+		<td class="col0"> <em>load_kick_enabled</em> </td><td class="col1"> boolean </td><td class="col2"> no </td><td class="col3"> 0 </td><td class="col4"> Enable kicking client on excessive channel load (0/1) </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row32">
+		<td class="col0"> <em>load_kick_threshold</em> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> 75 </td><td class="col4"> Minimum channel load (%) before kicking clients </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row33">
+		<td class="col0"> <em>load_kick_delay</em> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> 10000 </td><td class="col4"> Minimum amount of time (ms) that channel load is above threshold before starting to kick clients </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row34">
+		<td class="col0"> <em>load_kick_min_clients</em> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> 10 </td><td class="col4"> Minimum number of connected clients before kicking based on channel load </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row35">
+		<td class="col0"> <em>load_kick_reason_code</em> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> 5 </td><td class="col4"> Reason code on client kick based on channel load (default: <abbr title="Wireless Local Area Network">WLAN</abbr>_REASON_DISASSOC_<abbr title="Access Point">AP</abbr>_BUSY) </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row36">
+		<td class="col0"> <em>band_steering_interval</em> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> 120000 </td><td class="col4" colspan="2"> Attempting to steer clients to a higher frequency-band every n ms. A value of 0 disables band-steering. </td>
+	</tr>
+	<tr class="row37">
+		<td class="col0"> <em>band_steering_min_snr</em> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> -60 </td><td class="col4" colspan="2"> Minimal SNR or absolute signal a device has to maintain over band_steering_interval to be steered to a higher frequency band. </td>
+	</tr>
+	<tr class="row38">
+		<td class="col0"> <em>link_measurement_interval</em> </td><td class="col1"> integer </td><td class="col2"> no </td><td class="col3"> 30000 </td><td class="col4" colspan="2"> Interval (ms) the device is sent a link-measurement request to help assess the bi-directional link quality. Setting the interval to 0 disables link-measurements. </td>
+	</tr>
+	<tr class="row39">
+		<td class="col0"> <em>node_up_script</em> </td><td class="col1"> string </td><td class="col2"> no </td><td class="col3"> <em>blank</em> </td><td class="col4"> Script to run after bringing up a node </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row40">
+		<td class="col0"> <em>event_log_types</em> </td><td class="col1"> list </td><td class="col2"> no </td><td class="col3"> <em>blank</em> </td><td class="col4"> Message types to include in log. Available types: probe_req_accept probe_req_deny, auth_req_accept, auth_req_deny, assoc_req_accept, assoc_req_deny, load_kick_trigger, load_kick_reset, load_kick_min_clients, load_kick_no_client, load_kick_client, signal_kick </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+	<tr class="row41">
+		<td class="col0"> <em>ssid_list</em> </td><td class="col1"> list </td><td class="col2"> no </td><td class="col3"> <em>blank</em> </td><td class="col4"> List of SSIDs to enable steering on </td><td class="col5"></td><td class="col6"></td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:8,&quot;range&quot;:&quot;1718-7188&quot;} -->
+<p>
+After making any change, reload usteer:
+</p>
+<pre class="code">  /etc/init.d/usteer reload</pre>
+
+<p>
+Again, do this on all nodes in your network.
+</p>
+
+</div>
+
+<h4 id="config_recommendation">Config recommendation</h4>
+<div class="level4">
+
+<p>
+The default settings are best most environments but many users overdo optimizations. The following settings are enough to support roaming and band steering.
+</p>
+<ul>
+<li class="level1"><div class="li"> roam_scan_snr &#039;-65&#039;</div>
+</li>
+<li class="level1"><div class="li"> signal_diff_threshold &#039;8&#039;</div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="config_gotchas">Config gotchas</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> For <abbr title="Access Point">AP</abbr> steering to take effect, <em>signal_diff_threshold</em> needs to be set to a value greater than 0.</div>
+</li>
+<li class="level1"><div class="li"> <em>roam_scan_snr</em> needs to be set to trigger client scans for roaming.</div>
+</li>
+<li class="level1"><div class="li"> If <em>roam_scan_snr</em> is unset and <em>roam_trigger_snr</em> is set, then <em>roam_scan_snr</em> will take the value of <em>roam_trigger_snr</em>.</div>
+</li>
+<li class="level1"><div class="li"> <em>band_steering_threshold</em> and <em>load_balancing_threshold</em> is used during roaming to optimize selection of the target <abbr title="Access Point">AP</abbr> as  it adds additional parameters to RSSI comparison. It is not related to band steering feature that&#039;s move a sticky client from 2,4Ghz to 5Ghz.</div>
+</li>
+<li class="level1"><div class="li"> <em>band_steering_threshold</em> does not take effect unless <em>load_balancing_threshold</em> is also set to a value greater than 0.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuring usteer&quot;,&quot;hid&quot;:&quot;configuring_usteer&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;1531-8291&quot;} -->
+<h3 class="sectionedit9" id="luci">LuCI</h3>
+<div class="level3">
+
+<p>
+If you prefer to configure usteer using Luci, there is one app available:
+</p>
+<pre class="code">  opkg update &amp;&amp; opkg install luci-app-usteer</pre>
+
+<p>
+The app shows too information about nodes, clients, signal, etc. that can help to adjust correctly the configuration of usteer and verify that is working correctly.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;LuCI&quot;,&quot;hid&quot;:&quot;luci&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:9,&quot;range&quot;:&quot;8292-8597&quot;} -->
+<h3 class="sectionedit10" id="issues_with_intel_wifi_cards_and_potentially_other_vendors">Issues with Intel Wifi cards and potentially other vendors</h3>
+<div class="level3">
+
+<p>
+According to the <a href="https://forum.openwrt.org/t/bss-transition-request-ignored-by-intel-ax201wifi-card-client/210537" class="urlextern" title="https://forum.openwrt.org/t/bss-transition-request-ignored-by-intel-ax201wifi-card-client/210537" rel="ugc nofollow">OpenWrt development mailing list</a>, some devices (like some Intel Wifi cards, Apple devices) tends to ignore roaming requests as the current implementation of Usteer sends no disassociation timer in the transition frame. The transition requests is handled like a tip not like a request. If you experience your computer sticks to access points and/or frequencies you can think of using <a href="/docs/guide-user/network/wifi/dawn" class="wikilink1" title="docs:guide-user:network:wifi:dawn" data-wiki-id="docs:guide-user:network:wifi:dawn">dawn</a> until the fix is merged into the main repository.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Issues with Intel Wifi cards and potentially other vendors&quot;,&quot;hid&quot;:&quot;issues_with_intel_wifi_cards_and_potentially_other_vendors&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:10,&quot;range&quot;:&quot;8598-9228&quot;} -->
+<h3 class="sectionedit11" id="ubus_interface">Ubus interface</h3>
+<div class="level3">
+
+<p>
+usteer has a ubus interface that can be accessed by:
+</p>
+<pre class="code">  ubus call usteer &lt;command&gt; [args]</pre>
+
+</div>
+
+<h4 id="ubus_commands">Ubus commands</h4>
+<div class="level4">
+<div class="table sectionedit12"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Name </th><th class="col1"> Arguments </th><th class="col2"> Description </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> <em>local_info</em> </td><td class="col1"> none </td><td class="col2"> Prints local wifi network information </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> <em>remote_hosts</em> </td><td class="col1"> none </td><td class="col2"> Prints information about remote usteer instances </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> <em>remote_info</em> </td><td class="col1"> none </td><td class="col2"> Prints remote wifi network information (same as <em>local_info</em>, but for remote APs) </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> <em>connected_clients</em> </td><td class="col1"> none </td><td class="col2"> Prints clients that are connected to local wifi interfaces </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0"> <em>get_clients</em> </td><td class="col1"> none </td><td class="col2"> Prints all clients from all APs (local and remote) </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0"> <em>get_client_info</em> </td><td class="col1"> MAC address (json) </td><td class="col2"> Prints information about a specific client, including capabilities and information about roaming attempts </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0"> <em>get_config</em> </td><td class="col1"> none </td><td class="col2"> Prints the local configuration </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0"> <em>set_config</em> </td><td class="col1"> yes (json) </td><td class="col2"> <em>Details required</em> </td>
+	</tr>
+	<tr class="row9">
+		<td class="col0"> <em>update_config</em> </td><td class="col1"> yes (json) </td><td class="col2"> <em>Details required</em> </td>
+	</tr>
+	<tr class="row10">
+		<td class="col0"> <em>set_node_data</em> </td><td class="col1"> yes (json) </td><td class="col2"> <em>Details required</em> </td>
+	</tr>
+	<tr class="row11">
+		<td class="col0"> <em>delete_node_data</em> </td><td class="col1"> yes (json) </td><td class="col2"> <em>Details required</em> </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table1&quot;,&quot;secid&quot;:12,&quot;range&quot;:&quot;9370-10280&quot;} -->
+</div>
+
+<h4 id="local_info">local_info</h4>
+<div class="level4">
+<pre class="code">root@AccessPoint:~# ubus call usteer local_info
+{
+	&quot;hostapd.wlan1-1&quot;: {
+		&quot;bssid&quot;: &quot;11:22:33:44:55:66&quot;,
+		&quot;freq&quot;: 2412,
+		&quot;n_assoc&quot;: 0,
+		&quot;noise&quot;: -95,
+		&quot;load&quot;: 5,
+		&quot;max_assoc&quot;: 0,
+		&quot;roam_events&quot;: {
+				&quot;source&quot;: 0,
+				&quot;target&quot;: 0
+		},
+		&quot;rrm_nr&quot;: [
+			&quot;11:22:33:44:55:66&quot;,
+			&quot;OpenWrtSSID&quot;,
+			&quot;&lt;hex string&gt;&quot;
+		]
+	}
+}</pre>
+
+</div>
+
+<h4 id="remote_hosts">remote_hosts</h4>
+<div class="level4">
+<pre class="code">root@AccessPoint:~# ubus call usteer remote_hosts
+{
+      &quot;192.168.1.1&quot;: {
+		&quot;id&quot;: -525792052
+      }
+}</pre>
+
+</div>
+
+<h4 id="remote_info">remote_info</h4>
+<div class="level4">
+<pre class="code">root@AccessPoint:~# ubus call usteer remote_info
+{
+      &quot;192.168.1.1#hostapd.wlan0&quot;: {
+		&quot;bssid&quot;: &quot;11:22:33:44:55:66&quot;,
+		&quot;freq&quot;: 5180,
+		&quot;n_assoc&quot;: 6,
+		&quot;noise&quot;: -107,
+		&quot;load&quot;: 3,
+		&quot;max_assoc&quot;: 0,
+		&quot;roam_events&quot;: {
+			&quot;source&quot;: 0,
+			&quot;target&quot;: 0
+		},
+		&quot;rrm_nr&quot;: [
+			&quot;11:22:33:44:55:66&quot;,
+			&quot;OpenWrtSSID 5GHz&quot;,
+			&quot;&lt;hex string&gt;&quot;
+		]
+      },
+      &quot;192.168.1.1#hostapd.wlan1&quot;: {
+		&quot;bssid&quot;: &quot;11:22:33:44:55:67&quot;,
+		&quot;freq&quot;: 2412,
+		&quot;n_assoc&quot;: 7,
+		&quot;noise&quot;: -90,
+		&quot;load&quot;: 13,
+		&quot;max_assoc&quot;: 0,
+		&quot;roam_events&quot;: {
+			&quot;source&quot;: 0,
+			&quot;target&quot;: 0
+		},
+		&quot;rrm_nr&quot;: [
+			&quot;11:22:33:44:55:67&quot;,
+			&quot;OpenWrtSSID&quot;,
+			&quot;&lt;hex string&gt;&quot;
+		]
+      }
+}</pre>
+
+</div>
+
+<h4 id="connected_clients">connected_clients</h4>
+<div class="level4">
+<pre class="code">root@AccessPoint:~# ubus call usteer connected_clients
+{
+      &quot;hostapd.wlan0&quot;: {
+		&quot;aa:bb:cc:dd:ee:ff&quot;: {
+			&quot;signal&quot;: -91,
+			&quot;created&quot;: 604990289,
+			&quot;seen&quot;: 610827895,
+			&quot;last_connected&quot;: 610827895,
+			&quot;snr-kick&quot;: {
+				&quot;seen-below&quot;: 0
+			},
+			&quot;load-kick&quot;: {
+				&quot;count&quot;: 0
+			},
+			&quot;roam-state-machine&quot;: {
+				&quot;tries&quot;: 0,
+				&quot;event&quot;: 0,
+				&quot;kick&quot;: 0,
+				&quot;scan_start&quot;: 0,
+				&quot;scan_timeout_start&quot;: 0
+			},
+			&quot;bss-transition-response&quot;: {
+				&quot;status-code&quot;: 0,
+				&quot;timestamp&quot;: 0
+			},
+			&quot;beacon-measurement-modes&quot;: [
+				
+			],
+			&quot;bss-transition-management&quot;: false,
+			&quot;measurements&quot;: [
+				
+			]
+		},
+		...
+		&quot;aa:bb:cc:dd:ee:fe&quot;: {
+			&quot;signal&quot;: -81,
+			&quot;created&quot;: 600282172,
+			&quot;seen&quot;: 610827895,
+			&quot;last_connected&quot;: 610827895,
+			&quot;snr-kick&quot;: {
+				&quot;seen-below&quot;: 0
+			},
+			&quot;load-kick&quot;: {
+				&quot;count&quot;: 0
+			},
+			&quot;roam-state-machine&quot;: {
+				&quot;tries&quot;: 0,
+				&quot;event&quot;: 0,
+				&quot;kick&quot;: 0,
+				&quot;scan_start&quot;: 0,
+				&quot;scan_timeout_start&quot;: 0
+			},
+			&quot;bss-transition-response&quot;: {
+				&quot;status-code&quot;: 0,
+				&quot;timestamp&quot;: 0
+			},
+			&quot;beacon-measurement-modes&quot;: [
+				
+			],
+			&quot;bss-transition-management&quot;: false,
+			&quot;measurements&quot;: [
+				
+			]
+		}
+      },
+      &quot;hostapd.wlan1&quot;: {
+		&quot;aa:bb:cc:dd:ee:fd&quot;: {
+			&quot;signal&quot;: -58,
+			&quot;created&quot;: 600282173,
+			&quot;seen&quot;: 610827901,
+			&quot;last_connected&quot;: 610827896,
+			&quot;snr-kick&quot;: {
+				&quot;seen-below&quot;: 0
+			},
+			&quot;load-kick&quot;: {
+				&quot;count&quot;: 0
+			},
+			&quot;roam-state-machine&quot;: {
+				&quot;tries&quot;: 0,
+				&quot;event&quot;: 0,
+				&quot;kick&quot;: 0,
+				&quot;scan_start&quot;: 0,
+				&quot;scan_timeout_start&quot;: 0
+			},
+			&quot;bss-transition-response&quot;: {
+				&quot;status-code&quot;: 0,
+				&quot;timestamp&quot;: 0
+			},
+			&quot;beacon-measurement-modes&quot;: [
+				
+			],
+			&quot;bss-transition-management&quot;: false,
+			&quot;measurements&quot;: [
+				
+			]
+		}
+      }
+}</pre>
+
+</div>
+
+<h4 id="get_clients">get_clients</h4>
+<div class="level4">
+<pre class="code">root@AccessPoint:~# ubus call usteer get_clients
+{
+	&quot;aa:bb:cc:dd:ee:ff&quot;: {
+		&quot;192.168.1.1#hostapd.wlan0&quot;: {
+			&quot;connected&quot;: true,
+			&quot;signal&quot;: -77
+		}
+	},
+	...
+	&quot;aa:bb:cc:dd:ee:fe&quot;: {
+		&quot;192.168.1.1#hostapd.wlan1&quot;: {
+			&quot;connected&quot;: false,
+			&quot;signal&quot;: -74
+		},
+		&quot;hostapd.wlan1-1&quot;: {
+			&quot;connected&quot;: false,
+			&quot;signal&quot;: -86
+		}
+	},
+	&quot;aa:bb:cc:dd:ee:fd&quot;: {
+		&quot;192.168.1.1#hostapd.wlan0&quot;: {
+			&quot;connected&quot;: false,
+			&quot;signal&quot;: -70
+		},
+		&quot;192.168.1.1#hostapd.wlan1&quot;: {
+			&quot;connected&quot;: false,
+			&quot;signal&quot;: -81
+		},
+		&quot;hostapd.wlan1-1&quot;: {
+			&quot;connected&quot;: false,
+			&quot;signal&quot;: -76
+		}
+	},
+	...
+	&quot;aa:bb:cc:dd:ee:fc&quot;: {
+		&quot;hostapd.wlan0&quot;: {
+			&quot;connected&quot;: true,
+			&quot;signal&quot;: -74
+		}
+	}
+}</pre>
+
+</div>
+
+<h4 id="get_client_info">get_client_info</h4>
+<div class="level4">
+
+<p>
+A host that is connected locally
+</p>
+<pre class="code">root@AccessPoint:~# ubus call usteer get_client_info &quot;{&#039;address&#039;:&#039;aa:bb:cc:dd:ee:ff&#039;}&quot;
+{
+	&quot;2ghz&quot;: true,
+	&quot;5ghz&quot;: true,
+	&quot;nodes&quot;: {
+		&quot;hostapd.wlan0&quot;: {
+			&quot;connected&quot;: true,
+			&quot;signal&quot;: -54,
+			&quot;stats&quot;: {
+				&quot;probe&quot;: {
+					&quot;requests&quot;: 5,
+					&quot;blocked_cur&quot;: 0,
+					&quot;blocked_total&quot;: 0
+				},
+				&quot;assoc&quot;: {
+					&quot;requests&quot;: 5,
+					&quot;blocked_cur&quot;: 0,
+					&quot;blocked_total&quot;: 0
+				},
+				&quot;auth&quot;: {
+					&quot;requests&quot;: 5,
+					&quot;blocked_cur&quot;: 0,
+					&quot;blocked_total&quot;: 0
+				}
+			}
+		}
+	}
+}</pre>
+
+<p>
+A host that is connected remotely
+</p>
+<pre class="code">root@AccessPoint:~# ubus call usteer get_client_info &quot;{&#039;address&#039;:&#039;aa:bb:cc:dd:ee:fe&#039;}&quot;
+{
+	&quot;2ghz&quot;: true,
+	&quot;5ghz&quot;: false,
+	&quot;nodes&quot;: {
+		&quot;192.168.1.32#hostapd.wlan1&quot;: {
+			&quot;connected&quot;: true,
+			&quot;signal&quot;: -38,
+			&quot;stats&quot;: {
+				&quot;probe&quot;: {
+					&quot;requests&quot;: 0,
+					&quot;blocked_cur&quot;: 0,
+					&quot;blocked_total&quot;: 0
+				},
+				&quot;assoc&quot;: {
+					&quot;requests&quot;: 0,
+					&quot;blocked_cur&quot;: 0,
+					&quot;blocked_total&quot;: 0
+				},
+				&quot;auth&quot;: {
+					&quot;requests&quot;: 0,
+					&quot;blocked_cur&quot;: 0,
+					&quot;blocked_total&quot;: 0
+				}
+			}
+		}
+	}
+}</pre>
+
+</div>
+
+<h4 id="get_config">get_config</h4>
+<div class="level4">
+<pre class="code">root@AccessPoint:~# ubus call usteer get_config
+{
+	&quot;syslog&quot;: true,
+	&quot;debug_level&quot;: 2,
+	&quot;ipv6&quot;: true,
+	&quot;local_mode&quot;: false,
+	&quot;sta_block_timeout&quot;: 30000,
+	&quot;local_sta_timeout&quot;: 120000,
+	&quot;local_sta_update&quot;: 1000,
+	&quot;max_neighbor_reports&quot;: 8,
+	&quot;max_retry_band&quot;: 5,
+	&quot;seen_policy_timeout&quot;: 30000,
+	&quot;measurement_report_timeout&quot;: 120000,
+	&quot;load_balancing_threshold&quot;: 0,
+	&quot;band_steering_threshold&quot;: 5,
+	&quot;remote_update_interval&quot;: 5000,
+	&quot;remote_node_timeout&quot;: 12,
+	&quot;assoc_steering&quot;: false,
+	&quot;min_connect_snr&quot;: 0,
+	&quot;min_snr&quot;: 0,
+	&quot;min_snr_kick_delay&quot;: 5000,
+	&quot;steer_reject_timeout&quot;: 60000,
+	&quot;roam_process_timeout&quot;: 5000,
+	&quot;roam_scan_snr&quot;: 0,
+	&quot;roam_scan_tries&quot;: 3,
+	&quot;roam_scan_timeout&quot;: 0,
+	&quot;roam_scan_interval&quot;: 10000,
+	&quot;roam_trigger_snr&quot;: 0,
+	&quot;roam_trigger_interval&quot;: 60000,
+	&quot;roam_kick_delay&quot;: 10000,
+	&quot;signal_diff_threshold&quot;: 0,
+	&quot;initial_connect_delay&quot;: 0,
+	&quot;load_kick_enabled&quot;: false,
+	&quot;load_kick_threshold&quot;: 75,
+	&quot;load_kick_delay&quot;: 10000,
+	&quot;load_kick_min_clients&quot;: 10,
+	&quot;load_kick_reason_code&quot;: 5,
+	&quot;band_steering_interval&quot;: 20000,
+	&quot;band_steering_min_snr&quot;: -60,
+	&quot;link_measurement_interval&quot;: 30000,
+	&quot;interfaces&quot;: [
+		&quot;mesh0&quot;,
+		&quot;mesh1&quot;
+	],
+	&quot;event_log_types&quot;: [
+		
+	],
+	&quot;ssid_list&quot;: [
+		&quot;OpenWrtSSID&quot;,
+		&quot;OpenWrtSSID 5GHz&quot;
+	]
+}</pre>
+
+</div>
+
+<h4 id="set_config">set_config</h4>
+<div class="level4">
+<pre class="code">Details required</pre>
+
+</div>
+
+<h4 id="update_config">update_config</h4>
+<div class="level4">
+<pre class="code">Details required</pre>
+
+</div>
+
+<h4 id="set_node_data">set_node_data</h4>
+<div class="level4">
+<pre class="code">Details required</pre>
+
+</div>
+
+<h4 id="delete_node_data">delete_node_data</h4>
+<div class="level4">
+<pre class="code">Details required</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Ubus interface&quot;,&quot;hid&quot;:&quot;ubus_interface&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:11,&quot;range&quot;:&quot;9229-&quot;} -->

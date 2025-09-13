@@ -1,0 +1,108 @@
+
+<h1 class="sectionedit1" id="bluetooth_presence_detection">Bluetooth presence detection</h1>
+<div class="level1">
+
+<p>
+Using a bluetooth USB dongle for a presence detection system to activate a relay by using a GPIO (or doing anything else), when a bluetooth device is detected, for example your phone.
+</p>
+
+<p>
+<strong>Note:</strong> The script simply scans for any bluetooth device in range, so there is no need of pairing or trusting the device you want to detect.
+</p>
+
+<p>
+prerequisites:
+</p>
+<pre class="code">opkg install kmod-btusb kmod-bluetooth bluez-libs bluez-utils kmod-usb-core kmod-usb-uhci kmod-usb2 usbutils</pre>
+
+<p>
+start bluetooth:
+</p>
+<pre class="code">service dbus start
+service bluetoothd start
+/usr/bin/hciconfig hci0 up</pre>
+
+<p>
+<strong>Note:</strong> To enable bluetooth at boot put the above three lines in the <code>/etc/rc.local</code> file
+</p>
+
+<p>
+To scan for remote devices and to discover your device MAC Address, put your device in “discoverable mode” and use the following command:
+</p>
+<pre class="code">hcitool scan</pre>
+
+<p>
+In my case the desired MAC Address is 30:21:15:13:9C:29
+</p>
+
+<p>
+<strong>Note:</strong> The device should remain in “discoverable mode”, if you do not want to let your device discoverable, you need to pair it and trust it.
+</p>
+
+<p>
+to pair and trust your device do the following:
+</p>
+<pre class="code"> bluetoothctl pair 30:21:15:13:9C:29
+ bluetoothctl trust 30:21:15:13:9C:29</pre>
+
+<p>
+to check if the device has been paired:
+</p>
+<pre class="code">bluetoothctl paired-devices</pre>
+
+<p>
+<strong>Example:</strong>
+</p>
+<pre class="code">root@OpenWrt:~# bluetoothctl paired-devices
+Device 38:2D:E8:49:C1:87 Galaxy J5
+Device 30:21:15:13:9C:29 BT-888</pre>
+
+<p>
+The script:
+<strong>nano /root/check_presence_bt.sh</strong>
+</p>
+<pre class="code">#!/bin/sh
+# Bluetooth Presence Detection
+# By Lovisolo P.M. - parknat12@yahoo.com
+# my OpenWrt, Raspberry and Linux, personal forum: http://forum.49v.com
+#
+while :
+do
+# scan for bluetooth devices and put the result into a variable:
+c=$(/usr/bin/hcitool scan)
+#
+# check for a specific MAC ADDRESS presence:
+if [ `echo $c | grep -c &quot;30:21:15:13:9C:29&quot; ` -gt 0 ]
+then
+/bin/echo &#039;Device detected, relay is ON&#039;
+/bin/echo 1 &gt; /sys/class/gpio/gpio1/value # you may need to change this depending on your router
+# you may add here a command or a script to be executed when the device is available
+else
+/bin/echo &#039;Device is off or out of range, relay is OFF&#039;
+/bin/echo 0 &gt; /sys/class/gpio/gpio1/value # you may need to change this depending on your router
+# you may add here a command or a script to be executed when the device is unavailable
+fi
+done
+# eof</pre>
+
+<p>
+give the right permissions to the script:
+</p>
+<pre class="code">chmod 755 /root/check_presence_bt.sh</pre>
+
+<p>
+test it:
+</p>
+<pre class="code">/bin/sh /root/check_presence_bt.sh</pre>
+
+<p>
+to launch the scan every minute, edit crontab:
+</p>
+<pre class="code">nano /etc/crontabs/root</pre>
+
+<p>
+and insert the following:
+</p>
+<pre class="code">*/1 * * * * /bin/sh /root/check_presence_bt.sh</pre>
+
+</div>

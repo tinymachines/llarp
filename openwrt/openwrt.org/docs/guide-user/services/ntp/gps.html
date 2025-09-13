@@ -1,0 +1,186 @@
+
+<h1 class="sectionedit1" id="stratum_1_ntp_server_using_usb_gps">Stratum 1 NTP server using USB GPS</h1>
+<div class="level1">
+
+<p>
+<strong>The main question is:</strong> How to feed GPS time to ntpd?
+</p>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_center wrap_round wrap_important plugin_wrap" style="width: 60%;">
+<p>
+There is significant delay in the serial-to-usb and usb-to-data connection. This approach may be off by hundreds of milliseconds. Most GPS-sync is done through GPIO interrupts off the PPS output directly.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+Please realize that connecting a consumer-grade (designed for location, not for time keeping) GPS unit over USB serial does not have the accuracy of “proper” GPS synchronization due to significant and inconsistent delays in the serial line itself, as well as in the USB system. Your notion of time will likely be delayed by tens of milliseconds if not hundreds of milliseconds. Any such-configured <abbr title="Network Time Protocol">NTP</abbr> server certainly can serve as a backup for local timekeeping when Internet connectivity is not available, <strong><em>but should never be advertised on the Internet as a Stratum 1 clock.</em></strong>
+</p>
+
+<p>
+Proper GPS synchronization uses a PPS output (or similar) from the device, fed directly into an interrupt-generating line, for example a GPIO or parallel port. A GPSDO (GPS Disciplined Oscillator) is typically used which locks a temperature-compensated oscillator to the GPS time and provides a stable, reliable reference.
+</p>
+
+<p>
+Below you find examples for some devices users have successfully got to run with LEDE. Depending on your special USB GPS dongle, you have to follow the one or the other instruction. If you get some other GPS device to work, please add a short howto to this page.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Stratum 1 NTP server using USB GPS&quot;,&quot;hid&quot;:&quot;stratum_1_ntp_server_using_usb_gps&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1531&quot;} -->
+<h2 class="sectionedit4" id="vk-172_usb_gps">VK-172 USB GPS</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Source: <a href="https://forum.openwrt.org/t/lede-as-stratum-1-ntp-server-using-usb-gps/1997" class="urlextern" title="https://forum.openwrt.org/t/lede-as-stratum-1-ntp-server-using-usb-gps/1997" rel="ugc nofollow">https://forum.openwrt.org/t/lede-as-stratum-1-ntp-server-using-usb-gps/1997</a></div>
+</li>
+<li class="level1"><div class="li"> Source: <a href="https://forum.openwrt.org/viewtopic.php?id=61161" class="urlextern" title="https://forum.openwrt.org/viewtopic.php?id=61161" rel="ugc nofollow">https://forum.openwrt.org/viewtopic.php?id=61161</a><br/>
+</div>
+</li>
+<li class="level1"><div class="li"> See also <a href="/docs/ntpd" class="wikilink2" title="docs:ntpd" rel="nofollow" data-wiki-id="docs:ntpd">ntpd</a></div>
+</li>
+</ul>
+
+<p>
+<strong>VK-172</strong> is a widely available USB GPS dongle (as of 03/2017: amazon, ebay, banggood, aliexpress, ...), which is easy to handle in OpenWrt/LEDE.
+</p>
+
+<p>
+<strong>USBID:</strong> <code>1546:01a7 U-Blox AG</code>
+</p>
+<ol>
+<li class="level1 node"><div class="li"> Install the following packages:</div>
+<ul>
+<li class="level2"><div class="li"> <code>kmod-usb-acm</code>  # for vk-172 gps dongle</div>
+</li>
+<li class="level2"><div class="li"> <code>gpsd</code>          # supports various nmea/binary gps protocols</div>
+</li>
+<li class="level2"><div class="li"> <code>gpsd-clients</code>  # some clients for testing (cgps, gpspipe, ...)</div>
+</li>
+<li class="level2"><div class="li"> <code>ntpd</code>          # real ntpd to replace busybox</div>
+</li>
+<li class="level2"><div class="li"> <code>ntp-utils</code>     # ntpq needed for testing ntp</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Plug in your USB GPS dongle</div>
+</li>
+<li class="level1"><div class="li"> Check for presence of <code>/dev/ttyACM0</code><br/>
+<pre class="code">ls -l /dev/ttyACM0</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Edit <code>/etc/config/gpsd</code> and set device to <code>/dev/ttyACM0</code><br/>
+<pre class="code">config gpsd core
+    option device           &quot;/dev/ttyACM0&quot;
+    option port             &quot;2947&quot;
+    option listen_globally  &quot;false&quot;
+    option enabled          &quot;true&quot;</pre>
+
+<p>
+ Set <code>listen_globally</code> to true to enable remote access to gpsd. If remote access is not desired, set to false.
+</p>
+</div>
+</li>
+<li class="level1"><div class="li"> edit <code>/etc/init.d/ntpd</code> and add the marked lines <sup><a href="#fn__1" id="fnt__1" class="fn_top">1)</a></sup>:<pre class="code">[...]
+        emit &quot;\n# No limits for local monitoring&quot;
+        emit &quot;restrict 127.0.0.1&quot;
+        emit &quot;restrict -6 ::1\n&quot;
+
+        emit &quot;\n# GPS&quot;                                &lt;--- add this line
+        emit &quot;server 127.127.28.0 minpoll 4 prefer&quot;   &lt;--- add this line
+        emit &quot;fudge 127.127.28.0 refid GPS\n&quot;         &lt;--- add this line
+[...]</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Disable sysntpd<br/>
+<pre class="code">/etc/init.d/sysntpd stop
+/etc/init.d/sysntpd disable</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Restart ntpd + gpsd<br/>
+<pre class="code">killall -9 gpsd ntpd
+/etc/init.d/gpsd start &amp;&amp; sleep 2 &amp;&amp; /etc/init.d/ntpd start</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Check gps function<br/>
+<pre class="code">cgps -s -u m
+gpspipe -v -r /dev/ttyACM0</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Check ntp function<br/>
+<pre class="code">ntpq -p</pre>
+</div>
+</li>
+</ol>
+
+<p>
+See also
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="http://man.cx/xgps" class="urlextern" title="http://man.cx/xgps" rel="ugc nofollow">http://man.cx/xgps</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://man.cx/gpsd(1)" class="urlextern" title="http://man.cx/gpsd(1)" rel="ugc nofollow">http://man.cx/gpsd(1)</a> (cgps, xgps manpage)</div>
+</li>
+<li class="level1"><div class="li"> <a href="http://manpages.ubuntu.com/manpages/trusty/man1/gps.1.html" class="urlextern" title="http://manpages.ubuntu.com/manpages/trusty/man1/gps.1.html" rel="ugc nofollow">http://manpages.ubuntu.com/manpages/trusty/man1/gps.1.html</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://www.catb.org/gpsd/troubleshooting.html" class="urlextern" title="http://www.catb.org/gpsd/troubleshooting.html" rel="ugc nofollow">http://www.catb.org/gpsd/troubleshooting.html</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;VK-172 USB GPS&quot;,&quot;hid&quot;:&quot;vk-172_usb_gps&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;1532-3802&quot;} -->
+<h2 class="sectionedit5" id="globalsat_usb_gps">Globalsat USB GPS</h2>
+<div class="level2">
+
+<p>
+Source: <a href="https://forum.openwrt.org/t/lede-as-stratum-1-ntp-server-using-usb-gps/1997" class="urlextern" title="https://forum.openwrt.org/t/lede-as-stratum-1-ntp-server-using-usb-gps/1997" rel="ugc nofollow">https://forum.openwrt.org/t/lede-as-stratum-1-ntp-server-using-usb-gps/1997</a>
+</p>
+
+<p>
+<strong>Globalsat BU-353</strong> USB GPS receiver originally used the SiRF Star III chipset, now also available with the SiRF Star IV chipset which offers enhanced performance (BU-353-S4 variant). Both versions use the Prolific PL2303 serial/USB chipset. This howto was tested with the original version. It is a high-quality device, readily available (Ebay etc.) for around $30.
+</p>
+
+<p>
+<strong>USBID:</strong> <code>067B:2303</code>
+</p>
+<ol>
+<li class="level1"><div class="li"> Install the following packages:<br/>
+<pre class="code">opkg update
+opkg install kmod-usb-core kmod-usb2 kmod-usb-serial-pl2303
+opkg install ntpd ntp-utils ntpdate</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Insert USB device, check for presence of: <code>/dev/ttyUSB0</code></div>
+</li>
+<li class="level1"><div class="li"> Edit <code>/etc/init.d/ntpd</code>, add:<br/>
+<pre class="code">ln -sf /dev/ttyUSB0 /dev/gps0</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Edit <code>/etc/ntp.conf</code>, uncomment:<br/>
+<pre class="code">server 127.127.20.0 minpoll 4 prefer
+fudge 127.127.20.0 flag3 1 flag2 0</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Stop and disable Busybox ntpd service:<br/>
+<pre class="code">/etc/init.d/sysntpd stop
+/etc/init.d/sysntpd disable</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Start and enable ISC ntpd service:<br/>
+<pre class="code">/etc/init.d/ntpd start
+/etc/init.d/ntpd enable</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Check proper function:<br/>
+<pre class="code">root@c-fw:~# ntpq -p
+     remote           refid      st t when poll reach   delay   offset  jitter
+==============================================================================
+*GPS_NMEA(0)     .GPS.            0 l    5   16  377    0.000    2.541   5.297</pre>
+</div>
+</li>
+</ol>
+
+<p>
+This is just the basic setup, further work may be needed to tailor it for a specific environment, security considerations etc. etc.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Globalsat USB GPS&quot;,&quot;hid&quot;:&quot;globalsat_usb_gps&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:5,&quot;range&quot;:&quot;3803-&quot;} --><div class="footnotes">
+<div class="fn"><sup><a href="#fnt__1" id="fn__1" class="fn_bot">1)</a></sup> 
+<div class="content"><a href="https://forum.openwrt.org/t/lede-as-stratum-1-ntp-server-using-usb-gps/1997/22?u=tmomas" class="urlextern" title="https://forum.openwrt.org/t/lede-as-stratum-1-ntp-server-using-usb-gps/1997/22?u=tmomas" rel="ugc nofollow">https://forum.openwrt.org/t/lede-as-stratum-1-ntp-server-using-usb-gps/1997/22?u=tmomas</a></div></div>
+</div>

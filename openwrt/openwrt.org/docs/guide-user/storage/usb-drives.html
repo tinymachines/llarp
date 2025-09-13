@@ -1,0 +1,354 @@
+
+<h1 class="sectionedit1" id="using_storage_devices">Using storage devices</h1>
+<div class="level1">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_box plugin_wrap">
+<p>
+<em>Tip:</em> The <strong><a href="/docs/guide-user/storage/usb-drives-quickstart" class="wikilink1" title="docs:guide-user:storage:usb-drives-quickstart" data-wiki-id="docs:guide-user:storage:usb-drives-quickstart">Quick Start for installing a USB drive</a></strong>
+solves the very common case of installing a single USB drive onto your OpenWrt device.
+People do this to use Samba or other programs that need to store data on an external drive.
+The remainder of this page provides much more information about USB devices and drivers.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+Many supported devices have ports to connect storage devices, most common are USB, or Sata.<br/>
+
+This article will describe how to configure your device to use such storage devices for storage or for sharing. If you want to expand your firmware&#039;s space (to install more packages) please read the article about <a href="/docs/guide-user/additional-software/extroot_configuration" class="wikilink1" title="docs:guide-user:additional-software:extroot_configuration" data-wiki-id="docs:guide-user:additional-software:extroot_configuration">Extroot configuration</a>.
+</p>
+
+<p>
+To configure external disk space, follow the procedures of this page:
+</p>
+<ol>
+<li class="level1"><div class="li"> Verify storage drivers</div>
+</li>
+<li class="level1"><div class="li"> Verify that the <abbr title="Operating System">OS</abbr> recognizes the attached disk and its partitions</div>
+</li>
+<li class="level1"><div class="li"> Create a partition on the USB disk</div>
+</li>
+<li class="level1"><div class="li"> Create a file system in the partition</div>
+</li>
+<li class="level1"><div class="li"> Automount the partition</div>
+</li>
+<li class="level1"><div class="li"> Idle spin down of hard disks</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Using storage devices&quot;,&quot;hid&quot;:&quot;using_storage_devices&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1137&quot;} -->
+<h2 class="sectionedit4" id="install_and_verify_usb_drivers">Install and verify USB drivers</h2>
+<div class="level2">
+
+<p>
+This step ensures that required USB storage drivers are properly installed. 
+</p>
+<ol>
+<li class="level1"><div class="li"> Start by refreshing the list of available software packages:<pre class="code">opkg update</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> The typical OpenWrt package already has core USB device drivers installed (if your device has USB ports at all), but might not yet have an USB storage device driver installed. Install this storage driver first (if it is already installed, the following command will just say “is already installed”: <pre class="code">opkg install kmod-usb-storage</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Some USB storage devices may require the UAS driver: <pre class="code">opkg install kmod-usb-storage-uas</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> To check, if the whole USB driver chain is working correctly, install the optional <strong>usbutils</strong> package:<pre class="code">opkg install usbutils</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Now connect your USB disk/stick and list your connected devices with a command from these <strong>usbutils</strong>: <pre class="code">lsusb -t</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> This will output a list of device USB hub ports and connected external storage devices:<pre class="code">/:  Bus 02.Port 1: Dev 1, Class=root_hub, Driver=xhci-mtk/1p, 5000M
+/:  Bus 01.Port 1: Dev 1, Class=root_hub, Driver=xhci-mtk/2p, 480M
+    |__ Port 1: Dev 5, If 0, Class=Mass Storage, Driver=usb-storage, 480M</pre>
+</div>
+</li>
+</ol>
+<ul>
+<li class="level1"><div class="li"> “Bus...”-Lines represent the host chip. Here, the “Driver” will be <code>xhci</code> for USB3.0, <code>ehci</code> for USB2.0 and <code>uhci</code> or <code>ohci</code> for USB1.1.</div>
+</li>
+<li class="level1"><div class="li"> Lines with “Class=Mass Storage” represent connected USB devices. Here the “Driver” is either <code>usb-storage</code> for storage of type <a href="https://en.wikipedia.org/wiki/USB_mass_storage_device_class" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/USB_mass_storage_device_class">Bulk only Transport</a> or <code>usb-storage-uas</code> for storage of type <a href="https://en.wikipedia.org/wiki/USB_Attached_SCSI" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/USB_Attached_SCSI">USB_Attached_SCSI</a> </div>
+</li>
+</ul>
+
+<p>
+In step 5, verify that the output prints no error and has at least one output line for <strong>root_hub</strong> and <strong>Mass Storage</strong> and that each <strong>Driver=</strong> lists a driver name. If not, then refer to <a href="/docs/guide-user/storage/usb-installing" class="wikilink1" title="docs:guide-user:storage:usb-installing" data-wiki-id="docs:guide-user:storage:usb-installing">the Installing USB Drivers</a> for more suggestions on drivers.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Install and verify USB drivers&quot;,&quot;hid&quot;:&quot;install_and_verify_usb_drivers&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;1138-3106&quot;} -->
+<h2 class="sectionedit5" id="verify_that_the_os_recognizes_the_attached_disk_and_partitions">Verify that the OS recognizes the attached disk and partitions</h2>
+<div class="level2">
+
+<p>
+This optional verification step can be used, to check that the <abbr title="Operating System">OS</abbr> can properly detect a connected external drive.
+</p>
+<ol>
+<li class="level1"><div class="li"> Ensure your USB disk/stick is stick connected</div>
+</li>
+<li class="level1"><div class="li"> Run in a command line:<pre class="code">ls -l /dev/sd*</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> This should now show a list of block devices known to the <abbr title="Operating System">OS</abbr><pre class="code">brw-------    1 root     root        8,   0 Oct 30 12:49 /dev/sda
+brw-------    1 root     root        8,   1 Oct 30 12:49 /dev/sda1</pre>
+
+<p>
+This should print at least a connected disk like “/dev/sda” or “/dev/sdb”. If no disk at all is listed, recheck USB driver installation and reboot your OpenWrt device once.
+</p>
+</div>
+</li>
+<li class="level1"><div class="li"> Install the <strong>block</strong> tool to get more info about existing partitions<pre class="code">opkg install block-mount</pre>
+
+<p>
+ for exFAT you also need libblkid
+</p>
+<pre class="code">opkg install libblkid</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Run the <strong>block</strong> tool:<pre class="code">block info | grep &quot;/dev/sd&quot;</pre>
+
+<p>
+and you should see output like this, if your disk already has partitions:
+</p>
+<pre class="code">/dev/sda1: UUID=&quot;2eb39413-83a4-4bae-b148-34fb03a94e89&quot; VERSION=&quot;1.0&quot; TYPE=&quot;ext4&quot;</pre>
+</div>
+</li>
+</ol>
+
+<p>
+If a disk already has existing partitions, they get listed as <strong>/dev/sda1</strong>, <strong>/dev/sda2</strong> ,<strong>/dev/sda3</strong> and so on.<br/>
+
+If we had connected more than one storage device we would have also a <strong>/dev/sdb1</strong> (first partition of second device), <strong>/dev/sdc1</strong> (first partition of third device) and so on.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Verify that the OS recognizes the attached disk and partitions&quot;,&quot;hid&quot;:&quot;verify_that_the_os_recognizes_the_attached_disk_and_partitions&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:5,&quot;range&quot;:&quot;3107-4494&quot;} -->
+<h2 class="sectionedit6" id="create_a_partition_on_the_usb_disk">Create a partition on the USB disk</h2>
+<div class="level2">
+
+<p>
+if the previous chapter did not list any existing partitions (like “/dev/sda1”, “/dev/sda2”, “/dev/sdb1”...), you have to create a partition first for further storage usage.
+</p>
+<ol>
+<li class="level1"><div class="li"> To do so, install <strong>gdisk</strong>:<pre class="code">opkg install gdisk</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Start <strong>gdisk</strong> with the disk name identified in the previous chapter: <pre class="code">gdisk /dev/sda</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> In the interactive gdisk menu, create a partition with gdisk command <pre class="code">n</pre>
+
+<p>
+This triggers an interactive dialogue: Use the suggested defaults for the partition creation (number, starting sector, size, Hex code)
+</p>
+</div>
+</li>
+<li class="level1"><div class="li"> When done, confirm the changes with gdisk interactive command <pre class="code">w</pre>
+
+<p>
+ and then confirm your choice with 
+</p>
+<pre class="code">Y</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Keep a note of the created partition name for the next step</div>
+</li>
+</ol>
+
+<p>
+Refer to the gdisk help text (write “?”) in case you need additional help. Stick to a single partition, to stay aligned to the following HowTo.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Create a partition on the USB disk&quot;,&quot;hid&quot;:&quot;create_a_partition_on_the_usb_disk&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:6,&quot;range&quot;:&quot;4495-5445&quot;} -->
+<h2 class="sectionedit7" id="install_file_system_drivers_and_create_a_file_system_in_the_partition">Install file system drivers and create a file system in the partition</h2>
+<div class="level2">
+
+<p>
+To use a partition for data storage, it needs to be formatted with a file system.
+</p>
+
+<p>
+The following is the most simplest (and recommended) default configuration for OpenWrt file system usage.<br/>
+
+For advanced users, there are <a href="/docs/guide-user/storage/filesystems-and-partitions" class="wikilink1" title="docs:guide-user:storage:filesystems-and-partitions" data-wiki-id="docs:guide-user:storage:filesystems-and-partitions">further optional file system options available</a>.
+</p>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:8,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_center wrap_round wrap_important plugin_wrap" style="width: 80%;">
+<p>
+<strong>WARNING: This step deletes existing data in that partition. Ensure you have a backup of important files before starting!</strong>
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:9,&quot;range&quot;:&quot;0-&quot;} --><ul>
+<li class="level1"><div class="li"> For USB hard disks, install EXT4 file system and use EXT4 to format the partition (in this example &#039;/dev/sda1&#039;):<pre class="code">opkg install e2fsprogs
+opkg install kmod-fs-ext4
+mkfs.ext4 /dev/sda1</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> For USB drives formatted with exFAT: <pre class="code">opkg install kmod-fs-exfat</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> For USB drives formatted as NTFS see <a href="/docs/guide-user/storage/filesystems-and-partitions#setup_ntfs" class="wikilink1" title="docs:guide-user:storage:filesystems-and-partitions" data-wiki-id="docs:guide-user:storage:filesystems-and-partitions">Filesystems</a> and <a href="/docs/guide-user/storage/writable_ntfs" class="wikilink1" title="docs:guide-user:storage:writable_ntfs" data-wiki-id="docs:guide-user:storage:writable_ntfs">Writable NTFS</a></div>
+</li>
+<li class="level1"><div class="li"> For SSD drives and thumb drives,  install F2FS file system and use F2FS to format the partition (in this example &#039;/dev/sda1&#039;): <pre class="code">opkg install f2fs-tools
+opkg install kmod-fs-f2fs
+mkfs.f2fs /dev/sda1</pre>
+</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Install file system drivers and create a file system in the partition&quot;,&quot;hid&quot;:&quot;install_file_system_drivers_and_create_a_file_system_in_the_partition&quot;,&quot;codeblockOffset&quot;:17,&quot;secid&quot;:7,&quot;range&quot;:&quot;5446-6693&quot;} -->
+<h2 class="sectionedit10" id="automount_the_partition">Automount the partition</h2>
+<div class="level2">
+
+<p>
+Automount ensures that the external disk partition is automatically made available for usage when booting the OpenWrt device
+</p>
+<ol>
+<li class="level1"><div class="li"> Generate a config entry for the fstab file:<pre class="code">block detect | uci import fstab</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Now enable automount on that config entry:<pre class="code">uci set fstab.@mount[-1].enabled=&#039;1&#039;
+uci commit fstab</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Optionally enable autocheck of the file system each time the OpenWrt device powers up:<pre class="code">uci set fstab.@global[0].check_fs=&#039;1&#039;
+uci commit fstab</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Reboot your OpenWrt device (to verify that automount works)</div>
+</li>
+<li class="level1"><div class="li"> After the reboot, check your results: Run <pre class="code">uci show fstab</pre>
+
+<p>
+to see something like this
+</p>
+<pre class="code">fstab.@global[0]=global
+fstab.@global[0].anon_swap=&#039;0&#039;
+fstab.@global[0].anon_mount=&#039;0&#039;
+fstab.@global[0].auto_swap=&#039;1&#039;
+fstab.@global[0].auto_mount=&#039;1&#039;
+fstab.@global[0].check_fs=&#039;0&#039;
+fstab.@global[0].delay_root=&#039;5&#039;
+fstab.@mount[0]=mount
+fstab.@mount[0].target=&#039;/mnt/sda1&#039;
+fstab.@mount[0].uuid=&#039;49c35b1f-a503-45b1-a953-56707bb84968&#039;
+fstab.@mount[0].enabled=&#039;1&#039;</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Check the “enabled” entry. It should be &#039;1&#039;.</div>
+</li>
+<li class="level1"><div class="li"> Note the “target” entry. This is the file path, where your attached USB storage drive can be accessed from now on. E.g. you can now list files from your external disk:<pre class="code">ls -l /mnt/sda1</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Run the following command, to verify that the disk is properly mounted at this path<pre class="code">block info</pre>
+
+<p>
+The result will be:
+</p>
+<pre class="code">...
+/dev/sda1: UUID=&quot;2eb39413-83a4-4bae-b148-34fb03a94e89&quot; VERSION=&quot;1.0&quot; MOUNT=&quot;/mnt/sda1&quot; TYPE=&quot;ext4&quot;</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Your external storage is now ready for further usage:<pre class="code">service fstab boot</pre>
+</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Automount the partition&quot;,&quot;hid&quot;:&quot;automount_the_partition&quot;,&quot;codeblockOffset&quot;:20,&quot;secid&quot;:10,&quot;range&quot;:&quot;6694-8335&quot;} -->
+<h2 class="sectionedit11" id="optionalidle_spindown_timeout_on_disks_for_nas_usage">Optional: Idle spindown timeout on disks for NAS usage</h2>
+<div class="level2">
+
+<p>
+If you want to use OpenWrt as a permanent NAS, you should spin down the drive during times of inactivity. This may be to have it quiet, reduce power consumption, and increase life of a harddisk (e.g. especially if using a home-edition harddisk (instead of a 24&times;7-datacenter drive).
+</p>
+
+<p>
+There are several optional packages available to automatically spin down an attached disk after a certain time of inactivity.
+</p>
+
+<p>
+<strong>1. Option: hdparm</strong><br/>
+
+Using standard SATA commands this tool permanently saves a spindown timer on the harddisk itself. The harddisk will then maintain that spindown-timer value, even if turned off, even after a restart and even if attached to a different device.
+As this is simply a command line for a built-in harddisk function no service will run in the background for this and &#039;hdparm&#039; could even be uninstalled after setting this parameter. Unfortunately many older USB2.0 PATA/SATA adapters do not support the required SATA command, although even decade-old harddisks do support it. Fortunately most USB3.0 SATA drives seem to support this command.
+To install the package:
+</p>
+<pre class="code">opkg update &amp;&amp; opkg install hdparm</pre>
+
+<p>
+To set a reasonable idle timeout of 10 minutes on the harddisk:
+</p>
+<pre class="code">hdparm -S 120 /dev/sda2</pre>
+<ul>
+<li class="level1"><div class="li"> If the command failed with an error message, your USB-SATA device sadly does not support it and you won&#039;t be able to use &#039;hdparm&#039; for disk spindown.</div>
+</li>
+<li class="level1 node"><div class="li"> For more details of allowed options see <a href="https://linux.die.net/man/8/hdparm" class="urlextern" title="https://linux.die.net/man/8/hdparm" rel="ugc nofollow">https://linux.die.net/man/8/hdparm</a> at “-S” parameter</div>
+<ul>
+<li class="level2"><div class="li"> 0 means “idle timeout disabled”</div>
+</li>
+<li class="level2"><div class="li"> 1 to 240 specify multiples of 5 seconds, for timeouts from 5 seconds to 20 minutes.</div>
+</li>
+<li class="level2"><div class="li"> 241 to 251 specify from 1 to 11 units of 30 minutes, for timeouts from 30 minutes to 5.5 hours.</div>
+</li>
+</ul>
+</li>
+</ul>
+
+<p>
+Of course you can always change the timeout or disable auto-spindown again later on. Depending on your harddisk, the value may be active until the next reset or permanently stored on the harddisk.
+The harddisk firmware itself manages the spindown timeout, not a OpenWrt service. For persistent changes use <code>/etc/rc.local</code> file, like:
+</p>
+<pre class="code bash"><span class="co0"># set timeout to put the drive into idle (low-power) mode</span>
+<span class="sy0">/</span>sbin<span class="sy0">/</span>hdparm <span class="re5">-S</span> <span class="nu0">120</span> <span class="sy0">/</span>dev<span class="sy0">/</span>sda2
+&nbsp;
+<span class="kw3">exit</span> <span class="nu0">0</span></pre>
+
+<p>
+<strong>2. Option: hd-idle with LuCi integration</strong> <br/>
+
+<a href="/docs/guide-user/storage/hd-idle" class="wikilink1" title="docs:guide-user:storage:hd-idle" data-wiki-id="docs:guide-user:storage:hd-idle">hd-idle</a> is a service than runs in the background of OpenWrt and maintains its own idle timeout. Once the defined timeout counter reaches 0, it will send a “live” spindown SATA command to the disk. Unlike the permanent spindown command from hdparm, a lot more USB2.0 SATA drives seem to support this “spindown-now” SATA command.
+</p>
+
+<p>
+To install the package with LuCi web <abbr title="Graphical User Interface">GUI</abbr> integration:
+</p>
+<pre class="code">opkg update &amp;&amp; opkg install luci-app-hd-idle</pre>
+
+<p>
+To enable and configure it, in LuCI go to the Services → HDD Idle page.
+</p>
+
+<p>
+To install only the CLI package (without LuCi):
+</p>
+<pre class="code">opkg update &amp;&amp; opkg install hd-idle</pre>
+
+<p>
+To configure it, edit the <code>/etc/config/hd-idle</code> and then autostart and run the hd-idle service <code>service hd-idle enable &amp;&amp; service hd-idle start</code>.
+</p>
+
+<p>
+Options to configure:
+</p>
+<div class="table sectionedit12"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign"> Name     </th><th class="col1 leftalign"> Type    </th><th class="col2"> Default </th><th class="col3 leftalign"> Description                                   </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> <code>disk</code>               </td><td class="col1 leftalign"> string   </td><td class="col2 leftalign"> <code>sda</code>      </td><td class="col3"> Replace <code>sda</code> with your device&#039;s identifier </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> <code>enabled</code>            </td><td class="col1 leftalign"> boolean  </td><td class="col2 leftalign"> <code>0</code>        </td><td class="col3"> Enable hd-idle operation </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> <code>idle_time_unit</code>     </td><td class="col1 leftalign"> string   </td><td class="col2 leftalign"> <code>minutes</code>  </td><td class="col3"> The unit of time used in the <code>idle_time_interval</code> option </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0"> <code>idle_time_interval</code> </td><td class="col1 leftalign"> integer  </td><td class="col2 leftalign"> <code>10</code>       </td><td class="col3"> How much idle time before spindown </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:12,&quot;range&quot;:&quot;11455-11920&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Optional: Idle spindown timeout on disks for NAS usage&quot;,&quot;hid&quot;:&quot;optionalidle_spindown_timeout_on_disks_for_nas_usage&quot;,&quot;codeblockOffset&quot;:29,&quot;secid&quot;:11,&quot;range&quot;:&quot;8336-&quot;} -->

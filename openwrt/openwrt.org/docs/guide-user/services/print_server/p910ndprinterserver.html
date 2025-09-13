@@ -1,0 +1,233 @@
+
+<h1 class="sectionedit1" id="p910nd_print_server">p910nd Print Server</h1>
+<div class="level1">
+
+<p>
+<a href="http://man.cx/p910nd" class="urlextern" title="http://man.cx/p910nd" rel="ugc nofollow">p910nd</a> is a small printer daemon intended for diskless platforms that does not spool to disk but passes the job directly to the printer. Normally a lpr daemon on a spooling host connects to it with a <abbr title="Transmission Control Protocol">TCP</abbr> connection on port 910n (where n=0, 1, or 2 for lp0, 1 and 2 respectively). p910nd is particularly useful for diskless platforms. Common Unix Printing System (CUPS) supports this protocol, it&#039;s called the AppSocket protocol and has the scheme 
+</p>
+<pre class="code">socket://remotehost:PORT</pre>
+
+<p>
+Windows and Mac Os X (via CUPS) also support this protocol. In mac <abbr title="Operating System">OS</abbr> Printer settings, the protocol is called <code>HP Jetdirect - Socket</code>. Before starting, ensure you do not also have node_exporter scrape endpoints running on port 9100. If you do, adjust this guide to start with port 9101.
+</p>
+
+<p>
+In this guide I show you how to enable printing support for HP M1120 and Canon MP480 printer.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;p910nd Print Server&quot;,&quot;hid&quot;:&quot;p910nd_print_server&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-932&quot;} -->
+<h2 class="sectionedit2" id="install_software_on_lede_device">Install software on LEDE device</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <abbr title="Secure Shell">SSH</abbr> into device, e.g. <code>ssh 192.168.1.1</code></div>
+</li>
+<li class="level1"><div class="li"> Enter <code>root</code> as username and supply with password</div>
+</li>
+<li class="level1"><div class="li"> Update OpenWrt software packages:<br/>
+<pre class="code">opkg update</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Install Kernel modules for USB Printer support:<br/>
+<pre class="code">opkg install kmod-usb-printer</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Install printer server:<br/>
+<pre class="code">opkg install p910nd luci-app-p910nd</pre>
+</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Install software on LEDE device&quot;,&quot;hid&quot;:&quot;install_software_on_lede_device&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:2,&quot;range&quot;:&quot;933-1326&quot;} -->
+<h2 class="sectionedit3" id="configure_print_server_p910nd">Configure print server p910nd</h2>
+<div class="level2">
+<ol>
+<li class="level1"><div class="li"> Check if your printer is recognized:<br/>
+<pre class="code">root@OpenWrt:~# ls /dev/usb/lp*
+/dev/usb/lp0</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> We can continue with configuring in <strong>Services</strong> → <strong>p910nd - Printer server</strong>:<br/>
+<a href="/_detail/media/docs/howto/p910nd_01.png?id=docs%3Aguide-user%3Aservices%3Aprint_server%3Ap910ndprinterserver" class="media" title="media:docs:howto:p910nd_01.png"><img src="/_media/media/docs/howto/p910nd_01.png?w=600&amp;tok=ce6b2e" class="media" loading="lazy" alt="" width="600" /></a><br/>
+The screenshot speaks for itself: Check <em>enable</em>, set <em>Device</em> address and check/uncheck <em>Bidirectional mode</em>. Bidirectional mode depends on your router. On my HP printer I leave it enabled, on my Canon I must disable, else printing is not working.</div>
+</li>
+<li class="level1"><div class="li"> Consider leaving the interface <em>unspecified</em> so it listens on all <abbr title="Internet Protocol version 4">IPv4</abbr> interfaces (on 0.0.0.0, alas no <abbr title="Internet Protocol version 6">IPv6</abbr> support).</div>
+</li>
+<li class="level1"><div class="li"> You can add additional printers, but don&#039;t forget to set address of the new printer and set another port:<br/>
+<a href="/_detail/media/docs/howto/p910nd_02.png?id=docs%3Aguide-user%3Aservices%3Aprint_server%3Ap910ndprinterserver" class="media" title="media:docs:howto:p910nd_02.png"><img src="/_media/media/docs/howto/p910nd_02.png?w=600&amp;tok=81d4d1" class="media" loading="lazy" alt="" width="600" /></a></div>
+</li>
+</ol>
+
+<p>
+You should also open a port in the <a href="/packages/index/network---firewall" class="wikilink1" title="packages:index:network---firewall" data-wiki-id="packages:index:network---firewall">firewall</a> for each printer configured. Once the above is done, it might be necessary to restart the print server with:<br/>
+
+</p>
+<pre class="code">/etc/init.d/p910nd restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configure print server p910nd&quot;,&quot;hid&quot;:&quot;configure_print_server_p910nd&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:3,&quot;range&quot;:&quot;1327-2368&quot;} -->
+<h2 class="sectionedit4" id="configure_clients">Configure clients</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configure clients&quot;,&quot;hid&quot;:&quot;configure_clients&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:4,&quot;range&quot;:&quot;2369-2399&quot;} -->
+<h3 class="sectionedit5" id="windows">Windows</h3>
+<div class="level3">
+
+<p>
+First, install drivers for your printer.
+</p>
+<ol>
+<li class="level1"><div class="li"> Add a local printer:<br/>
+<a href="/_detail/media/docs/howto/p910nd_03.png?id=docs%3Aguide-user%3Aservices%3Aprint_server%3Ap910ndprinterserver" class="media" title="media:docs:howto:p910nd_03.png"><img src="/_media/media/docs/howto/p910nd_03.png?w=600&amp;tok=56c929" class="media" loading="lazy" alt="" width="600" /></a></div>
+</li>
+<li class="level1"><div class="li"> Create a new Standard <abbr title="Transmission Control Protocol">TCP</abbr>/<abbr title="Internet Protocol">IP</abbr> port for the printer:<br/>
+<a href="/_detail/media/docs/howto/p910nd_04.png?id=docs%3Aguide-user%3Aservices%3Aprint_server%3Ap910ndprinterserver" class="media" title="media:docs:howto:p910nd_04.png"><img src="/_media/media/docs/howto/p910nd_04.png?w=600&amp;tok=01edab" class="media" loading="lazy" alt="" width="600" /></a></div>
+</li>
+<li class="level1"><div class="li"> Enter <abbr title="Internet Protocol">IP</abbr> Address for the printer: e.g.: 192.168.1.1<br/>
+<a href="/_detail/media/docs/howto/p910nd_05.png?id=docs%3Aguide-user%3Aservices%3Aprint_server%3Ap910ndprinterserver" class="media" title="media:docs:howto:p910nd_05.png"><img src="/_media/media/docs/howto/p910nd_05.png?w=600&amp;tok=a7c0b3" class="media" loading="lazy" alt="" width="600" /></a></div>
+</li>
+<li class="level1"><div class="li"> Specify additional information for the connection:<br/>
+<a href="/_detail/media/docs/howto/p910nd_06.png?id=docs%3Aguide-user%3Aservices%3Aprint_server%3Ap910ndprinterserver" class="media" title="media:docs:howto:p910nd_06.png"><img src="/_media/media/docs/howto/p910nd_06.png?w=600&amp;tok=d7eb07" class="media" loading="lazy" alt="" width="600" /></a></div>
+</li>
+<li class="level1"><div class="li"> Choose “Raw” protocol and set port number. e.g.: 9100<br/>
+<a href="/_detail/media/docs/howto/p910nd_07.png?id=docs%3Aguide-user%3Aservices%3Aprint_server%3Ap910ndprinterserver" class="media" title="media:docs:howto:p910nd_07.png"><img src="/_media/media/docs/howto/p910nd_07.png?w=600&amp;tok=a2feda" class="media" loading="lazy" alt="" width="600" /></a></div>
+</li>
+<li class="level1"><div class="li"> Pick a suitable printer driver:<br/>
+<a href="/_detail/media/docs/howto/p910nd_08.png?id=docs%3Aguide-user%3Aservices%3Aprint_server%3Ap910ndprinterserver" class="media" title="media:docs:howto:p910nd_08.png"><img src="/_media/media/docs/howto/p910nd_08.png?w=600&amp;tok=d5c959" class="media" loading="lazy" alt="" width="600" /></a></div>
+</li>
+<li class="level1"><div class="li"> You may try to print a test page to the printer.</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Windows&quot;,&quot;hid&quot;:&quot;windows&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:5,&quot;range&quot;:&quot;2400-3051&quot;} -->
+<h3 class="sectionedit6" id="mac_os_x_sierra">Mac OS X Sierra</h3>
+<div class="level3">
+
+<p>
+First, try configure your printer via System Preferences:
+</p>
+<ol>
+<li class="level1"><div class="li"> Printers → + (Add Printer) → <abbr title="Internet Protocol">IP</abbr> tab:<br/>
+<a href="/_detail/media/docs/howto/p910nd_09.png?id=docs%3Aguide-user%3Aservices%3Aprint_server%3Ap910ndprinterserver" class="media" title="media:docs:howto:p910nd_09.png"><img src="/_media/media/docs/howto/p910nd_09.png?w=600&amp;tok=4d019b" class="media" loading="lazy" alt="" width="600" /></a><br/>
+<pre class="code">Address: 192.168.1.1:9101 or socket://192.168.1.1:9101
+Protocol: HP Jetdirect - Socket
+Name: any name
+Use: Select Software... and select your printer.</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Done. Try with a test print.</div>
+</li>
+</ol>
+
+<p>
+ This method has worked for me with a HP M1120 printer, but it failed with a Canon MP480 (Error: unable to communicate with printer) and Brother HL-1110. So I added manually.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Mac OS X Sierra&quot;,&quot;hid&quot;:&quot;mac_os_x_sierra&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:6,&quot;range&quot;:&quot;3052-3597&quot;} -->
+<h3 class="sectionedit7" id="manual_method">Manual method</h3>
+<div class="level3">
+<ol>
+<li class="level1"><div class="li"> Open Terminal and enable CUPS Web Interface: paste in &#039;cupsctl WebInterface=yes&#039; and click enter.<br/>
+<a href="/_detail/media/docs/howto/p910nd_10.png?id=docs%3Aguide-user%3Aservices%3Aprint_server%3Ap910ndprinterserver" class="media" title="media:docs:howto:p910nd_10.png"><img src="/_media/media/docs/howto/p910nd_10.png?w=600&amp;tok=2bd899" class="media" loading="lazy" alt="" width="600" /></a></div>
+</li>
+<li class="level1"><div class="li"> Now you should be able to go to <a href="http://localhost:631/" class="urlextern" title="http://localhost:631/" rel="ugc nofollow">http://localhost:631/</a>:<br/>
+<a href="/_detail/media/docs/howto/p910nd_11.png?id=docs%3Aguide-user%3Aservices%3Aprint_server%3Ap910ndprinterserver" class="media" title="media:docs:howto:p910nd_11.png"><img src="/_media/media/docs/howto/p910nd_11.png?w=600&amp;tok=cb630a" class="media" loading="lazy" alt="" width="600" /></a></div>
+</li>
+<li class="level1"><div class="li"> Click on <strong>Adding Printers and Classes</strong> in the center and on Add Printer. Log in with your system username/password. Select AppSocket/HP JetDirect and click on Continue.<br/>
+<a href="/_detail/media/docs/howto/p910nd_12.png?id=docs%3Aguide-user%3Aservices%3Aprint_server%3Ap910ndprinterserver" class="media" title="media:docs:howto:p910nd_12.png"><img src="/_media/media/docs/howto/p910nd_12.png?w=600&amp;tok=056f73" class="media" loading="lazy" alt="" width="600" /></a></div>
+</li>
+<li class="level1"><div class="li"> In the Connection field type <pre class="code">socket://yourLEDEipaddress:9100</pre>
+
+<p>
+ (where yourLEDEipaddress is the <abbr title="Internet Protocol">IP</abbr> address of your router and PORT is what you configured earlier). Click on Continue.<br/>
+<a href="/_detail/media/docs/howto/p910nd_13.png?id=docs%3Aguide-user%3Aservices%3Aprint_server%3Ap910ndprinterserver" class="media" title="media:docs:howto:p910nd_13.png"><img src="/_media/media/docs/howto/p910nd_13.png?w=600&amp;tok=be6f2f" class="media" loading="lazy" alt="" width="600" /></a>
+</p>
+</div>
+</li>
+<li class="level1"><div class="li"> On the next page type any printer name and click on Continue:<br/>
+<a href="/_detail/media/docs/howto/p910nd_14.png?id=docs%3Aguide-user%3Aservices%3Aprint_server%3Ap910ndprinterserver" class="media" title="media:docs:howto:p910nd_14.png"><img src="/_media/media/docs/howto/p910nd_14.png?w=600&amp;tok=d62130" class="media" loading="lazy" alt="" width="600" /></a></div>
+</li>
+<li class="level1"><div class="li"> On the final page select your printer&#039;s manufacturer and model. Finally, click on Add Printer.<br/>
+<a href="/_detail/media/docs/howto/p910nd_15.png?id=docs%3Aguide-user%3Aservices%3Aprint_server%3Ap910ndprinterserver" class="media" title="media:docs:howto:p910nd_15.png"><img src="/_media/media/docs/howto/p910nd_15.png?w=600&amp;tok=5f8070" class="media" loading="lazy" alt="" width="600" /></a></div>
+</li>
+<li class="level1"><div class="li"> You are done, try it with a test print.</div>
+</li>
+</ol>
+
+<p>
+For LEDE 17.01.x, p910nd printing should work straight away after completing above steps.  For OpenWRT 18.06.x, you may need to power cycle the router after installing the p910nd packages. For 21.02.x, things should work straight away. 
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Manual method&quot;,&quot;hid&quot;:&quot;manual_method&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:7,&quot;range&quot;:&quot;3598-4856&quot;} -->
+<h3 class="sectionedit8" id="debugging">Debugging</h3>
+<div class="level3">
+
+<p>
+Okay, your printer is connected to the router, <code>lsusb -v</code> shows the device connected, and you have a <code>/dev/usb/lp0</code> also. You send data to the printer, but nothing happens. Connecting your computer directly to the printer works fine. Some forum posts note that you may need to send the printer firmware to the printer after power-on. In my printer&#039;s case, an <a href="https://www.openprinting.org/printer/HP/HP-LaserJet_1018" class="urlextern" title="https://www.openprinting.org/printer/HP/HP-LaserJet_1018" rel="ugc nofollow">HP LaserJet 1018</a>, it was necessary. GitHub might also have The dl file <a href="https://github.com/inveneo/hub-linux-ubuntu/blob/master/install/overlay/usr/share/foo2zjs/firmware/sihp1018.dl" class="urlextern" title="https://github.com/inveneo/hub-linux-ubuntu/blob/master/install/overlay/usr/share/foo2zjs/firmware/sihp1018.dl" rel="ugc nofollow">for LaserJet 1018</a>
+</p>
+
+<p>
+My printer wakes up with: <code>cat sihp1018.dl &gt; /dev/usb/lp0</code>
+</p>
+
+<p>
+Some users opted to run a script to automate this. On 21.02 - make a script <code>/etc/hotplug.d/usb/30-hplj1018</code>, <code>chmod +x /etc/hotplug.d/usb/30-hplj1018</code> and enjoy. See <a href="/docs/guide-user/base-system/hotplug" class="wikilink1" title="docs:guide-user:base-system:hotplug" data-wiki-id="docs:guide-user:base-system:hotplug">hotplug for info to verify subsystems, and variables below.</a>
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-user/services/print_server/p910ndprinterserver?codeblock=8" title="Download Snippet" class="mediafile mf_d_usb_30-hplj1018">/etc/hotplug.d/usb/30-hplj1018</a></dt>
+<dd><pre class="code bash"><span class="co0">#!/bin/sh</span>
+&nbsp;
+<span class="kw1">set</span> <span class="re5">-e</span>
+&nbsp;
+<span class="co0"># change this to the location where you put the .dl file:</span>
+<span class="re2">FIRMWARE</span>=<span class="st0">&quot;/root/hplj1018.dl&quot;</span>
+<span class="re2">DEVICE</span>=$<span class="br0">&#40;</span>uci get p910nd.<span class="sy0">@</span>p910nd<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.device<span class="br0">&#41;</span>
+<span class="re2">LOGFILE</span>=<span class="sy0">/</span>var<span class="sy0">/</span>log<span class="sy0">/</span>hp
+<span class="re2">PROD_ID</span>=<span class="st0">&quot;3f0/4117/100&quot;</span>
+<span class="re2">DEV_TYPE</span>=<span class="st0">&quot;usb_device&quot;</span>
+&nbsp;
+daemon_restart<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;<span class="es4">$(date)</span> : (Re)Starting print daemon&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$LOGFILE</span>
+    <span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>p910nd restart
+<span class="br0">&#125;</span>
+daemon_stop<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;<span class="es4">$(date)</span> : Stopping print daemon&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$LOGFILE</span>
+    <span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>p910nd stop
+<span class="br0">&#125;</span>
+send_firmware<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;<span class="es4">$(date)</span> : Sending firmware to printer&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$LOGFILE</span>
+    <span class="kw2">cat</span> <span class="re1">$FIRMWARE</span> <span class="sy0">&gt;</span> <span class="re1">$DEVICE</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;<span class="es4">$(date)</span> : done.&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="re1">$LOGFILE</span>
+<span class="br0">&#125;</span>
+&nbsp;
+&nbsp;
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es2">$PRODUCT</span>&quot;</span> = <span class="st0">&quot;<span class="es3">${PROD_ID}</span>&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+    <span class="kw1">case</span> <span class="st0">&quot;<span class="es2">$ACTION</span>&quot;</span> <span class="kw1">in</span>
+        add<span class="br0">&#41;</span>
+            <span class="kw2">sleep</span> <span class="nu0">1</span>
+            <span class="co0"># Check whether dev is character type</span>
+            <span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-c</span> <span class="re1">$DEVICE</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+                <span class="co0"># Check whether the hotplug devtype is usb_device</span>
+                <span class="kw1">if</span> <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es2">$DEVTYPE</span>&quot;</span> = <span class="st0">&quot;<span class="es3">${DEV_TYPE}</span>&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+                    send_firmware
+                    daemon_restart
+                <span class="kw1">fi</span>
+            <span class="kw1">fi</span>
+            <span class="sy0">;;</span>
+        remove<span class="br0">&#41;</span>
+            daemon_stop
+            <span class="sy0">;;</span>
+        <span class="co0">#Also available:</span>
+        <span class="kw3">bind</span><span class="br0">&#41;</span>
+            <span class="sy0">;;</span>
+    <span class="kw1">esac</span>
+<span class="kw1">fi</span></pre>
+</dd></dl>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Debugging&quot;,&quot;hid&quot;:&quot;debugging&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:8,&quot;range&quot;:&quot;4857-&quot;} -->

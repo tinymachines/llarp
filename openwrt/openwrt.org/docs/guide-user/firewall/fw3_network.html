@@ -1,0 +1,96 @@
+
+<h1 class="sectionedit1" id="firewall_and_network_interfaces">Firewall and network interfaces</h1>
+<div class="level1">
+
+<p>
+The goal of a router is to forward packet streams from incoming network interfaces to outgoing network interfaces.
+Firewall rules add another layer of granularity to what is allowed to be forwarded across interfaces - and additionally which packets are allowed to be inputted to, and outputted from, the router itself.
+This section discusses the relationships between the firewall code and the network interfaces.
+</p>
+
+<p>
+At the heart of all routers is a hardware switch with a number of interface ports.
+When a packet enters one of the switch ports, the hardware switch matches a fixed field in the packet and forwards the packet to an output port which transmits it.
+</p>
+
+<p>
+The switch generally uses the layer-2 destination MAC address in the packet to switch on.
+Each port has a cache of MAC addresses for stations reachable by (attached to) that port.
+Entries in the MAC cache gradually out, so must be re-discovered if used again.
+Layer-2 frames with a known destination MAC are switched to the desired <abbr title="Local Area Network">LAN</abbr> port.
+If the MAC is not present anywhere in the switch cache, a broadcast packet (e.g. ARP) is flooded to all <abbr title="Local Area Network">LAN</abbr> ports to discover which has access to the destination MAC.
+</p>
+
+<p>
+OpenWrt routers have two types of <abbr title="Local Area Network">LAN</abbr> interface: wired Ethernet (IEEE802.3 or RFC894 Ethernet II, Ethernet II being the most common) and wireless Ethernet (IEEE802.11).
+</p>
+
+<p>
+The wired <abbr title="Local Area Network">LAN</abbr> ports each map directly to a single switch port.
+Generally there is one 802.11 Wi-Fi port attached to a Wi-Fi radio chip (2.4Ghz, 5Ghz).
+Each handles one or more <a href="https://en.wikipedia.org/wiki/IEEE_802.11" class="urlextern" title="https://en.wikipedia.org/wiki/IEEE_802.11" rel="ugc nofollow">IEEE802.11 standard</a> protocols (e.g. 802.11a, 802.11n) and ancillary support for wireless networks (e.g. 802.11s mesh networking).
+The Wi-Fi chips convert the 802.11 signal into a canonical ethernet frame injected into the switch port for routing.
+All Wi-Fi stations connected to the 802.11 Access Point use the same radio(s) and the same switch port.
+</p>
+
+<p>
+The <abbr title="Local Area Network">LAN</abbr> bridge interface <code>br-lan</code> combines wireless interface(s) with the wired ports to create a single logical network.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Use bridging when combining <abbr title="Wireless Local Area Network">WLAN</abbr> and wired Ethernet ports.
+Otherwise partition the ports into VLANs.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Firewall and network interfaces&quot;,&quot;hid&quot;:&quot;firewall_and_network_interfaces&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-2194&quot;} -->
+<h2 class="sectionedit2" id="firewall_zones">Firewall zones</h2>
+<div class="level2">
+
+<p>
+The firewall of an OpenWrt router is able to collect interfaces into <code>zones</code> to more logically filter traffic.
+A zone can be configured to any set of interfaces but generally there are at least two zones: <code>lan</code> for the collection of <abbr title="Local Area Network">LAN</abbr> interfaces and <code>wan</code> for the <abbr title="Wide Area Network">WAN</abbr> interfaces.
+</p>
+
+<p>
+This simplifies the firewall rule logic somewhat by conceptually grouping the interfaces:
+</p>
+<ul>
+<li class="level1"><div class="li"> A rule for a packet originating in a zone must be entering the router on one of the zone&#039;s interfaces,</div>
+</li>
+<li class="level1"><div class="li"> A rule for a packet being forwarded to a zone must be exiting the router on one of the zone&#039;s interfaces.</div>
+</li>
+</ul>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> recognize the <strong>zone</strong> concept does not significantly simplify a simple SOHO router with a single <code>br-lan</code> interface and a single <code>wan</code> interface.
+Each interface has a one-to-one mapping with a zone.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Firewall zones&quot;,&quot;hid&quot;:&quot;firewall_zones&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;2195-3028&quot;} -->
+<h2 class="sectionedit3" id="firewall_and_vlans">Firewall and VLANs</h2>
+<div class="level2">
+
+<p>
+<abbr title="Virtual Local Area Network">VLAN</abbr> provisioning and use is documented in:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/network/vlan/switch" class="wikilink1" title="docs:guide-user:network:vlan:switch" data-wiki-id="docs:guide-user:network:vlan:switch">VLAN Overview</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/network/vlan/switch_configuration" class="wikilink1" title="docs:guide-user:network:vlan:switch_configuration" data-wiki-id="docs:guide-user:network:vlan:switch_configuration">HW switch configuration</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/network/vlan/creating_virtual_switches" class="wikilink1" title="docs:guide-user:network:vlan:creating_virtual_switches" data-wiki-id="docs:guide-user:network:vlan:creating_virtual_switches">Adding VLANs</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/firewall/fw3_configurations/fw3_dmz" class="wikilink1" title="docs:guide-user:firewall:fw3_configurations:fw3_dmz" data-wiki-id="docs:guide-user:firewall:fw3_configurations:fw3_dmz">Use VLANs to partition a DMZ</a></div>
+</li>
+</ul>
+
+<p>
+A switch partitioned into multiple VLANs futher helps to organize the switch ports.
+It is recommended that each <abbr title="Virtual Local Area Network">VLAN</abbr> map one-to-one with a zone.
+The advantage to using a <abbr title="Virtual Local Area Network">VLAN</abbr> architecture is the packets are tagged with the <abbr title="Virtual Local Area Network">VLAN</abbr> ID to disambiguate routing/firewall decisions.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Firewall and VLANs&quot;,&quot;hid&quot;:&quot;firewall_and_vlans&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;3029-&quot;} -->

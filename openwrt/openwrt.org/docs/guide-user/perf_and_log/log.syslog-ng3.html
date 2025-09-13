@@ -1,0 +1,165 @@
+
+<h1 class="sectionedit1" id="syslog-ng">syslog-ng</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;syslog-ng&quot;,&quot;hid&quot;:&quot;syslog-ng&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-25&quot;} -->
+<h2 class="sectionedit2" id="installation">Installation</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation&quot;,&quot;hid&quot;:&quot;installation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;26-51&quot;} -->
+<h3 class="sectionedit3" id="replacing_default_logging_with_syslog-ng_--_2018">Replacing Default Logging with syslog-ng -- 2018</h3>
+<div class="level3">
+
+<p>
+As of February, 2019, version of syslog-ng in OpenWrt master is 3.19.1
+</p>
+
+<p>
+As of March, 2018, <a href="https://openwrt.org/packages/pkgdata/syslog-ng" class="urlextern" title="https://openwrt.org/packages/pkgdata/syslog-ng" rel="ugc nofollow">https://openwrt.org/packages/pkgdata/syslog-ng</a> is version 3.8.1
+</p>
+
+<p>
+On <code>master</code> of April, 2018, the following steps will replace the default OpenWRT logging with <code>syslog-ng</code>
+</p>
+<ul>
+<li class="level1"><div class="li"> Install <code>syslog-ng</code> and its dependencies</div>
+</li>
+<li class="level1"><div class="li"> Disable the default logging with <code>/etc/init.d/log disable</code> or by removing the symlink in <code>/etc/rc.d</code></div>
+</li>
+<li class="level1"><div class="li"> Confirm that <code>syslog-ng</code> is enabled; <code>/etc/rc.d/S20syslog-ng → ../init.d/syslog-ng</code></div>
+</li>
+<li class="level1"><div class="li"> reboot</div>
+</li>
+</ul>
+<hr />
+
+<p>
+<img src="/lib/images/smileys/fixme.svg" class="icon smiley" alt="FIXME" /> Much of the following appears to be from Backfire, c. 2011
+</p>
+<pre class="code"># opkg install syslog-ng</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Replacing Default Logging with syslog-ng -- 2018&quot;,&quot;hid&quot;:&quot;replacing_default_logging_with_syslog-ng_--_2018&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;52-753&quot;} -->
+<h2 class="sectionedit4" id="configuration">Configuration</h2>
+<div class="level2">
+
+<p>
+Configuration is controlled by <code>/etc/syslog-ng.conf</code> The default configuration logs to <code>/var/log/messages</code>.
+</p>
+
+<p>
+Below is a sample configuration for logging to a remote server via <abbr title="Transmission Control Protocol">TCP</abbr> (extended from default config file):
+</p>
+<pre class="code">#############################################################################
+# OpenWrt syslog-ng.conf specific file
+# which collects all local logs into a single file called /var/log/messages.
+# More details about these settings can be found here:
+# https://www.syslog-ng.com/technical-documents/doc/syslog-ng-open-source-edition/3.16/release-notes/global-options
+
+@version: 3.19
+@include &quot;scl.conf&quot;
+@include &quot;/etc/syslog-ng.d/&quot; # Put any customization files in this directory
+
+options {
+	chain_hostnames(no); # Enable or disable the chained hostname format.
+	create_dirs(yes);
+	keep_hostname(yes); # Enable or disable hostname rewriting.
+	log_fifo_size(256); # The number of messages that the output queue can store.
+	log_msg_size(1024); # Maximum length of a message in bytes.
+	stats_freq(0); # The period between two STATS messages (sent by syslog-ng, containing statistics about dropped logs) in seconds.
+	flush_lines(0); # How many lines are flushed to a destination at a time.
+	use_fqdn(no); # Add Fully Qualified Domain Name instead of short hostname.
+};
+
+filter notice_or_higher {
+        level(notice..emerg)  # remove debug and info message
+};
+
+# syslog-ng gets messages from syslog-ng (internal) and from /dev/log
+source src {
+        internal();
+        unix-dgram(&quot;/dev/log&quot;);
+};
+source kernel {
+        file(&quot;/proc/kmsg&quot; program_override(&quot;kernel&quot;));
+};
+source net {
+        tcp(ip(0.0.0.0) port(514));
+};
+destination messages {
+        file(&quot;/var/log/messages&quot;);
+};
+destination syslogd_tcp {
+        tcp(&quot;syslog.&quot; port(514));    # hostname is syslog, replace with your own loghost name or IP
+};
+log {
+        source(src);
+        source(kernel);
+        filter(notice_or_higher);
+        destination(messages);
+        destination(syslogd_tcp);
+};</pre>
+
+</div>
+
+<h4 id="reconfiguration">Reconfiguration</h4>
+<div class="level4">
+
+<p>
+To apply changes, it is not sufficient to simply restart the <code>syslog-ng</code> daemon. Instead, stop and start the daemon as follows (taken from <a href="http://baheyeldin.com/technology/linux/logging-with-syslog-ng-on-openwrt.html" class="urlextern" title="http://baheyeldin.com/technology/linux/logging-with-syslog-ng-on-openwrt.html" rel="ugc nofollow">http://baheyeldin.com/technology/linux/logging-with-syslog-ng-on-openwrt.html</a>):
+</p>
+<pre class="code"># killall syslog-ng
+# /etc/init.d/syslog-ng start</pre>
+
+</div>
+
+<h4 id="ipv6_logserver">IPv6 Logserver</h4>
+<div class="level4">
+
+<p>
+To log to a logserver listening on an <abbr title="Internet Protocol version 6">IPv6</abbr> address, use a <code>udp6()</code> destination in the configuration file:
+</p>
+<pre class="code">...
+destination d_udp6 { udp6(&quot;1234:5678:1011:1314::01&quot; port(514)); };
+...
+log {
+    source(src);
+    source(kernel);
+    destination(d_udp6);
+};
+...</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:4,&quot;range&quot;:&quot;754-3392&quot;} -->
+<h2 class="sectionedit5" id="startup">Startup</h2>
+<div class="level2">
+<pre class="code"># /etc/init.d/syslog-ng enable
+# /etc/init.d/syslog-ng start</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Startup&quot;,&quot;hid&quot;:&quot;startup&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:5,&quot;range&quot;:&quot;3393-3490&quot;} -->
+<h2 class="sectionedit6" id="logread">logread</h2>
+<div class="level2">
+
+<p>
+The logread is an interface to read log messages.
+When the <code>syslog-ng</code> installed then the default OpenWrt <a href="/docs/guide-user/base-system/log.essentials#logread" class="wikilink1" title="docs:guide-user:base-system:log.essentials" data-wiki-id="docs:guide-user:base-system:log.essentials">logread</a> command from ubox package will be overridden with the <code>/usr/sbin/logread</code> script that reads <code>/var/log/messages</code> instead of ring buffer.
+</p>
+
+<p>
+To show all log messages that contains a specific text (like a daemon name) and follow (like in tail -f) use:
+</p>
+<pre class="code bash">logread <span class="re5">-fe</span> firewall</pre>
+
+<p>
+The script has less options than the ubox logread:
+</p>
+<pre class="code">-l &lt;count&gt;   Got only the last &#039;count&#039; messages
+-e &lt;pattern&gt; Filter messages with a regexp
+-f           Follow log messages
+-h           Print this help message</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;logread&quot;,&quot;hid&quot;:&quot;logread&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:6,&quot;range&quot;:&quot;3491-&quot;} -->

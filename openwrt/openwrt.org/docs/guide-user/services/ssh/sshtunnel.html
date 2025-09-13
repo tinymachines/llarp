@@ -1,0 +1,481 @@
+
+<h1 class="sectionedit1" id="ssh_tunnel">SSH tunnel</h1>
+<div class="level1">
+
+<p>
+The <code>ssh</code> command allows to create tunnels and forward a port which is useful to bypass <abbr title="Network Address Translation">NAT</abbr>.
+E.g. when you don&#039;t have a public <abbr title="Internet Protocol">IP</abbr> but have a server or router that have it.
+This is simplest and popular way of tunneling because not need for a dedicated client.
+As a downside an encrypted <abbr title="Transport Layer Security">TLS</abbr> (<abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr>) traffic will be additionally encrypted by <abbr title="Secure Shell">SSH</abbr>. But it&#039;s really not a big slowdown.
+Alternatively you can use <a href="/docs/guide-user/services/vpn/pppossh/start" class="wikilink1" title="docs:guide-user:services:vpn:pppossh:start" data-wiki-id="docs:guide-user:services:vpn:pppossh:start">pppossh</a> for a full <abbr title="Virtual Private Network">VPN</abbr> tunneling over <abbr title="Secure Shell">SSH</abbr>.
+</p>
+
+<p>
+The simplest tunnel for port forward can be created with a command like <code>ssh -R *:80:127.0.0.1:80 jonh@myhome.jonh.me</code>.
+</p>
+
+<p>
+In order to keep tunnel reconnecting after disconnect you need to install and configure the additional service <a href="https://openwrt.org/packages/pkgdata/sshtunnel" class="urlextern" title="https://openwrt.org/packages/pkgdata/sshtunnel" rel="ugc nofollow">sshtunnel</a>.
+The service also provides an easy UCI configuration file and has LUCI app to configure from <abbr title="Graphical User Interface">GUI</abbr>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;SSH tunnel&quot;,&quot;hid&quot;:&quot;ssh_tunnel&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-913&quot;} -->
+<h2 class="sectionedit2" id="install">Install</h2>
+<div class="level2">
+
+<p>
+To install from a command line use <code>opkg install sshtunnel</code>.
+</p>
+
+<p>
+The <abbr title="Secure Shell">SSH</abbr> client included by default on OpenWrt is <a href="https://manpages.debian.org/testing/dropbear-bin/dbclient.1" class="urlextern" title="https://manpages.debian.org/testing/dropbear-bin/dbclient.1" rel="ugc nofollow">DropBear dbclient</a>.
+It&#039;s small and supports remote and local tunnels but has limited options.
+Previously, before the sshtunnel version 5.1 it&#039;s package installed as a dependency the full <a href="https://openwrt.org/packages/pkgdata/openssh-client" class="urlextern" title="https://openwrt.org/packages/pkgdata/openssh-client" rel="ugc nofollow">openssh-client</a>.
+If you have enough of space it&#039;s generally recommended to install it with a command <code>opkg install openssh-client</code>.
+</p>
+
+<p>
+There is a LUCI app <a href="https://openwrt.org/packages/pkgdata/luci-app-sshtunnel" class="urlextern" title="https://openwrt.org/packages/pkgdata/luci-app-sshtunnel" rel="ugc nofollow">luci-app-sshtunnel</a> that provides a <abbr title="Graphical User Interface">GUI</abbr> for the <code>sshtunnel</code>. You may install it with <code>opkg install luci-app-sshtunnel</code>. It may be not yet available in the main packages feed.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Install&quot;,&quot;hid&quot;:&quot;install&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;914-1747&quot;} -->
+<h2 class="sectionedit3" id="configuration">Configuration</h2>
+<div class="level2">
+
+<p>
+The UCI configuration is located in <code>/etc/config/sshtunnel</code>.
+This file is responsible for defining <em>ssh servers</em> and <em>tunnels</em>.
+</p>
+
+<p>
+A typical sshtunnel config file contains at least one <code>server</code> specifying the connection to an ssh server and one or more <code>tunnelL</code>, <code>tunnelR</code> or <code>tunnelD</code> defining Local, Remote or Dynamic tunnels.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;1748-2116&quot;} -->
+<h3 class="sectionedit4" id="server">Server</h3>
+<div class="level3">
+
+<p>
+In most cases there will be only one server defined, but possibly several tunnels to this server.
+</p>
+
+<p>
+A minimal <code>server</code> declaration may look like the example below.
+</p>
+<pre class="code bash">config server <span class="st_h">'home'</span>
+	option user       <span class="st_h">'jonh'</span>
+	option <span class="kw2">hostname</span>   <span class="st_h">'myhome.jonh.me'</span>
+	option port       <span class="st_h">'22'</span></pre>
+
+<p>
+* <code>home</code> will identify this server on the tunnels sections
+* <code>jonh</code> specifies the username on the remote machine
+* <code>myhome.jonh.me</code> is the hostname of a remote machine running an <abbr title="Secure Shell">SSH</abbr> server.
+</p>
+
+<p>
+The possible options for server sections are listed in the table below:
+</p>
+<div class="table sectionedit5"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign"> Name                      </th><th class="col1 leftalign"> Type    </th><th class="col2"> Required </th><th class="col3"> Default </th><th class="col4"> Description </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> <code>user</code>                  </td><td class="col1 leftalign"> string  </td><td class="col2"> yes </td><td class="col3 leftalign"> <code>root</code>       </td><td class="col4"> remote host username. </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> <code>hostname</code>              </td><td class="col1 leftalign"> string  </td><td class="col2"> yes </td><td class="col3 leftalign">                </td><td class="col4"> remote host hostname. </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> <code>port</code>                  </td><td class="col1"> integer </td><td class="col2"> yes </td><td class="col3 leftalign"> 22             </td><td class="col4"> Port to connect to on the remote host. </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"> <code>IdentityFile</code>          </td><td class="col1 leftalign"> string  </td><td class="col2 leftalign"> no  </td><td class="col3 leftalign">                </td><td class="col4"> Specifies a file from which the user&#039;s RSA, ed25519 or ECDSA authentication identity is read. The default is <code>/root/.ssh/id_rsa</code>, <code>/root/.ssh/id_ed25519</code>, <code>/root/.ssh/id_ecdsa</code> or <code>/root/.ssh/id_dropbear</code> </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 leftalign"> <code>retrydelay</code>            </td><td class="col1"> integer </td><td class="col2 leftalign"> no  </td><td class="col3 leftalign"> 60             </td><td class="col4"> Delay after a connection failure before trying to reconnect. </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0"> <code>StrictHostKeyChecking</code> </td><td class="col1 leftalign"> string  </td><td class="col2 leftalign"> no  </td><td class="col3"> <code>accept-new</code> </td><td class="col4"> If this flag is set to <code>yes</code>, ssh will never automatically add host keys to the <code>~/.ssh/known_hosts</code> file, and refuses to connect to hosts whose host key has changed.  This provides maximum protection against trojan horse attacks, though it can be annoying when the <code>/root/.ssh/known_hosts</code> file is poorly maintained or when connections to new hosts are frequently made.  This option forces the user to manually add all new hosts.  If this flag is set to <code>no</code>, ssh will automatically add new host keys to the user known hosts files.  If this flag is set to <code>accept-new</code>, new host keys will be added to the  known host files and ssh will refuse to connect to hosts whose host key has changed. </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;2699-4222&quot;} -->
+<p>
+If you have the <code>openssh-client</code> then you can specify advanced options:
+</p>
+<div class="table sectionedit6"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign"> Name                     </th><th class="col1 leftalign"> Type    </th><td class="col2 leftalign"> Default   </td><th class="col3 leftalign"> Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> <code>LogLevel</code>             </td><td class="col1 leftalign"> string  </td><td class="col2 leftalign"> <code>INFO</code>  </td><td class="col3 leftalign"> Gives the verbosity level that is used when logging messages from ssh.  The possible values are: <code>QUIET</code>, <code>FATAL</code>, <code>ERROR</code>, <code>INFO</code>, <code>VERBOSE</code>, <code>DEBUG</code>, <code>DEBUG1</code>, <code>DEBUG2</code>, and <code>DEBUG3</code>. The DEBUG and DEBUG1 are equivalent, DEBUG2 and DEBUG3 each specify higher levels of verbose output.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> <code>CheckHostIP</code>          </td><td class="col1 leftalign"> string  </td><td class="col2 leftalign"> <code>yes</code>   </td><td class="col3 leftalign"> Enable check the host <abbr title="Internet Protocol">IP</abbr> address in the <code>known_hosts</code> file. This allows ssh to detect if a host key changed due to <abbr title="Domain Name System">DNS</abbr> spoofing.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> <code>Compression</code>          </td><td class="col1 leftalign"> string  </td><td class="col2 leftalign"> <code>no</code>    </td><td class="col3 leftalign"> Enable gzip compression. It may be useful on slow connections but increases CPU usage and adds a small latency.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"> <code>ServerAliveCountMax</code>  </td><td class="col1 leftalign"> string  </td><td class="col2 leftalign"> 3         </td><td class="col3 leftalign"> Sets the number of server alive messages (see below) which may be sent without ssh receiving any messages back from the server.  If this threshold is reached while server alive messages are being sent, ssh will disconnect from the server, terminating the session.  It is important to note that the use of server alive messages is very different from TCPKeepAlive (below).  The server alive messages are sent through the encrypted channel and therefore will not be spoofable.  The <abbr title="Transmission Control Protocol">TCP</abbr> keepalive option enabled by TCPKeepAlive is spoofable.  The server alive mechanism is valuable when the client or server depend on knowing when a connection has become inactive. If, for example, ServerAliveInterval (see below) is set to 15 and ServerAliveCountMax is left at the default, if the server becomes unresponsive, ssh will disconnect after approximately 45 seconds.  </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 leftalign"> <code>ServerAliveInterval</code>  </td><td class="col1 leftalign"> string  </td><td class="col2 leftalign"> 0         </td><td class="col3 leftalign"> Sets a timeout interval in seconds after which if no data has been received from the server, ssh will send a message through the encrypted channel to request a response from the server.  The default is 0, indicating that these messages will not be sent to the server.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0 leftalign"> <code>TCPKeepAlive</code>         </td><td class="col1 leftalign"> string  </td><td class="col2 leftalign"> <code>yes</code>   </td><td class="col3 leftalign"> Specifies whether the system should send <abbr title="Transmission Control Protocol">TCP</abbr> keep-alive messages to the other side.  If they are sent, death of the connection or crash of one of the machines will be properly noticed.  However, this means that connections will die if the route is down temporarily, and some people find it annoying. The default is <code>yes</code> (to send <abbr title="Transmission Control Protocol">TCP</abbr> keepalive messages), and the client will notice if the network goes down or the remote host dies.                                                                                                                                                                                                                                                                                                                                                                                                                                            </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0 leftalign"> <code>VerifyHostKeyDNS</code>     </td><td class="col1 leftalign"> string  </td><td class="col2 leftalign"> <code>no</code>    </td><td class="col3 leftalign"> Specifies whether to verify the remote key using <abbr title="Domain Name System">DNS</abbr> and SSHFP resource records.  If this option is set to <code>yes</code>, the client will implicitly trust keys that match a secure fingerprint from <abbr title="Domain Name System">DNS</abbr>.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0 leftalign"> <code>ProxyCommand</code>         </td><td class="col1 leftalign"> string  </td><td class="col2 leftalign">           </td><td class="col3 leftalign"> Proxy tunnel command. The command to use to connect to the server. For example, the following command would connect via an <abbr title="Hypertext Transfer Protocol">HTTP</abbr> proxy: <code>ncat --proxy-type http --proxy-auth alice:secret --proxy 192.168.1.2:8080 %h %p</code>                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table1&quot;,&quot;secid&quot;:6,&quot;range&quot;:&quot;4300-12525&quot;} -->
+<p>
+For the <code>openssh-client</code> you can also configure the server options in the <code>/root/.ssh/config</code> file:
+</p>
+<pre class="code bash">Host home
+    HostName myhome.jonh.me
+    Port <span class="nu0">22</span>
+    User jonh
+    <span class="co0"># Allow old DSA keys used by old OpenWrt router</span>
+    PubkeyAcceptedKeyTypes +ssh-dss
+    HostkeyAlgorithms +ssh-rsa</pre>
+
+<p>
+But you still need to create a corresponding <code>server</code> section and use the <code>Host</code> as <code>hostname</code>&#039;.
+</p>
+
+<p>
+See OpenSSH <a href="https://manpages.debian.org/testing/openssh-client/ssh_config.5" class="urlextern" title="https://manpages.debian.org/testing/openssh-client/ssh_config.5" rel="ugc nofollow">man ssh_config</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Server&quot;,&quot;hid&quot;:&quot;server&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;2117-13036&quot;} -->
+<h3 class="sectionedit7" id="tunnels">Tunnels</h3>
+<div class="level3">
+
+<p>
+A complete sshtunnel configuration contains at least one section:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>tunnelR</code> a remote tunnel: Forward a port on the remote host to a service on the local host.</div>
+</li>
+<li class="level1"><div class="li"> <code>tunnelL</code> a local tunnel: Forward a port on the local host to a service on the remote host.</div>
+</li>
+<li class="level1"><div class="li"> <code>tunnelD</code> a Dynamic Tunnel e.g. SOCKS4/SOCKS5 proxy via remote host.</div>
+</li>
+<li class="level1"><div class="li"> <code>tunnelW</code> TUN/TAP <abbr title="Virtual Private Network">VPN</abbr>. Requires <code>openssh-client</code>.</div>
+</li>
+</ul>
+
+<p>
+If no any tunnel were specified for the server then the sshtunnel won&#039;t connect to it.
+</p>
+
+</div>
+
+<h4 id="tunnelr">tunnelR</h4>
+<div class="level4">
+
+<p>
+A example for a <code>tunnelR</code> declaration is given below:
+</p>
+<pre class="code bash">config tunnelR local_ssh
+        option server         <span class="st_h">'home'</span>
+        option remoteaddress  <span class="st_h">'*'</span>
+        option remoteport     <span class="st_h">'2222'</span>
+        option localaddress   <span class="st_h">'127.0.0.1'</span>
+        option localport      <span class="st_h">'22'</span></pre>
+<ul>
+<li class="level1"><div class="li"> <strong><code>*</code></strong> means to accept a connection from any interface on the <strong>Server side</strong></div>
+</li>
+</ul>
+
+<p>
+<code><img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Specifying a remote bind_address will only succeed if the server&#039;s GatewayPorts option is enabled. See “<abbr title="Secure Shell">SSH</abbr> Server configuration” bellow</code>
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong><code>2222</code></strong> is the <abbr title="Transmission Control Protocol">TCP</abbr> port to bind on the <strong>Server side</strong></div>
+</li>
+<li class="level1"><div class="li"> <strong><code>127.0.0.1</code></strong> is the <strong>OpenWrt side</strong> address to where the remote connection will be forwarded</div>
+</li>
+<li class="level1"><div class="li"> <strong><code>22</code></strong> is the <strong>OpenWrt side</strong> <abbr title="Transmission Control Protocol">TCP</abbr> port where to the remote connection will be forwarded</div>
+</li>
+</ul>
+
+<p>
+The equivalent <code>ssh</code> command would be <code>ssh -R *:2222:127.0.0.1:22 jonh@myhome.jonh.me</code>
+</p>
+
+<p>
+The possible options for <code>tunnelR</code> sections are listed in the table below:
+</p>
+<div class="table sectionedit8"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign"> Name               </th><th class="col1 leftalign"> Type     </th><th class="col2 leftalign"> Required  </th><th class="col3 leftalign"> Default     </th><th class="col4 leftalign"> Description                                                                  </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> <code>enabled</code>          </td><td class="col1 leftalign"> boolean  </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <code>1</code>       </td><td class="col4 leftalign"> Enable or disable with <code>0</code> the auto establishment of the tunnel on service start  </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> <code>server</code>         </td><td class="col1 leftalign"> string   </td><td class="col2 leftalign"> yes       </td><td class="col3 leftalign"> <em>(none)</em>  </td><td class="col4 leftalign"> Specifies the used server, must refer to one of the defined server sections  </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> <code>remoteaddress</code>  </td><td class="col1 leftalign"> string   </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <code>*</code>       </td><td class="col4 leftalign"> Server side address                                                          </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"> <code>remoteport</code>     </td><td class="col1 leftalign"> integer  </td><td class="col2 leftalign"> yes       </td><td class="col3 leftalign"> <em>(none)</em>  </td><td class="col4 leftalign"> Server side <abbr title="Transmission Control Protocol">TCP</abbr> port                                                         </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 leftalign"> <code>localaddress</code>   </td><td class="col1 leftalign"> string   </td><td class="col2 leftalign"> yes       </td><td class="col3 leftalign"> <em>(none)</em>  </td><td class="col4 leftalign"> OpenWrt side address                                                         </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0 leftalign"> <code>localport</code>      </td><td class="col1 leftalign"> integer  </td><td class="col2 leftalign"> yes       </td><td class="col3 leftalign"> <em>(none)</em>  </td><td class="col4 leftalign"> OpenWrt side <abbr title="Transmission Control Protocol">TCP</abbr> port                                                        </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table2&quot;,&quot;secid&quot;:8,&quot;range&quot;:&quot;14511-15492&quot;} -->
+</div>
+
+<h4 id="tunnell">tunnelL</h4>
+<div class="level4">
+
+<p>
+For a <code>tunnelL</code> the declaration is similar:
+</p>
+<pre class="code bash">config tunnelL server_http
+        option server         <span class="st_h">'home'</span>
+        option remoteaddress  <span class="st_h">'127.0.0.1'</span>
+        option remoteport     <span class="st_h">'8080'</span>
+        option localaddress   <span class="st_h">'*'</span>
+        option localport      <span class="st_h">'80'</span></pre>
+<ul>
+<li class="level1"><div class="li"> <strong><code>127.0.0.1</code></strong> is the <strong>Server side</strong> address to where the connection will be forwarded</div>
+</li>
+<li class="level1"><div class="li"> <strong><code>8080</code></strong> is the <strong>Server side</strong> <abbr title="Transmission Control Protocol">TCP</abbr> port to where the local connection will be forwarded</div>
+</li>
+<li class="level1"><div class="li"> <strong><code>*</code></strong> means to accept a connection from any interface on the <strong>OpenWrt side</strong></div>
+</li>
+<li class="level1"><div class="li"> <strong><code>80</code></strong> is the local <abbr title="Transmission Control Protocol">TCP</abbr> port to bind on the <strong>OpenWrt side</strong></div>
+</li>
+</ul>
+
+<p>
+The equivalent <code>ssh</code> command would be <code>ssh -L *:80:127.0.0.1:8080 jonh@myhome.jonh.me</code>
+</p>
+
+<p>
+The possible options for <code>tunnelL</code> sections are listed in the table below:
+</p>
+<div class="table sectionedit9"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign"> Name               </th><th class="col1 leftalign"> Type     </th><th class="col2 leftalign"> Required  </th><th class="col3 leftalign"> Default     </th><th class="col4 leftalign"> Description                                                                         </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> <code>enabled</code>          </td><td class="col1 leftalign"> boolean  </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <code>1</code>       </td><td class="col4 leftalign"> Enable or disable with <code>0</code> the auto establishment of the tunnel on service start  </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> <code>server</code>         </td><td class="col1 leftalign"> string   </td><td class="col2 leftalign"> yes       </td><td class="col3 leftalign"> <em>(none)</em>  </td><td class="col4 leftalign"> Specifies the used server, must refer to one of the defined server sections         </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> <code>remoteaddress</code>  </td><td class="col1 leftalign"> string   </td><td class="col2 leftalign"> yes       </td><td class="col3 leftalign"> <em>(none)</em>  </td><td class="col4 leftalign"> Server side address                                                                 </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"> <code>remoteport</code>     </td><td class="col1 leftalign"> integer  </td><td class="col2 leftalign"> yes       </td><td class="col3 leftalign"> <em>(none)</em>  </td><td class="col4 leftalign"> Server side <abbr title="Transmission Control Protocol">TCP</abbr> port                                                                </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 leftalign"> <code>localaddress</code>   </td><td class="col1 leftalign"> string   </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <code>*</code>       </td><td class="col4 leftalign"> OpenWrt side address                                                                </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0 leftalign"> <code>localport</code>      </td><td class="col1 leftalign"> integer  </td><td class="col2 leftalign"> yes       </td><td class="col3 leftalign"> <em>(none)</em>  </td><td class="col4 leftalign"> OpenWrt side <abbr title="Transmission Control Protocol">TCP</abbr> port                                                               </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table3&quot;,&quot;secid&quot;:9,&quot;range&quot;:&quot;16308-17331&quot;} -->
+</div>
+
+<h4 id="tunneld">tunnelD</h4>
+<div class="level4">
+
+<p>
+A <code>tunnelD</code> declaration will create a SOCKS proxy accessible on the defined local port. This is supported only with the <code>openssh-client</code>.
+</p>
+<pre class="code bash">config tunnelD proxy
+        option server         <span class="st_h">'home'</span>
+        option localaddress   <span class="st_h">'*'</span>
+        option localport      <span class="st_h">'1080'</span></pre>
+<ul>
+<li class="level1"><div class="li"> <strong><code>*</code></strong> means to accept a connection from any interface on the <strong>OpenWrt side</strong></div>
+</li>
+<li class="level1"><div class="li"> <strong><code>1080</code></strong> is the local <abbr title="Transmission Control Protocol">TCP</abbr> port to bind on the <strong>OpenWrt side</strong></div>
+</li>
+</ul>
+
+<p>
+The equivalent <code>ssh</code> command would be <code>ssh -D *:1080 jonh@myhome.jonh.me</code>
+</p>
+
+<p>
+The possible options for <code>tunnelD</code> sections are listed in the table below:
+</p>
+<div class="table sectionedit10"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign"> Name             </th><th class="col1 leftalign"> Type    </th><th class="col2"> Required </th><th class="col3 leftalign"> Default    </th><th class="col4"> Description </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> <code>enabled</code>          </td><td class="col1 leftalign"> boolean  </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <code>1</code>       </td><td class="col4 leftalign"> Enable or disable with <code>0</code> the auto establishment of the tunnel on service start  </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> <code>server</code>       </td><td class="col1 leftalign"> string  </td><td class="col2 leftalign"> yes      </td><td class="col3"> <em>(none)</em> </td><td class="col4 leftalign"> Specifies the used server, must refer to one of the defined server sections  </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> <code>localaddress</code> </td><td class="col1 leftalign"> string  </td><td class="col2 leftalign"> no       </td><td class="col3 leftalign"> <code>*</code>      </td><td class="col4"> OpenWrt side address </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"> <code>localport</code>    </td><td class="col1"> integer </td><td class="col2 leftalign"> yes      </td><td class="col3"> <em>(none)</em> </td><td class="col4"> OpenWrt side <abbr title="Transmission Control Protocol">TCP</abbr> port </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table4&quot;,&quot;secid&quot;:10,&quot;range&quot;:&quot;17957-18464&quot;} -->
+</div>
+
+<h4 id="tunnelw">tunnelW</h4>
+<div class="level4">
+
+<p>
+A <code>tunnelW</code> declaration will TUN/TAP devices on client and server to establish a <abbr title="Virtual Private Network">VPN</abbr> tunnel between them.
+This is supported only with the <code>openssh-client</code>. You better to use the <a href="/docs/guide-user/services/vpn/pppossh/start" class="wikilink1" title="docs:guide-user:services:vpn:pppossh:start" data-wiki-id="docs:guide-user:services:vpn:pppossh:start">PPPoSSH</a>.
+</p>
+<pre class="code bash">config tunnelW vpn
+	option server           <span class="st_h">'home'</span>
+	option vpntype		<span class="st_h">'point-to-point'</span>
+	option localdev		<span class="st_h">'any'</span>
+	option remotedev	<span class="st_h">'any'</span></pre>
+
+<p>
+The equivalent <code>ssh</code> command would be <code>ssh -o Tunnel=point-to-point -w any:any jonh@myhome.jonh.me</code>
+</p>
+
+<p>
+The possible options for <code>tunnelW</code> sections are listed in the table below:
+</p>
+<div class="table sectionedit11"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 leftalign"> Name           </th><th class="col1 leftalign"> Type    </th><th class="col2 leftalign"> Required  </th><th class="col3 leftalign"> Default             </th><th class="col4 leftalign"> Description                                                                                  </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> <code>enabled</code>          </td><td class="col1 leftalign"> boolean  </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <code>1</code>       </td><td class="col4 leftalign"> Enable or disable with <code>0</code> the auto establishment of the tunnel on service start  </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> <code>server</code>     </td><td class="col1 leftalign"> string  </td><td class="col2 leftalign"> yes       </td><td class="col3 leftalign"> <em>(none)</em>          </td><td class="col4 leftalign"> Specifies the used server, must refer to one of the defined server sections                  </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> <code>vpntype</code>    </td><td class="col1 leftalign"> string  </td><td class="col2 leftalign"> no        </td><td class="col3 leftalign"> <code>point-to-point</code>  </td><td class="col4 leftalign"> <code>point-to-point</code> or <code>ethernet</code>                                                           </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"> <code>remotedev</code>  </td><td class="col1 leftalign"> string  </td><td class="col2 leftalign"> yes       </td><td class="col3 leftalign"> <code>any</code>             </td><td class="col4 leftalign"> tun device numerical ID or the keyword <code>any</code>, which uses the next available tunnel device  </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 leftalign"> <code>localdev</code>   </td><td class="col1 leftalign"> string  </td><td class="col2 leftalign"> yes       </td><td class="col3 leftalign"> <code>any</code>             </td><td class="col4 leftalign"> remote device ID                                                                             </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table5&quot;,&quot;secid&quot;:11,&quot;range&quot;:&quot;19055-19992&quot;} -->
+<p>
+See <a href="https://wiki.archlinux.org/title/VPN_over_SSH" class="urlextern" title="https://wiki.archlinux.org/title/VPN_over_SSH" rel="ugc nofollow">Arch Wiki VPN over SSH</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Tunnels&quot;,&quot;hid&quot;:&quot;tunnels&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:7,&quot;range&quot;:&quot;13037-20071&quot;} -->
+<h3 class="sectionedit12" id="ssh_tunnel_providers">SSH tunnel providers</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> <a href="https://docs.srv.us/" class="urlextern" title="https://docs.srv.us/" rel="ugc nofollow">srv.us</a> works with empty RemoteAddress or set to &#039;*&#039;. You can also set a custom domain as a number 1, 2 etc.</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://localhost.run" class="urlextern" title="https://localhost.run" rel="ugc nofollow">localhost.run</a> works with empty RemoteAddress or set to &#039;*&#039; but the generated domain will be rotated and changed on next restart. You need a custom domain (paid feature).</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/fasmide/remotemoe" class="urlextern" title="https://github.com/fasmide/remotemoe" rel="ugc nofollow">remote.moe</a> works only if a custom domain but this needs for some manual configuration.</div>
+</li>
+</ul>
+
+<p>
+See other options in the <a href="https://github.com/yurt-page/awesome-tunneling#ssh-services" class="urlextern" title="https://github.com/yurt-page/awesome-tunneling#ssh-services" rel="ugc nofollow">Awesome tunneling: SSH services</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;SSH tunnel providers&quot;,&quot;hid&quot;:&quot;ssh_tunnel_providers&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:12,&quot;range&quot;:&quot;20072-20696&quot;} -->
+<h3 class="sectionedit13" id="ssh_server_configuration">SSH server configuration</h3>
+<div class="level3">
+
+<p>
+To access an <abbr title="Secure Shell">SSH</abbr> server you need to add your public key to a list of authorized keys.
+So add your pub key (<code>id_ed25519.pub</code>, <code>id_rsa.pub</code>) to the <code>/root/.ssh/authorized_keys</code> or to the <code>/etc/dropbear/authorized_keys</code>.
+In LuCI you can do that with <code>System / Administration / <abbr title="Secure Shell">SSH</abbr>-Keys</code>.
+</p>
+
+<p>
+For a remote tunnel you also should allow <code>GatewayPorts</code> on the server.
+For the Dropbear you can edit its config <code>vi /etc/config/dropbear</code>, add the <code>option GatewayPorts 1</code>, reload it with <code>service dropbear reload</code>.
+</p>
+
+<p>
+Or by using UCI:
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> dropbear.<span class="sy0">@</span>dropbear<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.GatewayPorts=<span class="nu0">1</span>
+uci commit</pre>
+
+<p>
+For the OpenSSHd you need to edit the <code>/etc/ssh/sshd_config</code>, add the <code>GatewayPorts yes</code>, reload with <code>service sshd reload</code>.
+</p>
+
+<p>
+mak
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;SSH server configuration&quot;,&quot;hid&quot;:&quot;ssh_server_configuration&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:13,&quot;range&quot;:&quot;20697-21485&quot;} -->
+<h3 class="sectionedit14" id="see_also">See also</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> <a href="https://www.youtube.com/watch?v=xrtqq9fVq34" class="urlextern" title="https://www.youtube.com/watch?v=xrtqq9fVq34" rel="ugc nofollow">Video: Setup SSH tunnel on router</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://eko.one.pl/?p=openwrt-sshtunnel" class="urlextern" title="https://eko.one.pl/?p=openwrt-sshtunnel" rel="ugc nofollow">OpenWrt - Reverse SSH tunnel</a> in Polish</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://gist.github.com/ssalonen/9755dfd631a60951a369d563bb20cd71" class="urlextern" title="https://gist.github.com/ssalonen/9755dfd631a60951a369d563bb20cd71" rel="ugc nofollow">OpenWrt SSH tunnel</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://blog.thestateofme.com/2022/10/26/socks-proxy-ssh-tunnels-on-openwrt/" class="urlextern" title="https://blog.thestateofme.com/2022/10/26/socks-proxy-ssh-tunnels-on-openwrt/" rel="ugc nofollow">howto: SOCKS Proxy SSH Tunnels on OpenWRT</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/DerekGn/OpenWrt/wiki/OpenWrt-SSH-Tunneling" class="urlextern" title="https://github.com/DerekGn/OpenWrt/wiki/OpenWrt-SSH-Tunneling" rel="ugc nofollow">howto: OpenWrt SSH Tunneling</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/yurt-page/sshtunnel" class="urlextern" title="https://github.com/yurt-page/sshtunnel" rel="ugc nofollow">sshtunnel SystemD</a> port of the sshtunnel to other SystemD based Linux distros (Ubuntu, Debian etc).</div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/services/vpn/pppossh/start" class="wikilink1" title="docs:guide-user:services:vpn:pppossh:start" data-wiki-id="docs:guide-user:services:vpn:pppossh:start">pppossh</a> an L3 tunnel over <abbr title="Secure Shell">SSH</abbr></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://gist.github.com/kylekyle/fcbb7b93ad9816915b31022a17f19cea" class="urlextern" title="https://gist.github.com/kylekyle/fcbb7b93ad9816915b31022a17f19cea" rel="ugc nofollow">sshuttle</a> - a Python based <abbr title="Secure Shell">SSH</abbr> <abbr title="Virtual Private Network">VPN</abbr>.</div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/services/ssh/autossh" class="wikilink1" title="docs:guide-user:services:ssh:autossh" data-wiki-id="docs:guide-user:services:ssh:autossh">autossh</a> - an older <abbr title="Secure Shell">SSH</abbr> re-connection tool</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://manpages.debian.org/testing/openssh-client/ssh_config.5.html" class="urlextern" title="https://manpages.debian.org/testing/openssh-client/ssh_config.5.html" rel="ugc nofollow">man ssh_config — OpenSSH client configuration file. Manual</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://manpages.debian.org/testing/openssh-client/ssh.1.html" class="urlextern" title="https://manpages.debian.org/testing/openssh-client/ssh.1.html" rel="ugc nofollow">man ssh — OpenSSH client. Manual</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/yrutschle/sslh" class="urlextern" title="https://github.com/yrutschle/sslh" rel="ugc nofollow">sslh</a> - multiplexer proxy (e.g. share <abbr title="Secure Shell">SSH</abbr> and <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr>)</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;See also&quot;,&quot;hid&quot;:&quot;see_also&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:14,&quot;range&quot;:&quot;21486-&quot;} -->

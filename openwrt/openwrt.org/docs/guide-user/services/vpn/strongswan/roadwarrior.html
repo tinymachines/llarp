@@ -1,0 +1,973 @@
+
+<h1 class="sectionedit1" id="ipsec_modern_ikev2_road-warrior_configuration">IPsec Modern IKEv2 Road-Warrior Configuration</h1>
+<div class="level1">
+
+<p>
+IPsec Road-Warrior Configuration: Android (app), Windows 7+ (native), iOS9+ (native) BB10 (native), PlayBook, Dtek mobile devices.
+</p>
+
+<p>
+The basic context of the so-called “road warrior” configuration:
+</p>
+<ol>
+<li class="level1"><div class="li"> Your OpenWrt router is the firewalled IPsec host or gateway that receives requests to connect from mobile IPsec users</div>
+</li>
+<li class="level1"><div class="li"> IPsec users have a dynamically assigned (private) <abbr title="Internet Protocol">IP</abbr> outside your private net which changes frequently.</div>
+</li>
+<li class="level1"><div class="li"> IPsec users frequently move around roaming across different networks.</div>
+</li>
+<li class="level1"><div class="li"> IPsec users require access to both internal and external resources (full tunnel support) through a “gateway”.</div>
+</li>
+</ol>
+
+<p>
+<a href="/_detail/media/doc/howtos/ipsecnet.gif?id=docs%3Aguide-user%3Aservices%3Avpn%3Astrongswan%3Aroadwarrior" class="media" title="media:doc:howtos:ipsecnet.gif"><img src="/_media/media/doc/howtos/ipsecnet.gif" class="media" loading="lazy" alt="" /></a>
+</p>
+
+<p>
+This is an IPsec IKEv2 setup that recreates the usual client-server <abbr title="Virtual Private Network">VPN</abbr> setup. Everything else (PPTP, IPsec IKEv1+xauth, L2TP/IPsec IKEv1, TUN/TAP-based <abbr title="Transport Layer Security">TLS</abbr> <abbr title="Virtual Private Network">VPN</abbr>)in my opinion is obsolete and should not be used for new deployments. IKEv2 is built-in to any modern <abbr title="Operating System">OS</abbr>. It is supported in Android as well using the Strongswan app.
+</p>
+
+<p>
+A note about terminology. IPsec is not a client-server protocol, and it is not a <abbr title="Virtual Private Network">VPN</abbr> protocol either. Hence, it is incorrect to talk about IPsec servers or IPsec clients. However, on this page, we talk about IPsec-based <abbr title="Virtual Private Network">VPN</abbr> servers and clients indicating the IPsec gateway or IPsec users respectively.
+</p>
+
+<p>
+This configuration makes use of various authentication mechanisms: a certificate-based one and two EAP-based methods using either a username/password challenge (EAP-MSCHAPv2) or certificates (EAP-<abbr title="Transport Layer Security">TLS</abbr>). They can also be used in parallel by implementing a double round authentication for an added layer of security if your client supports that configuration. 
+</p>
+
+<p>
+Examples would be a phone or laptop that wants to <abbr title="Virtual Private Network">VPN</abbr> into a private home network.
+Note that Strongswan&#039;s IKEv2 with MOBIKE lets you leave <abbr title="Virtual Private Network">VPN</abbr> up ALL the time on a phone with near-zero battery drain or perceptible performance hit. The benefits of this cannot be overstated for the road warrior.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;IPsec Modern IKEv2 Road-Warrior Configuration&quot;,&quot;hid&quot;:&quot;ipsec_modern_ikev2_road-warrior_configuration&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1998&quot;} -->
+<h2 class="sectionedit2" id="prerequisites">Prerequisites</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Supported version of OpenWrt (opkg will complain about kernel version if not).</div>
+</li>
+<li class="level1"><div class="li"> You probably want to have 16MB flash for strongswan to fit in. And 64MB ram to run it properly.</div>
+</li>
+<li class="level1"><div class="li"> <a href="/packages/pkgdata/strongswan-full" class="wikilink1" title="packages:pkgdata:strongswan-full" data-wiki-id="packages:pkgdata:strongswan-full">package: strongswan-full</a> (use <code>opkg install strongswan-full</code> to install)</div>
+</li>
+<li class="level1"><div class="li"> <a href="/packages/pkgdata/kmod-crypto-ccm" class="wikilink1" title="packages:pkgdata:kmod-crypto-ccm" data-wiki-id="packages:pkgdata:kmod-crypto-ccm">package: kmod-crypto-ccm</a> &amp; <a href="/packages/pkgdata/kmod-crypto-sha256" class="wikilink1" title="packages:pkgdata:kmod-crypto-sha256" data-wiki-id="packages:pkgdata:kmod-crypto-sha256">package: kmod-crypto-sha256</a> (use <code>opkg install kmod-crypto-ccm kmod-crypto-sha256</code> to install them if you can&#039;t connect and logread complained about something like “netlink error: Function not implemented”)</div>
+</li>
+<li class="level1"><div class="li"> OpenSSL (<a href="/packages/pkgdata_owrt18_6/libopenssl" class="wikilink1" title="packages:pkgdata_owrt18_6:libopenssl" data-wiki-id="packages:pkgdata_owrt18_6:libopenssl">package: libopenssl</a>) (to make the .p12 or PKCS#12 package you distribute to clients)</div>
+</li>
+<li class="level1"><div class="li"> Depending on the build, you may also need <a href="/packages/pkgdata/kmod-crypto-gcm" class="wikilink1" title="packages:pkgdata:kmod-crypto-gcm" data-wiki-id="packages:pkgdata:kmod-crypto-gcm">package: kmod-crypto-gcm</a> (<a href="https://github.com/openwrt/packages/issues/16595" class="urlextern" title="https://github.com/openwrt/packages/issues/16595" rel="ugc nofollow">more info</a>)</div>
+</li>
+<li class="level1"><div class="li"> <a href="/packages/pkgdata/openssl-util" class="wikilink1" title="packages:pkgdata:openssl-util" data-wiki-id="packages:pkgdata:openssl-util">package: openssl-util</a> (to make the .p12 or PKCS#12 package you distribute to clients)</div>
+</li>
+<li class="level1"><div class="li"> If OpenWRT-LEDE version is less than 17.0.5 then patch the <code>\lib\functions.sh</code> file line 161 to:</div>
+</li>
+</ul>
+<pre class="code">			modprobe $m || :</pre>
+<hr />
+<ul>
+<li class="level1"><div class="li"> Tested on OpenWrt Barrier Breaker r37092-r39879 through to the current (July 2017) Openwrt Designated Driver 50107 on WNDR3700v2.</div>
+</li>
+<li class="level1"><div class="li"> Tested on <strong>LEDE Reboot 17.01.4 r3560-79f57e422d / LuCI lede-17.01 branch (git-18.147.69097-36945b5)</strong> on <strong>D-Link DIR-885L</strong></div>
+</li>
+<li class="level1"><div class="li"> Tested on <strong>CHAOS CALMER (15.05.1, r48532)</strong> on <strong>Generic Broadcom BCM47xx board</strong></div>
+</li>
+<li class="level1"><div class="li"> Tested on <strong>OpenWrt 19.07 branch (git-20.057.55219-13dd17f) / OpenWrt 19.07.2 r10947-65030d81f3</strong> on <strong>HiWiFi HC5962</strong></div>
+</li>
+<li class="level1"><div class="li"> [newly updated swanctl configuration] Tested on <strong>OpenWrt 22.03 branch (git-22.245.77528-487e58a) / OpenWrt 22.03.0 r19685-512e76967f</strong> on <strong>Phicomm K3</strong> (ARMv7 v7I, bcm53xx/generic)</div>
+</li>
+</ul>
+<hr />
+
+<p>
+To make sure Strongswan runs, you can type 
+For ipsec config:
+<code>/etc/init.d/ipsec start</code>
+For swanctl config, normally you&#039;ll see connections successfully loaded (no failed ones):
+<code>/etc/init.d/swanctl start</code>
+and/or
+<code>swanctl --load-all</code>
+Note for <strong>swanctl</strong>: you probably don&#039;t what <code>ipsec.*</code> files in <code>/etc</code> and you may want to run <code>/etc/init.d/ipsec disable</code> if you are migrating from ipsec config. Ipsec.conf still works on 22.03, but not as stable. You may need to manually restart as it often failed to start when the system starts.
+</p>
+
+<p>
+For testing, you will want to run logread in a scrolling window as follows:
+</p>
+
+<p>
+<code>logread &amp;&amp; logread -f</code>
+</p>
+
+<p>
+We&#039;re going to edit the following:
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong>/etc/strongswan.conf</strong>: Strongswan configuration file </div>
+</li>
+<li class="level1"><div class="li"> <strong>/etc/config/firewall</strong>: Firewall changes to allow <abbr title="Virtual Private Network">VPN</abbr> traffic</div>
+</li>
+</ul>
+
+<p>
+for ipsec config (openwrt ~21.xx)
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong>/etc/ipsec.conf</strong>: Tunnel definitions</div>
+</li>
+<li class="level1"><div class="li"> <strong>/etc/ipsec.secrets</strong>: List of secrets and keys</div>
+</li>
+<li class="level1"><div class="li"> <strong>/etc/ipsec.d</strong>: Folder for certificates</div>
+</li>
+</ul>
+
+<p>
+for swanctl config (openwrt 22.xx+)
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong>/etc/swanctl</strong>: Folder for swanctl config</div>
+</li>
+</ul>
+
+<p>
+<strong> Note after openssl-util packages are installed: </strong>
+You may want to disable LUCI&#039;s (actually uhttp&#039;s) https redirection by commenting out the two <code>list listen_https</code> lines in <code>/etc/config/uhttpd</code> file.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Prerequisites&quot;,&quot;hid&quot;:&quot;prerequisites&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;1999-5235&quot;} -->
+<h2 class="sectionedit3" id="strongswanconf">strongswan.conf</h2>
+<div class="level2">
+<pre class="code">charon {
+        load_modular=yes
+        dns1 = 10.0.0.1
+        nbns1 = 10.0.0.1
+        plugins {
+                include strongswan.d/charon/*.conf
+        }
+}
+include strongswan.d/*.conf
+
+include /var/ipsec/strongswan.conf</pre>
+
+<p>
+In this setup, the IKEv2 daemon will assign the router <abbr title="Internet Protocol">IP</abbr> as <abbr title="Domain Name System">DNS</abbr> and WINS server to be used by remote clients. For example, here we use servers available on the private <abbr title="Local Area Network">LAN</abbr>, but you can use public ones as well if you like, even for debug-only purposes. If the server runs on the same device you are configuring this strongswan instance, make sure that <abbr title="Domain Name System">DNS</abbr> server is configured to serve local <abbr title="Domain Name System">DNS</abbr> queries, as requests from virtual clients will appear as originating from inside the router. The default <abbr title="Domain Name System">DNS</abbr> server in OpenWrt, dnsmasq, has such an option: make sure it&#039;s enabled.
+The <code>load_modular</code> option allows <code>charon</code> to dynamically load required plugins. Note that in earlier versions of StrongSwan (5.1.1 or earlier), you may find that charon plugins are not loading dynamically. You can spot it by changing <code>charondebug</code> in <code>ipsec.conf</code> to check. If you must use an older version, try explicitly telling charon which plugins you want by adding <code>load = ...</code> to charon like this:
+</p>
+<pre class="code">charon {
+load = aes des sha1 sha2 md5 pem pkcs1 gmp random nonce x509 revocation hmac stroke kernel-netlink socket-default updown attr farp dhcp
+.....</pre>
+
+<p>
+The above issue seems to have been resolved in 5.1.2 according to the 
+<a href="https://wiki.strongswan.org/projects/strongswan/wiki/PluginLoad" class="urlextern" title="https://wiki.strongswan.org/projects/strongswan/wiki/PluginLoad" rel="ugc nofollow">Wiki here.</a>
+Replace the <abbr title="Internet Protocol">IP</abbr> addresses with the appropriate values for your INTERNAL network. In this and other examples, I expect your private internal network to be 10.0.1.0/24. This means that your <abbr title="Local Area Network">LAN</abbr> network will still be 10.0.0.0/24 and your <abbr title="Virtual Private Network">VPN</abbr> clients will connect to your <abbr title="Local Area Network">LAN</abbr> zone using 1.0.1.0/24, so directions do not overlap.
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>dns1</code> entry tells <code>charon</code> (the IKEv2 service) where to go for <abbr title="Domain Name System">DNS</abbr> - typically the OpenWrt host.</div>
+</li>
+<li class="level1"><div class="li"> <code>nbns1</code> entry tells <code>charon</code> where to go for NetBIOS name services if you want to use windows file sharing.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;strongswan.conf&quot;,&quot;hid&quot;:&quot;strongswanconf&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;5236-7364&quot;} -->
+<h2 class="sectionedit4" id="ipsecconf">ipsec.conf</h2>
+<div class="level2">
+
+<p>
+<strong>Please note</strong>: you don&#039;t want this part if you are going to use swanctl (recommended for OpenWRT 22.03+). Check the swanctl config part below.
+</p>
+
+<p>
+Note that the server is always authenticated via public key, both for certificate-based (pubkey and eap-tls) and username/password-based (eap-mschapv2) client authentication configurations. This REQUIRES you to install certificates on the server and clients. You can choose one or more from the below example configurations, although certificate-based ones are recommended. For certificate-based configurations, if ALL your clients support this feature, you could optionally require an additional username/password-based challenge round. 
+</p>
+<pre class="code">config setup
+
+conn %default
+        keyexchange=ikev2
+        ike=aes256-aes128-sha1-sha256-modp2048-modp3072
+        esp=aes128-aes256-sha256-modp3072-modp2048,aes128-aes256-sha256
+        left=%any
+        leftauth=pubkey
+        leftcert=serverCert_myvpnserver.dyndns.org.pem
+        leftid=myvpnserver.dyndns.org
+        leftsubnet=0.0.0.0/0;::/0
+        right=%any
+        rightsourceip=10.0.1.0/24
+        #rightdns=8.8.8.8
+        eap_identity=%identity
+        auto=add
+
+conn rwPUBKEY
+        rightauth=pubkey
+        rightcert=clientCert_myvpnclient.pem
+        #rightauth2=eap-mschapv2
+
+conn rwPUBKEYIOS
+        leftsendcert=always
+        rightid=myVpnClients
+        rightauth=pubkey
+        rightcert=clientCert_myvpnclient.pem
+
+conn rwEAPTLS
+        rightauth=eap-tls
+        rightcert=clientCert_myvpnclient.pem
+        #rightauth2=eap-mschapv2
+
+conn rwEAPTLSIOS
+        leftsendcert=always
+        rightid=myVpnClients
+        rightauth=eap-tls
+        rightcert=clientCert_myvpnclient.pem
+
+conn rwEAPMSCHAPV2
+        leftsendcert=always
+        rightauth=eap-mschapv2
+        rightsendcert=never
+</pre>
+
+<p>
+Explanation:
+The notion of “left” and “right” is explained in the strongswan documentation, but briefly, “left” here is the “Local” (Left = Local) or private net you want access to, and “right” is the “Remote” (Right = Remote) or client side.
+</p>
+<ul>
+<li class="level1"><div class="li"> The <code>config setup</code> block is needed but can be empty</div>
+</li>
+<li class="level1"><div class="li"> The <code>conn %default</code> block provides default settings if you plan on adding more profiles.</div>
+</li>
+<li class="level1"><div class="li"> The <code>ike =</code> specify the preferred ciphersuite for the main IKE_SA. Other ciphersuites your strongswan version accepts by default will remain available unless this option ends with an exclamation mark <code>!</code>, the <strong>aes256-aes128-sha1-sha256-modp2048-modp3072</strong> value is the bare minimum for a secure IKE proposal, make sure your clients are at least matching this. Use a stronger preference if you like.</div>
+</li>
+<li class="level1"><div class="li"> The <code>esp =</code> specify the preferred ciphersuite for the ESP CHILD_SA. Other ciphersuites your strongswan version accepts by default will remain available unless this option ends with an exclamation mark <code>!</code>, the <strong>aes128-aes256-sha256-modp3072-modp2048,aes128-aes256-sha256</strong> value is the bare minimum for a secure ESP proposal, make sure your clients are at least matching this. Use a stronger preference if you like. Here we prefer aes128 for better performances as it&#039;s still on par with SHA256 cryptographic strength. Differently from IKE, we have no HMAC-SHA1 because it is not considered safe for a large amounts of ESP traffic. We specify Diffie-Hellman groups in the first preferred proposal to enable Perfect Forward Secrecy (PFS) as each ESP rekey will also imply reauthentication like initially done for IKE. Clients not using PFS are also allowed by the second preferred proposal where no DH groups are specified.</div>
+</li>
+<li class="level1"><div class="li"> <code>conn roadwarriorPUBKRY</code> is our roadwarrior configuration for pure “IKEv2 Certificate” authenticated clients.</div>
+</li>
+<li class="level1"><div class="li"> <code>conn roadwarriorPUBKRYIOS</code> is our roadwarrior configuration for pure “IKEv2 Certificate” authenticated clients (select Certificate in iOS <abbr title="Virtual Private Network">VPN</abbr> settings)</div>
+</li>
+<li class="level1"><div class="li"> <code>conn roadwarriorEAPTLS</code> is our roadwarrior configuration for “IKEv2 EAP” via EAP-<abbr title="Transport Layer Security">TLS</abbr>, aka “EAP Certificate”</div>
+</li>
+<li class="level1"><div class="li"> <code>conn roadwarriorEAPTLSIOS</code> is our roadwarrior configuration for “IKEv2 EAP” via EAP-<abbr title="Transport Layer Security">TLS</abbr>, aka “EAP Certificate” (select None then Certificate for iOS <abbr title="Virtual Private Network">VPN</abbr> settings)</div>
+</li>
+<li class="level1"><div class="li"> <code>conn roadwarriorEAPMSCHAPV2</code> is our roadwarrior configuration for “IKEv2 EAP” via EAP-MSCHAPv2, aka “EAP Password”</div>
+</li>
+<li class="level1"><div class="li"> <code>leftauth = pubkey</code> tells the host to use certificates.</div>
+</li>
+<li class="level1"><div class="li"> <code>leftid =</code> the <abbr title="Fully Qualified Domain Name">FQDN</abbr> you put in the cert as subjectAltName (see “--san” option when you make your certs below). Note that it could be anything as long as it matches what you set on the client. Use of dyndns (in the example) is advised if your gateway is also assigned a dynamic address.</div>
+</li>
+<li class="level1"><div class="li"> <code>leftsubnet =</code> the scope of <abbr title="Virtual Private Network">VPN</abbr>. 0.0.0.0/0 is a full tunnel, meaning ALL traffic will go through the <abbr title="Virtual Private Network">VPN</abbr>. You can put 10.0.0.0/24 if you want your clients on 10.0.1.0/24 to use the <abbr title="Virtual Private Network">VPN</abbr> to reach ONLY those addresses and your private net is 10.0.0.0/24. The full tunnel option is more secure because it prevents a client from acting as a bridge.</div>
+</li>
+<li class="level1"><div class="li"> <code>leftsendcert = always</code> required by iOS native IKEv2 client</div>
+</li>
+<li class="level1"><div class="li"> <code>right = %any</code> lets any peer <abbr title="Internet Protocol">IP</abbr> connect. (remote user)</div>
+</li>
+<li class="level1"><div class="li"> <code>rightid = myVpnClients</code> lets iOS client match its Local ID with a SAN in its client certificate.</div>
+</li>
+<li class="level1"><div class="li"> <code>rightdns = 8.8.8.8</code> Feel free to enable this to push <abbr title="Domain Name System">DNS</abbr> to clients.</div>
+</li>
+<li class="level1"><div class="li"> <code>rightsourceip</code> = the pool of internal addresses to use for the <abbr title="Virtual Private Network">VPN</abbr> clients. You may want to assign multiple clients IPs from a subnet that doesn&#039;t overlap any of your private LANs (on 10.0.0.0/24), like in this example, setting to something like 10.0.1.0/24. Note that if you have only ONE client connecting, you could use 10.0.1.100<strong>/32</strong> instead, which means that only 1 single host can connect and it will be given that address 10.0.1.100. Otherwise, if you like the clients to be part of the same private subnet you can set this to a single address or a subnet portion that is free and not overlapping with <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> ranges. Finally, you may alternatively set this to <code>%dhcp</code> and configure <code>/etc/strongswan.d/charon/dhcp.conf</code> accordingly if you want the client&#039;s addresses to be released by <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr>.</div>
+</li>
+<li class="level1"><div class="li"> <code>rightcert = </code> the cert the client needs</div>
+</li>
+<li class="level1"><div class="li"> <code>rightauth = pubkey</code> as in roadwarriorPUBKEY section, requires the client to authenticate via pure IKEv2 certificates.</div>
+</li>
+<li class="level1"><div class="li"> <code>rightauth = eap-tls</code> as in roadwarriorEAPTLS section, requires the client to authenticate via EAP using EAP-<abbr title="Transport Layer Security">TLS</abbr> method, which is another way of doing certificate-based auth not directly within IKEv2.</div>
+</li>
+<li class="level1"><div class="li"> <code>#rightauth2 = eap-mschapv2</code> uncomment to enable, requires the client to authenticate via “IKEv2 ... <strong>+ EAP</strong>” which means to perform a second auth round via EAP using the EAP-MSCHAPv2 method (aka “EAP username and password”), but this is not supported on iOS and Windows native IKEv2 clients. Because of strongswan limitations, you can&#039;t simultaneously support both single round and double round auth for pubkey authenticated roadwarrior clients (=clients connecting from unknown network locations)</div>
+</li>
+<li class="level1"><div class="li"> <code>eap_identity = %identity</code> tells strongswan to ask the client for its specific identity to be used in EAP auth, instead of using its IKEv2 identity (ip address).</div>
+</li>
+</ul>
+
+<p>
+If you want to issue personal certificates to your clients then you should verify the signing CA&#039;s identity instead of the client certificates themselves. To achieve this, use the <code>rightca=“C=US, O=yyy, CN=xxxx”</code> directive instead of <code>rightcert</code>, where <code>yyy</code> and <code>xxxx</code> are what you choose in the next steps at Making Keys. More information on this: <a href="http://wiki.strongswan.org/projects/strongswan/wiki/ConnSection" class="urlextern" title="http://wiki.strongswan.org/projects/strongswan/wiki/ConnSection" rel="ugc nofollow">strongSwan documentation</a>
+With the above configuration, you will need to also install caCert.pem on your clients in addition to the client cert - see the &#039;Making Keys&#039; section below.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;ipsec.conf&quot;,&quot;hid&quot;:&quot;ipsecconf&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:4,&quot;range&quot;:&quot;7365-15106&quot;} -->
+<h2 class="sectionedit5" id="etcswanctlfor_swanctl-style_config">/etc/swanctl/* for swanctl-style config</h2>
+<div class="level2">
+
+<p>
+If you are running Openwrt 22.03+, you probably want this instead of ipsec. We are going to demonstrate setting up a <code>swanctl.conf</code> and corresponding files to a similar configuration as the above ipsec configuration. Please note: we are using “default” proposals provided by strongswan here as the test shows they work well with present clients (apps/oses&#039; default settings).
+</p>
+
+<p>
+0. Certificates (including (.pem) key files). Make them and put them in corresponding directories according to the “making of certificate/key files” section above. If you are migrating from ipsec config, move the files in swanctl directory: <code>/etc/ipsec.d/cacerts/*</code> → <code>/etc/swanctl/x509ca/*</code> ; <code>/etc/ipsec.d/private/*</code> → <code>/etc/swanctl/private/*</code> ; <code>/etc/ipsec.d/certs/*</code> → <code>/etc/swanctl/x509/*</code>
+</p>
+
+<p>
+1. Create a <code>/etc/swanctl/common.conf</code> file as a counterpart of <code>conn %default</code> settings in <code>ipsec.conf</code> as <code>swanctl.conf</code> does not have such <code>%default</code> part but needs to use <code>include</code> to do so.
+</p>
+<pre class="code">      local_addrs  = 0.0.0.0/0,::/0
+      remote_addrs = 0.0.0.0/0,::/0
+      local {
+         auth = pubkey
+         certs = serverCert_myvpnserver.dyndns.org.pem
+         id = myvpnserver.dyndns.org
+      }
+      children {
+         ikev2clients {
+            local_ts  = 0.0.0.0/0;::/0
+            esp_proposals = default
+         }
+      }
+      pools = strongswanippool 
+      unique = never
+      version = 2
+      proposals = default</pre>
+
+<p>
+<strong>for some reason, you do want to replace <code>proposals = default</code> with the following if you are using a later release of openwrt 22.03</strong>
+</p>
+<pre class="code">      proposals = aes256-aes128-sha256-modp3072-modp2048-modp1024</pre>
+
+<p>
+2. Create main settings in Create a <code>/etc/swanctl/swanctl.conf</code>
+</p>
+<pre class="code">connections {
+   rw-eapmschapv2 {
+      include ./common.conf
+      remote-eapmschapv2 {
+         auth = eap-mschapv2
+         eap_id = %any
+      }
+      send_certreq = no
+      send_cert = always
+   }
+   rw-eapmschapv2ios {
+      include ./common.conf
+      remote-eapmschapv2ios {
+         auth = eap-mschapv2
+         eap_id = %any
+      }
+      send_certreq = no
+      send_cert = always
+   }
+   rw-eaptls {
+      include ./common.conf
+      remote-eaptls {
+         auth = eap-tls
+         certs = clientCert_myvpnclient.pem
+      }
+      send_certreq = no
+   }
+   rw-eaptlsios {
+      include ./common.conf
+      remote-eaptlsios {
+         auth = eap-tls
+         certs = clientCert_myvpnclient.pem
+         id = myVpnClients
+      }
+      send_certreq = no
+      send_cert = always
+   }
+   rw-pubkey {
+      include ./common.conf
+      remote-pubkey {
+         auth = pubkey
+         certs = clientCert_myvpnclient.pem
+      }
+      send_certreq = no
+   }
+   rw-pubkeyios {
+      include ./common.conf
+      remote-pubkeyios {
+         auth = pubkey
+         certs = clientCert_myvpnclient.pem
+         id = myVpnClients
+      }
+      send_certreq = no
+      send_cert = always
+   }
+}
+
+secrets {
+   rsa- {
+      filename=&quot;serverKey_myvpnserver.dyndns.org.pem&quot;
+   }
+   eap-remoteuser {
+      id = remoteusername 
+      secret = secretpassword
+   }
+}
+
+pools {
+    strongswanippool {
+        addrs = 10.0.1.0/24
+	# dns = 8.8.8.8
+    }
+}
+
+# Include config snippets
+include conf.d/*.conf
+
+include /var/swanctl/swanctl.conf</pre>
+
+<p>
+3. If you are upgrading from an old router setting (installed strongswan in older OpenWrt versions and did a system upgrade keeping the settings, reinstalled <code>strongswan-full</code>), you may want to make sure you have the newly added (as you may find in <code>.conf-opkg</code> files) second <code>include</code> part in <code>/etc/swanctl/swanctl.conf</code>
+</p>
+<pre class="code">include /var/swanctl/swanctl.conf</pre>
+
+<p>
+and <code>/etc/strongswan.conf</code>
+</p>
+<pre class="code">include /var/ipsec/strongswan.conf</pre>
+
+<p>
+Also, you may want to rename/remove all <code>/etc/ipsec.*</code> files to keep strongswan from using them.
+You may want to run <code>/etc/init.d/ipsec disable</code> (as well as <code>/etc/init.d/ipsec stop</code>)
+</p>
+
+<p>
+4. Check the config
+</p>
+<pre class="code bash">swanctl <span class="re5">--load-all</span></pre>
+
+<p>
+You&#039;ll see 6 connections loaded successfully if everything goes well. Otherwise, check the prompts to see what went wrong.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;\/etc\/swanctl\/* for swanctl-style config&quot;,&quot;hid&quot;:&quot;etcswanctlfor_swanctl-style_config&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:5,&quot;range&quot;:&quot;15107-19285&quot;} -->
+<h2 class="sectionedit6" id="ipsecsecrets">ipsec.secrets</h2>
+<div class="level2">
+
+<p>
+<strong>Please note</strong>: you don&#039;t want this part if you are going to use swanctl (recommended for OpenWRT 22.03+). Check the swanctl config part below.
+</p>
+
+<p>
+This configures the key used by the server to authenticate itself against the client, and valid client credentials for any EAP authentication round did via eap-mschapv2 with user/password. Change name according to your certificate name in <code>/etc/ipsec.d/certs/</code>.
+</p>
+<pre class="code">: RSA serverKey_myvpnserver.dyndns.org.pem
+remoteusername : EAP &quot;secretpassword&quot;</pre>
+
+<p>
+You can skip/ignore this last line if you don&#039;t use eap-mschapv2 authentication.
+Replace <code>remoteusername</code> and <code>secretpassword</code> with the values you want.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;ipsec.secrets&quot;,&quot;hid&quot;:&quot;ipsecsecrets&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:6,&quot;range&quot;:&quot;19286-19977&quot;} -->
+<h2 class="sectionedit7" id="making_keys">Making Keys</h2>
+<div class="level2">
+
+<p>
+You will need the certs/keys no matter what kind of config (ipsec/swanctl) you are using.
+</p>
+
+<p>
+To make keys, run this script and follow on-screen instructions. It is intended to be run on the OpenWrt router, but you can also manually run the first half on Linux/WSL and move the needed key and certs into the router thereafter.
+</p>
+
+<p>
+Existing CACert would be retained for new server/client certs.
+Remove/rename client* if you want to regenerate clientCert for another user.
+</p>
+<pre class="code bash"><span class="co0">#!/bin/sh</span>
+<span class="kw3">cd</span> ~
+<span class="re2">COUNTRYNAME</span>=<span class="st0">&quot;US&quot;</span>
+<span class="re2">CANAME</span>=<span class="st0">&quot;xxxxca&quot;</span>
+<span class="re2">ORGNAME</span>=<span class="st0">&quot;yyy&quot;</span>
+<span class="re2">SERVERDOMAINNAME</span>=<span class="st0">&quot;myvpnserver.dyndns.org&quot;</span>
+<span class="re2">CLIENTNAMES</span>=<span class="st0">&quot;myvpnclient&quot;</span> <span class="co0"># or more &quot; … myvpnclient2 muvpnclient3&quot;</span>
+<span class="re2">SHAREDSAN</span>=<span class="st0">&quot;myVpnClients&quot;</span> <span class="co0"># iOS clients need to match a common SAN</span>
+&nbsp;
+<span class="kw3">echo</span> <span class="st0">&quot;Building certificates for [ <span class="es2">$SERVERDOMAINNAME</span> ] and client [ <span class="es2">$CLIENTNAME</span> (aka <span class="es2">$SHAREDSAN</span>) ] &quot;</span>
+&nbsp;
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-f</span> <span class="st0">&quot;caKey.pem&quot;</span> <span class="br0">&#93;</span> ; <span class="kw1">then</span>
+  <span class="kw3">echo</span> <span class="st0">&quot;caKey exists, using existing caKey for signing serverCert and clientCert....&quot;</span>
+<span class="kw1">elif</span> <span class="br0">&#91;</span> <span class="re5">-f</span> <span class="st0">&quot;ca.p12&quot;</span> <span class="br0">&#93;</span> ; <span class="kw1">then</span>
+  <span class="kw3">echo</span> <span class="st0">&quot;CA keys bundle exists, accessing existing protected caKey for signing serverCert and clientCert....&quot;</span>
+  openssl pkcs12 <span class="re5">-in</span> ca.p12 <span class="re5">-nocerts</span> <span class="re5">-out</span> caKey.pem
+<span class="kw1">else</span>
+  <span class="kw3">echo</span> <span class="st0">&quot;generating a new cakey for [ <span class="es2">$CANAME</span> ]&quot;</span>
+  ipsec pki <span class="re5">--gen</span> <span class="re5">--outform</span> pem <span class="sy0">&gt;</span> caKey.pem
+<span class="kw1">fi</span>
+<span class="kw3">echo</span> <span class="st0">&quot;generating caCert for [ <span class="es2">$CANAME</span> ]...&quot;</span>
+ipsec pki <span class="re5">--self</span> <span class="re5">--lifetime</span> <span class="nu0">3652</span> <span class="re5">--in</span> caKey.pem <span class="re5">--dn</span> <span class="st0">&quot;C=<span class="es2">$COUNTRYNAME</span>, O=<span class="es2">$ORGNAME</span>, CN=<span class="es2">$CANAME</span>&quot;</span> <span class="re5">--ca</span> <span class="re5">--outform</span> pem <span class="sy0">&gt;</span> caCert.pem
+openssl x509 <span class="re5">-inform</span> PEM <span class="re5">-outform</span> DER <span class="re5">-in</span> caCert.pem <span class="re5">-out</span> caCert.crt
+<span class="kw3">echo</span> <span class="st0">&quot;Now building CA keys bundle, choose a secure password known by IPsec Administrator ONLY&quot;</span>
+openssl pkcs12 <span class="re5">-export</span> <span class="re5">-inkey</span> caKey.pem <span class="re5">-in</span> caCert.pem <span class="re5">-name</span> <span class="st0">&quot;<span class="es2">$CANAME</span>&quot;</span> <span class="re5">-certfile</span> caCert.pem <span class="re5">-caname</span> <span class="st0">&quot;<span class="es2">$CANAME</span>&quot;</span> <span class="re5">-out</span> ca.p12
+&nbsp;
+<span class="kw3">echo</span> <span class="st0">&quot;generating server certificates for [ <span class="es2">$SERVERDOMAINNAME</span> ]... &quot;</span>
+ipsec pki <span class="re5">--gen</span> <span class="re5">--outform</span> pem <span class="sy0">&gt;</span> serverKey_<span class="re1">$SERVERDOMAINNAME</span>.pem
+ipsec pki <span class="re5">--pub</span> <span class="re5">--in</span> serverKey_<span class="re1">$SERVERDOMAINNAME</span>.pem <span class="sy0">|</span> ipsec pki <span class="re5">--issue</span> <span class="re5">--lifetime</span> <span class="nu0">3652</span> <span class="re5">--cacert</span> caCert.pem <span class="re5">--cakey</span> caKey.pem <span class="re5">--dn</span> <span class="st0">&quot;C=<span class="es2">$COUNTRYNAME</span>, O=<span class="es2">$ORGNAME</span>, CN=<span class="es2">$SERVERDOMAINNAME</span>&quot;</span> <span class="re5">--san</span>=<span class="st0">&quot;<span class="es2">$SERVERDOMAINNAME</span>&quot;</span> <span class="re5">--flag</span> serverAuth <span class="re5">--flag</span> ikeIntermediate <span class="re5">--outform</span> pem <span class="sy0">&gt;</span> serverCert_<span class="re1">$SERVERDOMAINNAME</span>.pem
+<span class="co0">#openssl x509 -inform PEM -outform DER -in serverCert_$SERVERDOMAINNAME.pem -out serverCert_$SERVERDOMAINNAME.crt</span>
+&nbsp;
+<span class="kw1">for</span> CLIENTNAME <span class="kw1">in</span> <span class="re1">$CLIENTNAMES</span>; <span class="kw1">do</span>
+  <span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-f</span> <span class="st0">&quot;clientCert_<span class="es2">$CLIENTNAME</span>.pem&quot;</span> <span class="br0">&#93;</span> ; <span class="kw1">then</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;clientCert for [ <span class="es2">$CLIENTNAME</span> ] exists, not generating new clientCert.&quot;</span>
+    <span class="kw3">continue</span>
+  <span class="kw1">fi</span>
+  <span class="kw3">echo</span> <span class="st0">&quot;generating clientCert for [ <span class="es2">$CLIENTNAME</span> (aka <span class="es2">$SHAREDSAN</span>) ]...&quot;</span>
+  ipsec pki <span class="re5">--gen</span> <span class="re5">--outform</span> pem <span class="sy0">&gt;</span> clientKey_<span class="re1">$CLIENTNAME</span>.pem
+  ipsec pki <span class="re5">--pub</span> <span class="re5">--in</span> clientKey_<span class="re1">$CLIENTNAME</span>.pem <span class="sy0">|</span> ipsec pki <span class="re5">--issue</span> <span class="re5">--lifetime</span> <span class="nu0">3652</span> <span class="re5">--cacert</span> caCert.pem <span class="re5">--cakey</span> caKey.pem <span class="re5">--dn</span> <span class="st0">&quot;C=<span class="es2">$COUNTRYNAME</span>, O=<span class="es2">$ORGNAME</span>, CN=<span class="es2">$CLIENTNAME</span>&quot;</span> <span class="re5">--san</span>=<span class="st0">&quot;<span class="es2">$CLIENTNAME</span>&quot;</span> <span class="re5">--san</span>=<span class="st0">&quot;<span class="es2">$SHAREDSAN</span>&quot;</span> <span class="re5">--outform</span> pem <span class="sy0">&gt;</span> clientCert_<span class="re1">$CLIENTNAME</span>.pem
+  openssl x509 <span class="re5">-inform</span> PEM <span class="re5">-outform</span> DER <span class="re5">-in</span> clientCert_<span class="re1">$CLIENTNAME</span>.pem <span class="re5">-out</span> clientCert_<span class="re1">$CLIENTNAME</span>.crt
+  <span class="kw3">echo</span> <span class="st0">&quot;Now building Client keys bundle for [ <span class="es2">$CLIENTNAME</span> ], choose a secure password known by that Client ONLY (this password will only be required to install certificate and key, not for IPsec authentication)&quot;</span>
+  openssl pkcs12 <span class="re5">-export</span> <span class="re5">-inkey</span> clientKey_<span class="re1">$CLIENTNAME</span>.pem <span class="re5">-in</span> clientCert_<span class="re1">$CLIENTNAME</span>.pem <span class="re5">-name</span> <span class="st0">&quot;<span class="es2">$CLIENTNAME</span>&quot;</span> <span class="re5">-certfile</span> caCert.pem <span class="re5">-caname</span> <span class="st0">&quot;<span class="es2">$CANAME</span>&quot;</span> <span class="re5">-out</span> client_<span class="re1">$CLIENTNAME</span>.p12
+  <span class="kw2">rm</span> clientKey_<span class="re1">$CLIENTNAME</span>.pem
+  openssl x509 <span class="re5">-inform</span> PEM <span class="re5">-outform</span> DER <span class="re5">-in</span> clientCert_<span class="re1">$CLIENTNAME</span>.pem <span class="re5">-out</span> clientCert_<span class="re1">$CLIENTNAME</span>.crt
+<span class="kw1">done</span>
+<span class="kw2">rm</span> caKey.pem</pre>
+
+<p>
+# where to put them
+For ipsec config:
+</p>
+<pre class="code bash"><span class="kw2">cp</span> caCert.pem <span class="sy0">/</span>etc<span class="sy0">/</span>ipsec.d<span class="sy0">/</span>cacerts<span class="sy0">/</span>
+<span class="kw3">echo</span> <span class="st0">&quot;copy ca.p12 /somewhere/safe/on/your/pc (includes caCert and caKey, needed to generate more certs for more clients)&quot;</span>
+<span class="kw2">cp</span> serverCert<span class="sy0">*</span>.pem <span class="sy0">/</span>etc<span class="sy0">/</span>ipsec.d<span class="sy0">/</span>certs<span class="sy0">/</span>
+<span class="kw2">cp</span> serverKey<span class="sy0">*</span>.pem <span class="sy0">/</span>etc<span class="sy0">/</span>ipsec.d<span class="sy0">/</span>private<span class="sy0">/</span> <span class="co0"># keep on your router only, delete and regenerate a fresh one if router gets compromised</span>
+<span class="kw2">rm</span> serverKey<span class="sy0">*</span>.pem
+<span class="kw2">cp</span> clientCert<span class="sy0">*</span>.pem <span class="sy0">/</span>etc<span class="sy0">/</span>ipsec.d<span class="sy0">/</span>certs<span class="sy0">/</span> <span class="co0"># not needed if you authenticate via righca instead of rightcert</span>
+<span class="kw3">echo</span> <span class="st0">&quot;copy client_*.p12 /somewhere/safe/on/your/clients&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;copy caCert.crt and clientCert_*.crt to /somewhere/safe/on/your/clients for Android clients&quot;</span></pre>
+
+<p>
+For swanctl config: if you are going to use swanctl (recommended for OpenWRT 22.03+), you need to put them in /etc/swanctl/[corresponding_sub_dir] . Check the swanctl config part below for details.
+</p>
+<pre class="code bash"><span class="kw2">cp</span> caCert.pem <span class="sy0">/</span>etc<span class="sy0">/</span>swanctl<span class="sy0">/</span>x509ca<span class="sy0">/</span>
+<span class="kw3">echo</span> <span class="st0">&quot;copy ca.p12 /somewhere/safe/on/your/pc (includes caCert and caKey, needed to generate more certs for more clients)&quot;</span>
+<span class="kw2">cp</span> serverCert<span class="sy0">*</span>.pem <span class="sy0">/</span>etc<span class="sy0">/</span>swanctl<span class="sy0">/</span>x509<span class="sy0">/</span>
+<span class="kw2">cp</span> serverKey<span class="sy0">*</span>.pem <span class="sy0">/</span>etc<span class="sy0">/</span>swanctl<span class="sy0">/</span>private<span class="sy0">/</span> <span class="co0"># keep on your router only, delete and regenerate a fresh one if router gets compromised</span>
+<span class="kw2">rm</span> serverKey<span class="sy0">*</span>.pem
+<span class="kw2">cp</span> clientCert<span class="sy0">*</span>.pem <span class="sy0">/</span>etc<span class="sy0">/</span>swanctl<span class="sy0">/</span>x509<span class="sy0">/</span>
+<span class="kw3">echo</span> <span class="st0">&quot;copy client_*.p12 /somewhere/safe/on/your/clients&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;copy caCert.crt and clientCert_*.crt to /somewhere/safe/on/your/clients for Android clients&quot;</span></pre>
+
+<p>
+Now install client.p12 on the clients. Note that caCert has been included already in the client.p12 if you used the above commands. If the client platform requires you to install the CA certificate separately, extract that cert from client.p12 or use the <code>caCert.crt</code> file, then install it.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Making Keys&quot;,&quot;hid&quot;:&quot;making_keys&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:7,&quot;range&quot;:&quot;19978-25158&quot;} -->
+<h2 class="sectionedit8" id="etcconfigfirewall">/etc/config/firewall</h2>
+<div class="level2">
+
+<p>
+Add the following to your firewall configuration. You can use Luci for this.
+</p>
+<pre class="code bash">config rule <span class="st_h">'ipsec_esp'</span>
+	option src <span class="st_h">'wan'</span>
+	option name <span class="st_h">'IPSec ESP'</span>
+	option proto <span class="st_h">'esp'</span>
+	option target <span class="st_h">'ACCEPT'</span>
+&nbsp;
+config rule <span class="st_h">'ipsec_ike'</span>
+	option src <span class="st_h">'wan'</span>
+	option name <span class="st_h">'IPSec IKE'</span>
+	option proto <span class="st_h">'udp'</span>
+	option dest_port <span class="st_h">'500'</span>
+	option target <span class="st_h">'ACCEPT'</span>
+&nbsp;
+config rule <span class="st_h">'ipsec_nat_traversal'</span>
+	option src <span class="st_h">'wan'</span>
+	option name <span class="st_h">'IPSec NAT-T'</span>
+	option proto <span class="st_h">'udp'</span>
+	option dest_port <span class="st_h">'4500'</span>
+	option target <span class="st_h">'ACCEPT'</span>
+&nbsp;
+config rule <span class="st_h">'ipsec_auth_header'</span>
+	option src <span class="st_h">'wan'</span>
+	option name <span class="st_h">'Auth Header'</span>
+	option proto <span class="st_h">'ah'</span>
+	option target <span class="st_h">'ACCEPT'</span></pre>
+
+<p>
+for swanctl config, you probably want to add this too:
+</p>
+<pre class="code">config rule
+        option name &#039;AllowIPsec2WAN&#039;
+        list proto &#039;all&#039;
+        option src &#039;wan&#039;
+        option dest &#039;wan&#039;
+        option target &#039;ACCEPT&#039;</pre>
+
+<p>
+Explanation:
+Basically, you&#039;re opening up the ports/protocols on the <abbr title="Wide Area Network">WAN</abbr> zone that strongswan needs to accept traffic from a client. You can also create a custom zone called “<abbr title="Virtual Private Network">VPN</abbr>” if you want to get fancy. Please see <a href="https://forum.openwrt.org/t/traffic-is-dropped-for-ipsec-with-firewall4" class="urlextern" title="https://forum.openwrt.org/t/traffic-is-dropped-for-ipsec-with-firewall4" rel="ugc nofollow">this forum post</a> for more details on how to do that with <em>fw4</em> and <em>nftables</em>.
+</p>
+
+<p>
+For swanctl part, as we used a policy-based <abbr title="Virtual Private Network">VPN</abbr>, your virtual IPs would be installed on the “outbound” interface on the server, which is usually your wan interface, such as pppoe-wan or something. And your version of OpenWRT probably uses nftables instead of iptables for the firewall, it would block <abbr title="Wide Area Network">WAN</abbr> interface to forward by default which makes sense if it only accepts packets to its own <abbr title="Internet Protocol">IP</abbr>. But as virtual IPs are considered originated from this interface, they would be dropped by the rule banning all forwarding happening to the packets sent by your virtual <abbr title="Internet Protocol">IP</abbr> (and arrived on <abbr title="Wide Area Network">WAN</abbr> interface first). They will never make their way to srcnat or something to <abbr title="Network Address Translation">NAT</abbr> ““back”” (from <abbr title="Wide Area Network">WAN</abbr>) to WANZONE. By adding this AllowIPsec2WAN, you can allow your <abbr title="Virtual Private Network">VPN</abbr> clients to access the internet (wan) while accessing your lan.
+</p>
+
+<p>
+You will also need additional rules in <code>/etc/firewall.user</code>. Note that strongswan mentions the <code>leftfirewall=yes</code> setting in <code>ipsec.conf</code> which was used to add the iptables entries using the <code>_updown</code> script in <code>/usr/libexec/ipsec/_updown</code> but this has been deprecated and doesn&#039;t do anything.
+</p>
+
+<p>
+<code>firewall.user:</code>
+</p>
+<pre class="code bash">iptables <span class="re5">-I</span> INPUT  <span class="re5">-m</span> policy <span class="re5">--dir</span> <span class="kw1">in</span> <span class="re5">--pol</span> ipsec <span class="re5">--proto</span> esp <span class="re5">-j</span> ACCEPT
+iptables <span class="re5">-I</span> FORWARD  <span class="re5">-m</span> policy <span class="re5">--dir</span> <span class="kw1">in</span> <span class="re5">--pol</span> ipsec <span class="re5">--proto</span> esp <span class="re5">-j</span> ACCEPT
+iptables <span class="re5">-I</span> FORWARD  <span class="re5">-m</span> policy <span class="re5">--dir</span> out <span class="re5">--pol</span> ipsec <span class="re5">--proto</span> esp <span class="re5">-j</span> ACCEPT
+iptables <span class="re5">-I</span> OUTPUT   <span class="re5">-m</span> policy <span class="re5">--dir</span> out <span class="re5">--pol</span> ipsec <span class="re5">--proto</span> esp <span class="re5">-j</span> ACCEPT
+iptables <span class="re5">-t</span> nat <span class="re5">-I</span> POSTROUTING <span class="re5">-m</span> policy <span class="re5">--pol</span> ipsec <span class="re5">--dir</span> out <span class="re5">-j</span> ACCEPT</pre>
+
+<p>
+Explanation:
+You&#039;re accepting INPUT, FORWARD(in/out) and OUTPUT traffic originated from and directed to clients matching an IPsec policy. The last rule exempts traffic that matches an IPsec policy from being <abbr title="Network Address Translation">NAT</abbr>-ed before tunneling. You wouldn&#039;t be able to reach or ping roadwarrior clients without this last rule.
+</p>
+
+<p>
+In order for your <abbr title="Virtual Private Network">VPN</abbr> clients to be able to reach the Internet through this OpenWrt router, you&#039;ll need to <abbr title="Network Address Translation">NAT</abbr> (or SNAT) them. In case you assigned a <code>rightsourceip</code> which belongs to the same subnet of your <code>lan</code> interface this NATing is done already by default. Otherwise, if you use <code>rightsourceip</code> from a separate subnet you need to explicitly do so by also adding the line below replacing <code>&lt;YOURWANIF&gt;</code> accordingly (NOTE: this should be done from <code>/etc/config/firewall</code> directly.
+</p>
+<pre class="code bash">iptables <span class="re5">-t</span> nat <span class="re5">-I</span> POSTROUTING <span class="re5">-s</span> 10.0.1.0<span class="sy0">/</span><span class="nu0">24</span> <span class="re5">-o</span> <span class="sy0">&lt;</span>YOURWANIF<span class="sy0">&gt;</span> <span class="re5">-j</span> MASQUERADE</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;\/etc\/config\/firewall&quot;,&quot;hid&quot;:&quot;etcconfigfirewall&quot;,&quot;codeblockOffset&quot;:14,&quot;secid&quot;:8,&quot;range&quot;:&quot;25159-28851&quot;} -->
+<h3 class="sectionedit9" id="fix_port_forwards">Fix Port Forwards</h3>
+<div class="level3">
+
+<p>
+Note: this shouldn&#039;t be needed if you set <abbr title="Virtual Private Network">VPN</abbr> client&#039;s <abbr title="Network Address Translation">NAT</abbr> from appropriate /etc/config/firewall locations instead of doing this from firewall.user as explained above.
+</p>
+
+<p>
+If you have Port Forwards configured, especially if they are on port 80 and/or 443, you will notice that all of the internet-bound traffic will be redirected to the port forward target. To work around this, using LuCI navigate to the Port Forward, then Edit, then on the Advanced Settings tab under “Extra arguments” add 
+</p>
+<pre class="code">-m policy --dir in --pol none</pre>
+
+<p>
+Explication: <code>-m policy</code> uses the iptables policy module, and matching on the <code>--pol none</code> means no policy. To match on traffic that came from IPSEC, it would have been <code>--pol ipsec</code>. The reason this is needed is IPSEC in the kernel shows as coming from the <abbr title="Wide Area Network">WAN</abbr> interface even after it&#039;s decrypted (rather than from, say, a special virtual IPSEC interface).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Fix Port Forwards&quot;,&quot;hid&quot;:&quot;fix_port_forwards&quot;,&quot;codeblockOffset&quot;:18,&quot;secid&quot;:9,&quot;range&quot;:&quot;28852-29779&quot;} -->
+<h3 class="sectionedit10" id="for_blackberry_clients">For BlackBerry Clients</h3>
+<div class="level3">
+
+<p>
+BlackBerry allows you to specify Perfect Forward Secrecy. You will want/need this. This should be standard.
+If you have problems with preferred ciphersuites being too strong, try relaxing them in ipsec.conf file this way:
+</p>
+<pre class="code"> ike=aes256-aes128-sha1-modp1024
+ esp=aes128-aes256-sha1-modp1024,es128-aes256-sha1</pre>
+
+<p>
+What this does is specify what cipher suites is preferred, including the <strong>unsecure</strong> MODP1024 for Diffie-Hellman Group which is no more part of default strongswan acceptable proposals. Avoid using the above weak and broken ciphersuite preference whenever possible.
+You can read about these settings in the <a href="https://wiki.strongswan.org/projects/strongswan/wiki/IKEv2CipherSuites" class="urlextern" title="https://wiki.strongswan.org/projects/strongswan/wiki/IKEv2CipherSuites" rel="ugc nofollow">strongswan IKEv2 cipher suite documentation</a>.
+</p>
+
+</div>
+
+<h4 id="as_pubkey_roadwarriors">as PUBKEY roadwarriors</h4>
+<div class="level4">
+
+<p>
+Import your certificates into the Berry first, then add a <abbr title="Virtual Private Network">VPN</abbr> profile with the following settings:
+</p>
+<ul>
+<li class="level1"><div class="li"> Your gateway type will be “Generic IKEv2 <abbr title="Virtual Private Network">VPN</abbr> Server”,</div>
+</li>
+<li class="level1"><div class="li"> Authentication Type = <abbr title="Public Key Infrastructure">PKI</abbr>,</div>
+</li>
+<li class="level1"><div class="li"> Authentication ID Type= Identity Certificate Distinguished Name</div>
+</li>
+<li class="level1"><div class="li"> Client Certificate = The name of your client cert (“myvpnclient” in the above example)</div>
+</li>
+<li class="level1"><div class="li"> Gateway Auth Type = <abbr title="Public Key Infrastructure">PKI</abbr></div>
+</li>
+<li class="level1"><div class="li"> Gateway Auth ID Type = Identify Certificate Distinguished Name</div>
+</li>
+<li class="level1"><div class="li"> Gateway CA Certificate = your server Certificate name (“xxxx” in the above example)</div>
+</li>
+<li class="level1"><div class="li"> Perfect Forward Secrecy = On (VERY IMPORTANT)</div>
+</li>
+<li class="level1"><div class="li"> Automatically determine <abbr title="Internet Protocol">IP</abbr> = ON</div>
+</li>
+<li class="level1"><div class="li"> Automatically determine <abbr title="Domain Name System">DNS</abbr> = ON</div>
+</li>
+<li class="level1"><div class="li"> Automatically determine algorithm = ON</div>
+</li>
+</ul>
+
+<p>
+The rest can be left to defaults.
+</p>
+
+<p>
+If you receive an Authentication Error you can try to use distinguished name (DN) of your server&#039;s certificate instead of the <abbr title="Fully Qualified Domain Name">FQDN</abbr> for the <code>leftid</code> property. It is <code>C=US, O=yyy, CN=myvpnserver.dyndns.org</code> in the example above, but you can find out yours using the command below and looking for the <code>Subject</code> field
+</p>
+<pre class="code">openssl x509 -in /etc/ipsec.d/certs/serverCert.pem -text -noout</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;For BlackBerry Clients&quot;,&quot;hid&quot;:&quot;for_blackberry_clients&quot;,&quot;codeblockOffset&quot;:19,&quot;secid&quot;:10,&quot;range&quot;:&quot;29780-31729&quot;} -->
+<h2 class="sectionedit11" id="road-warriors_configuration">Road-Warriors configuration</h2>
+<div class="level2">
+
+<p>
+For testing, the original author of this page used a Blackberry Z10 with NATIVE Ikev2 support (LOVE your Blackberry), an Android phone with the strongSwan app, Windows 7 and 10+ machines using native IKEv2, and a Blackberry DTek running Android with DTek.
+We have also tested newer (12+) Android versions (for now, tested on 12 and 13) with the system&#039;s native IPSec <abbr title="Virtual Private Network">VPN</abbr> capability which works as expected.
+</p>
+
+<p>
+Hint: you can easily email client certs .p12 bundles (and caCert.crt, if needed) to the mobile device users. 
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Road-Warriors configuration&quot;,&quot;hid&quot;:&quot;road-warriors_configuration&quot;,&quot;codeblockOffset&quot;:21,&quot;secid&quot;:11,&quot;range&quot;:&quot;31730-32288&quot;} -->
+<h3 class="sectionedit12" id="for_windows_clients">For Windows Clients</h3>
+<div class="level3">
+
+<p>
+Windows natively supports IKEv2 since Windows 7.
+</p>
+
+<p>
+By default, Windows uses an old ciphersuite which is not secure and is no more allowed by strongswan defaults. Read <a href="https://web.archive.org/web/20190908105454/https://www.stevenjordan.net/2016/09/secure-ikev2-win-10.html" class="urlextern" title="https://web.archive.org/web/20190908105454/https://www.stevenjordan.net/2016/09/secure-ikev2-win-10.html" rel="ugc nofollow">here</a> to learn how to edit the Windows registry in order to enable <strong>aes256-sha1-modp2048</strong> for IKE. Other ciphers, including more robust ESP proposals and PFS, are available via 
+<a href="https://docs.microsoft.com/en-us/powershell/module/vpnclient/set-vpnconnectionipsecconfiguration?view=win10-ps" class="urlextern" title="https://docs.microsoft.com/en-us/powershell/module/vpnclient/set-vpnconnectionipsecconfiguration?view=win10-ps" rel="ugc nofollow">Set-VpnConnectionIPsecConfiguration</a> PowerShell cmdlet.
+</p>
+
+<p>
+It is <strong>not recommended</strong> to add back the legacy ciphersuite in ipsec.conf to allow Windows clients to connect with default settings. Use the above registry or PowerShell tweaks to match the bare minimum proposals in the provided above ipsec.conf example.
+</p>
+
+</div>
+
+<h4 id="as_pubkey_roadwarriors1">as PUBKEY roadwarriors</h4>
+<div class="level4">
+
+<p>
+You will need administrative rights to set up this kind of <abbr title="Virtual Private Network">VPN</abbr> connection. Only traditional desktop editions are supported.
+</p>
+
+<p>
+In windows, import your client and CA certificates into <strong>Local Machine</strong> storage, not Current User. If you followed this tutorial the CA certificate is already in a bundle with the client cert into the client.p12 package, just take care of importing, again, into <strong>Local Machine</strong> and keep selecting the option to automatically choose the appropriate certificate store. At the end of the import, you should have the CA in “Trusted Root Certification Authorities\Certificates” store and the client cert in “My\Certificates” store.
+</p>
+
+<p>
+Follow these instructions to set up the Windows <abbr title="Virtual Private Network">VPN</abbr> connection for using Machine Certificates: <a href="https://supportforums.cisco.com/docs/DOC-24022" class="urlextern" title="https://supportforums.cisco.com/docs/DOC-24022" rel="ugc nofollow">https://supportforums.cisco.com/docs/DOC-24022</a>
+</p>
+
+<p>
+Please note: this Machine Certificates setup uses Device certificate/key installed in <strong>Local Machine</strong> keystore and it is not based on EAP. Windows <strong>does not</strong> support EAP with Device certificate/key from <strong>Local Machine</strong> keystore for native <abbr title="Virtual Private Network">VPN</abbr> client.
+</p>
+
+</div>
+
+<h4 id="as_eaptls_roadwarriors">as EAPTLS roadwarriors</h4>
+<div class="level4">
+
+<p>
+You don&#039;t need administrative rights to set up this kind of <abbr title="Virtual Private Network">VPN</abbr> connection, but you still need to be an admin in order to import the CA cert only. Modern WinRT-based editions are also supported (including WP8+ mobile editions).
+</p>
+
+<p>
+In Windows, import your client and CA certificate into <strong>Current User</strong>, not Local Machine. If you followed this tutorial the CA certificate is already in a bundle with the client cert into the client.p12 package, just take care of importing, again, into <strong>Current User</strong> and keep selecting the option to automatically choose the appropriate certificate store. At the end of the import, you should have the CA in “Trusted Root Certification Authorities\Certificates” store and the client cert in “My\Certificates” store. Now you need to import this CA as <strong>Local Machine</strong>, you can do it by using the standalone CA cert from the bove steps or export it from the <strong>Current User</strong> CA store after p12 import is done.
+</p>
+
+<p>
+Create a new <abbr title="Virtual Private Network">VPN</abbr> connection from the wizard, choose IKEv2 as the type, and select “Certificate” for the authentication method. Connect, and pick your “myvpnclient” cert when prompted. Please note, split-tunneling is enabled by default in Windows 10+ (just google for “disable Split Tunneling Windows” or read here: <a href="https://docs.microsoft.com/en-us/powershell/module/vpnclient/set-vpnconnection?view=win10-ps#examples" class="urlextern" title="https://docs.microsoft.com/en-us/powershell/module/vpnclient/set-vpnconnection?view=win10-ps#examples" rel="ugc nofollow">https://docs.microsoft.com/en-us/powershell/module/vpnclient/set-vpnconnection?view=win10-ps#examples</a>.
+</p>
+
+<p>
+Please note: this EAP-<abbr title="Transport Layer Security">TLS</abbr> setup uses User certificate/key installed in <strong>Current User</strong> keystore. Windows <strong>does not</strong> support EAP (including EAP-<abbr title="Transport Layer Security">TLS</abbr>) with Device certificate/key from <strong>Local Machine</strong> keystore for native <abbr title="Virtual Private Network">VPN</abbr> client.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;For Windows Clients&quot;,&quot;hid&quot;:&quot;for_windows_clients&quot;,&quot;codeblockOffset&quot;:21,&quot;secid&quot;:12,&quot;range&quot;:&quot;32289-35921&quot;} -->
+<h3 class="sectionedit13" id="for_android_clients">For Android Clients</h3>
+<div class="level3">
+
+<p>
+A CA certificated has to be installed prior for a <abbr title="Virtual Private Network">VPN</abbr> set up. Download you caCert.crt file to your phone (via email, net-drive, <abbr title="Instant Messaging">IM</abbr> or something) and goto your phone&#039;s “settings” app. Search for “credential storage” / “install certificate” and select “CA certificate”. Choose the file (caCert.crt) you just downloaded to your phone and install it.
+</p>
+
+<p>
+Starting with Android 11 a native IKEv2 implementation is available. For some reason, it didn&#039;t work until Android 12.
+</p>
+
+<p>
+Android 12 IKEv2 works just fine but it doesn&#039;t allow using HMAC-SHA1 for the CHILD_SA. This wouldn&#039;t be an issue unless you explicitly excluded - for whatever reasons - greater integrity algorithms.
+</p>
+
+<p>
+For authentication, Android 12 only supports “IKEv2/IPsec RSA” (which is pure “IKEv2 Certificate” PUBKEY authentication), “IKEv2/IPsec PSK” (which is not supported on this page because it&#039;s hard to keep secure), and “IKEv2/IPsec MSCHAPv2” (which is EAP-MSCHAPv2). It does not support EAP-<abbr title="Transport Layer Security">TLS</abbr>, nor any second authentication round.
+</p>
+
+</div>
+
+<h4 id="as_pubkey_roadwarriors2">as PUBKEY roadwarriors</h4>
+<div class="level4">
+
+<p>
+You need to install the p12 private cert package from the import certificate wizard (Settings → Security → Cryptography and credentials → Install certificate &gt; User certificate for apps and <abbr title="Virtual Private Network">VPN</abbr>.
+Give that credentials bundle a name you can easily distinguish from any other installed certs. You don&#039;t need to install the CA cert separately as it is included in the p12 bundle. After install, you can check into Settings → Security → Cryptography and credentials → User credentials → <em>myvpnclient</em>, you will see it includes an user certificate, an user private key and the CA certificate.
+</p>
+
+<p>
+Then you can go into Settings → Network → <abbr title="Virtual Private Network">VPN</abbr> → + and choose:
+</p>
+<ol>
+<li class="level1"><div class="li"> Name: give a name to your <abbr title="Virtual Private Network">VPN</abbr></div>
+</li>
+<li class="level1"><div class="li"> Type: IKEv2/IPsec RSA</div>
+</li>
+<li class="level1"><div class="li"> Server address: myvpnserver.dyndns.org</div>
+</li>
+<li class="level1"><div class="li"> IPsec identifier: myvpnclient</div>
+</li>
+<li class="level1"><div class="li"> IPsec user certificate: pick the one you previously imported, it contains both a private key and a user certificate with a matching public key</div>
+</li>
+<li class="level1"><div class="li"> IPsec CA certificate: pick the one you previously imported, it also contains the CA certificate with the public key</div>
+</li>
+<li class="level1"><div class="li"> IPsec server certificate: leave as default “(received from server)”</div>
+</li>
+</ol>
+
+</div>
+
+<h4 id="as_eapmschapv2_roadwarriors">as EAPMSCHAPV2 roadwarriors</h4>
+<div class="level4">
+
+<p>
+You&#039;ll need your CA certificate installed as mentioned before, but you don&#039;t need your user certificate.
+</p>
+
+<p>
+Then you can go into Settings → Network → <abbr title="Virtual Private Network">VPN</abbr> → + and choose:
+</p>
+<ol>
+<li class="level1"><div class="li"> Name: give a name to your <abbr title="Virtual Private Network">VPN</abbr></div>
+</li>
+<li class="level1"><div class="li"> Type: IKEv2/IPsec MSCHAPv2</div>
+</li>
+<li class="level1"><div class="li"> Server address: myvpnserver.dyndns.org</div>
+</li>
+<li class="level1"><div class="li"> IPsec identifier: remoteusername  ←-your_user_name</div>
+</li>
+<li class="level1"><div class="li"> IPsec CA certificate: pick the one you previously imported, it also contains the CA certificate with the public key</div>
+</li>
+<li class="level1"><div class="li"> IPsec server certificate: leave as default “(received from server)”</div>
+</li>
+<li class="level1"><div class="li"> Proxy: None</div>
+</li>
+<li class="level1"><div class="li"> Username: remoteusername  ←-your_user_name</div>
+</li>
+<li class="level1"><div class="li"> Password: secretpassword  ←-your_pass_word</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;For Android Clients&quot;,&quot;hid&quot;:&quot;for_android_clients&quot;,&quot;codeblockOffset&quot;:21,&quot;secid&quot;:13,&quot;range&quot;:&quot;35922-38797&quot;} -->
+<h3 class="sectionedit14" id="for_strongswan_android_s_app_clients">For strongSwan Android&#039;s App Clients</h3>
+<div class="level3">
+
+<p>
+If you get a ciphersuite proposal error in your log (eg. “… unacceptable, requesting …”, “NO_PROPOSAL_CHOSEN”, “no acceptable proposal found”), you need to override the default ciphersuites proposal in your StrongSwan <abbr title="Virtual Private Network">VPN</abbr> Profile with something your router supports.
+</p>
+
+<p>
+To do that, click Edit on the Profile, and scroll to the bottom to <strong>Advanced settings</strong>.
+At the bottom, you will find a section called <strong>Algorithms</strong>.
+</p>
+
+<p>
+If the error relates to IKE_SA, edit <em>IKEv2 Algorithms</em>, downgrade to <strong>aes256-aes128-sha256-sha1-modp3072-modp2048</strong>  or whatever crypto algorithms your router and strongswan version supports for IKE.<br/>
+
+If the error relates to CHILD_SA, edit <em>IPsec/ESP Algorithms</em>, downgrade to <strong>aes128-aes256-sha256-modp3072-modp2048,aes128-aes256-sha256</strong> or <strong>aes128-aes256-sha256-sha1-modp3072-modp2048-modp1024,aes128-aes256-sha256-sha1</strong> or whatever crypto algorithms your router supports for ESP.<br/>
+
+Save, and then try to connect again. Please, avoid using weak or <strong>broken</strong> algorithms, and also avoid using too strong ESP algorithms your router doesn&#039;t handle with good performance.
+</p>
+
+</div>
+
+<h4 id="as_pubkey_roadwarriors3">as PUBKEY roadwarriors</h4>
+<div class="level4">
+
+<p>
+In Android, go to “Settings &gt; Security” to import certificates.
+</p>
+
+<p>
+If you can see both client certificate and CA certificate in the Trusted Credentials - User, you can use “IKEv2 Certificate” or “IKEv2 Certificate + EAP”
+</p>
+
+<p>
+In the Strongswan client, specify “IKEv2 Certificate” (“+ EAP” if you enabled second round auth) as the type of <abbr title="Virtual Private Network">VPN</abbr>, pick “myvpnclient” for the certificate you just imported, and eventually specify the username/password combo you added to <code>/etc/ipsec.secrets</code> (or the secrets section of /etc/swanctl/swanctl.conf if you are using swanctl config) for second round auth. Keep an eye on the log file (see above) during the initial login to spot any issues. 
+</p>
+
+<p>
+If you can only see CA certificate in Android certificate storage, strongswan client app would probably be unable to pick up your client certificate too. But you can still use IKEv2 + MSCHAPv2 aka “IKEv2 EAP (Username/Password)”, simply input username/password as you&#039;ve set in ipsec.secrets (or the secrets section of /etc/swanctl/swanctl.conf if you are using swanctl config) and server hostname, then you should be up and running.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;For strongSwan Android&#039;s App Clients&quot;,&quot;hid&quot;:&quot;for_strongswan_android_s_app_clients&quot;,&quot;codeblockOffset&quot;:21,&quot;secid&quot;:14,&quot;range&quot;:&quot;38798-41098&quot;} -->
+<h3 class="sectionedit15" id="for_ios_clients">For iOS Clients</h3>
+<div class="level3">
+
+<p>
+Beginning with iOS 9, IKEv2 connections are natively supported.
+</p>
+
+<p>
+Versions of iOS prior to iOS 9 only support IKEv1. This setup is not recommended.  For versions of iOS prior to iOS 9, or to enable a double authentication round you will need to use a third-party app. Cisco&#039;s Anyconnect may work but has not been tested.
+</p>
+
+<p>
+iOS 12 client requires an additional directive <code>leftsendcert=always</code> in the ipsec.conf connection profile example or <code>send_cert = always</code> in swanctl.conf file mentioned above. If you encounter the “no matching peer config found” error (in the strongswan machine&#039;s log), please check “Local ID” on the iOS client side is set correctly as the rightid in ipsec.conf and matches one of the SANs of the client certificate (e.g. the SHAREDSAN).
+</p>
+
+</div>
+
+<h4 id="as_pubkeyios_roadwarriors">as PUBKEYIOS roadwarriors</h4>
+<div class="level4">
+
+<p>
+You must install the CA certificate (<code>caCert.crt</code>) and the personal certificate (<code>client.p12</code>) onto the device, such as by accessing through iCloud drive or an email attachment. You do not need to set the CA certificate to be trusted for websites. You&#039;ll need to do it one at a time. And make sure they are marked green as “Verified”. Install the CA certificate again if one is still “unverified” although you&#039;ve done both.
+</p>
+
+<p>
+It follows some sample iOS configurations, from Settings→<abbr title="Virtual Private Network">VPN</abbr>→Add Configuration.
+</p>
+<pre class="code">Type: IKEv2
+Description: &lt;your choice&gt;
+Server: &lt;domain name of VPN server: myvpnserver.dyndns.org&gt;
+Remote ID: &lt;same as Server&gt;
+Local ID: &lt;SHAREDSAN as in client certificate SAN as well as the rightid in ipsec.conf in IOS-related connection settings: myVpnClients&gt;
+User Authentication: **None**
+Use Cerificiate: enabled
+Certificate: select the certificate imported from client.p12</pre>
+
+</div>
+
+<h4 id="as_eaptlsios_roadwarriors">as EAPTLSIOS roadwarriors</h4>
+<div class="level4">
+
+<p>
+You must install the CA certificate (<code>caCert.crt</code>) and the personal certificate (<code>client.p12</code>) onto the device, such as by accessing through iCloud drive or an email attachment. You do not need to set the CA certificate to be trusted for websites. You&#039;ll need to do it one at a time. And make sure they are marked green as “Verified”. Install the CA certificate again if one is still “unverified” although you&#039;ve done both.
+</p>
+
+<p>
+It follows some sample iOS configurations, from Settings→<abbr title="Virtual Private Network">VPN</abbr>→Add Configuration.
+</p>
+<pre class="code">Type: IKEv2
+Description: &lt;your choice&gt;
+Server: &lt;domain name of VPN server: myvpnserver.dyndns.org&gt;
+Remote ID: &lt;same as Server&gt;
+Local ID: &lt;SHAREDSAN as in client certificate SAN as well as the rightid in ipsec.conf in IOS-related connection settings: myVpnClients&gt;
+User Authentication: **Certificate**
+Certificate: select the certificate imported from client.p12</pre>
+
+</div>
+
+<h4 id="as_eapmschapv2_roadwarriors1">as EAPMSCHAPV2 roadwarriors</h4>
+<div class="level4">
+
+<p>
+You must install the CA certificate (<code>caCert.crt</code>) onto the device, such as by accessing through iCloud drive or an email attachment. You do not need to set the CA certificate to be trusted for websites.
+</p>
+<pre class="code">Type: IKEv2
+Description: &lt;your choice&gt;
+Server: &lt;domain name of VPN server: myvpnserver.dyndns.org&gt;
+Remote ID: &lt;same as Server&gt;
+Local ID: &lt;can be left blank&gt;
+User Authentication: Username
+Username: &lt;the one you set in ipsec.secrets&gt;
+Password: &lt;the one you set in ipsec.secrets&gt;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;For iOS Clients&quot;,&quot;hid&quot;:&quot;for_ios_clients&quot;,&quot;codeblockOffset&quot;:21,&quot;secid&quot;:15,&quot;range&quot;:&quot;41099-&quot;} -->

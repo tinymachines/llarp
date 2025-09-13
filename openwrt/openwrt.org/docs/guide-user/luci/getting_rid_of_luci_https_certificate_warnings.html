@@ -1,0 +1,291 @@
+
+<h1 class="sectionedit1" id="how_to_get_rid_of_luci_https_certificate_warnings">How to get rid of LuCI HTTPS certificate warnings</h1>
+<div class="level1">
+
+<p>
+Do you like the security of using LuCI-<abbr title="Secure Socket Layer">SSL</abbr> (or Luci-<abbr title="Secure Socket Layer">SSL</abbr>-OpenSSL), but sick of the security warnings your browser gives you because of an invalid certificate?
+</p>
+
+<p>
+You can fix this by installing a certificate in LuCI that will be trusted automatically by most modern browsers (such as a (wildcard) certificate issued by Let&#039;s Encrypt) or by installing a self-signed certificate and manually telling your devices to trust this certificate.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;How to get rid of LuCI HTTPS certificate warnings&quot;,&quot;hid&quot;:&quot;how_to_get_rid_of_luci_https_certificate_warnings&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-499&quot;} -->
+<h1 class="sectionedit2" id="option_aautomatic_free_https_certificate_from_letsencrypt">Option A: Automatic free HTTPS certificate from LetsEncrypt</h1>
+<div class="level1">
+
+<p>
+This may only work if your router is accessible from the public internet. For detailed instructions, refer to <a href="/docs/guide-user/services/tls/acmesh" class="wikilink1" title="docs:guide-user:services:tls:acmesh" data-wiki-id="docs:guide-user:services:tls:acmesh">Get a free HTTPS certificate from LetsEncrypt for OpenWrt with ACME.sh</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Option A: Automatic free HTTPS certificate from LetsEncrypt&quot;,&quot;hid&quot;:&quot;option_aautomatic_free_https_certificate_from_letsencrypt&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;500-797&quot;} -->
+<h1 class="sectionedit3" id="option_binstalling_any_publicly_trusted_certificate">Option B: Installing any publicly trusted certificate</h1>
+<div class="level1">
+
+<p>
+These instructions are tested with a (wildcard) certificate issued by Let&#039;s Encrypt, but should work for any certificate signed by an official certificate authority. Pre-requisites for this option are:
+</p>
+<ul>
+<li class="level1"><div class="li"> You have control over a <strong>public domain name</strong> (e.g. <code>example.com</code>)</div>
+</li>
+<li class="level1"><div class="li"> You have configured a (local) <abbr title="Domain Name System">DNS</abbr> resolver to <strong>point</strong> (a subdomain of) <strong>your public domain name to the <abbr title="Internet Protocol">IP</abbr> address of the OpenWRT</strong> installation of interest. (For an individual machine this can be as simple as adding <code>192.168.0.1    openwrt.example.com</code> to <code>/etc/hosts/</code>.)</div>
+</li>
+<li class="level1"><div class="li"> You have access to <strong>a certificate file and its private key</strong> for the (sub)domain pointing to you OpenWRT installation. (E.g. a certificate signed by Let&#039;s Encrypt for <code>*.example.com</code>. For this, you must be able to publicly prove you own <code>example.com</code>, but you do not have to expose your OpenWRT installation to the public.)</div>
+</li>
+<li class="level1"><div class="li"> You have <strong>ssh access</strong> to your OpenWRT installation. We assume a ssh config has been set up so that <code>ssh openwrt</code> will be enough to get access.</div>
+</li>
+</ul>
+
+<p>
+Given these pre-requisites, there are three simple steps to start using your publicly trusted certificate. First we <strong>convert the certificate</strong> to a format LuCI/uhttpd likes. Next we put the converted certificate on the <strong>correct location</strong>. Lastly we <strong>restart <code>uhttpd</code></strong> to start using the certificate.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Option B: Installing any publicly trusted certificate&quot;,&quot;hid&quot;:&quot;option_binstalling_any_publicly_trusted_certificate&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;798-2217&quot;} -->
+<h3 class="sectionedit4" id="place_the_pem_files_at_the_right_location">Place the PEM files at the right location</h3>
+<div class="level3">
+
+<p>
+PEM files can be either individual or “inline” as a single file including cert, key, and CA (NGINX format.)  Should you use an inline, simply make two copies of it and name them according to the information that follows.  these PEM certificate files must be placed at <code>/etc/uhttpd.key</code> and <code>/etc/uhttpd.crt</code> on the OpenWRT installation respectively. Before doing this, you may want to back up whatever is currently stored at that location (e.g. <code>cp /etc/uhttpd.key /etc/uhttpd.key.bak</code> and <code>cp /etc/uhttpd.crt /etc/uhttpd.crt.bak</code>on the OpenWRT machine). Alternatively, configure uhttpd to look at another location by setting the <code>key</code> and <code>cert</code> paths (see <a href="/docs/guide-user/services/webserver/uhttpd" class="wikilink1" title="docs:guide-user:services:webserver:uhttpd" data-wiki-id="docs:guide-user:services:webserver:uhttpd">uhttpd</a>) Then, if you have <code>rsync</code> activated on OpenWRT, you can use:
+</p>
+<pre class="code">rsync /tmp/uhttpd.key openwrt:/etc/uhttpd.key
+rsync /tmp/uhttpd.crt openwrt:/etc/uhttpd.crt</pre>
+
+<p>
+where <code>openwrt</code> is recognised from your ssh config. If you do not want to use <code>rsync</code> you can use <code>scp</code> instead, or do a simple <code>cp</code> if you issued the <code>openssl</code> commands already on the OpenWRT machine. The main goal is to put the DER-formatted certificate files to wherever the <code>key</code> and <code>cert</code> parameters of <code>/etc/config/uhttpd</code> are pointing.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Place the PEM files at the right location&quot;,&quot;hid&quot;:&quot;place_the_pem_files_at_the_right_location&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;2218-3518&quot;} -->
+<h3 class="sectionedit5" id="activate_the_certificate">Activate the certificate</h3>
+<div class="level3">
+
+<p>
+Lastly, issue the following command to restart <code>uhttpd</code> and thereby start using the new certificate:
+</p>
+<pre class="code">ssh openwrt &quot;/etc/init.d/uhttpd restart&quot;</pre>
+
+<p>
+Now, when navigating to <code>openwrt.example.com</code> the connection should be automatically trusted. Note that, since all the above commands can be issued on an external machine with <code>ssh</code> access to the OpenWRT install, you can create a script to automatically update the certificate without having to touch OpenWRT yourself.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Activate the certificate&quot;,&quot;hid&quot;:&quot;activate_the_certificate&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:5,&quot;range&quot;:&quot;3519-4036&quot;} -->
+<h1 class="sectionedit6" id="option_ccreating_installing_trusting_a_self-signed_certificate">Option C: Creating, installing &amp; trusting a self-signed certificate</h1>
+<div class="level1">
+
+<p>
+With these instructions, you can generate your own self-signed certificate, which your browser will accept as valid.
+</p>
+
+<p>
+One new headache was that, browsers usually only look at one key part of a self-signed certificate, the CN (common name). However, starting with Chrome version 58, it not only looks at the CN (common name) in the certificate, but also at the SAN (subject alt name or <abbr title="Domain Name System">DNS</abbr> name), which makes generating a certificate more complicated than before. You might have even had a certificate you made yourself, that worked until recently, stop working when Chrome 58 was released and most likely automatically updated and installed.
+</p>
+
+<p>
+So, to get rid of the annoying “Warning, this is an insecure site, do you want to proceed?” warning messages, and other similar messages from other browsers, proceed with the following.
+</p>
+
+<p>
+I know it looks long, but it&#039;s easy and goes fast. Should take about 10 minutes tops.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Option C: Creating, installing &amp; trusting a self-signed certificate&quot;,&quot;hid&quot;:&quot;option_ccreating_installing_trusting_a_self-signed_certificate&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:6,&quot;range&quot;:&quot;4037-5035&quot;} -->
+<h2 class="sectionedit7" id="create_install">Create &amp; Install</h2>
+<div class="level2">
+<ol>
+<li class="level1"><div class="li"> Connect via <abbr title="Secure Shell">SSH</abbr></div>
+</li>
+<li class="level1"><div class="li"> Install the openssl-util and LuCI uhttpd packages. This is required to generate a new certificate in the way you want it to be, and to be able to easily tell LuCI how to use it. <br/>
+<pre class="code bash">opkg update <span class="sy0">&amp;&amp;</span> opkg <span class="kw2">install</span> openssl-util luci-app-uhttpd</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Create <code>/etc/ssl/myconfig.conf</code> with the following content: <br/>
+<dl class="file">
+<dt><a href="/_export/code/docs/guide-user/luci/getting_rid_of_luci_https_certificate_warnings?codeblock=3" title="Download Snippet" class="mediafile mf_conf">myconfig.conf</a></dt>
+<dd><pre class="code file ini"><span class="re0"><span class="br0">&#91;</span>req<span class="br0">&#93;</span></span>
+<span class="re1">distinguished_name</span>  <span class="sy0">=</span><span class="re2"> req_distinguished_name</span>
+<span class="re1">x509_extensions</span>     <span class="sy0">=</span><span class="re2"> v3_req</span>
+<span class="re1">prompt</span>              <span class="sy0">=</span><span class="re2"> no</span>
+<span class="re1">string_mask</span>         <span class="sy0">=</span><span class="re2"> utf8only</span>
+&nbsp;
+<span class="re0"><span class="br0">&#91;</span>req_distinguished_name<span class="br0">&#93;</span></span>
+<span class="re1">C</span>                   <span class="sy0">=</span><span class="re2"> US</span>
+<span class="re1">ST</span>                  <span class="sy0">=</span><span class="re2"> VA</span>
+<span class="re1">L</span>                   <span class="sy0">=</span><span class="re2"> SomeCity</span>
+<span class="re1">O</span>                   <span class="sy0">=</span><span class="re2"> OpenWrt</span>
+<span class="re1">OU</span>                  <span class="sy0">=</span><span class="re2"> Home Router</span>
+<span class="re1">CN</span>                  <span class="sy0">=</span><span class="re2"> luci.openwrt</span>
+&nbsp;
+<span class="re0"><span class="br0">&#91;</span>v3_req<span class="br0">&#93;</span></span>
+<span class="re1">keyUsage</span>            <span class="sy0">=</span><span class="re2"> nonRepudiation, digitalSignature, keyEncipherment</span>
+<span class="re1">extendedKeyUsage</span>    <span class="sy0">=</span><span class="re2"> serverAuth</span>
+<span class="re1">subjectAltName</span>      <span class="sy0">=</span><span class="re2"> @alt_names</span>
+<span class="re1">basicConstraints</span>    <span class="sy0">=</span><span class="re2"> CA:true</span>
+&nbsp;
+<span class="re0"><span class="br0">&#91;</span>alt_names<span class="br0">&#93;</span></span>
+DNS.1               <span class="sy0">=</span><span class="re2"> luci.openwrt</span>
+IP.1                <span class="sy0">=</span><span class="re2"> 192.168.1.1</span></pre>
+</dd></dl>
+</div>
+</li>
+<li class="level1 node"><div class="li"> You can edit the values for C (country), ST (state), L (location), O (organization), OU (organization unit) to whatever you want.</div>
+<ol>
+<li class="level2 node"><div class="li"> It&#039;s <strong>extremely important</strong> the values for <strong>CN</strong> and <strong><abbr title="Domain Name System">DNS</abbr>.1</strong> match, and also that <strong><abbr title="Internet Protocol">IP</abbr>.1</strong> has the correct private <abbr title="Internet Protocol">IP</abbr> address for the device.  </div>
+<ul>
+<li class="level3"><div class="li"> Some of you might have a different <abbr title="Internet Protocol">IP</abbr>, or you might access it via a hostname; the hostname should go in both CN and <abbr title="Domain Name System">DNS</abbr>.1 fields. The correct private <abbr title="Internet Protocol">IP</abbr> address should go into <abbr title="Internet Protocol">IP</abbr>.1.</div>
+</li>
+</ul>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> Save the file and then navigate to /etc/ssl with the following command:<br/>
+<pre class="code bash"><span class="kw3">cd</span> <span class="sy0">/</span>etc<span class="sy0">/</span>ssl</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Then issue the following command:<br/>
+<pre class="code bash">openssl req <span class="re5">-x509</span> <span class="re5">-nodes</span> <span class="re5">-days</span> <span class="nu0">397</span> <span class="re5">-newkey</span> rsa:<span class="nu0">2048</span> <span class="re5">-keyout</span> mycert.key <span class="re5">-out</span> mycert.crt <span class="re5">-config</span> myconfig.conf</pre>
+
+<p>
+ This will create two files, <code>mycert.key</code> and <code>mycert.crt</code> <br/>
+Alternatively you can create ECDSA certificate (to speedup key exchange phase) with the following command:<br/>
+
+</p>
+<pre class="code bash">openssl req <span class="re5">-x509</span> <span class="re5">-nodes</span> <span class="re5">-days</span> <span class="nu0">397</span> <span class="re5">-newkey</span> ec:<span class="sy0">&lt;</span><span class="br0">&#40;</span>openssl ecparam <span class="re5">-name</span> prime256v1<span class="br0">&#41;</span> <span class="re5">-keyout</span> mycert.key <span class="re5">-out</span> mycert.crt <span class="re5">-config</span> myconfig.conf</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Note that in the commands above, the validity of the certificate was set to 13 months (397 days, the “-days” option), so the process would need to be repeated when the period lapses. Some (all) browsers do not accept longer validity: <a href="https://github.com/cabforum/servercert/blob/90a98dc7c1131eaab01af411968aa7330d315b9b/docs/BR.md?plain=1#L175" class="urlextern" title="https://github.com/cabforum/servercert/blob/90a98dc7c1131eaab01af411968aa7330d315b9b/docs/BR.md?plain=1#L175" rel="ugc nofollow">https://github.com/cabforum/servercert/blob/90a98dc7c1131eaab01af411968aa7330d315b9b/docs/BR.md?plain=1#L175</a></div>
+</li>
+<li class="level1 node"><div class="li"> In LuCI, go to Services → uHTTPd</div>
+<ul>
+<li class="level2"><div class="li"> In the field for <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> Certificate, select the file <code>/etc/ssl/mycert.crt</code>, or select “Upload file” to transfer it from your PC (<code>mycert.crt</code>)</div>
+</li>
+<li class="level2"><div class="li"> In the field for <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> Private Key, select the file <code>/etc/ssl/mycert.key</code>, or select “Upload file” to transfer it from your PC (<code>mycert.key</code>)</div>
+</li>
+<li class="level2"><div class="li"> Hit save and apply.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Restart uhttpd<br/>
+<pre class="code bash"><span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>uhttpd restart</pre>
+</div>
+</li>
+<li class="level1 node"><div class="li"> Now to make it so that those 2 files are saved when you make a backup, in LuCI, go to System → Backup/Flash Firmware, Click Configuration tab, then add <code>/etc/ssl/mycert.crt</code> &amp; <code>/etc/ssl/mycert.key</code></div>
+<ul>
+<li class="level2"><div class="li"> <strong>When you make and restore a backup, your cert and key will automatically be backed up and restored.</strong> The changes you made in LuCI → Services → uHTTPd will automatically be backed up because <code>/etc/config/uhttpd</code> is automatically backed up.</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Hit Submit ( Or Save and Apply, depending on the LuCI Theme you&#039;re using )</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Create &amp; Install&quot;,&quot;hid&quot;:&quot;create_install&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:7,&quot;range&quot;:&quot;5036-8457&quot;} -->
+<h2 class="sectionedit8" id="chain_of_trust">Chain of trust</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Now we have to get your computer to trust the certificate. They will get all browsers (<abbr title="Internet Explorer">IE</abbr>, Edge, Firefox, etc) to work. You need to pull /etc/ssl/mycert.crt off your router. If you followed the previous step, an easy way is to click “Generate archive” in LuCI → System &gt; Backup / Flash Firmware and extract /etc/ssl/mycert.crt from the resulting archive (or you can use SCP).</div>
+</li>
+<li class="level2"><div class="li">   Alternatively, you can use Google Chrome to do the process. If you don&#039;t use Chrome, install it for now, and you can uninstall it after.</div>
+</li>
+<li class="level2"><div class="li"> Reload 192.168.1.1 (or however you access LuCI) in Chrome.  Make sure you close and refresh the page after restarting uhttpd.  Ignore the warning, and get to at least the login screen.</div>
+</li>
+<li class="level2"><div class="li"> Hit F12, click the security tab, click on view certificate, click the details tab, and click copy to file, just keep hitting next (don&#039;t change anything), and save (just name it, don&#039;t give it an extension as it&#039;ll be automatically added for you) the certificate somewhere easy to find.  You can name it anything.  Now close that window and the window that opened when you pressed F12.</div>
+</li>
+<li class="level2"><div class="li"> Proceed below depending on your operating system</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Chain of trust&quot;,&quot;hid&quot;:&quot;chain_of_trust&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:8,&quot;range&quot;:&quot;8458-9647&quot;} -->
+<h3 class="sectionedit9" id="windows_older_versions_of_chrome_only">Windows (older versions of Chrome only)</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> In Chrome, go to settings, advanced, and click manage certificates.</div>
+</li>
+<li class="level1"><div class="li"> Select the Trusted Root Certification Authorities tab and click import.</div>
+</li>
+<li class="level1"><div class="li"> Just follow the prompts, find the location of where you saved the certificate, and just keep clicking next.  (Don&#039;t change anything, make sure it says it&#039;s going to place it in the Trusted Root Certification Authorities store which it should have selected by default).</div>
+</li>
+<li class="level1"><div class="li"> Close all the windows and chrome and all your browsers.  Next time you access LuCI, it will show the certificate and connection as valid and secure.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Windows (older versions of Chrome only)&quot;,&quot;hid&quot;:&quot;windows_older_versions_of_chrome_only&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:9,&quot;range&quot;:&quot;9648-10272&quot;} -->
+<h3 class="sectionedit10" id="windows_script">Windows (script)</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> Go back to cert location<br/>
+<pre class="code bash"><span class="kw3">cd</span> <span class="sy0">/</span>etc<span class="sy0">/</span>ssl</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Export the cert key pair to pfx: <br/>
+<pre class="code bash">openssl pkcs12 <span class="re5">-export</span> <span class="re5">-out</span> mycert.pfx <span class="re5">-inkey</span> mycert.key <span class="re5">-in</span> mycert.crt</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Enter password 1234</div>
+</li>
+<li class="level1"><div class="li"> Download the pfx file to pc (using WinSCP for example)</div>
+</li>
+<li class="level1"><div class="li"> Run this powershell script as admin from pfx file location: <br/>
+<pre class="code powershell"><span class="re0">$mypwd</span> <span class="sy0">=</span> <span class="kw1">ConvertTo-SecureString</span> <span class="kw5">-String</span> <span class="st0">&quot;1234&quot;</span> <span class="kw5">-Force</span> <span class="kw5">-AsPlainText</span>
+Import<span class="sy0">-</span>pfxCertificate <span class="kw5">-FilePath</span> mycert.pfx <span class="sy0">-</span>Password <span class="re0">$mypwd</span> <span class="sy0">-</span>CertStoreLocation <span class="st0">&quot;Cert:\LocalMachine\Root&quot;</span></pre>
+</div>
+</li>
+<li class="level1"><div class="li"> This will add the certificate as trusted to the system store.</div>
+</li>
+<li class="level1"><div class="li"> <abbr title="Internet Explorer">IE</abbr> Edge and Chrome will use this automatically.</div>
+</li>
+<li class="level1"><div class="li"> For Firefox either add the certificate to trusted certificates manually or enable using Windows trusted store in about:config by setting security.enterprise_roots.enabled to true</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Windows (script)&quot;,&quot;hid&quot;:&quot;windows_script&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:10,&quot;range&quot;:&quot;10273-11138&quot;} -->
+<h3 class="sectionedit11" id="gnulinux">GNU/Linux</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> For Firefox, just visit LUcI and add an exception and everything will work.</div>
+</li>
+<li class="level1"><div class="li"> For Chrome-based browsers, you will need to install the libnss3-tools package first if you don&#039;t have certutil on your machine. Using your system&#039;s package manager, for example: <pre class="code bash"><span class="kw2">apt-get install</span> libnss3-tools</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> The following command will add the certificate to your current user&#039;s NSS database. Make sure you are in the directory containing the <code>mycert.crt</code> file or adjust the <code>-i</code> parameter accordingly. <pre class="code bash">certutil <span class="re5">-d</span> sql:<span class="re1">$HOME</span><span class="sy0">/</span>.pki<span class="sy0">/</span>nssdb <span class="re5">-A</span> <span class="re5">-t</span> <span class="st0">&quot;CT,C,c&quot;</span> <span class="re5">-n</span> LuCI <span class="re5">-i</span> mycert.crt</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> You can now restart your browser. The certificate errors when accessing LuCI should now be gone. However, On Chrome some people report that the error gets worse without you bein able to override it: <a href="https://forum.openwrt.org/t/https-connection-to-luci-is-discarded/123904/30" class="urlextern" title="https://forum.openwrt.org/t/https-connection-to-luci-is-discarded/123904/30" rel="ugc nofollow">https://forum.openwrt.org/t/https-connection-to-luci-is-discarded/123904/30</a> and <a href="https://github.com/openwrt/luci/issues/6701" class="urlextern" title="https://github.com/openwrt/luci/issues/6701" rel="ugc nofollow">https://github.com/openwrt/luci/issues/6701</a> .</div>
+</li>
+</ul>
+
+<p>
+Enjoy!!
+</p>
+
+<p>
+<em>All the credit for the creation of (part C of) this walk-through goes to @StarCMS who originally posted this in @Davidc502&#039;s <a href="https://forum.openwrt.org/viewtopic.php?id=64949&amp;p=81" class="urlextern" title="https://forum.openwrt.org/viewtopic.php?id=64949&amp;p=81" rel="ugc nofollow">thread</a>. Minor changes and wiki formatting by @mariano.silva ( mariano.silva@gmail.com )</em>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;GNU\/Linux&quot;,&quot;hid&quot;:&quot;gnulinux&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:11,&quot;range&quot;:&quot;11139-12373&quot;} -->
+<h1 class="sectionedit12" id="option_dlet_openwrt_generate_a_new_self-signed_certificate">Option D: Let OpenWRT generate a new self-signed certificate</h1>
+<div class="level1">
+
+<p>
+This was tested with OpenWrt 23.05 and not sure whether it will work with older versions. Also certificate may not be ideal if created with version before this pull request was merged <a href="https://github.com/openwrt/openwrt/pull/1536" class="urlextern" title="https://github.com/openwrt/openwrt/pull/1536" rel="ugc nofollow">https://github.com/openwrt/openwrt/pull/1536</a>
+</p>
+
+<p>
+OpenWrt will generate on boot a new self-signed certificate in case existing one is removed. To remove the existing certificate, open an ssh terminal to your router and run <code>rm -i /etc/uhttpd.*</code> and confirm deleting <code>uhttpd.crt</code> and <code>uhttpd.key</code>. Then issue the <code>service uhttpd restart</code> command.
+</p>
+
+<p>
+You can use the luci-app-uhttpd extension to get more control over the generated new certificate. Otherwise you will still not set proper <code>subjectAltName</code> and will need to add a new security exception in your browser to open LuCI. If you set proper <code>subjectAltName</code>, you can follow instructions in option C to install the certificate on your machine.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Option D: Let OpenWRT generate a new self-signed certificate&quot;,&quot;hid&quot;:&quot;option_dlet_openwrt_generate_a_new_self-signed_certificate&quot;,&quot;codeblockOffset&quot;:13,&quot;secid&quot;:12,&quot;range&quot;:&quot;12374-&quot;} -->

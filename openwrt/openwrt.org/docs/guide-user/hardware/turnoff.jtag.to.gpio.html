@@ -1,0 +1,123 @@
+
+<h1 class="sectionedit1" id="how_to_turnoff_jtag_to_free_gpio_only_on_ath79_processors">How to turnoff JTAG to free GPIO (only on ath79 processors)</h1>
+<div class="level1">
+
+<p>
+You may need to disable the JTAG, to be able to use the TDI, TDO, TMS and TCK as GPIO-pin. The fact that the some special routers with EJTAG on PCB - EJTAG default is locked by hardware.
+</p>
+
+<p>
+So, it is possible to turn off the built-in JTAG by simple script, without the NO need to patch/recompile firmware.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;How to turnoff JTAG to free GPIO (only on ath79 processors)&quot;,&quot;hid&quot;:&quot;how_to_turnoff_jtag_to_free_gpio_only_on_ath79_processors&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-379&quot;} -->
+<h2 class="sectionedit2" id="method_no_need_re-build_the_kernel">Method (NO need re-build the Kernel):</h2>
+<div class="level2">
+
+<p>
+Install io:
+</p>
+<pre class="code">opkg update &amp;&amp; opkg install io</pre>
+
+<p>
+or use this installation method:
+</p>
+<pre class="code">cd /tmp
+wget http://downloads.openwrt.org/barrier_breaker/14.07/ar71xx/generic/packages/oldpackages/io_1_ar71xx.ipk
+opkg install io_1_ar71xx.ipk</pre>
+
+<p>
+Create an empty file (if it is from the console):
+</p>
+<pre class="code">touch /usr/sbin/jtag_gpio</pre>
+
+<p>
+Paste the script in empty file:
+</p>
+<pre class="code bash"><span class="co0">#!/bin/sh</span>
+<span class="co0"># Bitwise operations: &amp; = And, | = Or, ^ = xOr, &lt;&lt; = Left Shift</span>
+&nbsp;
+<span class="re2">detect_addr</span>=<span class="st0">&quot;0x18060090&quot;</span>
+<span class="re2">rev_id_maj_msk</span>=<span class="st0">&quot;0xfff0&quot;</span>
+<span class="re2">bit0</span>=<span class="st0">&quot;1&lt;&lt;0&quot;</span>            <span class="co0"># using bit0 for AR724x/AR933x</span>
+<span class="re2">bit1</span>=<span class="st0">&quot;1&lt;&lt;1&quot;</span>            <span class="co0"># using bit8 for AR9341/AR9342/AR9344</span>
+&nbsp;
+<span class="re2">detect_value</span>=0x<span class="sy0">`</span>io <span class="re5">-4</span> <span class="re1">$detect_addr</span> <span class="sy0">|</span> <span class="kw2">cut</span> <span class="re5">-f3</span> <span class="re5">-d</span><span class="st_h">' '</span><span class="sy0">`</span>
+<span class="re2">detected_result</span>=$<span class="br0">&#40;</span><span class="kw3">printf</span> <span class="st0">&quot;0x%4.4x&quot;</span> $<span class="br0">&#40;</span><span class="br0">&#40;</span><span class="re1">$detect_value</span> <span class="sy0">&amp;</span> <span class="re1">$rev_id_maj_msk</span><span class="br0">&#41;</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+&nbsp;
+<span class="co0"># depending on the detected rev_id of CPU -</span>
+<span class="co0"># it will be use specific bit# as case_bit variable, or exit</span>
+<span class="kw1">case</span> <span class="st0">&quot;<span class="es2">$detected_result</span>&quot;</span> <span class="kw1">in</span>
+<span class="co0"># AR7240/AR7241/AR7242/AR9330/AR9331</span>
+0x00c0 <span class="sy0">|</span> \
+0x0100 <span class="sy0">|</span> \
+0x1100 <span class="sy0">|</span> \
+0x0110 <span class="sy0">|</span> \
+0x1110 <span class="br0">&#41;</span>
+    <span class="re2">func_addr</span>=<span class="st0">&quot;0x18040028&quot;</span>
+    <span class="re2">case_bit</span>=<span class="re1">$bit0</span>
+    <span class="sy0">;;</span>
+<span class="co0"># AR71xx/AR913x</span>
+0x00a0 <span class="sy0">|</span> \
+0x00b0 <span class="br0">&#41;</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;This CPU does not support this function!&quot;</span>
+    <span class="kw3">break</span>
+    <span class="kw3">exit</span> <span class="nu0">0</span>
+    <span class="sy0">;;</span>
+<span class="co0"># AR9341/AR9342/AR9344</span>
+0x0120 <span class="sy0">|</span> \
+0x1120 <span class="sy0">|</span> \
+0x2120 <span class="br0">&#41;</span>
+    <span class="re2">func_addr</span>=<span class="st0">&quot;0x1804006C&quot;</span>
+    <span class="re2">case_bit</span>=<span class="re1">$bit1</span>
+    <span class="sy0">;;</span>
+<span class="sy0">*</span> <span class="br0">&#41;</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;Can't detect your CPU, must be Atheros!&quot;</span>
+    <span class="kw3">break</span>
+    <span class="kw3">exit</span> <span class="nu0">1</span>
+    <span class="sy0">;;</span>
+<span class="kw1">esac</span>
+&nbsp;
+<span class="re2">func_value</span>=0x<span class="sy0">`</span>io <span class="re5">-4</span> <span class="re1">$func_addr</span> <span class="sy0">|</span> <span class="kw2">cut</span> <span class="re5">-f3</span> <span class="re5">-d</span><span class="st_h">' '</span><span class="sy0">`</span>
+&nbsp;
+<span class="co0"># we using Bitwise xOr operation to switching bit# state (0 or 1)</span>
+io <span class="re5">-4</span> <span class="re1">$func_addr</span> $<span class="br0">&#40;</span><span class="kw3">printf</span> <span class="st0">&quot;0x%8.8x&quot;</span> $<span class="br0">&#40;</span><span class="br0">&#40;</span><span class="re1">$func_value</span> ^ <span class="re1">$case_bit</span><span class="br0">&#41;</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+&nbsp;
+<span class="co0"># read bit# state and depending on the state - print some info</span>
+<span class="kw1">if</span> <span class="br0">&#91;</span> $<span class="br0">&#40;</span><span class="br0">&#40;</span><span class="re1">$func_value</span> <span class="sy0">&amp;</span> <span class="re1">$case_bit</span><span class="br0">&#41;</span><span class="br0">&#41;</span> = $<span class="br0">&#40;</span><span class="br0">&#40;</span><span class="re1">$case_bit</span><span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;Hardware JTAG is turned OFF&quot;</span>
+    <span class="co0"># You can use this line for automatic configuring GPIOs via sysfs</span>
+    <span class="co0"># or you can load other modules that use these GPIOs</span>
+<span class="kw1">else</span>
+    <span class="kw3">echo</span> <span class="st0">&quot;Hardware JTAG is turned ON&quot;</span>
+<span class="kw1">fi</span></pre>
+
+<p>
+Assign the right execution:
+</p>
+<pre class="code">chmod +x /usr/sbin/jtag_gpio</pre>
+
+<p>
+And actually the launch itself <strong>jtag_gpio</strong> (if launch again it turn on JTAG back) ...
+</p>
+
+<p>
+Of course, it turn off JTAG until the next reboot the device, ie, you need to automate the process, for example by writing command in <strong>/etc/rc.local</strong>.
+After that you need and you can configure for yourself GPIO via <strong>/sys/class/gpio/export</strong>... well, I think it is not necessary to go into details, because who need to turn off the JTAG for some purposes - he will understand.
+</p>
+
+<p>
+Let me remind you, for AR724x/AR933x:
+</p>
+<pre class="code">  TDI   |   TDO   |   TMS
+ GPIO6  |  GPIO7  |  GPIO8</pre>
+
+<p>
+For AR934x:
+</p>
+<pre class="code">  TCK   |   TDI   |   TDO   |   TMS
+ GPIO0  |  GPIO1  |  GPIO2  |  GPIO3</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Method (NO need re-build the Kernel):&quot;,&quot;hid&quot;:&quot;method_no_need_re-build_the_kernel&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;380-&quot;} -->

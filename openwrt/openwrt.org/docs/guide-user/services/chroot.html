@@ -1,0 +1,203 @@
+
+<h1 class="sectionedit1" id="chroot">CHROOT</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;CHROOT&quot;,&quot;hid&quot;:&quot;chroot&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-21&quot;} -->
+<h2 class="sectionedit2" id="preconditions">Preconditions</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> External storage <a href="/docs/guide-user/storage/usb-drives-quickstart" class="wikilink1" title="docs:guide-user:storage:usb-drives-quickstart" data-wiki-id="docs:guide-user:storage:usb-drives-quickstart">Quick Start for Adding a USB drive</a></div>
+</li>
+<li class="level1"><div class="li"> create a partition for data files (CHROOT files) and create one swap partition <a href="/docs/guide-user/storage/usb-drives" class="wikilink1" title="docs:guide-user:storage:usb-drives" data-wiki-id="docs:guide-user:storage:usb-drives">Using storage devices</a>. A swap partition is most likely needed as the programms you would like to run exceed the RAM of your device.</div>
+</li>
+<li class="level1"><div class="li"> Format external storage with a file system <a href="/docs/guide-user/storage/filesystems-and-partitions" class="wikilink1" title="docs:guide-user:storage:filesystems-and-partitions" data-wiki-id="docs:guide-user:storage:filesystems-and-partitions">Filesystems</a></div>
+</li>
+<li class="level1"><div class="li"> Create a mount point using <code>block-mount</code>. There is a LUCI webinterface available</div>
+</li>
+<li class="level1"><div class="li"> Find out which architecture your SOC/processor has: OpenWRT summary <a href="/docs/techref/instructionset/start" class="wikilink1" title="docs:techref:instructionset:start" data-wiki-id="docs:techref:instructionset:start">Instruction Sets</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Preconditions&quot;,&quot;hid&quot;:&quot;preconditions&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;22-737&quot;} -->
+<h2 class="sectionedit3" id="install_debian">Install Debian</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> ARM: <a href="https://www.kernel.org/doc/html/latest/arm/index.html" class="urlextern" title="https://www.kernel.org/doc/html/latest/arm/index.html" rel="ugc nofollow">https://www.kernel.org/doc/html/latest/arm/index.html</a>. In practice armel will be used for older CPUs (armv4t, armv5, armv6), and armhf for newer CPUs (armv7+VFP). <a href="https://wiki.debian.org/ArmHardFloatPort" class="urlextern" title="https://wiki.debian.org/ArmHardFloatPort" rel="ugc nofollow">Debian WIKI</a></div>
+</li>
+<li class="level1"><div class="li"> MIPS: Through the Debian 10 (“buster”) release, Debian currently provides 3 ports, &#039;mips&#039;, &#039;mipsel&#039;, and &#039;mips64el&#039;. The &#039;mips&#039; and &#039;mipsel&#039; ports are respectively big and little endian variants, using the O32 ABI with hardware floating point. They use the MIPS II ISA in Jessie and the MIPS32R2 ISA in Stretch and later. The &#039;mips64el&#039; port is a 64-bit little endian port using the N64 ABI, hardware floating point and the MIPS64R2 ISA. The &#039;mips&#039; (32-bit big-endian MIPS CPUs) Debian port was discontinued post Debian 10 (“buster”). Please prepare to migrate your MIPS hardware to mipsel or mips64el, much recent MIPS hardware (such as Octeon CPUs) supports endian switching at runtime and can therefore be supported by the other MIPS ports. <a href="https://wiki.debian.org/MIPSPort" class="urlextern" title="https://wiki.debian.org/MIPSPort" rel="ugc nofollow">Debian Wiki</a></div>
+</li>
+</ul>
+
+<p>
+Install package
+</p>
+<pre class="code bash">opkg <span class="kw2">install</span> debootstrap binutils</pre>
+
+<p>
+and use it to create the CHROOT environment. <br/>
+
+Below example shows the installation of Debian 10 (Buster) for an ARMv5 (armel) at the mountpoint <code>/mnt/sda</code>
+</p>
+<pre class="code bash">debootstrap <span class="re5">--arch</span>=armel buster <span class="sy0">/</span>mnt<span class="sy0">/</span>sda<span class="sy0">/</span> http:<span class="sy0">//</span>ftp.de.debian.org<span class="sy0">/</span>debian</pre>
+
+<p>
+You need to connect the <code>/dev</code>, <code>/sys</code> and <code>/proc</code> of your CHROOT environment with the OpenWRT (host system) environment. To do the mount during startup please add to <code>/etc/rc.local</code>
+</p>
+<pre class="code bash"><span class="kw2">mount</span> <span class="re5">--bind</span> <span class="sy0">/</span>dev <span class="sy0">/</span>mnt<span class="sy0">/</span>sda<span class="sy0">/</span>dev<span class="sy0">/</span>
+<span class="kw2">mount</span> <span class="re5">--bind</span> <span class="sy0">/</span>proc <span class="sy0">/</span>mnt<span class="sy0">/</span>sda<span class="sy0">/</span>proc<span class="sy0">/</span>
+<span class="kw2">mount</span> <span class="re5">--bind</span> <span class="sy0">/</span>sys <span class="sy0">/</span>mnt<span class="sy0">/</span>sda<span class="sy0">/</span>sys<span class="sy0">/</span></pre>
+
+<p>
+You can login to the CHROOT environment by
+</p>
+<pre class="code bash"><span class="co0"># This is necessary because the chroot expects /bin/ash to be found</span>
+<span class="kw2">ln</span> <span class="re5">-s</span> <span class="sy0">/</span>bin<span class="sy0">/</span><span class="kw2">bash</span> bin<span class="sy0">/</span><span class="kw2">ash</span>
+<span class="co0"># Change to CHROOT</span>
+<span class="kw2">chroot</span> <span class="sy0">/</span>mnt<span class="sy0">/</span>sda<span class="sy0">/</span> <span class="sy0">/</span>bin<span class="sy0">/</span><span class="kw2">bash</span></pre>
+
+<p>
+I recommend to change the shell promt, as for the moment you will not recognize that your are within the CHROOT environment.
+</p>
+<pre class="code">echo &#039;PS1=&quot;CHROOT:\w# &quot;&#039; &gt;&gt; ~/.bashrc</pre>
+
+<p>
+Next we will install and reconfigure locales.
+</p>
+<pre class="code bash">CHROOT:<span class="sy0">/</span><span class="co0"># apt-get install locales</span>
+CHROOT:<span class="sy0">/</span><span class="co0"># dpkg-reconfigure locales</span></pre>
+
+<p>
+This shall give the minimum steps for a CHROOT environment on top of OpenWRT. use this as a basis to install further services like <code>ssh</code>, ...
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Install Debian&quot;,&quot;hid&quot;:&quot;install_debian&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;738-3143&quot;} -->
+<h2 class="sectionedit4" id="install_cups_print_server">Install CUPS (print server)</h2>
+<div class="level2">
+
+<p>
+<a href="/docs/guide-user/services/print_server/p910nd.server" class="wikilink1" title="docs:guide-user:services:print_server:p910nd.server" data-wiki-id="docs:guide-user:services:print_server:p910nd.server">p910nd Printer Server</a> may be suitable as well.
+There is another way to use CUPS on OpenWRT <a href="/docs/guide-user/services/print_server/cups.server" class="wikilink1" title="docs:guide-user:services:print_server:cups.server" data-wiki-id="docs:guide-user:services:print_server:cups.server">CUPS Print Server</a>. The user need to compile an OpenWRT image including CUPS. 
+</p>
+
+<p>
+This approach doesn&#039;t require an new compilation but it requires more hardware resources.
+In CHROOT environment (based on debian) execute
+</p>
+<pre class="code bash">CHROOT:<span class="sy0">/</span><span class="co0"># apt-get update</span>
+CHROOT:<span class="sy0">/</span><span class="co0"># apt-get install avahi-daemon avahi-discover libnss-mdns avahi-utils ghostscript</span>
+CHROOT:<span class="sy0">/</span><span class="co0"># apt-get install cups</span></pre>
+
+<p>
+Within the CHROOT environment you can start CUPS by
+</p>
+<pre class="code bash"><span class="co0"># Service needed for Avahi mDNS/DNS-SD Daemon: avahi-daemon.</span>
+CHROOT:<span class="sy0">/</span><span class="co0"># /etc/init.d/dbus start</span>
+&nbsp;
+<span class="co0"># Start service for bonjour /  Avahi mDNS/DNS-SD Daemon: avahi-daemon.</span>
+CHROOT:<span class="sy0">/</span><span class="co0"># /etc/init.d/avahi-daemon start</span>
+&nbsp;
+<span class="co0"># dbus and avahi needed by CUPS</span>
+CHROOT:<span class="sy0">/</span><span class="co0"># chroot /mnt/sda /bin/bash /etc/init.d/cups start</span></pre>
+
+<p>
+From OpenWRT you can start CUPS by:
+</p>
+<pre class="code bash"><span class="co0"># Service needed for Avahi mDNS/DNS-SD Daemon: avahi-daemon.</span>
+<span class="kw2">chroot</span> <span class="sy0">/</span>mnt<span class="sy0">/</span>sda <span class="sy0">/</span>bin<span class="sy0">/</span><span class="kw2">bash</span> <span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>dbus start
+&nbsp;
+<span class="co0"># Start service for bonjour /  Avahi mDNS/DNS-SD Daemon: avahi-daemon.</span>
+<span class="kw2">chroot</span> <span class="sy0">/</span>mnt<span class="sy0">/</span>sda <span class="sy0">/</span>bin<span class="sy0">/</span><span class="kw2">bash</span> <span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>avahi-daemon start
+&nbsp;
+<span class="co0"># dbus and avahi needed by CUPS</span>
+<span class="kw2">chroot</span> <span class="sy0">/</span>mnt<span class="sy0">/</span>sda <span class="sy0">/</span>bin<span class="sy0">/</span><span class="kw2">bash</span> <span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>cups start</pre>
+
+<p>
+See below the Autostart example. Below commands can be added as well.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Install CUPS (print server)&quot;,&quot;hid&quot;:&quot;install_cups_print_server&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:4,&quot;range&quot;:&quot;3144-4588&quot;} -->
+<h2 class="sectionedit5" id="install_resilio_sync">Install Resilio Sync</h2>
+<div class="level2">
+
+<p>
+See an example at <a href="https://forum.resilio.com/topic/44082-resilio-sync-on-linksys-wrt1900acs-and-other-openwrt-boxes/" class="urlextern" title="https://forum.resilio.com/topic/44082-resilio-sync-on-linksys-wrt1900acs-and-other-openwrt-boxes/" rel="ugc nofollow"> Resilio sync on Linksys WRT 1900 ACS and other OpenWRT</a>
+</p>
+<ol>
+<li class="level1"><div class="li"> Download the appropriate package from <a href="https://help.resilio.com/hc/en-us/articles/206178924-Installing-Sync-package-on-Linux" class="urlextern" title="https://help.resilio.com/hc/en-us/articles/206178924-Installing-Sync-package-on-Linux" rel="ugc nofollow">Installing-Sync-package-on-Linux</a></div>
+</li>
+<li class="level1"><div class="li"> Transfer it to your device using e.g. SCP or WinSCP <pre class="code bash"> <span class="kw2">scp</span> <span class="sy0">/</span>mnt<span class="sy0">/</span>disk1<span class="sy0">/</span>armbian-rootfs.tar.bz root<span class="sy0">@</span>openwrt:<span class="sy0">/</span>mnt<span class="sy0">/</span>sda<span class="sy0">/</span>tmp </pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Change to your CHROOT environment <code>chroot /mnt/sda /bin/bash</code> and install <pre class="code bash"><span class="co4">CHROOT:/# </span><span class="kw2">sudo</span> <span class="kw2">dpkg</span> <span class="re5">-i</span> <span class="sy0">&lt;</span>resilio-sync.deb<span class="sy0">&gt;</span> </pre>
+
+<p>
+  <br/>
+or <br/>
+
+</p>
+<pre class="code bash">CHROOT:<span class="sy0">/</span><span class="co0"># apt-get update</span>
+CHROOT:<span class="sy0">/</span><span class="co0"># apt-get install resilio-sync</span>
+CHROOT:<span class="sy0">/</span><span class="co0"># update-rc.d resilio-sync defaults</span></pre>
+
+<p>
+ in a debian chroot
+</p>
+</div>
+</li>
+</ol>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:6,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_center wrap_round wrap_info plugin_wrap" style="width: 60%;">
+<p>
+Resilio Sync is tested on <a href="/toh/zyxel/nsa310b" class="wikilink1" title="toh:zyxel:nsa310b" data-wiki-id="toh:zyxel:nsa310b">ZyXEL NSA3xx</a> CPU 1200 <abbr title="Megahertz">MHz</abbr> / RAM 256MB. With ~100GB of files. Resilio sync occupies ~100MB of RAM and fully loads the CPU in case of indexing. The LUCI web interface lags while Resilio Sync is indexing.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:7,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Install Resilio Sync&quot;,&quot;hid&quot;:&quot;install_resilio_sync&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:5,&quot;range&quot;:&quot;4589-5686&quot;} -->
+<h2 class="sectionedit8" id="autostart">Autostart</h2>
+<div class="level2">
+
+<p>
+Optionally I recommend to create a script in OpenWRT <code>/etc/init.d/</code> to handle the autostart during boot and the stop during shutdown. This script can collect all applications/processes running in the CHROOT environment. Basis taken from <code>/etc/rc.common</code>
+</p>
+<pre class="code bash"><span class="co0">#!/bin/sh /etc/rc.common</span>
+<span class="co0">#</span>
+&nbsp;
+<span class="re2">START</span>=<span class="nu0">99</span>
+<span class="re2">STOP</span>=<span class="nu0">10</span>
+&nbsp;
+. <span class="re1">$IPKG_INSTROOT</span><span class="sy0">/</span>lib<span class="sy0">/</span>functions.sh
+. <span class="re1">$IPKG_INSTROOT</span><span class="sy0">/</span>lib<span class="sy0">/</span>functions<span class="sy0">/</span>service.sh
+&nbsp;
+start<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw2">chroot</span> <span class="sy0">/</span>mnt<span class="sy0">/</span>sda <span class="sy0">/</span>bin<span class="sy0">/</span><span class="kw2">bash</span> <span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>resilio-sync start
+<span class="br0">&#125;</span>
+&nbsp;
+restart<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw2">chroot</span> <span class="sy0">/</span>mnt<span class="sy0">/</span>sda <span class="sy0">/</span>bin<span class="sy0">/</span><span class="kw2">bash</span> <span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>resilio-sync restart
+<span class="br0">&#125;</span>
+&nbsp;
+stop<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="kw2">chroot</span> <span class="sy0">/</span>mnt<span class="sy0">/</span>sda <span class="sy0">/</span>bin<span class="sy0">/</span><span class="kw2">bash</span> <span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>resilio-sync stop
+<span class="br0">&#125;</span>
+<span class="kw3">enable</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="re2">err</span>=<span class="nu0">1</span>
+        <span class="re2">name</span>=<span class="st0">&quot;<span class="es4">$(basename &quot;${initscript}&quot;)</span>&quot;</span>
+        <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es2">$START</span>&quot;</span> <span class="br0">&#93;</span> <span class="sy0">&amp;&amp;</span> \
+                <span class="kw2">ln</span> <span class="re5">-sf</span> <span class="st0">&quot;../init.d/<span class="es2">$name</span>&quot;</span> <span class="st0">&quot;<span class="es2">$IPKG_INSTROOT</span>/etc/rc.d/S<span class="es3">${START}</span><span class="es3">${name}</span>&quot;</span>
+                <span class="re2">err</span>=<span class="nu0">0</span>
+        <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es2">$STOP</span>&quot;</span> <span class="br0">&#93;</span> <span class="sy0">&amp;&amp;</span> \
+                <span class="kw2">ln</span> <span class="re5">-sf</span> <span class="st0">&quot;../init.d/<span class="es2">$name</span>&quot;</span> <span class="st0">&quot;<span class="es2">$IPKG_INSTROOT</span>/etc/rc.d/K<span class="es3">${STOP}</span><span class="es3">${name}</span>&quot;</span>
+                <span class="re2">err</span>=<span class="nu0">0</span>
+        <span class="kw3">return</span> <span class="re1">$err</span>
+<span class="br0">&#125;</span>
+disable<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+        <span class="re2">name</span>=<span class="st0">&quot;<span class="es4">$(basename &quot;${initscript}&quot;)</span>&quot;</span>
+        <span class="kw2">rm</span> <span class="re5">-f</span> <span class="st0">&quot;<span class="es2">$IPKG_INSTROOT</span>&quot;</span><span class="sy0">/</span>etc<span class="sy0">/</span>rc.d<span class="sy0">/</span>S??<span class="re1">$name</span>
+        <span class="kw2">rm</span> <span class="re5">-f</span> <span class="st0">&quot;<span class="es2">$IPKG_INSTROOT</span>&quot;</span><span class="sy0">/</span>etc<span class="sy0">/</span>rc.d<span class="sy0">/</span>K??<span class="re1">$name</span>
+<span class="br0">&#125;</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Autostart&quot;,&quot;hid&quot;:&quot;autostart&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:8,&quot;range&quot;:&quot;5687-&quot;} -->

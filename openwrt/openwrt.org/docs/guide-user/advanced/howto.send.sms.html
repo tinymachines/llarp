@@ -1,0 +1,84 @@
+
+<h1 class="sectionedit1" id="send_sms_or_email_using_3ggsm_modem">Send SMS or Email using 3G/GSM modem</h1>
+<div class="level1">
+
+<p>
+This method is fairly simple-minded, and uses only the serial /dev/ttyUSB0 port and “AT” commands to send an SMS message.  
+</p>
+
+<p>
+Almost any OpenWrt version should work, and any OpenWrt device which supports USB. It has been tested n a WL-500gPv2, a WL-520Gu, and a MPR-A8 (Ralink-based Hame A1 clone).
+</p>
+
+<p>
+One modem was from dx.com, 7.2M HSDPA 3G SIM Card USB 2.0 Wireless Modem Adapter with TF Card Slot, item 80032.  This is a Huawei E169 clone.
+</p>
+
+<p>
+If you have device like WL-520Gu that has little onboard flash then you need to built my own OpenWrt firmware image with following modules (usually installing them via opkg installing fails due to for lack of memory):
+</p>
+<pre class="code">kmod-usb2 kmod-usb-ohci kmod-usb-serial kmod-usb-serial-option usbutils usb-modeswitch kmod-usb-storage kmod-scsi-core kmod-scsi-cdrom kmod-scsi-generic picocom</pre>
+
+<p>
+When I plugged in the usb modem, it detected scsi drives and 4 tty devices--/dev/ttyUSB0 through ttyUSB3.
+</p>
+
+<p>
+I connected to the modem using picocom: 
+picocom -b 9600 -f n -p n -d 8 -r /dev/ttyUSB0
+</p>
+
+<p>
+Typing “AT&lt;Enter&gt;” got the response, “OK”
+</p>
+
+<p>
+I then sent a message with the following commands:
+</p>
+<pre class="code">AT+CMGF=1 [set pdu mode to text]
+AT+CMGS=&quot;+12345678900&quot;  [use a valid cell phone number]
+Type some message&lt;Ctrl-z&gt; [type a message terminated with &lt;Ctrl-z&gt;]</pre>
+
+<p>
+After a short while I got a response, “+CMGS: 18”
+</p>
+
+<p>
+That was all there was to it with this device.  
+</p>
+
+<p>
+<strong>Mode Switching</strong>
+</p>
+
+<p>
+With the WL-500gPv2 it was harder.  The ttyUSB devices were not detected.  This is because many (most?) cell modems initiate as scsi devices, which, in Windows, automatically load a driver and then switches mode to enable the modem.  In linux, you have to perform the mode switch.  There&#039;s a program for that, usb-modeswitch, and also usb-modeswitch-data.  On the WL-500gPv2, I needed to use lsusb (from usbutils) to get the Vendor # and product ID.  You then execute “usb-modeswitch -v nnnn -p nnnn”.  After doing this, dmesg showed the ttyUSB devices 0-3, and I was able to proceed as above.  
+</p>
+
+<p>
+The modeswitch process can apparently be more complicated for other devices.  Various web sites explain it.
+</p>
+
+<p>
+<strong>MPR-A8--modeswitch not needed</strong>
+</p>
+
+<p>
+With the MPR-A8, with self-compiled trunk, watching on serial console, the scsi drives were recognized first, and then, after 30m seconds or so, the 4 ttyUSB devices.  I again signed on to /dev/ttyUSB0 (with microcom), and sent an SMS message using the commands shown above.
+</p>
+
+<p>
+<strong>Sending Email</strong>
+</p>
+
+<p>
+With my provider, T-Mobile, you can also send an email with the address number of “500” with these commands (after “AT+CMGF=1”):
+</p>
+<pre class="code">AT+CMGS=&quot;500&quot;
+myAddress@myProvider.com/Subject2/sending text.&lt;Ctrl+z&gt;</pre>
+
+<p>
+The subject is within “/” or “#”.
+</p>
+
+</div>

@@ -1,0 +1,295 @@
+
+<h1 class="sectionedit1" id="writable_ntfs">Writable NTFS</h1>
+<div class="level1">
+
+<p>
+Below describes adding read/write support for NTFS in Linux which is performed using either the <a href="https://en.wikipedia.org/wiki/NTFS-3G" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/NTFS-3G">NTFS-3G</a> or <a href="https://www.kernel.org/doc/html/v6.1/filesystems/ntfs3.html" class="urlextern" title="https://www.kernel.org/doc/html/v6.1/filesystems/ntfs3.html" rel="ugc nofollow">NTFS3</a> driver.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Writable NTFS&quot;,&quot;hid&quot;:&quot;writable_ntfs&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-229&quot;} -->
+<h2 class="sectionedit2" id="installation">Installation</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation&quot;,&quot;hid&quot;:&quot;installation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;230-255&quot;} -->
+<h3 class="sectionedit3" id="prerequisites">Prerequisites</h3>
+<div class="level3">
+<ol>
+<li class="level1"><div class="li"> Install <a href="/docs/guide-user/storage/usb-drives-quickstart" class="wikilink1" title="docs:guide-user:storage:usb-drives-quickstart" data-wiki-id="docs:guide-user:storage:usb-drives-quickstart">USB support</a>.</div>
+</li>
+<li class="level1"><div class="li"> Connect your storage, the device and its partitions will become available as <a href="https://en.wikipedia.org/wiki/Device file" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Device file">Device file</a>s under <code>/dev/</code>, e.g. <code>/dev/sda1</code>.</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Prerequisites&quot;,&quot;hid&quot;:&quot;prerequisites&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;256-494&quot;} -->
+<h3 class="sectionedit4" id="driver">Driver</h3>
+<div class="level3">
+
+<p>
+NTFS is the primary Windows filesystem and is available in Linux via the <code>ntfs-3g</code> driver. With kernel 5.15 onward the new <code>ntfs3</code> driver may be used instead which aims to improve performance as an in-kernel driver similar to native Linux filesystems and has become the recommended approach. Both are available in OpenWrt. For <code>ntfs3</code>, it is started to support from Kernel 5.x, but recommend use OpenWRT 24.x.x or above since the kernel version 6.6 has ntfs3&#039;s new patch in it.
+</p>
+<ul>
+<li class="level1"><div class="li"> Install <code>ntfs-3g</code> or <code>kmod-fs-ntfs3</code>(and <code>kmod-nls-utf8</code> for unicode dir/file name)</div>
+</li>
+<li class="level1"><div class="li"> Install <code>fdisk</code> <em>optional</em> to autodetect the filesystem type when using the hotplug script</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Driver&quot;,&quot;hid&quot;:&quot;driver&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;495-1192&quot;} -->
+<h3 class="sectionedit5" id="configuration">Configuration</h3>
+<div class="level3">
+
+<p>
+Once the appropriate driver is intalled this can be mounted or checked in LuCI → System → Mount Points.
+</p>
+
+<p>
+Mount a partition to an existing directory. You can create one with <code>mkdir</code>, for example <code>mkdir -p /mnt/sda1</code>.
+</p>
+
+<p>
+To mount a partition to above directory:
+</p>
+
+<p>
+For <em class="u">ntfs-3g</em>
+</p>
+<pre class="code"># ntfs-3g /dev/sda1 /mnt/sda1 -o rw,big_writes</pre>
+
+<p>
+For <em class="u">ntfs3</em>
+</p>
+<pre class="code"># mount -t ntfs3 -o rw /dev/sda1 /mnt/sda1 (or mount -t ntfs3 -o rw,iocharset=utf8 /dev/sda1 /mnt/sda1)</pre>
+
+<p>
+To auto mount a partition at startup (with drive plugged in) edit <code>/etc/rc.local</code>:
+</p>
+<pre class="code">sleep 1
+
+ntfs-3g /dev/sda1 /mnt/sda1 -o rw,lazytime,noatime,big_writes,discard
+#mount -t ntfs3 -o rw,nosuid,lazytime,noatime,prealloc,hide_dot_files,windows_names,discard,iocharset=utf8 /dev/sda1 /mnt/sda1
+
+exit 0</pre>
+
+<p>
+To unmount:
+</p>
+<pre class="code">umount /dev/sda1</pre>
+
+<p>
+To be able to mount it automatically:
+</p>
+<pre class="code">ln -s /usr/bin/ntfs-3g /sbin/mount.ntfs</pre>
+
+<p>
+For details about mounting options used above see <a href="https://manned.org/ntfs-3g.8" class="urlextern" title="https://manned.org/ntfs-3g.8" rel="ugc nofollow">man page</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;1193-2242&quot;} -->
+<h3 class="sectionedit6" id="trouble_shooting">Trouble shooting</h3>
+<div class="level3">
+
+<p>
+Especially for <em class="u">ntfs3</em>, sometime without clue, show mount error like below
+</p>
+<pre class="code"># mount -t ntfs3 /dev/sda2 /mnt/folder1
+mount: mounting /dev/sda2 on /mnt/folder1 failed: Invalid argument</pre>
+
+<p>
+In this case, you need clear dirty page on the target disk which frequently occured by accident shutdown, power off or sudden cable unplug.
+</p>
+
+<p>
+To do clearing dirty page, at this moment(5th Jan 2025), you need to install the package &#039;ntfs-3g-utils&#039; ironically.
+(Be aware, this clearing task might lost any unfinshed file node which means file system breaking in some part.)
+</p>
+
+<p>
+So, what you need to do is
+</p>
+<pre class="code"># opkg update &amp;&amp; opkg install ntfs-3g ntfs-3g-utils
+# ntfsfix -d /dev/sda2
+# mount -t ntfs3 /dev/sda2 /mnt/folder1</pre>
+
+<p>
+Tada! Done.
+(Hope the &#039;ntfs3&#039; support self fix logic in it sooner or later)
+</p>
+
+<p>
+To automatically do above,
+you have to put a script in &#039;/etc/init.d&#039; as priority lower than 10 as below.
+</p>
+<pre class="code"># touch /etc/init.d/ntfs_fix_before_mount
+# chmod 755 /etc/init.d/ntfs_fix_before_mount
+# nano /etc/init.d/ntfs_fix_before_mount
+
+and paste below into it.
+-----------------
+#!/bin/sh /etc/rc.common
+
+START=10
+STOP=11
+
+boot() {
+	return 0
+}
+
+start() {
+        ntfsfix -d /dev/sda2
+        ntfsfix -d /dev/sdb2
+        ntfsfix -d /dev/sdc2
+}
+
+restart() {
+	return 0
+}
+
+stop() {
+	return 0
+}
+
+-----------------------------
+# /etc/init.d/ntfs_fix_before_mount enable (&lt;-- IMPORTANT)
+</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Trouble shooting&quot;,&quot;hid&quot;:&quot;trouble_shooting&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:6,&quot;range&quot;:&quot;2243-3674&quot;} -->
+<h2 class="sectionedit7" id="hotplug_mounting">Hotplug Mounting</h2>
+<div class="level2">
+
+<p>
+(Be aware, this automatically create and destroy folders that the pluged device name(e.g. /dev/sda1 into /mnt/sda1). 
+If you want to control the mounting point name at your own. The script must be modified or not applicable.)
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Hotplug Mounting&quot;,&quot;hid&quot;:&quot;hotplug_mounting&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:7,&quot;range&quot;:&quot;3675-3929&quot;} -->
+<h3 class="sectionedit8" id="with_a_custom_hotplug_script">With a custom hotplug script</h3>
+<div class="level3">
+
+<p>
+Now that you can get your volume to mount on command, the next step is mounting it when it&#039;s plugged in automatically.
+</p>
+
+<p>
+To get our drive to mount on plugin, we utilize the <a href="/docs/techref/hotplug_legacy" class="wikilink1" title="docs:techref:hotplug_legacy" data-wiki-id="docs:techref:hotplug_legacy">hotplug</a> system.
+Create the following files as <code>/etc/hotplug.d/block/10-mount</code>.
+</p>
+<pre class="code"> 
+#!/bin/sh
+# Copyright (C) 2011 OpenWrt.org
+sleep 10 #more apps installed, need more time to load kernel modules!
+blkdev=`dirname $DEVPATH`
+if [ `basename $blkdev` != &quot;block&quot; ]; then
+	device=`basename $DEVPATH`
+	case &quot;$ACTION&quot; in
+		add)
+			mkdir -p /mnt/$device
+			# vfat &amp; ntfs-3g check
+			if [ `which fdisk` ]; then
+				isntfs=`fdisk -l | grep $device | grep NTFS`
+				isvfat=`fdisk -l | grep $device | grep FAT`
+				isfuse=`lsmod | grep fuse`
+				isntfs3g=`which ntfs-3g`
+			else
+				isntfs=&quot;&quot;
+				isvfat=&quot;&quot;
+			fi
+
+			# mount with ntfs-3g if possible, else with default mount
+			if [ &quot;$isntfs&quot; -a &quot;$isfuse&quot; -a &quot;$isntfs3g&quot; ]; then
+				ntfs-3g -o rw,lazytime,noatime,big_writes /dev/$device /mnt/$device
+			elif [ &quot;$isvfat&quot; ]; then
+				mount -o iocharset=utf8,discard /dev/$device /mnt/$device
+			else
+				mount /dev/$device /mnt/$device
+			fi
+		;;
+		remove)
+			umount -l /dev/$device
+		;;
+	esac
+fi</pre>
+
+<p>
+(The script above comes from <a href="http://blog.podspring.com/?p=288" class="urlextern" title="http://blog.podspring.com/?p=288" rel="ugc nofollow">this blog post</a>)
+</p>
+
+<p>
+Now, whenever you plug in an NTFS USB disk, it should automatically mount. (Note that this will be a different path than <code>/mnt/usb-ntfs</code>)
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;With a custom hotplug script&quot;,&quot;hid&quot;:&quot;with_a_custom_hotplug_script&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:8,&quot;range&quot;:&quot;3930-5392&quot;} -->
+<h3 class="sectionedit9" id="improved_hotplug_script">Improved hotplug script</h3>
+<div class="level3">
+
+<p>
+Below is a modified version of the script which should work fine even if you are using <a href="/docs/guide-user/additional-software/extroot_configuration" class="wikilink1" title="docs:guide-user:additional-software:extroot_configuration" data-wiki-id="docs:guide-user:additional-software:extroot_configuration">root file system using extroot</a>. The original script tries to re-mount all the filesystems, including mtdblock* filesystems at boot which is not what we want.
+</p>
+
+<p>
+Code is added to dismiss disks which can be managed by <a href="/docs/techref/block_mount" class="wikilink1" title="docs:techref:block_mount" data-wiki-id="docs:techref:block_mount">block_mount</a>. It should be preferred if it supports the file system you are using but it has limited filesystem type support.
+</p>
+
+<p>
+The mount binary seem to figure out what filesystem type it is trying to mount, therefore the code sections for checking this is removed. The script should be able to mount any supported filesystem. (so should it be in ntfs section?)
+</p>
+
+<p>
+Some sensible mount options which should be suitable for both solid state and normal drives is also added.  In addition, hdparm is called to set drive APM setting so drive can go to standby if not used (the correct setting may be drive dependent). The hd-idle does not seem to work on USB drives properly, but the APM setting is able to make the drive to use its internal logic if supported by the drive.
+</p>
+
+<p>
+One other problem with the original script was related to unmounting. Once a drive is disconnected, it disappears from /dev therefore it can not be unmounted by giving the original /dev path (you would just get &#039;No such file or directory&#039; error). Therefore the script finds where the drive was mounted and uses the mount point for unmounting.
+</p>
+
+<p>
+The script was tested on OpenWrt 21.02.1 and requires hdparm to be installed. Modify the script to suit your needs.
+</p>
+<pre class="code">#!/bin/sh
+
+# Copyright (C) 2021 OpenWrt.org
+
+blkdev=`dirname $DEVPATH`
+basename=`basename $blkdev`
+device=`basename $DEVPATH`
+path=$DEVPATH
+
+if [ $basename != &quot;block&quot; ] &amp;&amp; [ -z &quot;${device##sd*}&quot; ]; then
+        islabel=`block info /dev/$device | grep -q LABEL ; echo $?`
+        if [ $islabel -eq 0 ] ; then
+                mntpnt=`block info /dev/$device |sed &#039;s/.*LABEL=&quot;\([^&quot;]*\)&quot;.*/\1/&#039;`
+        else
+                mntpnt=$device
+        fi
+
+        # Do not tolerate spaces in mount points -- the remove case mountpoint determination fails
+        if echo &quot;$mntpnt&quot; |grep -q &#039; &#039; ; then
+                exit 0
+        fi
+
+        case &quot;$ACTION&quot; in
+                add)
+                        mkdir -p &quot;/mnt/$mntpnt&quot;
+                        # Set APM value for automatic spin down
+                        /sbin/hdparm -B 127 /dev/$device
+                        # Try to be gentle on solid state devices
+                        mount -o lazytime,noatime,discard /dev/$device &quot;/mnt/$mntpnt&quot;
+                ;;
+                remove)
+                        # Once the device is removed, the /dev entry disappear. We need mountpoint
+                        mountpoint=`mount |grep /dev/$device | sed &#039;s/.* on \(.*\) type.*/\1/&#039;`
+                        umount -l $mountpoint
+                        rmdir $mountpoint
+                ;;
+        esac
+fi</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Improved hotplug script&quot;,&quot;hid&quot;:&quot;improved_hotplug_script&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:9,&quot;range&quot;:&quot;5393-&quot;} -->

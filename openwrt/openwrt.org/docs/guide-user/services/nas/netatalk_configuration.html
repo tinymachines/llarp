@@ -1,0 +1,356 @@
+
+<h1 class="sectionedit1" id="afp_netatalk_share_configuration_apple_time_machine">AFP Netatalk share configuration (Apple Time Machine)</h1>
+<div class="level1">
+
+<p>
+Netatalk is an OpenSource software package, that can be used to turn a *NIX machine into an extremely high-performance and reliable file server for Macintosh computers. Using Netatalk&#039;s AFP 3.3 compliant file-server leads to significantly higher transmission speeds compared with Macs accessing a server via SaMBa/NFS while providing clients with the best possible user experience (full support for Macintosh metadata, flawlessly supporting mixed environments of classic Mac <abbr title="Operating System">OS</abbr> and <abbr title="Operating System">OS</abbr> X clients)
+</p>
+
+<p>
+This guide will walk you though the steps of installing the required packages and settings up linux users on the LEDE device so your Mac(s) can securely connect over the network to your Time Machine server.
+</p>
+
+<p>
+In order for this guide to work you will need to meet the following prerequisites:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/storage/usb-drives" class="wikilink1" title="docs:guide-user:storage:usb-drives" data-wiki-id="docs:guide-user:storage:usb-drives">Setup storage device with Ext4 filesystem</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/storage/fstab" class="wikilink1" title="docs:guide-user:storage:fstab" data-wiki-id="docs:guide-user:storage:fstab">Configuration Fstab for automatic storage mount</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;AFP Netatalk share configuration (Apple Time Machine)&quot;,&quot;hid&quot;:&quot;afp_netatalk_share_configuration_apple_time_machine&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1028&quot;} -->
+<h3 class="sectionedit2" id="package_installation">Package Installation</h3>
+<div class="level3">
+<pre class="code">opkg update &amp;&amp; opkg install avahi-utils netatalk</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Package Installation&quot;,&quot;hid&quot;:&quot;package_installation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;1029-1111&quot;} -->
+<h3 class="sectionedit3" id="optional_package_installation">Optional Package Installation</h3>
+<div class="level3">
+
+<p>
+These packages are optional although recommend. nano will make editing text files super easy and the shadow packages make user and group managment a breeze, otherwise you&#039;ll have to manually edit user, group and password files by hand. The downside these packages will use precious space on your root partition. If your working with limited space consider using <a href="/docs/guide-user/additional-software/extroot_configuration" class="wikilink1" title="docs:guide-user:additional-software:extroot_configuration" data-wiki-id="docs:guide-user:additional-software:extroot_configuration">extroot</a>.
+</p>
+<pre class="code">opkg update &amp;&amp; opkg install nano shadow-groupadd shadow-groupmod shadow-useradd shadow-usermod</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Optional Package Installation&quot;,&quot;hid&quot;:&quot;optional_package_installation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;1112-1683&quot;} -->
+<h3 class="sectionedit4" id="available_netatalk_features">Available Netatalk Features</h3>
+<div class="level3">
+
+<p>
+Many of the Netatalk goodies such as Spotlight search, Zeroconfig, <abbr title="Access Control List">ACL</abbr> and <abbr title="Lightweight Directory Access Protocol">LDAP</abbr> support have been disabled. That was probably a wise decision to save space and provide a broader range of hardware support. The good news Time Machine support is available. With a simple command <code>afpd -V</code> we can check what features have been compiled into Netatalk. 
+</p>
+<pre class="code"> afpd 3.1.10 - Apple Filing Protocol (AFP) daemon of Netatalk
+  
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation; either version 2 of the License, or (at your option) any later
+version. Please see the file COPYING for further information and details.
+  
+afpd has been compiled with support for these features:
+
+        AFP versions:	2.2 3.0 3.1 3.2 3.3 3.4 
+       CNID backends:	dbd last tdb 
+    Zeroconf support:	No
+TCP wrappers support:	No
+       Quota support:	No
+ Admin group support:	Yes
+  Valid shell checks:	No
+    cracklib support:	No
+          EA support:	ad | sys
+         ACL support:	No
+        LDAP support:	No
+       D-Bus support:	No
+   Spotlight support:	No
+       DTrace probes:	No
+
+            afp.conf:	/etc/afp.conf
+         extmap.conf:	/etc/extmap.conf
+     state directory:	/var/netatalk/
+  afp_signature.conf:	/var/netatalk/afp_signature.conf
+    afp_voluuid.conf:	/var/netatalk/afp_voluuid.conf
+     UAM search path:	/usr/lib/uams//
+Server messages path:	/var/netatalk/msg/</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Available Netatalk Features&quot;,&quot;hid&quot;:&quot;available_netatalk_features&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;1684-3208&quot;} -->
+<h3 class="sectionedit5" id="basic_file_share_configuration_time_machine_server">Basic File Share Configuration (Time Machine Server)</h3>
+<div class="level3">
+
+<p>
+The afp.conf file contains all AFP specific configurations and AFP volume definitions. Let&#039;s edit ours with <code>nano /etc/afp.conf</code> and setup our Time Machine Server; we&#039;ll be using the nano text editor in this tutorial. Netatalk has a lot of great features not covered in this <em>guide</em>. Make sure to checkout the documentation for more Time Machine options and other possible AFP uses. <a href="http://netatalk.sourceforge.net/3.0/htmldocs/afp.conf.5.html" class="urlextern" title="http://netatalk.sourceforge.net/3.0/htmldocs/afp.conf.5.html" rel="ugc nofollow">http://netatalk.sourceforge.net/3.0/htmldocs/afp.conf.5.html</a>
+</p>
+
+<p>
+log file = /var/log/afpd.log
+For initial configuration, it&#039;s good to check the log file.
+</p>
+
+<p>
+afp interfaces = br-lan
+In case you have multiple interfaces. Select the one, which you want to use for listening.
+</p>
+
+<p>
+vol size limit = size in MiB (V)
+Useful for Time Machine: limits the reported volume size, thus preventing Time Machine from using the whole real disk space for backup. Example: “vol size limit = 1000” would limit the reported disk space to 1 <abbr title="Gigabyte">GB</abbr>. IMPORTANT: This is an approximated calculation taking into account the contents of Time Machine sparsebundle images. Therefor you MUST NOT use this volume to store other content when using this option, because it would NOT be accounted. The calculation works by reading the band size from the Info.plist XML file of the sparsebundle, reading the bands/ directory counting the number of band files, and then multiplying one with the other.
+</p>
+<pre class="code">;
+; Netatalk 3.x configuration file
+; 
+
+[Global]
+; Global server settings
+log file = /var/log/afpd.log
+afp interfaces = br-lan
+
+[Backups]
+path = /mnt/sdb1/Backups
+time machine = yes
+vol size limit = 250000 
+valid users = @users</pre>
+
+<p>
+Don&#039;t forget to restart the daemon with <code>/etc/init.d/afpd restart</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Basic File Share Configuration (Time Machine Server)&quot;,&quot;hid&quot;:&quot;basic_file_share_configuration_time_machine_server&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:5,&quot;range&quot;:&quot;3209-4934&quot;} -->
+<h3 class="sectionedit6" id="avahi-daemon_configuration">Avahi-daemon Configuration</h3>
+<div class="level3">
+
+<p>
+The default avahi-daemon configuration <code>/etc/avahi/avahi-daemon.conf</code> works perfect with stable LEDE 17.01.0+ and no chages are required.
+</p>
+<pre class="code">[server]
+#host-name=LEDE
+#domain-name=local
+use-ipv4=yes
+use-ipv6=yes
+check-response-ttl=no
+use-iff-running=no
+
+[publish]
+publish-addresses=yes
+publish-hinfo=yes
+publish-workstation=no
+publish-domain=yes
+#publish-dns-servers=192.168.1.1
+#publish-resolv-conf-dns-servers=yes
+
+[reflector]
+enable-reflector=no
+reflect-ipv=no
+
+[rlimits]
+#rlimit-as=
+rlimit-core=0
+rlimit-data=4194304
+rlimit-fsize=0
+rlimit-nofile=30
+rlimit-stack=4194304
+rlimit-nproc=3</pre>
+
+<p>
+By default Avahi daemon requires running dbus. Start the dbus with command <code>/etc/init.d/dbus start</code> in case it&#039;s not running. Or disable it with <code>enable-dbus=no</code>.
+Start the Avahi daemon with command <code>/etc/init.d/avahi-daemon start</code>.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Learn about other configuration options here <a href="https://github.com/lathiat/avahi" class="urlextern" title="https://github.com/lathiat/avahi" rel="ugc nofollow">https://github.com/lathiat/avahi</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Avahi-daemon Configuration&quot;,&quot;hid&quot;:&quot;avahi-daemon_configuration&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:6,&quot;range&quot;:&quot;4935-5902&quot;} -->
+<h3 class="sectionedit7" id="zeroconf_advertising">Zeroconf Advertising</h3>
+<div class="level3">
+
+<p>
+The LEDE implementation of Netatalk was not compiled with Zeroconf support; so we must advertise the required afpovertcp, device-info, and adisk text-record properties manually. We previously installed avahi-daemon (via avahi-utils) for exactly this purpose. Let&#039;s create a service file <code>nano /etc/avahi/services/afp.service</code> using the template below.
+</p>
+<pre class="code xml"><span class="sc3"><span class="re1">&lt;?xml</span> <span class="re0">version</span>=<span class="st0">&quot;1.0&quot;</span> <span class="re0">standalone</span>=<span class="st0">'no'</span><span class="re2">?&gt;</span></span><span class="sc-1">&lt;!--*-nxml-*--&gt;</span>
+<span class="sc0">&lt;!DOCTYPE service-group SYSTEM &quot;avahi-service.dtd&quot;&gt;</span>
+<span class="sc3"><span class="re1">&lt;service-group<span class="re2">&gt;</span></span></span>
+ <span class="sc3"><span class="re1">&lt;name</span> <span class="re0">replace-wildcards</span>=<span class="st0">&quot;yes&quot;</span><span class="re2">&gt;</span></span>%h<span class="sc3"><span class="re1">&lt;/name<span class="re2">&gt;</span></span></span>
+  <span class="sc3"><span class="re1">&lt;service<span class="re2">&gt;</span></span></span>
+   <span class="sc3"><span class="re1">&lt;type<span class="re2">&gt;</span></span></span>_afpovertcp._tcp<span class="sc3"><span class="re1">&lt;/type<span class="re2">&gt;</span></span></span>
+   <span class="sc3"><span class="re1">&lt;port<span class="re2">&gt;</span></span></span>548<span class="sc3"><span class="re1">&lt;/port<span class="re2">&gt;</span></span></span>
+  <span class="sc3"><span class="re1">&lt;/service<span class="re2">&gt;</span></span></span>
+  <span class="sc3"><span class="re1">&lt;service<span class="re2">&gt;</span></span></span>
+   <span class="sc3"><span class="re1">&lt;type<span class="re2">&gt;</span></span></span>_device-info._tcp<span class="sc3"><span class="re1">&lt;/type<span class="re2">&gt;</span></span></span>
+   <span class="sc3"><span class="re1">&lt;port<span class="re2">&gt;</span></span></span>0<span class="sc3"><span class="re1">&lt;/port<span class="re2">&gt;</span></span></span>
+   <span class="sc3"><span class="re1">&lt;txt-record<span class="re2">&gt;</span></span></span>model=TimeCapsule<span class="sc3"><span class="re1">&lt;/txt-record<span class="re2">&gt;</span></span></span>
+  <span class="sc3"><span class="re1">&lt;/service<span class="re2">&gt;</span></span></span>
+  <span class="sc3"><span class="re1">&lt;service<span class="re2">&gt;</span></span></span>
+   <span class="sc3"><span class="re1">&lt;type<span class="re2">&gt;</span></span></span>_adisk._tcp<span class="sc3"><span class="re1">&lt;/type<span class="re2">&gt;</span></span></span>
+   <span class="sc3"><span class="re1">&lt;port<span class="re2">&gt;</span></span></span>9<span class="sc3"><span class="re1">&lt;/port<span class="re2">&gt;</span></span></span>
+   <span class="sc3"><span class="re1">&lt;txt-record<span class="re2">&gt;</span></span></span>sys=waMa=0,adVF=0x100,adVU=00000000-AAAA-BBBB-CCCC-111111111111<span class="sc3"><span class="re1">&lt;/txt-record<span class="re2">&gt;</span></span></span>
+   <span class="sc3"><span class="re1">&lt;txt-record<span class="re2">&gt;</span></span></span>dk0=adVN=Backups,adVF=0x81<span class="sc3"><span class="re1">&lt;/txt-record<span class="re2">&gt;</span></span></span>
+  <span class="sc3"><span class="re1">&lt;/service<span class="re2">&gt;</span></span></span>
+<span class="sc3"><span class="re1">&lt;/service-group<span class="re2">&gt;</span></span></span></pre>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> <code>model=TimeCapsule</code> this determines the hardware icon that appear within macOS Finder. Some available options are Xserve, PowerBook, PowerMac, Macmini, iMac, MacBook, MacBookPro, MacBookAir, MacPro, MacPro6,1, TimeCapsule, AppleTV1,1 and AirPort.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> <code>adVU=00000000-AAAA-BBBB-CCCC-111111111111</code> must be changed to a uniquely generated UUID. You can create a UUID in LEDE by writing <code>cat /proc/sys/kernel/random/uuid</code> (each time generating and displaying a new UUID).
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> <code>adVN=Backups</code> should match the virtual volume name of your <code>timemachine = YES</code> share from <code>/etc/afp.conf</code>. If you used my example settings above; leave this set to <code>Backups</code>. Most online guides use <em>“TimeMachine”</em> however <em>“Backups”</em> is more traditional since it&#039;s the default when using macOS Server or Time Capsule; although it realy dosen&#039;t matter what you call it, as long as they both match.
+</p>
+
+<p>
+Don&#039;t forget to restart the daemons after changing the configuration.
+</p>
+
+<p>
+<strong>Some helpful links</strong>
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="https://guidgenerator.com" class="urlextern" title="https://guidgenerator.com" rel="ugc nofollow">https://guidgenerator.com</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://www.freeformatter.com/xml-formatter.html" class="urlextern" title="https://www.freeformatter.com/xml-formatter.html" rel="ugc nofollow">https://www.freeformatter.com/xml-formatter.html</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://netatalk.sourceforge.net/wiki/index.php/Bonjour_record_adisk_adVF_values" class="urlextern" title="http://netatalk.sourceforge.net/wiki/index.php/Bonjour_record_adisk_adVF_values" rel="ugc nofollow">http://netatalk.sourceforge.net/wiki/index.php/Bonjour_record_adisk_adVF_values</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Zeroconf Advertising&quot;,&quot;hid&quot;:&quot;zeroconf_advertising&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:7,&quot;range&quot;:&quot;5903-8075&quot;} -->
+<h3 class="sectionedit8" id="user_and_group_management">User and Group Management</h3>
+<div class="level3">
+
+<p>
+In this section we&#039;ll create two (2) new users on the LEDE system for file sharing purposes. Create as many or as little as you like, the principles are the same. We&#039;ll also accomplish the following:
+</p>
+<ul>
+<li class="level1"><div class="li"> create home folders for the new user(s)</div>
+</li>
+<li class="level1"><div class="li"> create a group with the same name as the new user(s)</div>
+</li>
+<li class="level1"><div class="li"> add new user(s) to a supplementary group named “users”</div>
+</li>
+</ul>
+
+<p>
+1. Create a place for the users home folder with <code>mkdir /home/</code>. The default location for most Linux distros.
+</p>
+
+<p>
+2. Add the new user(s). In my example users anne &amp; brian will be created. They will receive a home folder <code>/home/username</code> and become members of the group <code>users</code> and <code>username</code>.
+</p>
+<pre class="code">useradd --create-home --groups users --user-group anne
+useradd --create-home --groups users --user-group brian</pre>
+
+<p>
+3. Add passwords for the newly created user(s).
+</p>
+<pre class="code">passwd anne
+passwd brian</pre>
+
+<p>
+4. Change the permissions of the Backups directory. You will have to improvise and use your systems own mount and or backup location.
+</p>
+<pre class="code">cd /mnt/sdb1/
+mkdir Backups
+chmod 775 Backups/
+chgrp users Backups/</pre>
+
+<p>
+5. Verify the permission changes with <code>ls -alF</code>.
+</p>
+<pre class="code">root@LEDE:/mnt/sdb1# ls -alF
+drwxr-xr-x    5 root     root          4096 Apr 25 18:48 ./
+drwxr-xr-x    1 root     root           224 Apr 25 21:49 ../
+drwxrwxr-x    2 root     users         4096 Apr 25 21:01 Backups/
+drwxr-xr-x    3 root     root          4096 Apr 25 18:48 Shared/
+drwx------    2 root     root         16384 Apr 25 16:35 lost+found/</pre>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> The <code>users</code> group is very important because the <code>valid users = @users</code> option in the Netatalk configuration. All members in this group have access to Time Machine services. Lets check what members makeup the <code>users</code> group with <code>grep users /etc/group</code>. You should see somthing similar to my results.
+</p>
+<pre class="code">root@LEDE:~# grep users /etc/group
+users:x:100:mrengles,anne,brian</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;User and Group Management&quot;,&quot;hid&quot;:&quot;user_and_group_management&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:8,&quot;range&quot;:&quot;8076-9972&quot;} -->
+<h3 class="sectionedit9" id="preserving_configuration_on_firmware_upgrade">Preserving Configuration on Firmware Upgrade</h3>
+<div class="level3">
+
+<p>
+The default LEDE firmware upgrade procedure might not backup some of our configuration files. That would be a horrible waste of hard work.
+</p>
+
+<p>
+Add them to the list of custom backup files at <code>/lib/upgrade/keep.d/</code> as follows:
+</p>
+<pre class="code">echo &#039;/etc/afp.conf &#039; &gt;&gt; /lib/upgrade/keep.d/afp
+echo &#039;/etc/avahi/ &#039; &gt;&gt; /lib/upgrade/keep.d/afp
+echo &#039;/etc/extmap.conf &#039; &gt;&gt; /lib/upgrade/keep.d/afp
+echo &#039;/home/ &#039; &gt;&gt; /lib/upgrade/keep.d/afp
+echo &#039;/var/netatalk/ &#039; /lib/upgrade/keep.d/afp</pre>
+
+<p>
+You can verify the setting by the following command:
+</p>
+<pre class="code">sysupgrade -l</pre>
+
+<p>
+This can also be accomplished via LuCi &gt; System &gt; Backup / Flash Firmware &gt; Configurations &gt; Backup file list and simply append the following:
+</p>
+<pre class="code">/etc/afp.conf
+/etc/avahi/
+/etc/extmap.conf
+/home/
+/var/netatalk/</pre>
+
+<p>
+For more information, please check the <a href="/docs/guide-user/installation/sysupgrade.cli" class="wikilink1" title="docs:guide-user:installation:sysupgrade.cli" data-wiki-id="docs:guide-user:installation:sysupgrade.cli">Upgrading LEDE from the Command Line</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Preserving Configuration on Firmware Upgrade&quot;,&quot;hid&quot;:&quot;preserving_configuration_on_firmware_upgrade&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:9,&quot;range&quot;:&quot;9973-10939&quot;} -->
+<h3 class="sectionedit10" id="setup_time_machine_on_macos">Setup Time Machine on macOS</h3>
+<div class="level3">
+
+<p>
+Settting up Time Machine on the Mac is a very simple process:
+</p>
+<ul>
+<li class="level1"><div class="li"> Open System Preferences &gt; Time Machine &gt; Select Backup Disk.</div>
+</li>
+<li class="level1"><div class="li"> Select “Backups on LEDE” (encrypted backups will also work).</div>
+</li>
+<li class="level1"><div class="li"> Login with your username and password (from earlier in this guide).</div>
+</li>
+</ul>
+
+<p>
+Apple can explain how-to use Time Machine much better then myself, so I&#039;ll let them. If you completed this <em>guide</em> successfully, chances are you wont need help. <a href="https://support.apple.com/en-us/HT201250" class="urlextern" title="https://support.apple.com/en-us/HT201250" rel="ugc nofollow">https://support.apple.com/en-us/HT201250</a>
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Depending on your storage requirements the initial backup could take several hours.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Setup Time Machine on macOS&quot;,&quot;hid&quot;:&quot;setup_time_machine_on_macos&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:10,&quot;range&quot;:&quot;10940-11540&quot;} -->
+<h3 class="sectionedit11" id="final_thoughts">Final Thoughts</h3>
+<div class="level3">
+
+<p>
+If you have questions, post them in the OpenWrt Forum so that myself and others can respond. <a href="https://forum.openwrt.org" class="urlextern" title="https://forum.openwrt.org" rel="ugc nofollow">https://forum.openwrt.org</a>
+</p>
+
+<p>
+Please update this user guide if you have a better way of doing things or notice typos and errors. <img src="/lib/images/smileys/smile.svg" class="icon smiley" alt=":-)" />
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Final Thoughts&quot;,&quot;hid&quot;:&quot;final_thoughts&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:11,&quot;range&quot;:&quot;11541-&quot;} -->

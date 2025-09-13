@@ -1,0 +1,152 @@
+
+<h1 class="sectionedit1" id="apc_backups_es-500_-_linksys_ea3500_-_luci_graphs">APC BackUps ES-500 - Linksys EA3500 - LuCI graphs</h1>
+<div class="level1">
+
+<p>
+This describes how to connect an APC BackUps ES-500 via the USB port on a Linksys EA3500 router.
+This includes collecting the data, and displaying graphs.
+This page is closely related to <a href="/docs/guide-user/services/ups/apcupsd_su700" class="wikilink1" title="docs:guide-user:services:ups:apcupsd_su700" data-wiki-id="docs:guide-user:services:ups:apcupsd_su700">APC SmartUps SU-700 - Linksys EA3500 - LuCI graphs</a>, which is worth reviewing as well, especially if you run into difficulties.
+</p>
+
+<p>
+Note that the collected data will be lost after a reboot of the router.
+To save the data, you need to put it on an external device, like a USB flash drive.
+Connecting both the UPS and a flash drive to a USB hub, which is then connected to the router, works fine for me.
+</p>
+<ul>
+<li class="level1"><div class="li"> Plug in UPS, and connect the cable from the UPS to the router USB port. This is a custom cable that comes with the UPS.</div>
+</li>
+<li class="level1"><div class="li"> in the router command line or LuCI web pages, install packages: apcupsd, collectd-mod-apcups and kmod-usb-hid</div>
+</li>
+<li class="level1"><div class="li"> for command line, the commands are: <pre class="code">opkg update
+opkg install kmod-usb-hid
+opkg install apcupsd
+opkg install collectd-mod-apcups</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> On the router command line, verify that the USB HID driver is installed and working with command and response: <pre class="code"># ls -la /dev/usb
+crw-------    1 root     root      180,  96 Jul 13 14:34 hiddev0</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> If you don&#039;t see a line for hiddev#, then something is wrong with the install of kmod-usb-hid.</div>
+</li>
+<li class="level1"><div class="li"> Resolve this, before proceeding.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> The next step is to customize the apcupsd config file.</div>
+</li>
+<li class="level1"><div class="li"> Details of the options can be found at <a href="http://www.apcupsd.org/manual/manual.html" class="urlextern" title="http://www.apcupsd.org/manual/manual.html" rel="ugc nofollow">http://www.apcupsd.org/manual/manual.html</a>, in the section “Configuration Directive Reference”.</div>
+</li>
+<li class="level1"><div class="li"> On the router command line, go to the /etc/apcupsd directory, and edit it <pre class="code"># cd /etc/apcupsd
+# vi</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> use the dd command to delete all the lines in the file</div>
+</li>
+<li class="level1"><div class="li"> use the i command to set the VI editor into “insert” mode.</div>
+</li>
+<li class="level1"><div class="li"> Copy and paste this text into the editor: <pre class="code">## apcupsd.conf v1.1 ##
+UPSNAME myups
+UPSCABLE usb
+UPSTYPE usb
+DEVICE /dev/usb/hid/hiddev[0-15]
+LOCKFILE /var/lock
+ONBATTERYDELAY 6
+BATTERYLEVEL 5
+MINUTES 3
+TIMEOUT 0
+ANNOY 300
+ANNOYDELAY 60
+NOLOGON disable
+KILLDELAY 0
+NETSERVER on
+NISIP 0.0.0.0
+NISPORT 3551
+EVENTSFILE /var/log/apcupsd.events
+# max kilobytes
+EVENTSFILEMAX 10
+UPSCLASS standalone
+UPSMODE disable
+# ===== Configuration statements to control apcupsd system logging ========
+# Time interval in seconds between writing the STATUS file; 0 disables
+STATTIME 0
+# Location of STATUS file (written to only if STATTIME is non-zero)
+STATFILE /var/log/apcupsd.status
+LOGSTATS off
+# Time interval in seconds between writing the DATA records to
+# the log file. 0 disables.
+DATATIME 0</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> type :wq into the editor, to write the new apcupsd.conf, and quit the edit session</div>
+</li>
+<li class="level1"><div class="li"> restart the apcupsd deamon process:<pre class="code"> 
+# /etc/init.d apcupsd restart</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Enter the apcaccess command into the command line, and you should get output like this: <pre class="code"># apcaccess
+root@g70outside:~# apcaccess 
+APC      : 001,034,0829
+DATE     : 2017-07-15 12:29:26 -0700  
+HOSTNAME : myrouter
+VERSION  : 3.14.14 (31 May 2016) unknown
+UPSNAME  : myups
+CABLE    : USB Cable
+DRIVER   : USB UPS Driver
+UPSMODE  : Stand Alone
+STARTTIME: 2017-07-13 14:34:46 -0700  
+MODEL    : Back-UPS ES 500 
+STATUS   : ONLINE 
+...</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Note the STATUS : ONLINE</div>
+</li>
+<li class="level1"><div class="li"> If you don&#039;t have “ONLINE”, then something is wrong</div>
+</li>
+<li class="level1"><div class="li"> Restart the LuCI statistics data collection: <pre class="code"># /etc/init.d/luci_statistics restart</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> In the router web interface, go to Statistics, Graphs, APC UPS</div>
+</li>
+<li class="level1"><div class="li"> You should see the graphs, with data starting on the right side.</div>
+</li>
+<li class="level1"><div class="li"> If not, wait a minute, refresh your browser and you should start to see data being written.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;APC BackUps ES-500 - Linksys EA3500 - LuCI graphs&quot;,&quot;hid&quot;:&quot;apc_backups_es-500_-_linksys_ea3500_-_luci_graphs&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-3711&quot;} -->
+<h2 class="sectionedit2" id="troubleshooting">Troubleshooting</h2>
+<div class="level2">
+
+<p>
+If you don&#039;t have APC UPS graphs at this point, here are some things to check:
+</p>
+<ul>
+<li class="level1"><div class="li"> There should be a tab for APC UPS on the General Plugins page at:<pre class="code">http://192.168.1.1:88/cgi-bin/luci/admin/statistics/collectd/general</pre>
+</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> /var/etc/collectd.conf should have a section for apcups:<pre class="code">LoadPlugin apcups
+ &lt;Plugin apcups&gt;
+  Host localhost
+  Port &quot;3551&quot;
+ &lt;/Plugin&gt;</pre>
+
+<p>
+If it does not, you can regenerate /var/etc/collectd.conf with this command:
+</p>
+<pre class="code">/usr/bin/stat-genconfig &gt; /var/etc/collectd.conf</pre>
+</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> If you still don&#039;t have APC UPS graphs, you may not have the patches that added luci-statistics support for the apcups plugin: <a href="https://github.com/openwrt/luci/pull/1227" class="urlextern" title="https://github.com/openwrt/luci/pull/1227" rel="ugc nofollow">https://github.com/openwrt/luci/pull/1227</a>. The best fix for this is to upgrade to a version that does.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Troubleshooting&quot;,&quot;hid&quot;:&quot;troubleshooting&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:2,&quot;range&quot;:&quot;3712-&quot;} -->

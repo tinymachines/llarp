@@ -1,0 +1,421 @@
+
+<h1 class="sectionedit1" id="working_with_patches">Working with patches</h1>
+<div class="level1">
+
+<p>
+The build system integrates <em><a href="https://en.wikipedia.org/wiki/Quilt (software)" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Quilt (software)">quilt</a></em> for easy patch management.
+This document outlines some common patching tasks like adding a new patch or editing existing ones.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Working with patches&quot;,&quot;hid&quot;:&quot;working_with_patches&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-225&quot;} -->
+<h2 class="sectionedit2" id="prepare_quilt_configuration">Prepare quilt configuration</h2>
+<div class="level2">
+
+<p>
+In order to let <em>quilt</em> create patches in the preferred format, a configuration file <code>.quiltrc</code>
+containing common <em>diff</em> and <em>patch</em> options must be created in the local home directory.
+</p>
+<pre class="code bash"><span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> EOF <span class="sy0">&gt;</span> ~<span class="sy0">/</span>.quiltrc
+<span class="re2">QUILT_DIFF_ARGS</span>=<span class="st0">&quot;--no-timestamps --no-index -p ab --color=auto&quot;</span>
+<span class="re2">QUILT_REFRESH_ARGS</span>=<span class="st0">&quot;--no-timestamps --no-index -p ab&quot;</span>
+<span class="re2">QUILT_SERIES_ARGS</span>=<span class="st0">&quot;--color=auto&quot;</span>
+<span class="re2">QUILT_PATCH_OPTS</span>=<span class="st0">&quot;--unified&quot;</span>
+<span class="re2">QUILT_DIFF_OPTS</span>=<span class="st0">&quot;-p&quot;</span>
+<span class="re2">EDITOR</span>=<span class="st0">&quot;nano&quot;</span>
+EOF</pre>
+<ul>
+<li class="level1"><div class="li"> <code>EDITOR</code> specifies the preferred editor for interactive patch editing</div>
+</li>
+<li class="level1"><div class="li"> The other variables control the patch format property like a/, b/ directory names and no timestamps</div>
+</li>
+<li class="level1"><div class="li"> FreeBSD does not support the <code>--color=auto</code> option and <code>-pab</code> must be written as <code>-p ab</code></div>
+</li>
+<li class="level1"><div class="li"> <img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> <code>-p ab</code> is working with quilt 0.63 on Linux and is documented in man page.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Prepare quilt configuration&quot;,&quot;hid&quot;:&quot;prepare_quilt_configuration&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;226-1093&quot;} -->
+<h2 class="sectionedit3" id="adding_a_new_patch">Adding a new patch</h2>
+<div class="level2">
+
+<p>
+To add a completely new patch to an existing package <em>example</em> start with preparing the source directory:
+</p>
+<pre class="code bash"><span class="kw2">make</span> package<span class="sy0">/</span>example<span class="sy0">/</span><span class="br0">&#123;</span>clean,prepare<span class="br0">&#125;</span> <span class="re2">V</span>=s <span class="re2">QUILT</span>=<span class="nu0">1</span></pre>
+
+<p>
+For host-side packages, you may want to detail the make target:
+</p>
+<pre class="code bash"><span class="kw2">make</span> package<span class="sy0">/</span>example<span class="sy0">/</span>host<span class="sy0">/</span><span class="br0">&#123;</span>clean,prepare<span class="br0">&#125;</span> <span class="re2">V</span>=s <span class="re2">QUILT</span>=<span class="nu0">1</span></pre>
+
+<p>
+This unpacks the source tarball and prepares existing patches as <em>quilt patch series</em> (if any).
+The verbose output will show where the source got extracted.
+</p>
+
+<p>
+Change to the prepared source directory.
+</p>
+<pre class="code bash"><span class="kw3">cd</span> build_dir<span class="sy0">/</span>target-<span class="sy0">*/</span>example-<span class="sy0">*</span></pre>
+
+<p>
+Note: It can happen that you need to go one level lower as the source is extracted in <code>build_dir/target-*/BUILD_VARIANT/example-*</code>.
+This happens when multiple build variants of a package are defined in the Makefile.
+</p>
+
+<p>
+Apply all existing patches using <em>quilt push</em>.
+</p>
+<pre class="code bash">quilt push <span class="re5">-a</span></pre>
+
+<p>
+At this point, we can either import an upstream patch or we can create a new patch by hand.  The advantage of importing an upstream patch is that the data associated with it is maintained in the project (upstream&#039;s git header, author of the patch, why it is necessary, and if it was upstreamed etc).
+As an aside, both github and gitlab offer the ability to easily create a patch from a given commit in their respective web interfaces.  To do so simply browse to a commit and edit the <abbr title="Uniform Resource Locator">URL</abbr> appending a literal “.patch” to it.
+</p>
+
+<p>
+To import a patch, download it to a temp directory, and give it a name according to these guidelines:
+</p>
+<ul>
+<li class="level1"><div class="li"> The name should start with a number, followed by a hyphen and a very short description of what is changed</div>
+</li>
+<li class="level1"><div class="li"> The chosen number should be higher than any existing patch - use <em>quilt series</em> to see the list of patches</div>
+</li>
+<li class="level1"><div class="li"> The patch file name should be short but descriptive</div>
+</li>
+</ul>
+<pre class="code bash">quilt import <span class="sy0">/</span>path<span class="sy0">/</span>to<span class="sy0">/</span>010-main_code_fix.patch</pre>
+
+<p>
+To simply create a new, empty patch file without importing an existing one:
+</p>
+<pre class="code bash">quilt new 010-main_code_fix.patch</pre>
+
+<p>
+After creating the empty patch, files to edit must be associated with it.
+The <em>quilt add</em> command can be used for that - once the file got added it can be edited as usual.
+</p>
+
+<p>
+A shortcut for both adding a file and open it in an editor is the <em>quilt edit</em> command:
+</p>
+<pre class="code bash">quilt edit src<span class="sy0">/</span>main.c</pre>
+<ul>
+<li class="level1"><div class="li"> <code>src/main.c</code> gets added to <code>010-main_code_fix.patch</code></div>
+</li>
+<li class="level1"><div class="li"> The file is opened in the editor specified with <code>EDITOR</code> in <code>.quiltrc</code></div>
+</li>
+</ul>
+
+<p>
+Repeat that for any file that needs to be edited.
+</p>
+
+<p>
+After the changes are finished, they can be reviewed with the <em>quilt diff</em> command.
+</p>
+<pre class="code bash">quilt <span class="kw2">diff</span></pre>
+
+<p>
+If the diff looks okay, proceed with <em>quilt refresh</em> to update the <code>010-main_code_fix.patch</code> file with the changes made.
+</p>
+<pre class="code bash">quilt refresh</pre>
+
+<p>
+Change back to the toplevel directory of the buildroot.
+</p>
+<pre class="code bash"><span class="kw3">cd</span> ..<span class="sy0">/</span>..<span class="sy0">/</span>..</pre>
+
+<p>
+To move the new patch file over to the buildroot, run <em>update</em> on the package:
+</p>
+<pre class="code bash"><span class="kw2">make</span> package<span class="sy0">/</span>example<span class="sy0">/</span>update <span class="re2">V</span>=s</pre>
+
+<p>
+Finally rebuild the package to test the changes:
+</p>
+<pre class="code bash"><span class="kw2">make</span> package<span class="sy0">/</span>example<span class="sy0">/</span><span class="br0">&#123;</span>clean,compile<span class="br0">&#125;</span> package<span class="sy0">/</span>index <span class="re2">V</span>=s</pre>
+
+<p>
+If problems occur, the patch needs to be edited again to solve the issues.
+Refer to the section below to learn how to edit existing patches.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Adding a new patch&quot;,&quot;hid&quot;:&quot;adding_a_new_patch&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;1094-4383&quot;} -->
+<h2 class="sectionedit4" id="edit_an_existing_patch">Edit an existing patch</h2>
+<div class="level2">
+
+<p>
+Start with preparing the source directory:
+</p>
+<pre class="code bash"><span class="kw2">make</span> package<span class="sy0">/</span>example<span class="sy0">/</span><span class="br0">&#123;</span>clean,prepare<span class="br0">&#125;</span> <span class="re2">V</span>=s <span class="re2">QUILT</span>=<span class="nu0">1</span></pre>
+
+<p>
+Change to the prepared source directory.
+</p>
+<pre class="code bash"><span class="kw3">cd</span> build_dir<span class="sy0">/</span>target-<span class="sy0">*/</span>example-<span class="sy0">*</span></pre>
+
+<p>
+List the patches available:
+</p>
+<pre class="code bash">quilt series</pre>
+
+<p>
+Advance to the patch that needs to be edited:
+</p>
+<pre class="code bash">quilt push 010-main_code_fix.patch</pre>
+<ul>
+<li class="level1"><div class="li"> When passing a valid patch filename to <em>push</em>, <em>quilt</em> will only apply the series until it reaches the specified patch.</div>
+</li>
+<li class="level1"><div class="li"> If unsure, use <em>quilt series</em> to see existing patches and <em>quilt top</em> to see the current position.</div>
+</li>
+<li class="level1"><div class="li"> If the current position is beyound the desired patch, use <em>quilt pop</em> to remove patches in the reverse order.</div>
+</li>
+<li class="level1"><div class="li"> You can use the “force” push option (e.g. <code>quilt push -f 010-main_code_fix.patch</code>) to interactively apply a broken (i.e. has rejects) patch.</div>
+</li>
+</ul>
+
+<p>
+Edit the patched files using the <em>quilt edit</em> command, repeat for every file that needs changes.
+</p>
+<pre class="code bash">quilt edit src<span class="sy0">/</span>main.c</pre>
+
+<p>
+Check which files are to be included in the patch:
+</p>
+<pre class="code bash">quilt files</pre>
+
+<p>
+Review the changes with <em>quilt diff</em>.
+</p>
+<pre class="code bash">quilt <span class="kw2">diff</span></pre>
+
+<p>
+If the diff looks okay, proceed with <em>quilt refresh</em> to update the current patch with the changes made.
+</p>
+<pre class="code bash">quilt refresh</pre>
+
+<p>
+Change back to the toplevel diretory of the buildroot.
+</p>
+<pre class="code bash"><span class="kw3">cd</span> ..<span class="sy0">/</span>..<span class="sy0">/</span>..<span class="sy0">/</span></pre>
+
+<p>
+To move the updated patch file over to the buildroot, run <em>update</em> on the package:
+</p>
+<pre class="code bash"><span class="kw2">make</span> package<span class="sy0">/</span>example<span class="sy0">/</span>update <span class="re2">V</span>=s</pre>
+
+<p>
+Finally rebuild the package to test the changes:
+</p>
+<pre class="code bash"><span class="kw2">make</span> package<span class="sy0">/</span>example<span class="sy0">/</span><span class="br0">&#123;</span>clean,compile<span class="br0">&#125;</span> package<span class="sy0">/</span>index <span class="re2">V</span>=s</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Edit an existing patch&quot;,&quot;hid&quot;:&quot;edit_an_existing_patch&quot;,&quot;codeblockOffset&quot;:13,&quot;secid&quot;:4,&quot;range&quot;:&quot;4384-6090&quot;} -->
+<h2 class="sectionedit5" id="adding_or_editing_kernel_patches">Adding or editing kernel patches</h2>
+<div class="level2">
+
+<p>
+To prepare the kernel tree, use:
+</p>
+<pre class="code bash"><span class="kw2">make</span> target<span class="sy0">/</span>linux<span class="sy0">/</span><span class="br0">&#123;</span>clean,prepare<span class="br0">&#125;</span> <span class="re2">V</span>=s <span class="re2">QUILT</span>=<span class="nu0">1</span></pre>
+
+<p>
+The source tree is in the target-<em>architecture</em> subdirectory (potentially with a subarch):
+</p>
+<pre class="code bash"><span class="kw3">cd</span> build_dir<span class="sy0">/</span>target-<span class="sy0">*/</span>linux-<span class="sy0">*/</span>linux-<span class="sy0">*</span></pre>
+
+<p>
+The process for modifying kernel patches is the same as for packages, only the make targets and directories differ.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> For the kernel, an additional subdirectory for patches is used, <code>generic/</code> contains patches common to all architectures and <code>platform/</code> contains patches specific to the current target (the latter are found in the <code>target/linux/&lt;arch_name&gt;/patches-*</code> folder in the source).
+</p>
+
+<p>
+So, you should first choose where the patch belongs, this is for patches in generic folder:
+</p>
+<pre class="code bash">quilt new generic<span class="sy0">/</span>010-main_code_fix.patch</pre>
+
+<p>
+patches in platform folder instead should be made with
+</p>
+<pre class="code bash">quilt new platform<span class="sy0">/</span>010-main_code_fix.patch</pre>
+
+<p>
+And in case you are editing files, it works like for packages but as you saw with the command to make the new patch you need to add the folder name before the name of the patch you are working on.
+</p>
+
+<p>
+After you made your changes and saved your patch with <code>quilt refresh</code>, you can go back to top level directory:
+</p>
+<pre class="code bash"><span class="kw3">cd</span> ..<span class="sy0">/</span>..<span class="sy0">/</span>..<span class="sy0">/</span>..</pre>
+
+<p>
+And then you can move the patches you created in these temporary directories back to main source tree:
+</p>
+<pre class="code bash"><span class="kw2">make</span> target<span class="sy0">/</span>linux<span class="sy0">/</span>update package<span class="sy0">/</span>index <span class="re2">V</span>=s</pre>
+
+<p>
+You can also simply copy the patch files over from the local work folder of quilt here (target/linux/&lt;arch_name&gt;/&lt;linux-version&gt;/patches/generic or target/linux/&lt;arch_name&gt;/&lt;linux-version&gt;/patches) to the source folder (target/linux/generic/patches-* or target/linux/&lt;arch_name&gt;/patches-*)
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> the process might fail with an error that looks like this 
+</p>
+
+<p>
+<code>bash: line 3: /run/media/alby/data_xeon_btrfs/source_code/my_LEDE_fork/source/staging_dir/host/bin/usign: No such file or directory</code>
+</p>
+
+<p>
+and you can safely ignore it, as it just means that you haven&#039;t run a compile yet so the “usign” tool used to sign packages does not yet exist.
+Since you are just working with source, it&#039;s irrelevant.
+</p>
+
+<p>
+(<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Patches should be named with the correct prefix, platform/000-abc.patch or generic/000-abc.patch.
+If not the update may not work correctly.)
+</p>
+
+<p>
+Afterwards, if we want to verify whether our patch is applied or not, we can go to the top level directory with
+</p>
+<pre class="code bash"><span class="kw3">cd</span> ..<span class="sy0">/</span>..<span class="sy0">/</span>..<span class="sy0">/</span>..<span class="sy0">/</span></pre>
+
+<p>
+and preparing again the <em>linux</em> folder for some modification with
+</p>
+<pre class="code bash"><span class="kw2">make</span> target<span class="sy0">/</span>linux<span class="sy0">/</span><span class="br0">&#123;</span>clean,prepare<span class="br0">&#125;</span> <span class="re2">V</span>=s <span class="re2">QUILT</span>=<span class="nu0">1</span></pre>
+
+<p>
+During this process all the applied patched will be shown, ours being among them, preceeded by <em>generic</em> or <em>platform</em> depending on what directory we placed the patch.
+Another way of retrieving the applied patches is through
+</p>
+<pre class="code bash">quilt series</pre>
+
+<p>
+as explained on the previous sections, after having made <em>make target/linux/{clean,prepare} ...</em>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Adding or editing kernel patches&quot;,&quot;hid&quot;:&quot;adding_or_editing_kernel_patches&quot;,&quot;codeblockOffset&quot;:24,&quot;secid&quot;:5,&quot;range&quot;:&quot;6091-9073&quot;} -->
+<h2 class="sectionedit6" id="adding_or_editing_toolchain_patches">Adding or editing toolchain patches</h2>
+<div class="level2">
+
+<p>
+For example, gcc:
+</p>
+
+<p>
+To prepare the tool tree, use:
+</p>
+<pre class="code bash"><span class="kw2">make</span> toolchain<span class="sy0">/</span>gcc<span class="sy0">/</span><span class="br0">&#123;</span>clean,prepare<span class="br0">&#125;</span> <span class="re2">V</span>=<span class="nu0">99</span> <span class="re2">QUILT</span>=<span class="nu0">1</span></pre>
+
+<p>
+The source tree depends on chosen lib and gcc :
+</p>
+<pre class="code bash"><span class="kw3">cd</span> build_dir<span class="sy0">/</span>toolchain-mips_r2_gcc-4.3.3+cs_uClibc-0.9.30.1<span class="sy0">/</span>gcc-4.3.3</pre>
+
+<p>
+Refreshing the patches is done with:
+</p>
+<pre class="code bash"><span class="kw2">make</span> toolchain<span class="sy0">/</span>gcc<span class="sy0">/</span>update <span class="re2">V</span>=<span class="nu0">99</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Adding or editing toolchain patches&quot;,&quot;hid&quot;:&quot;adding_or_editing_toolchain_patches&quot;,&quot;codeblockOffset&quot;:33,&quot;secid&quot;:6,&quot;range&quot;:&quot;9074-9471&quot;} -->
+<h2 class="sectionedit7" id="naming_patches">Naming patches</h2>
+<div class="level2">
+
+<p>
+valid for <strong>target/linux/generic</strong> and &lt;arch&gt;:
+</p>
+<pre class="code">The patches-* subdirectories contain the kernel patches applied for every OpenWrt target.
+All patches should be named &#039;NNN-lowercase_shortname.patch&#039; and sorted into the following categories:
+
+0xx - upstream backports
+1xx - code awaiting upstream merge
+2xx - kernel build / config / header patches
+3xx - architecture specific patches
+4xx - mtd related patches (subsystem and drivers)
+5xx - filesystem related patches
+6xx - generic network patches
+7xx - network / phy driver patches
+8xx - other drivers
+9xx - uncategorized other patches
+
+ALL patches must be in a way that they are potentially upstreamable, meaning:
+
+- they must contain a proper subject
+- they must contain a proper commit message explaining what they change
+- they must contain a valid Signed-off-by line</pre>
+
+<p>
+from: <a href="https://github.com/lede-project/source/blob/master/target/linux/generic/PATCHES" class="urlextern" title="https://github.com/lede-project/source/blob/master/target/linux/generic/PATCHES" rel="ugc nofollow">PATCHES</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Naming patches&quot;,&quot;hid&quot;:&quot;naming_patches&quot;,&quot;codeblockOffset&quot;:36,&quot;secid&quot;:7,&quot;range&quot;:&quot;9472-10432&quot;} -->
+<h2 class="sectionedit8" id="refreshing_patches">Refreshing patches</h2>
+<div class="level2">
+
+<p>
+When a patched package (or kernel) is updated to a newer version, existing patches might not apply cleanly anymore and <em>patch</em> will report <em>fuzz</em> when applying them.
+To rebase the whole patch series the <em>refresh</em> make target can be used:
+</p>
+<pre class="code bash"><span class="kw2">make</span> package<span class="sy0">/</span>example<span class="sy0">/</span>refresh <span class="re2">V</span>=s</pre>
+
+<p>
+For kernels, use:
+</p>
+<pre class="code bash"><span class="kw2">make</span> target<span class="sy0">/</span>linux<span class="sy0">/</span>refresh <span class="re2">V</span>=s</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Refreshing patches&quot;,&quot;hid&quot;:&quot;refreshing_patches&quot;,&quot;codeblockOffset&quot;:37,&quot;secid&quot;:8,&quot;range&quot;:&quot;10433-10832&quot;} -->
+<h2 class="sectionedit9" id="iteratively_modify_patches_without_cleaning_the_source_tree">Iteratively modify patches without cleaning the source tree</h2>
+<div class="level2">
+
+<p>
+When implementing new changes, it is often required to edit patches multiple times.
+To speed up the process, it is possible to retain the prepared source tree between edit operations.
+</p>
+<ol>
+<li class="level1"><div class="li"> Initially prepare the source tree as documented above</div>
+</li>
+<li class="level1"><div class="li"> Change to the prepared source directory</div>
+</li>
+<li class="level1"><div class="li"> Advance to the patch needing changes</div>
+</li>
+<li class="level1"><div class="li"> Edit the files and refresh the patch</div>
+</li>
+<li class="level1"><div class="li"> Fully apply the remaining patches using <em>quilt push -a</em> (if any)</div>
+</li>
+<li class="level1"><div class="li"> From the toplevel directory, run <code>make package/example/{compile,install}</code> or <code>make target/linux/{compile,install}</code> for kernels</div>
+</li>
+<li class="level1"><div class="li"> Test the binary</div>
+</li>
+<li class="level1"><div class="li"> If further changes are needed, repeat from step 2.</div>
+</li>
+<li class="level1"><div class="li"> Finally run <code>make package/example/update</code> or <code>make target/linux/update</code> for kernels to copy the changes back to build system</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Iteratively modify patches without cleaning the source tree&quot;,&quot;hid&quot;:&quot;iteratively_modify_patches_without_cleaning_the_source_tree&quot;,&quot;codeblockOffset&quot;:39,&quot;secid&quot;:9,&quot;range&quot;:&quot;10833-11688&quot;} -->
+<h2 class="sectionedit10" id="further_information">Further information</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <a href="http://linux.die.net/man/1/quilt" class="urlextern" title="http://linux.die.net/man/1/quilt" rel="ugc nofollow">Official quilt man page</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://git.savannah.gnu.org/cgit/quilt.git/plain/doc/quilt.pdf" class="urlextern" title="http://git.savannah.gnu.org/cgit/quilt.git/plain/doc/quilt.pdf" rel="ugc nofollow">How To Survive With Many Patches - Introduction to Quilt</a> (PDF) (read online <a href="https://docs.google.com/viewer?url=http%3A%2F%2Fgit.savannah.gnu.org%2Fcgit%2Fquilt.git%2Fplain%2Fdoc%2Fquilt.pdf" class="urlextern" title="https://docs.google.com/viewer?url=http%3A%2F%2Fgit.savannah.gnu.org%2Fcgit%2Fquilt.git%2Fplain%2Fdoc%2Fquilt.pdf" rel="ugc nofollow">here</a>)</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://forum.openwrt.org/viewtopic.php?id=43039" class="urlextern" title="https://forum.openwrt.org/viewtopic.php?id=43039" rel="ugc nofollow">Applying patches newbie doubt</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Further information&quot;,&quot;hid&quot;:&quot;further_information&quot;,&quot;codeblockOffset&quot;:39,&quot;secid&quot;:10,&quot;range&quot;:&quot;11689-&quot;} -->

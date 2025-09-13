@@ -1,0 +1,246 @@
+
+<h1 class="sectionedit1" id="how_to_use_i_c_over_usb">How to use I²C over USB</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;How to use I\u00b2C over USB&quot;,&quot;hid&quot;:&quot;how_to_use_i_c_over_usb&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-40&quot;} -->
+<h2 class="sectionedit2" id="introduction">Introduction</h2>
+<div class="level2">
+
+<p>
+Several routers and embedded devices with OpenWRT-support are equipped with one or more USB ports. In order not to risk your warranty by opening your device and soldering an I²C bus to the GPIOs, you can use an USB-I²C adapter to connect to your I²C-devices (e.g. temperature sensors, RTCs, AD-converters, GPIO-expanders, LCD-Drivers). One of those adapters is called <a href="http://www.harbaum.org/till/i2c_tiny_usb/index.shtml" class="urlextern" title="http://www.harbaum.org/till/i2c_tiny_usb/index.shtml" rel="ugc nofollow">i2c-tiny-usb</a>, developed by Till Harbaum. Biggest advantage is the low price (though not as cheap as the GPIO mod) and the support in the Linux kernel (thus making it possible to connect it to your computer running a recent Linux distribution and test it). Though you need some basic soldering skills, and at the moment you need to build OpenWRT from source.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Introduction&quot;,&quot;hid&quot;:&quot;introduction&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;41-853&quot;} -->
+<h2 class="sectionedit3" id="compiling_the_kernel_module">Compiling the kernel module</h2>
+<div class="level2">
+<div class="table sectionedit4"><table class="inline">
+	<tr class="row0">
+		<td class="col0"> <img src="/_media/meta/icons/tango/dialog-information.png" class="media" loading="lazy" alt="" /> </td><td class="col1"> <strong><code>Note:</code></strong> This module is now in trunk, called kmod-i2c-tiny-usb. You can use a <a href="http://downloads.openwrt.org/snapshots/trunk/" class="urlextern" title="http://downloads.openwrt.org/snapshots/trunk/" rel="ugc nofollow">snapshot</a> and install this kernel module with opkg. </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;895-1136&quot;} -->
+<p>
+Follow the build instructions until you reach the topic <a href="/docs/guide-developer/toolchain/use-buildsystem#building_images" class="wikilink1" title="docs:guide-developer:toolchain:use-buildsystem" data-wiki-id="docs:guide-developer:toolchain:use-buildsystem">building images</a>. At that point you have to edit you kernel configuration:
+</p>
+<pre class="code">make kernel_menuconfig</pre>
+
+<p>
+Make sure the following items are selected:
+</p>
+<ul>
+<li class="level1"><div class="li"> Device Drivers &gt; I2C support &gt; I2C device interface &lt;*&gt; (to get access through /dev/i2c-X)</div>
+</li>
+<li class="level1"><div class="li"> Device Drivers &gt; I2C support &gt; I2C Hardware Bus support &gt; Tiny-USB adapter &lt;*&gt;</div>
+</li>
+</ul>
+
+<p>
+Continue with the build instructions.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Compiling the kernel module&quot;,&quot;hid&quot;:&quot;compiling_the_kernel_module&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;854-1634&quot;} -->
+<h2 class="sectionedit5" id="using_the_i_c_bus_-_kernel_module">Using the I²C bus - kernel module</h2>
+<div class="level2">
+
+<p>
+Since the module is compiled into the kernel, the I2C-Tiny-USB adapter can be plugged in. The successful registration can be tested:
+</p>
+<pre class="code">dmesg | tail
+
+usb 1-3.3: new low speed USB device using ehci_hcd and address 5
+usb 1-3.3: New USB device found, idVendor=0403, idProduct=c631
+usb 1-3.3: New USB device strings: Mfr=1, Product=2, SerialNumber=0
+usb 1-3.3: Product: i2c-tiny-usb
+usb 1-3.3: Manufacturer: Till Harbaum
+usb 1-3.3: configuration #1 chosen from 1 choice
+i2c-tiny-usb 1-3.3:1.0: version 1.05 found at bus 001 address 005
+i2c-adapter i2c-0: connected i2c-tiny-usb device
+usbcore: registered new interface driver i2c-tiny-usb</pre>
+
+<p>
+The same results are achieved by loading the kernel module by insmod. The current trunk module within kmod-i2c-tiny-usb package works just fine (requiring also kmod-i2c-core package).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Using the I\u00b2C bus - kernel module&quot;,&quot;hid&quot;:&quot;using_the_i_c_bus_-_kernel_module&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:5,&quot;range&quot;:&quot;1635-2514&quot;} -->
+<h2 class="sectionedit6" id="using_the_i_c_bus_-_using_the_bus">Using the I²C bus - using the bus</h2>
+<div class="level2">
+
+<p>
+First install the i2c-tools package.
+This will provide all necessary tools for you to work with the bus.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Using the I\u00b2C bus - using the bus&quot;,&quot;hid&quot;:&quot;using_the_i_c_bus_-_using_the_bus&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:6,&quot;range&quot;:&quot;2515-2668&quot;} -->
+<h3 class="sectionedit7" id="searching_for_the_bus">Searching for the bus</h3>
+<div class="level3">
+
+<p>
+As you already can see in the dmesg listing, the i2c-0 device was created. The device node is visible under /dev/i2c-0.
+First of all, check the device is also visible for i2c tools.
+Running
+</p>
+
+<p>
+<code>i2cdetect -l</code>
+</p>
+
+<p>
+should print something like 
+</p>
+
+<p>
+<code>i2c-0	i2c       	i2c-tiny-usb at bus 001 device 004	I2C adapter</code>
+</p>
+
+<p>
+This is a good sign.
+We can show the implemented functions by running
+</p>
+
+<p>
+<code>i2cdetect -F 0</code>
+</p>
+
+<p>
+and it will print something like
+</p>
+
+<p>
+<code>Functionalities implemented by /dev/i2c-0:
+I2C                              yes
+SMBus Quick Command              yes
+SMBus Send Byte                  yes
+SMBus Receive Byte               yes
+SMBus Write Byte                 yes
+SMBus Read Byte                  yes
+SMBus Write Word                 yes
+SMBus Read Word                  yes
+SMBus Process Call               yes
+SMBus Block Write                yes
+SMBus Block Read                 no
+SMBus Block Process Call         no
+SMBus PEC                        no
+I2C Block Write                  yes
+I2C Block Read                   yes</code>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Searching for the bus&quot;,&quot;hid&quot;:&quot;searching_for_the_bus&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:7,&quot;range&quot;:&quot;2669-3733&quot;} -->
+<h3 class="sectionedit8" id="searching_for_the_devices">Searching for the devices</h3>
+<div class="level3">
+
+<p>
+Now, we can search for devices, connected to the bus:
+</p>
+
+<p>
+<code>i2cdetect 0</code>
+</p>
+
+<p>
+will scan the bus and show available devices, similar to this:
+</p>
+
+<p>
+<code>WARNING! This program can confuse your I2C bus, cause data loss and worse!
+I will probe file /dev/i2c-0.
+I will probe address range 0x03-0x77.
+Continue? [Y/n] 
+     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+00:          -- -- -- -- -- -- -- -- -- -- -- -- -- 
+10: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+20: 20 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+30: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+40: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+50: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+60: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+70: -- -- -- -- -- -- -- --                         </code>
+</p>
+
+<p>
+Should you be anoyed by the Y/n question, you can use the -y switch to avoid it ;)
+</p>
+
+<p>
+As you can see, I have an i2c device accessible on address 0x20 on the bus number 0.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Searching for the devices&quot;,&quot;hid&quot;:&quot;searching_for_the_devices&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:8,&quot;range&quot;:&quot;3734-4717&quot;} -->
+<h2 class="sectionedit9" id="accessing_the_example_device">Accessing the example device</h2>
+<div class="level2">
+
+<p>
+My device is actually a <a href="http://www.adafruit.com/products/732" class="urlextern" title="http://www.adafruit.com/products/732" rel="ugc nofollow">MCP23017</a> - 16 port GPIO expander.
+First I have to set the directions of the inputs and outputs - as this device possess 2 ports (A and B), I have to set the direction for both of them - setting a bit to 0 will cause it to switch to output, setting the bit to 1 will cause to switch to input. The address to set the direction for port A is 0x00, for port B it&#039;s 0x01.
+Therefore to set the first 8 channels (port A) to output, I&#039;d run
+</p>
+
+<p>
+<code>i2cset -y 0 0x20 0x00 0</code>
+</p>
+
+<p>
+That means use the device at the address 0x20 on the bus /dev/i2c-0, set its address 0x00 to zero value. The <code>-y</code> switch is there just to avoid the Y/n question.
+Also, to set the port B to input, I&#039;d issue following command:
+</p>
+
+<p>
+<code>i2cset -y 0 0x20 0x01 0xff</code>
+</p>
+
+<p>
+This will set all the pins for port B to input.
+To set the actual value for port A, the address 0x12 is utilized. Similar, for port B, the address is 0x13.
+Therefore to set first bit to logical 1, I&#039;d issue (assuming I already set the port&#039;s bit for output):
+</p>
+
+<p>
+<code>i2cset -y 0 0x20 0x12 1</code>
+</p>
+
+<p>
+Should you have some LED connected to the port, it will shine bright now.
+To turn it off, simply issue the following:
+</p>
+
+<p>
+<code>i2cset -y 0 0x20 0x12 0</code>
+</p>
+
+<p>
+Should some input be set on the port B, one can read its value by using following command:
+</p>
+
+<p>
+<code>i2cget -y 0 0x20 0x13</code>
+</p>
+
+<p>
+The result will be something like <code>0x00</code> (corresponding to the logical values presented to the actual pins).
+</p>
+
+<p>
+Using this approach, you can enrich the OpenWRT device with multiple I/O channels.
+</p>
+
+<p>
+I&#039;ve already tested MCP23017, MCP23008, some i2c temperature sensors and EEPROM - all working just fine.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Accessing the example device&quot;,&quot;hid&quot;:&quot;accessing_the_example_device&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:9,&quot;range&quot;:&quot;4718-6405&quot;} -->
+<h2 class="sectionedit10" id="precaution">Precaution</h2>
+<div class="level2">
+
+<p>
+<strong>This I²C bus operates at 5V. Make sure not to connect I²C devices incompatible with this voltage level!</strong>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Precaution&quot;,&quot;hid&quot;:&quot;precaution&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:10,&quot;range&quot;:&quot;6406-&quot;} -->

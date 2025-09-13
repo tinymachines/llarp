@@ -1,0 +1,226 @@
+
+<h1 class="sectionedit1" id="firewall_buildershell_scripts">Firewall Builder: Shell scripts</h1>
+<div class="level1">
+
+<p>
+If <a href="/docs/guide-user/firewall/overview" class="wikilink1" title="docs:guide-user:firewall:overview" data-wiki-id="docs:guide-user:firewall:overview">firewall3</a> is unavailable, one can add netfilter rules
+manually using the <code>iptables</code> command in a shell scripts.
+</p>
+
+<p>
+The script could be loaded using <a href="/docs/guide-developer/procd-init-scripts" class="wikilink1" title="docs:guide-developer:procd-init-scripts" data-wiki-id="docs:guide-developer:procd-init-scripts">init scripts</a> or added to
+<code>/etc/rc.local</code>.
+</p>
+
+<p>
+Here is an example netfilter configuration bash script taken from the
+<a href="https://en.wikipedia.org/wiki/Freifunk" class="urlextern" title="https://en.wikipedia.org/wiki/Freifunk" rel="ugc nofollow">freifunk project</a>.
+</p>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_center wrap_round wrap_alert plugin_wrap" style="width: 60%;">
+<p>
+This has not been tested.  It is retained here for completeness.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --><pre class="code bash"><span class="co0">#!/bin/sh</span>
+<span class="co0">#</span>
+<span class="co0"># by rac 2011, placed under GPLv2</span>
+<span class="co0">#</span>
+<span class="co0">#############################################################################</span>
+<span class="co0"># Variables</span>
+&nbsp;
+<span class="re2">IPT</span>=<span class="sy0">/</span>usr<span class="sy0">/</span>sbin<span class="sy0">/</span>iptables
+&nbsp;
+<span class="co0"># Interfaces:</span>
+<span class="re2">IF_LAN</span>=eth0.1
+<span class="re2">IF_DSL</span>=pppoe-dsl
+<span class="re2">IF_FUNK</span>=wlan0
+&nbsp;
+<span class="co0"># Netz IPs:</span>
+<span class="re2">NET_LAN</span>=192.168.0.0<span class="sy0">/</span><span class="nu0">16</span>
+<span class="re2">NET_DSL</span>=xxx.xxx.xxx.xxx<span class="sy0">/</span><span class="nu0">16</span>
+<span class="re2">NET_FUNK</span>=10.0.0.0<span class="sy0">/</span><span class="nu0">8</span>
+&nbsp;
+<span class="co0"># Eigene IPs:</span>
+<span class="re2">IP_LAN</span>=192.168.1.1
+<span class="re2">IP_DSL</span>=$<span class="br0">&#40;</span><span class="kw2">ifconfig</span><span class="sy0">|</span><span class="kw2">grep</span> <span class="st_h">'inet addr:xxx'</span><span class="sy0">|</span><span class="kw2">cut</span> <span class="re5">-d</span><span class="st_h">':'</span> <span class="re5">-f2</span><span class="sy0">|</span><span class="kw2">awk</span> <span class="st_h">'{print $1}'</span><span class="br0">&#41;</span>
+<span class="re2">IP_FUNK</span>=10.0.0.1
+&nbsp;
+<span class="co0"># User IPs:</span>
+<span class="re2">IP_USER1</span>=192.168.1.1
+<span class="re2">IP_USER2</span>=192.168.2.1
+<span class="re2">IP_USER3</span>=192.168.3.1
+<span class="re2">IP_USER4</span>=192.168.4.1
+<span class="re2">IP_USER5</span>=192.168.5.1
+&nbsp;
+<span class="co0"># User IP/MAC-Combos:</span>
+<span class="re2">USER1</span>=<span class="st0">&quot; -s 192.168.1.1 -m mac --mac-source xx:xx:xx:xx:xx:xx&quot;</span>
+<span class="re2">USER2</span>=<span class="st0">&quot; -s 192.168.2.1 -m mac --mac-source xx:xx:xx:xx:xx:xx&quot;</span>
+<span class="re2">USER3</span>=<span class="st0">&quot; -s 192.168.3.1 -m mac --mac-source xx:xx:xx:xx:xx:xx&quot;</span>
+<span class="re2">USER4</span>=<span class="st0">&quot; -s 192.168.4.1 -m mac --mac-source xx:xx:xx:xx:xx:xx&quot;</span>
+<span class="re2">USER5</span>=<span class="st0">&quot; -s 192.168.5.1 -m mac --mac-source xx:xx:xx:xx:xx:xx&quot;</span>
+&nbsp;
+<span class="co0"># Besondere IPs/Netze:</span>
+<span class="re2">UNI</span>=xxx.xxx.xxx.xxx
+<span class="re2">NET_VEREIN</span>=xxx.xxx.xxx.xxx<span class="sy0">/</span><span class="nu0">24</span>
+<span class="re2">NET_DNS</span>=xxx.xxx.xxx.xxx<span class="sy0">/</span><span class="nu0">24</span>
+<span class="re2">FRIEND1</span>=xxx.xxx.xxx.xxx
+&nbsp;
+<span class="co0">#############################################################################</span>
+<span class="co0"># Ketten leeren und löschen</span>
+&nbsp;
+<span class="re1">$IPT</span> <span class="re5">-t</span> filter <span class="re5">-F</span>
+<span class="re1">$IPT</span> <span class="re5">-t</span> filter <span class="re5">-X</span>
+<span class="re1">$IPT</span> <span class="re5">-t</span> nat <span class="re5">-F</span>
+<span class="re1">$IPT</span> <span class="re5">-t</span> nat <span class="re5">-X</span> 
+<span class="co0">#$IPT -t mangle -F  this will be done by the tc script</span>
+<span class="co0">#$IPT -t mangle -X</span>
+<span class="re1">$IPT</span> <span class="re5">-t</span> raw <span class="re5">-F</span>
+<span class="re1">$IPT</span> <span class="re5">-t</span> raw <span class="re5">-X</span>
+&nbsp;
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="st0">&quot;$1&quot;</span> = <span class="st0">&quot;stop&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+	<span class="kw3">echo</span> <span class="st0">&quot;Firewall completely flushed! Now running with no firewall.&quot;</span>
+	<span class="kw3">exit</span> <span class="nu0">0</span>
+<span class="kw1">fi</span>
+&nbsp;
+<span class="co0">#############################################################################</span>
+<span class="co0"># Default Policies fuer integrierte Ketten festlegen:</span>
+<span class="co0"># http://en.wikipedia.org/wiki/File:Netfilter-packet-flow.svg</span>
+&nbsp;
+<span class="co0"># Policies setzen</span>
+<span class="re1">$IPT</span> <span class="re5">-t</span> raw <span class="re5">-P</span> PREROUTING ACCEPT <span class="co0">#----- before connection tracking</span>
+<span class="re1">$IPT</span> <span class="re5">-t</span> raw <span class="re5">-P</span> OUTPUT ACCEPT <span class="co0">#--------- before connection tracking</span>
+<span class="re1">$IPT</span> <span class="re5">-t</span> mangle <span class="re5">-P</span> PREROUTING ACCEPT <span class="co0">#-- before routing; change TOS, TTL, MARK, etc</span>
+<span class="re1">$IPT</span> <span class="re5">-t</span> mangle <span class="re5">-P</span> INPUT ACCEPT <span class="co0">#------- </span>
+<span class="re1">$IPT</span> <span class="re5">-t</span> mangle <span class="re5">-P</span> FORWARD ACCEPT <span class="co0">#----- </span>
+<span class="re1">$IPT</span> <span class="re5">-t</span> mangle <span class="re5">-P</span> OUTPUT ACCEPT <span class="co0">#------ </span>
+<span class="re1">$IPT</span> <span class="re5">-t</span> mangle <span class="re5">-P</span> POSTROUTING ACCEPT <span class="co0">#- VOR nat POSTROUTING, MARK by source</span>
+<span class="re1">$IPT</span> <span class="re5">-t</span> nat <span class="re5">-P</span> PREROUTING ACCEPT   <span class="co0">#--- before routing</span>
+<span class="re1">$IPT</span> <span class="re5">-t</span> nat <span class="re5">-P</span> POSTROUTING ACCEPT <span class="co0">#---- </span>
+<span class="re1">$IPT</span> <span class="re5">-t</span> nat <span class="re5">-P</span> OUTPUT ACCEPT <span class="co0">#--------- </span>
+<span class="re1">$IPT</span> <span class="re5">-t</span> filter <span class="re5">-P</span> INPUT DROP <span class="co0">#--------- </span>
+<span class="re1">$IPT</span> <span class="re5">-t</span> filter <span class="re5">-P</span> FORWARD DROP <span class="co0">#------- </span>
+<span class="re1">$IPT</span> <span class="re5">-t</span> filter <span class="re5">-P</span> OUTPUT ACCEPT <span class="co0">#------ </span>
+&nbsp;
+<span class="co0"># Eigene Ketten anlegen</span>
+<span class="re1">$IPT</span> <span class="re5">-N</span> INPUT_dsl
+<span class="re1">$IPT</span> <span class="re5">-N</span> INPUT_lan
+<span class="re1">$IPT</span> <span class="re5">-N</span> INPUT_funk
+<span class="re1">$IPT</span> <span class="re5">-N</span> FWD_lan_dsl
+<span class="re1">$IPT</span> <span class="re5">-N</span> FWD_dsl_lan
+<span class="re1">$IPT</span> <span class="re5">-N</span> FWD_funk_dsl
+<span class="re1">$IPT</span> <span class="re5">-N</span> FWD_dsl_funk
+<span class="re1">$IPT</span> <span class="re5">-N</span> FWD_lan_funk
+<span class="re1">$IPT</span> <span class="re5">-N</span> FWD_funk_lan
+<span class="re1">$IPT</span> <span class="re5">-N</span> nuisance
+&nbsp;
+<span class="co0">#############################################################################</span>
+<span class="co0"># FILTER</span>
+&nbsp;
+<span class="co0">#================================</span>
+<span class="co0"># INPUT (Policy: DROP)</span>
+<span class="co0">#---------------------</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> INPUT <span class="re5">-j</span> ACCEPT <span class="re5">-i</span> lo <span class="re5">-s</span> 127.0.0.1 <span class="re5">-d</span> 127.0.0.1 <span class="co0">#--------------- loopback</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> INPUT <span class="re5">-j</span> ACCEPT <span class="re5">-i</span> <span class="re1">$IF_LAN</span>  <span class="re5">-p</span> udp <span class="re5">--dport</span> <span class="nu0">67</span>:<span class="nu0">68</span> <span class="re5">--sport</span> <span class="nu0">67</span>:<span class="nu0">68</span> <span class="co0">#- DHCP-Anfragen kommen von 255.255.255.255</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> INPUT <span class="re5">-j</span> ACCEPT <span class="re5">-i</span> <span class="re1">$IF_FUNK</span> <span class="re5">-p</span> udp <span class="re5">--dport</span> <span class="nu0">67</span>:<span class="nu0">68</span> <span class="re5">--sport</span> <span class="nu0">67</span>:<span class="nu0">68</span> <span class="co0">#- DHCP-Anfragen kommen von 255.255.255.255</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> INPUT <span class="re5">-j</span> ACCEPT <span class="re5">-m</span> state <span class="re5">--state</span> ESTABLISHED,RELATED <span class="co0">#- ALLES, was vom Router aufgebaut wurde, darf wieder zurueck</span>
+&nbsp;
+<span class="re1">$IPT</span> <span class="re5">-A</span> INPUT <span class="re5">-j</span> INPUT_lan <span class="re5">-i</span> <span class="re1">$IF_LAN</span> <span class="re5">-s</span> <span class="re1">$NET_LAN</span> <span class="re5">-d</span> <span class="re1">$IP_LAN</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> INPUT <span class="re5">-j</span> INPUT_dsl <span class="re5">-i</span> <span class="re1">$IF_DSL</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> INPUT <span class="re5">-j</span> INPUT_funk <span class="re5">-i</span> <span class="re1">$IF_FUNK</span> <span class="re5">-s</span> <span class="re1">$NET_FUNK</span> <span class="re5">-d</span> <span class="re1">$IP_FUNK</span>
+&nbsp;
+<span class="re1">$IPT</span> <span class="re5">-A</span> INPUT_lan <span class="re5">-j</span> ACCEPT <span class="co0">#--------------------- Alles von intern erlaubt</span>
+&nbsp;
+<span class="re1">$IPT</span> <span class="re5">-A</span> INPUT_dsl <span class="re5">-j</span> ACCEPT <span class="re5">-p</span> icmp <span class="re5">-s</span> <span class="nu0">0</span><span class="sy0">/</span><span class="nu0">0</span> <span class="re5">--icmp-type</span> <span class="nu0">11</span> <span class="co0">#-------- Time Exceeded</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> INPUT_dsl <span class="re5">-j</span> ACCEPT <span class="re5">-p</span> tcp <span class="re5">--dport</span> <span class="nu0">22</span> <span class="co0">#-------------------- ssh</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> INPUT_dsl <span class="re5">-j</span> LOG       <span class="re5">--log-prefix</span> <span class="st0">&quot;IPT_dsl-Rej &quot;</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> INPUT_dsl <span class="re5">-j</span> DROP
+&nbsp;
+<span class="re1">$IPT</span> <span class="re5">-A</span> INPUT_funk <span class="re5">-j</span> ACCEPT <span class="re5">-p</span> icmp <span class="re5">--icmp-type</span> <span class="nu0">8</span> <span class="co0">#--------------- allow system to be pinged!</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> INPUT_funk <span class="re5">-j</span> ACCEPT <span class="re5">-p</span> tcp <span class="re5">--dport</span> <span class="nu0">8080</span> <span class="co0">#----------------- kleine Nachricht</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> INPUT_funk <span class="re5">-j</span> LOG       <span class="re5">--log-prefix</span> <span class="st0">&quot;IPT_funk-Rej &quot;</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> INPUT <span class="re5">-j</span> REJECT    <span class="re5">--reject-with</span> icmp-host-prohibited
+&nbsp;
+<span class="co0">#================================</span>
+<span class="co0"># FORWARD (Policy: DROP)</span>
+<span class="co0">#-----------------------</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> FORWARD <span class="re5">-j</span> ACCEPT <span class="re5">-m</span> state <span class="re5">--state</span> ESTABLISHED,RELATED <span class="co0">#- ALLES, was bereits aufgebaut wurde, darf auch wieder durch</span>
+&nbsp;
+<span class="re1">$IPT</span> <span class="re5">-A</span> FORWARD <span class="re5">-j</span> FWD_lan_dsl <span class="re5">-i</span> <span class="re1">$IF_LAN</span> <span class="re5">-o</span> <span class="re1">$IF_DSL</span> <span class="re5">-s</span> <span class="re1">$NET_LAN</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> FORWARD <span class="re5">-j</span> FWD_dsl_lan <span class="re5">-i</span> <span class="re1">$IF_DSL</span> <span class="re5">-o</span> <span class="re1">$IF_LAN</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> FORWARD <span class="re5">-j</span> FWD_funk_dsl <span class="re5">-i</span> <span class="re1">$IF_FUNK</span> <span class="re5">-o</span> <span class="re1">$IF_DSL</span> <span class="re5">-s</span> <span class="re1">$NET_FUNK</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> FORWARD <span class="re5">-j</span> FWD_dsl_funk <span class="re5">-i</span> <span class="re1">$IF_DSL</span> <span class="re5">-o</span> <span class="re1">$IF_FUNK</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> FORWARD <span class="re5">-j</span> FWD_lan_funk <span class="re5">-i</span> <span class="re1">$IF_LAN</span> <span class="re5">-o</span> <span class="re1">$IF_FUNK</span> <span class="re5">-s</span> <span class="re1">$NET_LAN</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> FORWARD <span class="re5">-j</span> FWD_funk_lan <span class="re5">-i</span> <span class="re1">$IF_FUNK</span> <span class="re5">-o</span> <span class="re1">$IF_LAN</span> <span class="re5">-s</span> <span class="re1">$NET_FUNK</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> FORWARD <span class="re5">-j</span> LOG       <span class="re5">--log-prefix</span> <span class="st0">&quot;FORWARD: &quot;</span> <span class="co0">#--- duerfte nix uebrig bleiben</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> FORWARD <span class="re5">-j</span> DROP
+&nbsp;
+<span class="co0"># LAN und DSL</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> FWD_lan_dsl <span class="re5">-j</span> REJECT <span class="re5">-p</span> udp <span class="re5">--dport</span> <span class="nu0">135</span>:<span class="nu0">139</span> <span class="co0">#--------------- hat nichts im internet verloren</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> FWD_lan_dsl <span class="re5">-j</span> REJECT <span class="re5">-p</span> tcp <span class="re5">--dport</span> <span class="nu0">135</span>:<span class="nu0">139</span> <span class="co0">#--------------- hat nichts im internet verloren</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> FWD_lan_dsl <span class="re5">-j</span> REJECT <span class="re5">-p</span> tcp <span class="re5">--dport</span> <span class="nu0">445</span>  <span class="co0">#------------------ hat nichts im internet verloren</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> FWD_lan_dsl <span class="re5">-j</span> ACCEPT
+&nbsp;
+<span class="co0"># DSL to LAN (the portforwards)</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> FWD_dsl_lan <span class="re5">-j</span> ACCEPT <span class="re5">-p</span> udp <span class="re5">--dport</span> <span class="nu0">11111</span> <span class="re5">--sport</span> <span class="nu0">1024</span>:<span class="nu0">65535</span> <span class="re5">-d</span> <span class="re1">$IP_USER1</span> <span class="re5">-m</span> state <span class="re5">--state</span> NEW <span class="co0">#- udp</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> FWD_dsl_lan <span class="re5">-j</span> ACCEPT <span class="re5">-p</span> tcp <span class="re5">--dport</span> <span class="nu0">11111</span> <span class="re5">--sport</span> <span class="nu0">1024</span>:<span class="nu0">65535</span> <span class="re5">-d</span> <span class="re1">$IP_USER1</span> <span class="re5">-m</span> state <span class="re5">--state</span> NEW <span class="co0">#- tcp</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> FWD_dsl_lan <span class="re5">-j</span> ACCEPT <span class="re5">-p</span> udp <span class="re5">--dport</span> <span class="nu0">22222</span> <span class="re5">--sport</span> <span class="nu0">1024</span>:<span class="nu0">65535</span> <span class="re5">-d</span> <span class="re1">$IP_USER2</span> <span class="re5">-m</span> state <span class="re5">--state</span> NEW <span class="co0">#- udp</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> FWD_dsl_lan <span class="re5">-j</span> ACCEPT <span class="re5">-p</span> tcp <span class="re5">--dport</span> <span class="nu0">22222</span> <span class="re5">--sport</span> <span class="nu0">1024</span>:<span class="nu0">65535</span> <span class="re5">-d</span> <span class="re1">$IP_USER2</span> <span class="re5">-m</span> state <span class="re5">--state</span> NEW <span class="co0">#- tcp</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> FWD_dsl_lan <span class="re5">-j</span> ACCEPT <span class="re5">-p</span> udp <span class="re5">--dport</span> <span class="nu0">44444</span> <span class="re5">--sport</span> <span class="nu0">1024</span>:<span class="nu0">65535</span> <span class="re5">-d</span> <span class="re1">$IP_USER4</span> <span class="re5">-m</span> state <span class="re5">--state</span> NEW <span class="co0">#- tcp</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> FWD_dsl_lan <span class="re5">-j</span> ACCEPT <span class="re5">-p</span> tcp <span class="re5">--dport</span>  <span class="nu0">8000</span> <span class="re5">--sport</span> <span class="nu0">1024</span>:<span class="nu0">65535</span> <span class="re5">-d</span> <span class="re1">$IP_USER5</span> <span class="re5">-s</span> <span class="re1">$FRIEND1</span> <span class="re5">-m</span> state <span class="re5">--state</span> NEW <span class="co0">#- tcp</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> FWD_dsl_lan <span class="re5">-j</span> LOG       <span class="re5">--log-prefix</span> <span class="st0">&quot;FWD_dsl_lan &quot;</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> FWD_dsl_lan <span class="re5">-j</span> DROP
+&nbsp;
+<span class="co0"># FUNK to DSL</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> FWD_funk_dsl <span class="re5">-j</span> ACCEPT <span class="re5">-s</span> 10.10.10.99 <span class="re5">-m</span> mac <span class="re5">--mac-source</span> <span class="nu0">11</span>:<span class="nu0">22</span>:<span class="nu0">33</span>:<span class="nu0">44</span>:<span class="nu0">55</span>:<span class="nu0">66</span> <span class="co0">#------- no safety here!</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> FWD_funk_dsl <span class="re5">-j</span> LOG       <span class="re5">--log-prefix</span> <span class="st0">&quot;FWD_funk_dsl &quot;</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> FWD_funk_dsl <span class="re5">-j</span> REJECT    <span class="re5">--reject-with</span> icmp-host-prohibited
+&nbsp;
+<span class="co0"># DSL to FUNK</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> FWD_dsl_funk <span class="re5">-j</span> LOG       <span class="re5">--log-prefix</span> <span class="st0">&quot;FWD_dsl_funk &quot;</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> FWD_dsl_funk <span class="re5">-j</span> DROP
+&nbsp;
+<span class="co0"># LAN to FUNK</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> FWD_lan_funk <span class="re5">-j</span> ACCEPT <span class="co0">#------------------------------- alles erlaubt</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> FWD_lan_funk <span class="re5">-j</span> LOG       <span class="re5">--log-prefix</span> <span class="st0">&quot;FWD_lan_funk &quot;</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> FWD_lan_funk <span class="re5">-j</span> DROP
+&nbsp;
+<span class="co0"># FUNK to LAN</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> FWD_funk_lan <span class="re5">-j</span> ACCEPT <span class="co0">#------------------------------- alles erlaubt</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> FWD_funk_lan <span class="re5">-j</span> LOG       <span class="re5">--log-prefix</span> <span class="st0">&quot;FWD_funk_lan &quot;</span>
+<span class="re1">$IPT</span> <span class="re5">-A</span> FWD_funk_lan <span class="re5">-j</span> DROP
+&nbsp;
+<span class="co0">#================================</span>
+<span class="co0"># OUTPUT (Policy: ACCEPT)</span>
+<span class="co0">#---------------------</span>
+&nbsp;
+<span class="co0">#############################################################################</span>
+<span class="co0"># NAT</span>
+&nbsp;
+<span class="co0">#================================</span>
+<span class="co0"># PREROUTING (Policy: ACCEPT)</span>
+<span class="co0">#----------------------------</span>
+&nbsp;
+<span class="co0">#</span>
+<span class="co0"># Portforwads:</span>
+<span class="co0">#</span>
+&nbsp;
+<span class="re1">$IPT</span> <span class="re5">-t</span> nat <span class="re5">-A</span> PREROUTING <span class="re5">-i</span> <span class="re1">$IF_DSL</span> <span class="re5">-p</span> udp <span class="re5">--dport</span> <span class="nu0">11111</span> <span class="re5">-j</span> DNAT <span class="re5">--to-destination</span> <span class="co1">${IP_USER1}</span>:<span class="nu0">11111</span> <span class="co0">#--- udp</span>
+<span class="re1">$IPT</span> <span class="re5">-t</span> nat <span class="re5">-A</span> PREROUTING <span class="re5">-i</span> <span class="re1">$IF_DSL</span> <span class="re5">-p</span> tcp <span class="re5">--dport</span> <span class="nu0">11111</span> <span class="re5">-j</span> DNAT <span class="re5">--to-destination</span> <span class="co1">${IP_USER1}</span>:<span class="nu0">11111</span> <span class="co0">#--- tcp</span>
+<span class="re1">$IPT</span> <span class="re5">-t</span> nat <span class="re5">-A</span> PREROUTING <span class="re5">-i</span> <span class="re1">$IF_DSL</span> <span class="re5">-p</span> udp <span class="re5">--dport</span> <span class="nu0">22222</span> <span class="re5">-j</span> DNAT <span class="re5">--to-destination</span> <span class="co1">${IP_USER2}</span>:<span class="nu0">11111</span> <span class="co0">#--- udp</span>
+<span class="re1">$IPT</span> <span class="re5">-t</span> nat <span class="re5">-A</span> PREROUTING <span class="re5">-i</span> <span class="re1">$IF_DSL</span> <span class="re5">-p</span> tcp <span class="re5">--dport</span> <span class="nu0">22222</span> <span class="re5">-j</span> DNAT <span class="re5">--to-destination</span> <span class="co1">${IP_USER2}</span>:<span class="nu0">11111</span> <span class="co0">#--- tcp</span>
+<span class="re1">$IPT</span> <span class="re5">-t</span> nat <span class="re5">-A</span> PREROUTING <span class="re5">-i</span> <span class="re1">$IF_DSL</span> <span class="re5">-p</span> udp <span class="re5">--dport</span> <span class="nu0">44444</span> <span class="re5">-j</span> DNAT <span class="re5">--to-destination</span> <span class="co1">${IP_USER4}</span>:<span class="nu0">11111</span> <span class="co0">#--- udp</span>
+<span class="re1">$IPT</span> <span class="re5">-t</span> nat <span class="re5">-A</span> PREROUTING <span class="re5">-i</span> <span class="re1">$IF_DSL</span> <span class="re5">-p</span> tcp <span class="re5">--dport</span> <span class="nu0">55555</span> <span class="re5">-j</span> DNAT <span class="re5">--to-destination</span> <span class="co1">${IP_USER5}</span>:<span class="nu0">11111</span> <span class="co0">#--- tcp</span>
+&nbsp;
+<span class="co0">#================================</span>
+<span class="co0"># POSTROUTING (Policy: ACCEPT)</span>
+<span class="co0">#-----------------------------</span>
+<span class="re1">$IPT</span> <span class="re5">-t</span> nat <span class="re5">-A</span> POSTROUTING <span class="re5">-o</span> <span class="re1">$IF_DSL</span> <span class="re5">-j</span> MASQUERADE <span class="co0">#--------------- Alles ins Internet auf Router-IP naten</span>
+&nbsp;
+<span class="co0">#############################################################################</span>
+<span class="co0"># MANGLE</span>
+&nbsp;
+<span class="co0">#================================</span>
+<span class="co0"># POSTROUTING (Policy: ACCEPT)</span>
+<span class="co0">#----------------------------</span>
+<span class="co0"># included in the tc script</span></pre>
+
+</div>

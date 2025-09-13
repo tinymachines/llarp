@@ -1,0 +1,181 @@
+
+<h1 class="sectionedit1" id="pywws_python_weather_station_howto">pywws Python Weather Station HowTo</h1>
+<div class="level1">
+
+<p>
+<em>“pywws is a collection of Python modules to read, store and process data from popular USB wireless weather stations such as Elecsa AstroTouch 6975, Watson W-8681, WH-1080PC, WH1080, WH1081, WH3080 etc”</em>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;pywws Python Weather Station HowTo&quot;,&quot;hid&quot;:&quot;pywws_python_weather_station_howto&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-257&quot;} -->
+<h2 class="sectionedit2" id="intro">intro</h2>
+<div class="level2">
+
+<p>
+This is a guide on installing pywws and its dependencies from source (where necessary) without pip (python package manager) or the full python package to save space.
+</p>
+
+<p>
+There is excellent official documentation here that describes how to do it with pip (easiest) if you have the space (perhaps via <a href="/docs/guide-user/additional-software/extroot_configuration" class="wikilink1" title="docs:guide-user:additional-software:extroot_configuration" data-wiki-id="docs:guide-user:additional-software:extroot_configuration">Rootfs on External Storage (extroot)</a>): <a href="http://pywws.readthedocs.org/en/latest/index.html" class="urlextern" title="http://pywws.readthedocs.org/en/latest/index.html" rel="ugc nofollow">http://pywws.readthedocs.org/en/latest/index.html</a>
+</p>
+
+<p>
+I have a WH1080 into a <a href="/toh/lenovo/y1" class="wikilink1" title="toh:lenovo:y1" data-wiki-id="toh:lenovo:y1">Lenovo Y1 v1</a> running openwrt 15.05 with 16mb total flash which leaves about 10Mb after flashing, <strong>You will require about 5mb free to do all this.</strong>
+</p>
+
+<p>
+Here is my underground weather station page: <a href="http://www.wunderground.com/personal-weather-station/dashboard?ID=INEWSOUT968" class="urlextern" title="http://www.wunderground.com/personal-weather-station/dashboard?ID=INEWSOUT968" rel="ugc nofollow">http://www.wunderground.com/personal-weather-station/dashboard?ID=INEWSOUT968</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;intro&quot;,&quot;hid&quot;:&quot;intro&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;258-1039&quot;} -->
+<h2 class="sectionedit3" id="system_packages">system packages</h2>
+<div class="level2">
+
+<p>
+These are required:
+</p>
+<pre class="code"> libusb-1.0, zoneinfo-core, ca-certificates
+ </pre>
+
+<p>
+These will make things easier, such as sftp with filezilla, wget downloading source and unpacking it via ssh:
+</p>
+<pre class="code">  tar, wget, openssh-sftp-server, unzip
+ </pre>
+
+<p>
+Once done create a symlink for your timezone, (needed by python tzlocal)
+</p>
+<pre class="code">  ln -s /usr/share/zoneinfo/GMT+10 /etc/localtime</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;system packages&quot;,&quot;hid&quot;:&quot;system_packages&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;1040-1420&quot;} -->
+<h2 class="sectionedit4" id="python_packages">python packages</h2>
+<div class="level2">
+
+<p>
+You will need these openwrt python packages (and what ever dependencies they come with) to compile and install pywws and it&#039;s dependencies.<br/>
+
+Some of these can be removed after everything is installed, to make more space if needed, the biggest one ive tested as removable is python-distutils<br/>
+
+More details on openwrt python can be found here: <a href="/docs/guide-user/services/python" class="wikilink1" title="docs:guide-user:services:python" data-wiki-id="docs:guide-user:services:python">Python</a>
+</p>
+<pre class="code">python-base python-codecs python-ctypes python-distutils python-email python-light python-logging python-openssl python-unittest python-xml</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;python packages&quot;,&quot;hid&quot;:&quot;python_packages&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;1421-1980&quot;} -->
+<h2 class="sectionedit5" id="pywws_and_python_source_dependencies">pywws and python source dependencies</h2>
+<div class="level2">
+
+<p>
+The following python modules will be downloaded as source, compiled and installed to avoid needing pip, after success with each one you can delete the unpacked and downloaded source files if you need the room.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;pywws and python source dependencies&quot;,&quot;hid&quot;:&quot;pywws_and_python_source_dependencies&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;1981-2240&quot;} -->
+<h3 class="sectionedit6" id="setuptools">setuptools</h3>
+<div class="level3">
+
+<p>
+<a href="https://pypi.python.org/pypi/setuptools#unix-wget" class="urlextern" title="https://pypi.python.org/pypi/setuptools#unix-wget" rel="ugc nofollow">https://pypi.python.org/pypi/setuptools#unix-wget</a><br/>
+
+Installing this from source instead of the python-setuptools package saves installing it&#039;s dependency python (full)<br/>
+
+To install grap the install script, <a href="https://bootstrap.pypa.io/ez_setup.py" class="urlextern" title="https://bootstrap.pypa.io/ez_setup.py" rel="ugc nofollow">https://bootstrap.pypa.io/ez_setup.py</a> and:
+</p>
+<pre class="code">  python ez_setup.py</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;setuptools&quot;,&quot;hid&quot;:&quot;setuptools&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;2241-2534&quot;} -->
+<h3 class="sectionedit7" id="tzlocal">tzlocal</h3>
+<div class="level3">
+
+<p>
+<a href="https://github.com/regebro/tzlocal" class="urlextern" title="https://github.com/regebro/tzlocal" rel="ugc nofollow">https://github.com/regebro/tzlocal</a> (download and unpack)
+</p>
+<pre class="code"> python setup.py install</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;tzlocal&quot;,&quot;hid&quot;:&quot;tzlocal&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;2535-2637&quot;} -->
+<h3 class="sectionedit8" id="python-libusb1">python-libusb1</h3>
+<div class="level3">
+
+<p>
+<a href="https://github.com/vpelletier/python-libusb1" class="urlextern" title="https://github.com/vpelletier/python-libusb1" rel="ugc nofollow">https://github.com/vpelletier/python-libusb1</a>  (download and unpack)
+</p>
+<pre class="code"> python setup.py install</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;python-libusb1&quot;,&quot;hid&quot;:&quot;python-libusb1&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:8,&quot;range&quot;:&quot;2638-2758&quot;} -->
+<h3 class="sectionedit9" id="pywws">pywws</h3>
+<div class="level3">
+
+<p>
+<a href="https://github.com/jim-easterbrook/pywws" class="urlextern" title="https://github.com/jim-easterbrook/pywws" rel="ugc nofollow">https://github.com/jim-easterbrook/pywws</a>  (download and unpack)
+</p>
+<pre class="code"> python setup.py install
+ </pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;pywws&quot;,&quot;hid&quot;:&quot;pywws&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:9,&quot;range&quot;:&quot;2759-2869&quot;} -->
+<h2 class="sectionedit10" id="pywws_setup_and_running">pywws setup and running</h2>
+<div class="level2">
+
+<p>
+Your now ready to run, and can proceed setup from here: <a href="http://pywws.readthedocs.org/en/latest/guides/getstarted.html#test-the-weather-station-connection" class="urlextern" title="http://pywws.readthedocs.org/en/latest/guides/getstarted.html#test-the-weather-station-connection" rel="ugc nofollow">http://pywws.readthedocs.org/en/latest/guides/getstarted.html#test-the-weather-station-connection</a>
+</p>
+
+<p>
+Further into it you may want to use cron, who&#039;s jobs can be set in Luci System→Scheduled Tasks, and enabled:
+<a href="https://wiki.openwrt.org/doc/howto/cron#activating_cron" class="urlextern" title="https://wiki.openwrt.org/doc/howto/cron#activating_cron" rel="ugc nofollow">https://wiki.openwrt.org/doc/howto/cron#activating_cron</a>
+</p>
+<pre class="code"> service cron start
+ service cron enable</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;pywws setup and running&quot;,&quot;hid&quot;:&quot;pywws_setup_and_running&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:10,&quot;range&quot;:&quot;2870-3272&quot;} -->
+<h2 class="sectionedit11" id="comments">comments</h2>
+<div class="level2">
+
+<p>
+A thread about this guide at the &#039;forum&#039; for pywws: <a href="https://groups.google.com/d/topic/pywws/aNi2dE9J8OM/discussion" class="urlextern" title="https://groups.google.com/d/topic/pywws/aNi2dE9J8OM/discussion" rel="ugc nofollow">https://groups.google.com/d/topic/pywws/aNi2dE9J8OM/discussion</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;comments&quot;,&quot;hid&quot;:&quot;comments&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:11,&quot;range&quot;:&quot;3273-3410&quot;} -->
+<h2 class="sectionedit12" id="syncing_data_to_a_remote_host">syncing data to a remote host</h2>
+<div class="level2">
+
+<p>
+Say you want to sync your collected data to a remote web server for backup or further processing here&#039;s how i did it.<br/>
+
+My main reason was that gnuplot is no longer in the 15.05 package feeds and i didnt really want it and the images taking up space on the router anyway, so i figured do it remotely.<br/>
+
+</p>
+
+<p>
+Firstly you need to setup a key pair that lets scp/ssh connect to a remote server without password:
+</p>
+<pre class="code"> dropbearkey -t rsa -f .ssh/id_dropbear</pre>
+
+<p>
+When done it will print your new public key, copy and past it all to your server users .ssh/authorized_keys file:
+</p>
+<pre class="code"> ssh-rsa AAAAB3NzaC1ychaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaangedkDHJ8CZy5Dey+l7C2tS357e+Xtgs+INv5DZ user@OpenWrt
+ Fingerprint: md5 d9:be:27:echaaaaaaaangedb:95:80:f0:de:6f
+ </pre>
+
+<p>
+Then the command (that you can put in cron) to sync your data files will be :
+</p>
+<pre class="code"> scp -i .ssh/id_dropbear  ~/weather/ -r user@host:/destination/</pre>
+
+<p>
+Run it from the command line atleast once to test it works.<br/>
+
+I then installed another instance of pywws on the remote server with gnuplot to process the data.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;syncing data to a remote host&quot;,&quot;hid&quot;:&quot;syncing_data_to_a_remote_host&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:12,&quot;range&quot;:&quot;3411-&quot;} -->

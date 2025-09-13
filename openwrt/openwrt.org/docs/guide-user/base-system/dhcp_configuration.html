@@ -1,0 +1,934 @@
+
+<h1 class="sectionedit1" id="dhcp_and_dns_examples">DHCP and DNS examples</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__meta:infobox:howto_links">
+<div class="level1">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_info plugin_wrap">
+<p>
+This article relies on the following:
+</p>
+<ul>
+<li class="level1"><div class="li"> Accessing <a href="/docs/guide-quick-start/walkthrough_login" class="wikilink1" title="docs:guide-quick-start:walkthrough_login" data-wiki-id="docs:guide-quick-start:walkthrough_login">web interface</a> / <a href="/docs/guide-quick-start/sshadministration" class="wikilink1" title="docs:guide-quick-start:sshadministration" data-wiki-id="docs:guide-quick-start:sshadministration">command-line interface</a></div>
+</li>
+<li class="level1"><div class="li"> Managing <a href="/docs/guide-user/base-system/uci" class="wikilink1" title="docs:guide-user:base-system:uci" data-wiki-id="docs:guide-user:base-system:uci">configs</a> / <a href="/docs/guide-user/additional-software/managing_packages" class="wikilink1" title="docs:guide-user:additional-software:managing_packages" data-wiki-id="docs:guide-user:additional-software:managing_packages">packages</a> / <a href="/docs/guide-user/base-system/managing_services" class="wikilink1" title="docs:guide-user:base-system:managing_services" data-wiki-id="docs:guide-user:base-system:managing_services">services</a> / <a href="/docs/guide-user/base-system/log.essentials" class="wikilink1" title="docs:guide-user:base-system:log.essentials" data-wiki-id="docs:guide-user:base-system:log.essentials">logs</a></div>
+</li>
+</ul>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level1">
+
+<p>
+See also:
+<a href="/docs/guide-user/base-system/dhcp" class="wikilink1" title="docs:guide-user:base-system:dhcp" data-wiki-id="docs:guide-user:base-system:dhcp">DHCP and DNS configuration</a>,
+<a href="/docs/guide-user/services/dns/start#encryption" class="wikilink1" title="docs:guide-user:services:dns:start" data-wiki-id="docs:guide-user:services:dns:start">DNS encryption</a>,
+<a href="/docs/guide-user/firewall/fw3_configurations/intercept_dns" class="wikilink1" title="docs:guide-user:firewall:fw3_configurations:intercept_dns" data-wiki-id="docs:guide-user:firewall:fw3_configurations:intercept_dns">DNS hijacking</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;DHCP and DNS examples&quot;,&quot;hid&quot;:&quot;dhcp_and_dns_examples&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-336&quot;} -->
+<h2 class="sectionedit6" id="introduction">Introduction</h2>
+<div class="level2">
+
+<p>
+This how-to provides most common dnsmasq and odhcpd tuning scenarios adapted for OpenWrt.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Introduction&quot;,&quot;hid&quot;:&quot;introduction&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;337-452&quot;} -->
+<h2 class="sectionedit7" id="instructions">Instructions</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Instructions&quot;,&quot;hid&quot;:&quot;instructions&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;453-477&quot;} -->
+<h3 class="sectionedit8" id="static_leases">Static leases</h3>
+<div class="level3">
+
+<p>
+<strong>LuCI → <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> and <abbr title="Domain Name System">DNS</abbr> → Static Leases</strong>
+</p>
+
+<p>
+Add a fixed <abbr title="Internet Protocol version 4">IPv4</abbr> address <code>192.168.1.22</code> and name <code>mylaptop</code> for a machine with the MAC address <code>11:22:33:44:55:66</code>.
+</p>
+<pre class="code bash">uci add dhcp host
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>host<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.name=<span class="st0">&quot;mylaptop&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>host<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.mac=<span class="st0">&quot;11:22:33:44:55:66&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>host<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.ip=<span class="st0">&quot;192.168.1.22&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>host<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.dns=<span class="st0">&quot;1&quot;</span>
+uci commit dhcp
+service dnsmasq restart</pre>
+
+<p>
+Reconnect your clients to apply the changes.
+</p>
+
+<p>
+Add a fixed <abbr title="Internet Protocol version 6">IPv6</abbr> interface identifier aka address suffix <code>23</code> and name <code>mylaptop</code> for a machine with the DUID <code>000100004fd454041c6f65d26f43</code>.
+</p>
+<pre class="code bash">uci add dhcp host
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>host<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.name=<span class="st0">&quot;mylaptop&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>host<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.duid=<span class="st0">&quot;000100004fd454041c6f65d26f43&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>host<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.hostid=<span class="st0">&quot;23&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>host<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.dns=<span class="st0">&quot;1&quot;</span>
+uci commit dhcp
+service odhcpd restart</pre>
+
+<p>
+Reconnect your clients to apply the changes.
+</p>
+
+<p>
+This is an implementation of the <code>--dhcp-host</code> option.
+You can combine <abbr title="Internet Protocol version 4">IPv4</abbr> and <abbr title="Internet Protocol version 6">IPv6</abbr> reservations to a single host entry.
+Using multiple MACs per host entry is possible but unreliable.
+Add a separate host entry for each MAC if the host has more than one interface connected simultaneously.
+</p>
+
+<p>
+See also: <a href="/docs/techref/odhcpd#ubus_api" class="wikilink1" title="docs:techref:odhcpd" data-wiki-id="docs:techref:odhcpd">odhcpd leases</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Static leases&quot;,&quot;hid&quot;:&quot;static_leases&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:8,&quot;range&quot;:&quot;478-1742&quot;} -->
+<h3 class="sectionedit9" id="mac_filtering">MAC filtering</h3>
+<div class="level3">
+
+<p>
+Ignore <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> requests from specific clients.
+</p>
+<pre class="code bash">uci add dhcp host
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>host<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.name=<span class="st0">&quot;mydesktop&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>host<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.mac=<span class="st0">&quot;00:11:22:33:44:55&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>host<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.ip=<span class="st0">&quot;ignore&quot;</span>
+uci commit dhcp
+service dnsmasq restart</pre>
+
+<p>
+Ignore all <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> requests except the ones from known clients configured with <a href="/docs/guide-user/base-system/dhcp_configuration#static_leases" class="wikilink1" title="docs:guide-user:base-system:dhcp_configuration" data-wiki-id="docs:guide-user:base-system:dhcp_configuration">static leases</a> or <code>/etc/ethers</code>.
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> dhcp.lan.dynamicdhcp=<span class="st0">&quot;0&quot;</span>
+uci commit dhcp
+service dnsmasq restart</pre>
+
+<p>
+Avoid using this as a security measure since the client can still access the network with a static <abbr title="Internet Protocol">IP</abbr>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;MAC filtering&quot;,&quot;hid&quot;:&quot;mac_filtering&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:9,&quot;range&quot;:&quot;1743-2386&quot;} -->
+<h3 class="sectionedit10" id="race_conditions_with_netifd">Race conditions with netifd</h3>
+<div class="level3">
+
+<p>
+Resolve the <a href="https://forum.openwrt.org/t/workaround-gl-ar150-no-dhcp-if-lan-cable-is-not-plugged-during-boot/32349" class="urlextern" title="https://forum.openwrt.org/t/workaround-gl-ar150-no-dhcp-if-lan-cable-is-not-plugged-during-boot/32349" rel="ugc nofollow">race condition</a> with netifd service and skip check for competing <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> servers.
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> dhcp.lan.force=<span class="st0">&quot;1&quot;</span>
+uci commit dhcp
+service dnsmasq restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Race conditions with netifd&quot;,&quot;hid&quot;:&quot;race_conditions_with_netifd&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:10,&quot;range&quot;:&quot;2387-2709&quot;} -->
+<h3 class="sectionedit11" id="missing_public_prefix">Missing public prefix</h3>
+<div class="level3">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;docs:guide-user:network:ipv6:ipv6_extras&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:12,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__docs:guide-user:network:ipv6:ipv6_extras">
+<div class="level3">
+
+<p>
+Suppress warnings about missing GUA prefix.
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> dhcp.odhcpd.loglevel=<span class="st0">&quot;3&quot;</span>
+uci commit dhcp
+service odhcpd restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;docs:guide-user:network:ipv6:ipv6_extras&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:13,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level3">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Missing public prefix&quot;,&quot;hid&quot;:&quot;missing_public_prefix&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:11,&quot;range&quot;:&quot;2710-2845&quot;} -->
+<h3 class="sectionedit14" id="providing_ipv6_default_route_with_dhcp">Providing IPv6 default route with DHCP</h3>
+<div class="level3">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;docs:guide-user:network:ipv6:ipv6_extras&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:15,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__docs:guide-user:network:ipv6:ipv6_extras">
+<div class="level3">
+
+<p>
+Announce <abbr title="Internet Protocol version 6">IPv6</abbr> default route for clients using the ULA prefix.
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> dhcp.lan.ra_default=<span class="st0">&quot;1&quot;</span>
+uci commit dhcp
+service odhcpd restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;docs:guide-user:network:ipv6:ipv6_extras&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:16,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level3">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Providing IPv6 default route with DHCP&quot;,&quot;hid&quot;:&quot;providing_ipv6_default_route_with_dhcp&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:14,&quot;range&quot;:&quot;2846-3009&quot;} -->
+<h3 class="sectionedit17" id="dhcp_options">DHCP options</h3>
+<div class="level3">
+
+<p>
+<a href="http://www.networksorcery.com/enp/protocol/bootp/options.htm" class="urlextern" title="http://www.networksorcery.com/enp/protocol/bootp/options.htm" rel="ugc nofollow">DHCP options</a> can be configured under the <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> pool section via <code>dhcp_option</code>.
+Use an alternative default gateway, <abbr title="Domain Name System">DNS</abbr> server and <abbr title="Network Time Protocol">NTP</abbr> server, disable WINS.
+</p>
+<pre class="code bash">uci add_list dhcp.lan.dhcp_option=<span class="st0">&quot;3,192.168.1.2&quot;</span>
+uci add_list dhcp.lan.dhcp_option=<span class="st0">&quot;6,172.16.60.64&quot;</span>
+uci add_list dhcp.lan.dhcp_option=<span class="st0">&quot;42,172.16.60.64&quot;</span>
+uci add_list dhcp.lan.dhcp_option=<span class="st0">&quot;44&quot;</span>
+uci commit dhcp
+service dnsmasq restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;DHCP options&quot;,&quot;hid&quot;:&quot;dhcp_options&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:17,&quot;range&quot;:&quot;3010-3508&quot;} -->
+<h3 class="sectionedit18" id="client_classifying_and_individual_options">Client classifying and individual options</h3>
+<div class="level3">
+
+<p>
+Use the <code>tag</code> classifier to create a tagged group.
+Assign individual <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> options to hosts tagged with <code>tag1</code>.
+Specify custom <abbr title="Domain Name System">DNS</abbr> and possibly other <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> options.
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> dhcp.tag1=<span class="st0">&quot;tag&quot;</span>
+uci <span class="kw1">set</span> dhcp.tag1.dhcp_option=<span class="st0">&quot;6,8.8.8.8,8.8.4.4&quot;</span>
+uci add dhcp host
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>host<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.name=<span class="st0">&quot;j400&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>host<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.mac=<span class="st0">&quot;00:21:63:75:aa:17&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>host<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.ip=<span class="st0">&quot;10.11.12.14&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>host<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.tag=<span class="st0">&quot;tag1&quot;</span>
+uci add dhcp host
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>host<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.name=<span class="st0">&quot;j500&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>host<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.mac=<span class="st0">&quot;01:22:64:76:bb:18&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>host<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.ip=<span class="st0">&quot;10.11.12.15&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>host<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.tag=<span class="st0">&quot;tag1&quot;</span>
+uci commit dhcp
+service dnsmasq restart</pre>
+
+<p>
+Use the <code>mac</code> classifier to create a tagged group.
+Assign different <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> options to hosts with matching MACs.
+Disable default gateway and specify custom <abbr title="Domain Name System">DNS</abbr>.
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> dhcp.mac1=<span class="st0">&quot;mac&quot;</span>
+uci <span class="kw1">set</span> dhcp.mac1.mac=<span class="st0">&quot;00:FF:*:*:*:*&quot;</span>
+uci <span class="kw1">set</span> dhcp.mac1.networkid=<span class="st0">&quot;vpn&quot;</span>
+uci add_list dhcp.mac1.dhcp_option=<span class="st0">&quot;3&quot;</span>
+uci add_list dhcp.mac1.dhcp_option=<span class="st0">&quot;6,192.168.1.3&quot;</span>
+uci commit dhcp
+service dnsmasq restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Client classifying and individual options&quot;,&quot;hid&quot;:&quot;client_classifying_and_individual_options&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:18,&quot;range&quot;:&quot;3509-4619&quot;} -->
+<h3 class="sectionedit19" id="use_vendor-specific_dhcp_option_to_disable_netbios_over_tcp_for_windows_clients">Use vendor-specific DHCP option to disable NetBios over TCP for Windows Clients</h3>
+<div class="level3">
+
+<p>
+See also: <a href="https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-dhcpe/ef7676b1-5568-4afc-836a-7eca63a10a3a" class="urlextern" title="https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-dhcpe/ef7676b1-5568-4afc-836a-7eca63a10a3a" rel="ugc nofollow">Vendor-Specific Option Code 0x01 - Microsoft Disable NetBIOS Option</a>
+</p>
+
+<p>
+If you want to disable NetBIOS over <abbr title="Transmission Control Protocol">TCP</abbr> on Windows clients, it&#039;s possible with the following vendor-specific <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> option:
+</p>
+<ul>
+<li class="level1 node"><div class="li"> <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> Option 43 (Vendor Specific Information)</div>
+<ul>
+<li class="level2"><div class="li"> Vendor-specific Option Code (1 byte): 0x01 (Microsoft Disable NetBios Option)</div>
+</li>
+<li class="level2"><div class="li"> Vendor-specific Option Length (1 byte): 0x04</div>
+</li>
+<li class="level2"><div class="li"> Vendor-specific Option Data (4 bytes): See table below</div>
+</li>
+</ul>
+</li>
+</ul>
+<div class="table sectionedit20"><table class="inline">
+	<tr class="row0">
+		<td class="col0"> Value </td><td class="col1"> Effect </td>
+	</tr>
+	<tr class="row1">
+		<td class="col0"> 0x00000000 </td><td class="col1"> Enable NetBIOS over <abbr title="Transmission Control Protocol">TCP</abbr>/<abbr title="Internet Protocol">IP</abbr> </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> 0x00000001 </td><td class="col1"> Ignore setting </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> 0x00000002 </td><td class="col1"> Disable NetBIOS over <abbr title="Transmission Control Protocol">TCP</abbr>/<abbr title="Internet Protocol">IP</abbr> </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:20,&quot;range&quot;:&quot;5268-5407&quot;} -->
+<p>
+It needs to be pushed to clients who have the “MSFT 5.0” Vendor class identifier in their <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> requests.
+</p>
+
+<p>
+This can be achieved with the following configuration snippet:
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> dhcp.msft=<span class="st0">&quot;vendorclass&quot;</span>
+uci <span class="kw1">set</span> dhcp.msft.networkid=<span class="st0">&quot;msft&quot;</span>
+uci <span class="kw1">set</span> dhcp.msft.vendorclass=<span class="st0">&quot;MSFT&quot;</span>
+uci add_list dhcp.msft.dhcp_option=<span class="st0">&quot;vendor:MSFT,1,2i&quot;</span>
+uci commit dhcp
+service dnsmasq restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Use vendor-specific DHCP option to disable NetBios over TCP for Windows Clients&quot;,&quot;hid&quot;:&quot;use_vendor-specific_dhcp_option_to_disable_netbios_over_tcp_for_windows_clients&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:19,&quot;range&quot;:&quot;4620-5797&quot;} -->
+<h3 class="sectionedit21" id="dhcp_pool_for_a_large_network">DHCP pool for a large network</h3>
+<div class="level3">
+<ul>
+<li class="level1"><div class="li"> <code>10.0.0.0</code> - network address</div>
+</li>
+<li class="level1"><div class="li"> <code>255.0.0.0</code> - network mask</div>
+</li>
+<li class="level1"><div class="li"> <code>10.22.0.1</code> - pool start</div>
+</li>
+<li class="level1"><div class="li"> <code>10.22.0.254</code> - pool end</div>
+</li>
+<li class="level1"><div class="li"> <code>22*2**16+1</code> - pool offset</div>
+</li>
+<li class="level1"><div class="li"> <code>253</code> - pool limit</div>
+</li>
+</ul>
+<pre class="code bash"><span class="co0"># ipcalc.sh 10.0.0.0 255.0.0.0 $((22*2**16+1)) 253</span>
+<span class="re2">IP</span>=10.0.0.0
+<span class="re2">NETMASK</span>=255.0.0.0
+<span class="re2">BROADCAST</span>=10.255.255.255
+<span class="re2">NETWORK</span>=10.0.0.0
+<span class="re2">PREFIX</span>=<span class="nu0">8</span>
+<span class="re2">START</span>=10.22.0.1
+<span class="re2">END</span>=10.22.0.254
+&nbsp;
+uci <span class="kw1">set</span> dhcp.lan.start=<span class="st0">&quot;<span class="es4">$((22*2**16+1)</span>)&quot;</span>
+uci <span class="kw1">set</span> dhcp.lan.limit=<span class="st0">&quot;253&quot;</span>
+uci commit dhcp
+service dnsmasq restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;DHCP pool for a large network&quot;,&quot;hid&quot;:&quot;dhcp_pool_for_a_large_network&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:21,&quot;range&quot;:&quot;5798-6326&quot;} -->
+<h3 class="sectionedit22" id="hostnames">Hostnames</h3>
+<div class="level3">
+
+<p>
+<strong>LuCI → Network → Hostnames</strong>
+</p>
+
+<p>
+Define a custom domain name and the corresponding PTR record - assigns the <abbr title="Internet Protocol version 4">IPv4</abbr> address <code>192.168.1.23</code> and <abbr title="Internet Protocol version 6">IPv6</abbr> address <code>fdce::23</code> to the domain name <code>mylaptop</code> and construct an appropriate reverse records.
+You can also use this to rebind domain names.
+The init service merges all entries to an additional hosts file used with the <code>--addn-hosts</code> option.
+</p>
+<pre class="code bash">uci add dhcp domain
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>domain<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.name=<span class="st0">&quot;mylaptop&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>domain<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.ip=<span class="st0">&quot;192.168.1.23&quot;</span>
+uci add dhcp domain
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>domain<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.name=<span class="st0">&quot;mylaptop&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>domain<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.ip=<span class="st0">&quot;fdce::23&quot;</span>
+uci commit dhcp
+service dnsmasq restart</pre>
+
+<p>
+Be sure to set up <a href="/docs/guide-user/base-system/dhcp_configuration#static_leases" class="wikilink1" title="docs:guide-user:base-system:dhcp_configuration" data-wiki-id="docs:guide-user:base-system:dhcp_configuration">static leases</a> to avoid possible collisions due to race conditions.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Hostnames&quot;,&quot;hid&quot;:&quot;hostnames&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:22,&quot;range&quot;:&quot;6327-7163&quot;} -->
+<h3 class="sectionedit23" id="a_and_aaaa_rr">A and AAAA RR</h3>
+<div class="level3">
+
+<p>
+This is an implementation of the <code>--address</code> option.
+Return <code>10.10.10.1</code> for the domain <code>home</code> and all its subdomains.
+</p>
+<pre class="code bash">uci add_list dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.address=<span class="st0">&quot;/home/10.10.10.1&quot;</span>
+uci commit dhcp
+service dnsmasq restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;A and AAAA RR&quot;,&quot;hid&quot;:&quot;a_and_aaaa_rr&quot;,&quot;codeblockOffset&quot;:13,&quot;secid&quot;:23,&quot;range&quot;:&quot;7164-7435&quot;} -->
+<h3 class="sectionedit24" id="srv_rr">SRV RR</h3>
+<div class="level3">
+
+<p>
+This is an implementation of the <code>--srv-host</code> option.
+Define an SRV record for SIP over <abbr title="User Datagram Protocol">UDP</abbr>, with the default port of <code>5060</code> on the host <code>pbx.mydomain.com</code>, with a class of <code>0</code> and a weight of <code>10</code>.
+</p>
+<pre class="code bash">uci add dhcp srvhost
+uci <span class="kw1">set</span>	dhcp.<span class="sy0">@</span>srvhost<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.srv=<span class="st0">&quot;_sip._udp.mydomain.com&quot;</span>
+uci <span class="kw1">set</span>	dhcp.<span class="sy0">@</span>srvhost<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.target=<span class="st0">&quot;pbx.mydomain.com&quot;</span>
+uci <span class="kw1">set</span>	dhcp.<span class="sy0">@</span>srvhost<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.port=<span class="st0">&quot;5060&quot;</span>
+uci <span class="kw1">set</span>	dhcp.<span class="sy0">@</span>srvhost<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.class=<span class="st0">&quot;0&quot;</span>
+uci <span class="kw1">set</span>	dhcp.<span class="sy0">@</span>srvhost<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.weight=<span class="st0">&quot;10&quot;</span>
+uci commit dhcp
+service dnsmasq restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;SRV RR&quot;,&quot;hid&quot;:&quot;srv_rr&quot;,&quot;codeblockOffset&quot;:14,&quot;secid&quot;:24,&quot;range&quot;:&quot;7436-7967&quot;} -->
+<h3 class="sectionedit25" id="cname_rr">CNAME RR</h3>
+<div class="level3">
+
+<p>
+This is an implementation of the <code>--cname</code> option.
+A Canonical Name record specifies that a domain name is an alias for another domain, the “canonical” domain.
+Specify that the <abbr title="File Transfer Protocol">FTP</abbr> server is on the same host as the web server.
+</p>
+<pre class="code bash">uci add dhcp cname
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>cname<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.cname=<span class="st0">&quot;ftp.example.com&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>cname<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.target=<span class="st0">&quot;www.example.com&quot;</span>
+uci commit dhcp
+service dnsmasq restart</pre>
+
+<p>
+Be sure to set up <a href="/docs/guide-user/base-system/dhcp_configuration#hostnames" class="wikilink1" title="docs:guide-user:base-system:dhcp_configuration" data-wiki-id="docs:guide-user:base-system:dhcp_configuration">hostnames</a> since CNAME depends on it.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;CNAME RR&quot;,&quot;hid&quot;:&quot;cname_rr&quot;,&quot;codeblockOffset&quot;:15,&quot;secid&quot;:25,&quot;range&quot;:&quot;7968-8514&quot;} -->
+<h3 class="sectionedit26" id="mx_rr">MX RR</h3>
+<div class="level3">
+
+<p>
+This is an implementation of the <code>--mx-host</code> option.
+Mitigate the issues caused by split <abbr title="Domain Name System">DNS</abbr> for your own domain if you&#039;re running the mail server for your domain behind a firewall.
+Convince that mailer that it&#039;s actually authoritative for your domain, otherwise sendmail may not find an MX record to confirm that the domain is an MX relay and complain about non-existent domain of sender address.
+</p>
+<pre class="code bash">uci add dhcp mxhost
+uci <span class="kw1">set</span>	dhcp.<span class="sy0">@</span>mxhost<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.domain=<span class="st0">&quot;yyy.zzz&quot;</span>
+uci <span class="kw1">set</span>	dhcp.<span class="sy0">@</span>mxhost<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.relay=<span class="st0">&quot;my.host.com&quot;</span>
+uci <span class="kw1">set</span>	dhcp.<span class="sy0">@</span>mxhost<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.pref=<span class="st0">&quot;10&quot;</span>
+uci commit dhcp
+service dnsmasq restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;MX RR&quot;,&quot;hid&quot;:&quot;mx_rr&quot;,&quot;codeblockOffset&quot;:16,&quot;secid&quot;:26,&quot;range&quot;:&quot;8515-9138&quot;} -->
+<h3 class="sectionedit27" id="tftp_boot">TFTP boot</h3>
+<div class="level3">
+
+<p>
+Direct BOOTP requests to the <abbr title="Trivial File Transfer Protocol">TFTP</abbr> server.
+Tell the client to load <code>pxelinux.0</code> from the server at <code>192.168.1.2</code>, and mount root from <code>/data/netboot/root</code> on the same server.
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> dhcp.linux=<span class="st0">&quot;boot&quot;</span>
+uci <span class="kw1">set</span> dhcp.linux.filename=<span class="st0">&quot;/tftpboot/pxelinux.0&quot;</span>
+uci <span class="kw1">set</span> dhcp.linux.serveraddress=<span class="st0">&quot;192.168.1.2&quot;</span>
+uci <span class="kw1">set</span> dhcp.linux.servername=<span class="st0">&quot;fileserver&quot;</span>
+uci add_list dhcp.linux.dhcp_option=<span class="st0">&quot;option:root-path,192.168.1.2:/data/netboot/root&quot;</span>
+uci commit dhcp
+service dnsmasq restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;TFTP boot&quot;,&quot;hid&quot;:&quot;tftp_boot&quot;,&quot;codeblockOffset&quot;:17,&quot;secid&quot;:27,&quot;range&quot;:&quot;9139-9653&quot;} -->
+<h3 class="sectionedit28" id="multi-arch_tftp_boot">Multi-Arch TFTP boot</h3>
+<div class="level3">
+
+<p>
+For PXE boot, each client needs a specific binary for its architecture e.g. PC BIOS, UEFI x86 32bit, UEFI x86 64bit, ARM, etc.
+You can match on the <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> “Vendor Class Identifier” option (60) specified by the client to send back the right filename.
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.logdhcp=<span class="st_h">'1'</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.enable_tftp=<span class="st_h">'1'</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.tftp_root=<span class="st_h">'/srv/tftp'</span>
+uci add dhcp match
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>match<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.networkid=<span class="st_h">'bios'</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>match<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.match=<span class="st_h">'60,PXEClient:Arch:00000'</span>
+uci add dhcp match
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>match<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.networkid=<span class="st_h">'efi32'</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>match<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.match=<span class="st_h">'60,PXEClient:Arch:00006'</span>
+uci add dhcp match
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>match<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.networkid=<span class="st_h">'efi64'</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>match<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.match=<span class="st_h">'60,PXEClient:Arch:00007'</span>
+uci add dhcp match
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>match<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.networkid=<span class="st_h">'efi64'</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>match<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.match=<span class="st_h">'60,PXEClient:Arch:00009'</span>
+uci add dhcp boot
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>boot<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.filename=<span class="st_h">'tag:bios,bios/lpxelinux.0'</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>boot<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.serveraddress=<span class="st0">&quot;<span class="es4">$(uci get network.lan.ipaddr)</span>&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>boot<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.servername=<span class="st0">&quot;<span class="es4">$(uci get system.@system[0].hostname)</span>&quot;</span>
+uci add dhcp boot
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>boot<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.filename=<span class="st_h">'tag:efi32,efi32/syslinux.efi'</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>boot<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.serveraddress=<span class="st0">&quot;<span class="es4">$(uci get network.lan.ipaddr)</span>&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>boot<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.servername=<span class="st0">&quot;<span class="es4">$(uci get system.@system[0].hostname)</span>&quot;</span>
+uci add dhcp boot
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>boot<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.filename=<span class="st_h">'tag:efi64,efi64/syslinux.efi'</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>boot<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.serveraddress=<span class="st0">&quot;<span class="es4">$(uci get network.lan.ipaddr)</span>&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>boot<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.servername=<span class="st0">&quot;<span class="es4">$(uci get system.@system[0].hostname)</span>&quot;</span>
+uci commit dhcp
+service dnsmasq reload</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Multi-Arch TFTP boot&quot;,&quot;hid&quot;:&quot;multi-arch_tftp_boot&quot;,&quot;codeblockOffset&quot;:18,&quot;secid&quot;:28,&quot;range&quot;:&quot;9654-11254&quot;} -->
+<h3 class="sectionedit29" id="chainloading_ipxe">Chainloading iPXE</h3>
+<div class="level3">
+
+<p>
+If you are configuring <a href="https://ipxe.org/howto/chainloading" class="urlextern" title="https://ipxe.org/howto/chainloading" rel="ugc nofollow">chainloading</a> for <a href="https://ipxe.org/" class="urlextern" title="https://ipxe.org/" rel="ugc nofollow">iPXE</a>, you can match on the <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> “User Class” option (77) to send an iPXE script to the client, and on the client-arch option to choose the iPXE binary (for other values of client-arch, see <a href="https://www.rfc-editor.org/rfc/rfc4578.html#section-2.1" class="urlextern" title="https://www.rfc-editor.org/rfc/rfc4578.html#section-2.1" rel="ugc nofollow">RFC</a> or <a href="https://forum.openwrt.org/t/feature-request-make-setting-up-ipxe-netbooting-easier-suggest-sane-defaults-suggest-boot-firmwares/153591" class="urlextern" title="https://forum.openwrt.org/t/feature-request-make-setting-up-ipxe-netbooting-easier-suggest-sane-defaults-suggest-boot-firmwares/153591" rel="ugc nofollow">this forum thread</a>).
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.logdhcp=<span class="st_h">'1'</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.enable_tftp=<span class="st_h">'1'</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.tftp_root=<span class="st_h">'/srv/tftp'</span>
+uci add dhcp match
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>match<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.networkid=<span class="st_h">'bios'</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>match<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.match=<span class="st_h">'option:client-arch,0'</span>
+uci add dhcp match
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>match<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.networkid=<span class="st_h">'efi64'</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>match<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.match=<span class="st_h">'option:client-arch,7'</span>
+uci add dhcp match
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>match<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.networkid=<span class="st_h">'efi64'</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>match<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.match=<span class="st_h">'option:client-arch,9'</span>
+uci add dhcp match
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>match<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.networkid=<span class="st_h">'ipxe'</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>match<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.match=<span class="st_h">'77,&quot;iPXE&quot;'</span>
+uci add dhcp boot
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>boot<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.filename=<span class="st_h">'tag:bios,undionly.kpxe'</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>boot<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.serveraddress=<span class="st0">&quot;<span class="es4">$(uci get network.lan.ipaddr)</span>&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>boot<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.servername=<span class="st0">&quot;<span class="es4">$(uci get system.@system[0].hostname)</span>&quot;</span>
+uci add dhcp boot
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>boot<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.filename=<span class="st_h">'tag:efi64,ipxe.efi'</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>boot<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.serveraddress=<span class="st0">&quot;<span class="es4">$(uci get network.lan.ipaddr)</span>&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>boot<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.servername=<span class="st0">&quot;<span class="es4">$(uci get system.@system[0].hostname)</span>&quot;</span>
+uci add dhcp boot
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>boot<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.filename=<span class="st_h">'tag:ipxe,boot_script.ipxe'</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>boot<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.serveraddress=<span class="st0">&quot;<span class="es4">$(uci get network.lan.ipaddr)</span>&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>boot<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.servername=<span class="st0">&quot;<span class="es4">$(uci get system.@system[0].hostname)</span>&quot;</span>
+uci commit dhcp
+service dnsmasq reload</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Chainloading iPXE&quot;,&quot;hid&quot;:&quot;chainloading_ipxe&quot;,&quot;codeblockOffset&quot;:19,&quot;secid&quot;:29,&quot;range&quot;:&quot;11255-13082&quot;} -->
+<h3 class="sectionedit30" id="multiple_dhcpdns_serverforwarder_instances">Multiple DHCP/DNS server/forwarder instances</h3>
+<div class="level3">
+
+<p>
+If you need multiple <abbr title="Domain Name System">DNS</abbr> forwarders with different configurations or <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> server with different sets of lease files.
+</p>
+
+<p>
+Running multiple dnsmasq instances as <abbr title="Domain Name System">DNS</abbr> forwarder and/or DHCPv4 server, each having their own configuration and lease list can be configured by creating multiple dnsmasq sections.
+Typically in such configs each dnsmasq section will be bound to a specific interface by using the interface list; assigning sections like <code>dhcp</code>, <code>host</code>, etc. to a specific dnsmasq instance is done by the <code>instance</code> option.
+By default dnsmasq adds the loopback interface to the interface list to listen when the <code>--interface</code> option is used; therefore the loopback interface needs to be excluded in one of the dnsmasq instances by using the notinterface list.
+</p>
+
+<p>
+These are example settings for multiple dnsmasq instances each having their own dhcp section.
+dnsmasq instance <code>lan_dns</code> is bound to the <code>lan</code> interface while the dnsmasq instance <code>guest_dns</code> is bound to the <code>guest</code> interface.
+</p>
+<pre class="code bash"><span class="co0"># Remove default instances</span>
+<span class="kw1">while</span> uci <span class="re5">-q</span> delete dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>; <span class="kw1">do</span> :; <span class="kw1">done</span>
+<span class="kw1">while</span> uci <span class="re5">-q</span> delete dhcp.<span class="sy0">@</span>dhcp<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>; <span class="kw1">do</span> :; <span class="kw1">done</span>
+&nbsp;
+<span class="co0"># Use network interface names for DHCP/DNS instance names</span>
+<span class="re2">INST</span>=<span class="st0">&quot;lan guest&quot;</span>
+<span class="kw1">for</span> INST <span class="kw1">in</span> <span class="co1">${INST}</span>
+<span class="kw1">do</span>
+uci <span class="kw1">set</span> dhcp.<span class="co1">${INST}</span><span class="re2">_dns</span>=<span class="st0">&quot;dnsmasq&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="co1">${INST}</span>_dns.domainneeded=<span class="st0">&quot;1&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="co1">${INST}</span>_dns.boguspriv=<span class="st0">&quot;1&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="co1">${INST}</span>_dns.filterwin2<span class="re2">k</span>=<span class="st0">&quot;0&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="co1">${INST}</span>_dns.localise_queries=<span class="st0">&quot;1&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="co1">${INST}</span>_dns.rebind_protection=<span class="st0">&quot;1&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="co1">${INST}</span>_dns.rebind_localhost=<span class="st0">&quot;1&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="co1">${INST}</span>_dns.local=<span class="st0">&quot;/<span class="es3">${INST}</span>/&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="co1">${INST}</span>_dns.domain=<span class="st0">&quot;<span class="es3">${INST}</span>&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="co1">${INST}</span>_dns.expandhosts=<span class="st0">&quot;1&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="co1">${INST}</span>_dns.nonegcache=<span class="st0">&quot;0&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="co1">${INST}</span>_dns.authoritative=<span class="st0">&quot;1&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="co1">${INST}</span>_dns.readethers=<span class="st0">&quot;1&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="co1">${INST}</span>_dns.leasefile=<span class="st0">&quot;/tmp/dhcp.leases.<span class="es3">${INST}</span>&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="co1">${INST}</span>_dns.resolvfile=<span class="st0">&quot;/tmp/resolv.conf.d/resolv.conf.auto&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="co1">${INST}</span>_dns.nonwildcard=<span class="st0">&quot;1&quot;</span>
+uci add_list dhcp.<span class="co1">${INST}</span>_dns.interface=<span class="st0">&quot;<span class="es3">${INST}</span>&quot;</span>
+uci add_list dhcp.<span class="co1">${INST}</span>_dns.notinterface=<span class="st0">&quot;loopback&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="co1">${INST}</span>=<span class="st0">&quot;dhcp&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="co1">${INST}</span>.instance=<span class="st0">&quot;<span class="es3">${INST}</span>_dns&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="co1">${INST}</span>.interface=<span class="st0">&quot;<span class="es3">${INST}</span>&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="co1">${INST}</span>.start=<span class="st0">&quot;100&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="co1">${INST}</span>.limit=<span class="st0">&quot;150&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="co1">${INST}</span>.leasetime=<span class="st0">&quot;12h&quot;</span>
+<span class="kw1">done</span>
+uci <span class="re5">-q</span> delete dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.notinterface
+uci commit dhcp
+service dnsmasq restart</pre>
+
+<p>
+The LuCI web interface has not been updated to support multiple dnsmasq instances.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Multiple DHCP\/DNS server\/forwarder instances&quot;,&quot;hid&quot;:&quot;multiple_dhcpdns_serverforwarder_instances&quot;,&quot;codeblockOffset&quot;:20,&quot;secid&quot;:30,&quot;range&quot;:&quot;13083-15603&quot;} -->
+<h3 class="sectionedit31" id="logging_dns_queries">Logging DNS queries</h3>
+<div class="level3">
+
+<p>
+<strong>LuCI → Network → <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> and <abbr title="Domain Name System">DNS</abbr> → General Settings → Log queries</strong>
+</p>
+
+<p>
+Log <abbr title="Domain Name System">DNS</abbr> queries for troubleshooting.
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.logqueries=<span class="st0">&quot;1&quot;</span>
+uci commit dhcp
+service dnsmasq restart</pre>
+
+<p>
+See also: <a href="/docs/guide-user/base-system/log.essentials" class="wikilink1" title="docs:guide-user:base-system:log.essentials" data-wiki-id="docs:guide-user:base-system:log.essentials">Reading logs</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Logging DNS queries&quot;,&quot;hid&quot;:&quot;logging_dns_queries&quot;,&quot;codeblockOffset&quot;:21,&quot;secid&quot;:31,&quot;range&quot;:&quot;15604-15915&quot;} -->
+<h3 class="sectionedit32" id="disabling_dhcp_role">Disabling DHCP role</h3>
+<div class="level3">
+
+<p>
+This change turns off <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> on the specified interface but leaves <abbr title="Domain Name System">DNS</abbr> services available.
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> dhcp.lan.ignore=<span class="st0">&quot;1&quot;</span>
+uci commit dhcp
+service dnsmasq restart
+service odhcpd restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Disabling DHCP role&quot;,&quot;hid&quot;:&quot;disabling_dhcp_role&quot;,&quot;codeblockOffset&quot;:22,&quot;secid&quot;:32,&quot;range&quot;:&quot;15916-16147&quot;} -->
+<h3 class="sectionedit33" id="disabling_ipv6_dns_for_odhcpd">Disabling IPv6 DNS for odhcpd</h3>
+<div class="level3">
+
+<p>
+Stop advertising <abbr title="Internet Protocol version 6">IPv6</abbr> <abbr title="Domain Name System">DNS</abbr> with DHCPv6/RA.
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> dhcp.lan.dns_service=<span class="st0">&quot;0&quot;</span>
+uci <span class="kw1">set</span> dhcp.lan.ra_dns=<span class="st0">&quot;0&quot;</span>
+uci commit dhcp
+service odhcpd restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Disabling IPv6 DNS for odhcpd&quot;,&quot;hid&quot;:&quot;disabling_ipv6_dns_for_odhcpd&quot;,&quot;codeblockOffset&quot;:23,&quot;secid&quot;:33,&quot;range&quot;:&quot;16148-16351&quot;} -->
+<h3 class="sectionedit34" id="disabling_dns_role">Disabling DNS role</h3>
+<div class="level3">
+
+<p>
+This is useful when you just want to hand out addresses to clients, without doing any <abbr title="Domain Name System">DNS</abbr> by dnsmasq.
+</p>
+<pre class="code bash">service dnsmasq stop
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.localuse=<span class="st0">&quot;0&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.port=<span class="st0">&quot;0&quot;</span>
+uci commit dhcp
+service dnsmasq start</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Disabling DNS role&quot;,&quot;hid&quot;:&quot;disabling_dns_role&quot;,&quot;codeblockOffset&quot;:24,&quot;secid&quot;:34,&quot;range&quot;:&quot;16352-16635&quot;} -->
+<h3 class="sectionedit35" id="replacing_dnsmasq_with_odhcpd_and_unbound">Replacing dnsmasq with odhcpd and Unbound</h3>
+<div class="level3">
+
+<p>
+Remove dnsmasq and use odhcpd for both <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> and DHCPv6.
+</p>
+<pre class="code bash">opkg update
+opkg remove dnsmasq odhcpd-ipv6only
+opkg <span class="kw2">install</span> odhcpd
+uci <span class="re5">-q</span> delete dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>
+uci <span class="kw1">set</span> dhcp.lan.dhcpv4=<span class="st0">&quot;server&quot;</span>
+uci <span class="kw1">set</span> dhcp.odhcpd.maindhcp=<span class="st0">&quot;1&quot;</span>
+uci commit dhcp
+service odhcpd restart</pre>
+
+<p>
+Use Unbound for <abbr title="Domain Name System">DNS</abbr>.
+</p>
+<pre class="code bash">opkg update
+opkg <span class="kw2">install</span> unbound-control unbound-daemon
+uci <span class="kw1">set</span> unbound.<span class="sy0">@</span>unbound<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.add_local_fqdn=<span class="st0">&quot;3&quot;</span>
+uci <span class="kw1">set</span> unbound.<span class="sy0">@</span>unbound<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.add_wan_fqdn=<span class="st0">&quot;1&quot;</span>
+uci <span class="kw1">set</span> unbound.<span class="sy0">@</span>unbound<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.dhcp_link=<span class="st0">&quot;odhcpd&quot;</span>
+uci <span class="kw1">set</span> unbound.<span class="sy0">@</span>unbound<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.dhcp4<span class="re2">_slaac6</span>=<span class="st0">&quot;1&quot;</span>
+uci <span class="kw1">set</span> unbound.<span class="sy0">@</span>unbound<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.unbound_control=<span class="st0">&quot;1&quot;</span>
+uci commit unbound
+service unbound restart
+uci <span class="kw1">set</span> dhcp.odhcpd.leasefile=<span class="st0">&quot;/var/lib/odhcpd/dhcp.leases&quot;</span>
+uci <span class="kw1">set</span> dhcp.odhcpd.leasetrigger=<span class="st0">&quot;/usr/lib/unbound/odhcpd.sh&quot;</span>
+uci commit dhcp
+service odhcpd restart</pre>
+
+<p>
+See also: <a href="https://github.com/openwrt/packages/blob/master/net/unbound/files/README.md#unbound-and-odhcpd" class="urlextern" title="https://github.com/openwrt/packages/blob/master/net/unbound/files/README.md#unbound-and-odhcpd" rel="ugc nofollow">Unbound official documentation</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Replacing dnsmasq with odhcpd and Unbound&quot;,&quot;hid&quot;:&quot;replacing_dnsmasq_with_odhcpd_and_unbound&quot;,&quot;codeblockOffset&quot;:25,&quot;secid&quot;:35,&quot;range&quot;:&quot;16636-17645&quot;} -->
+<h3 class="sectionedit36" id="providing_custom_dns_with_dhcp">Providing custom DNS with DHCP</h3>
+<div class="level3">
+
+<p>
+<strong>LuCI → Network → Interfaces → <abbr title="Local Area Network">LAN</abbr> → Edit → <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> Server</strong>
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong>Advanced Settings → <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr>-Options</strong></div>
+</li>
+<li class="level1"><div class="li"> <strong><abbr title="Internet Protocol version 6">IPv6</abbr> Settings → Announced <abbr title="Internet Protocol version 6">IPv6</abbr> <abbr title="Domain Name System">DNS</abbr> servers</strong></div>
+</li>
+</ul>
+
+<p>
+Announce custom <abbr title="Domain Name System">DNS</abbr> servers with <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr>.
+</p>
+<pre class="code bash"><span class="co0"># Configure dnsmasq</span>
+uci <span class="re5">-q</span> delete dhcp.lan.dhcp_option
+uci add_list dhcp.lan.dhcp_option=<span class="st0">&quot;6,8.8.8.8,8.8.4.4&quot;</span>
+uci commit dhcp
+service dnsmasq restart
+&nbsp;
+<span class="co0"># Configure odhcpd</span>
+uci <span class="re5">-q</span> delete dhcp.lan.dns
+uci add_list dhcp.lan.dns=<span class="st0">&quot;2001:4860:4860::8888&quot;</span>
+uci add_list dhcp.lan.dns=<span class="st0">&quot;2001:4860:4860::8844&quot;</span>
+uci commit dhcp
+service odhcpd restart</pre>
+
+<p>
+Reconnect your clients to apply the changes.
+</p>
+
+<p>
+See also:
+<a href="/docs/guide-user/network/protocol.dhcp#providing_isp_dns_with_dhcp" class="wikilink1" title="docs:guide-user:network:protocol.dhcp" data-wiki-id="docs:guide-user:network:protocol.dhcp">ISP DNS with DHCP</a>,
+<a href="/docs/guide-user/network/protocol.dhcp#providing_ipv6_isp_dns_with_dhcpv6" class="wikilink1" title="docs:guide-user:network:protocol.dhcp" data-wiki-id="docs:guide-user:network:protocol.dhcp">IPv6 ISP DNS with DHCPv6</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Providing custom DNS with DHCP&quot;,&quot;hid&quot;:&quot;providing_custom_dns_with_dhcp&quot;,&quot;codeblockOffset&quot;:27,&quot;secid&quot;:36,&quot;range&quot;:&quot;17646-18487&quot;} -->
+<h3 class="sectionedit37" id="providing_dns_for_non-local_networks">Providing DNS for non-local networks</h3>
+<div class="level3">
+
+<p>
+Answer <abbr title="Domain Name System">DNS</abbr> queries arriving from non-local networks.
+Reply to <abbr title="Virtual Private Network">VPN</abbr> clients using point-to-point topology.
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.localservice=<span class="st0">&quot;0&quot;</span>
+uci commit dhcp
+service dnsmasq restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Providing DNS for non-local networks&quot;,&quot;hid&quot;:&quot;providing_dns_for_non-local_networks&quot;,&quot;codeblockOffset&quot;:28,&quot;secid&quot;:37,&quot;range&quot;:&quot;18488-18743&quot;} -->
+<h3 class="sectionedit38" id="disabling_dns_cache">Disabling DNS cache</h3>
+<div class="level3">
+
+<p>
+Disable <abbr title="Domain Name System">DNS</abbr> cache.
+</p>
+<pre class="code bash">uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.cachesize=<span class="st0">&quot;0&quot;</span>
+uci commit dhcp
+service dnsmasq restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Disabling DNS cache&quot;,&quot;hid&quot;:&quot;disabling_dns_cache&quot;,&quot;codeblockOffset&quot;:29,&quot;secid&quot;:38,&quot;range&quot;:&quot;18744-18893&quot;} -->
+<h3 class="sectionedit39" id="split_dns">Split DNS</h3>
+<div class="level3">
+
+<p>
+Enable split <abbr title="Domain Name System">DNS</abbr> for OpenWrt and <abbr title="Local Area Network">LAN</abbr> clients:
+</p>
+<ul>
+<li class="level1"><div class="li"> OpenWrt will bypass dnsmasq and only use resolvers advertised by the upstream <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> server.</div>
+</li>
+<li class="level1"><div class="li"> <abbr title="Local Area Network">LAN</abbr> clients will use dnsmasq, ignoring <code>resolvfile</code> and relying on the <code>server</code> option.</div>
+</li>
+</ul>
+<pre class="code bash">service dnsmasq stop
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.localuse=<span class="st0">&quot;0&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.noresolv=<span class="st0">&quot;1&quot;</span>
+uci commit dhcp
+service dnsmasq start</pre>
+
+<p>
+This helps avoid race conditions related to <abbr title="Domain Name System">DNS</abbr> encryption.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Split DNS&quot;,&quot;hid&quot;:&quot;split_dns&quot;,&quot;codeblockOffset&quot;:30,&quot;secid&quot;:39,&quot;range&quot;:&quot;18894-19368&quot;} -->
+<h3 class="sectionedit40" id="dns_forwarding">DNS forwarding</h3>
+<div class="level3">
+
+<p>
+<strong>LuCI → Network → <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> and <abbr title="Domain Name System">DNS</abbr> → General Settings → <abbr title="Domain Name System">DNS</abbr> forwardings</strong>
+</p>
+
+<p>
+Forward <abbr title="Domain Name System">DNS</abbr> queries to specific servers.
+</p>
+<pre class="code bash">uci <span class="re5">-q</span> delete dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.server
+uci add_list dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.server=<span class="st0">&quot;8.8.8.8&quot;</span>
+uci add_list dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.server=<span class="st0">&quot;8.8.4.4&quot;</span>
+uci commit dhcp
+service dnsmasq restart</pre>
+
+<p>
+This can be combined with <a href="/docs/guide-user/base-system/dhcp_configuration#selective_dns_forwarding" class="wikilink1" title="docs:guide-user:base-system:dhcp_configuration" data-wiki-id="docs:guide-user:base-system:dhcp_configuration">selective DNS forwarding</a> or <a href="/docs/guide-user/base-system/dhcp_configuration#split_dns" class="wikilink1" title="docs:guide-user:base-system:dhcp_configuration" data-wiki-id="docs:guide-user:base-system:dhcp_configuration">split DNS</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;DNS forwarding&quot;,&quot;hid&quot;:&quot;dns_forwarding&quot;,&quot;codeblockOffset&quot;:31,&quot;secid&quot;:40,&quot;range&quot;:&quot;19369-19907&quot;} -->
+<h3 class="sectionedit41" id="selective_dns_forwarding">Selective DNS forwarding</h3>
+<div class="level3">
+
+<p>
+<strong>LuCI → Network → <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> and <abbr title="Domain Name System">DNS</abbr> → General Settings → <abbr title="Domain Name System">DNS</abbr> forwardings</strong>
+</p>
+
+<p>
+Forward <abbr title="Domain Name System">DNS</abbr> queries for a specific domain and all its subdomains to a different server.
+More specific domains take precedence over less specific domains.
+</p>
+<pre class="code bash">uci add_list dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.server=<span class="st0">&quot;/example.com/192.168.2.1&quot;</span>
+uci commit dhcp
+service dnsmasq restart</pre>
+
+<p>
+This can be combined with unconditional <a href="/docs/guide-user/base-system/dhcp_configuration#dns_forwarding" class="wikilink1" title="docs:guide-user:base-system:dhcp_configuration" data-wiki-id="docs:guide-user:base-system:dhcp_configuration">DNS forwarding</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Selective DNS forwarding&quot;,&quot;hid&quot;:&quot;selective_dns_forwarding&quot;,&quot;codeblockOffset&quot;:32,&quot;secid&quot;:41,&quot;range&quot;:&quot;19908-20421&quot;} -->
+<h3 class="sectionedit42" id="dns_filtering">DNS filtering</h3>
+<div class="level3">
+
+<p>
+<strong>LuCI → Network → <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> and <abbr title="Domain Name System">DNS</abbr> → General Settings → <abbr title="Domain Name System">DNS</abbr> forwardings</strong>
+</p>
+
+<p>
+Simple <abbr title="Domain Name System">DNS</abbr>-based content filtering.
+</p>
+<pre class="code bash"><span class="co0"># Blacklist</span>
+uci add_list dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.server=<span class="st0">&quot;/example.com/&quot;</span>
+uci add_list dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.server=<span class="st0">&quot;/example.net/&quot;</span>
+uci commit dhcp
+service dnsmasq restart
+&nbsp;
+<span class="co0"># Whitelist</span>
+uci add_list dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.server=<span class="st0">&quot;/example.com/#&quot;</span>
+uci add_list dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.server=<span class="st0">&quot;/example.net/#&quot;</span>
+uci add_list dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.server=<span class="st0">&quot;/#/&quot;</span>
+uci commit dhcp
+service dnsmasq restart</pre>
+
+<p>
+See also:
+<a href="/docs/guide-user/services/ad-blocking" class="wikilink1" title="docs:guide-user:services:ad-blocking" data-wiki-id="docs:guide-user:services:ad-blocking">Ad blocking</a>,
+<a href="/docs/guide-user/firewall/fw3_configurations/dns_ipset" class="wikilink1" title="docs:guide-user:firewall:fw3_configurations:dns_ipset" data-wiki-id="docs:guide-user:firewall:fw3_configurations:dns_ipset">DNS-based firewall with IP sets</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;DNS filtering&quot;,&quot;hid&quot;:&quot;dns_filtering&quot;,&quot;codeblockOffset&quot;:33,&quot;secid&quot;:42,&quot;range&quot;:&quot;20422-21096&quot;} -->
+<h3 class="sectionedit43" id="race_conditions_with_sysntpd">Race conditions with sysntpd</h3>
+<div class="level3">
+
+<p>
+Resolve the race condition with sysntpd service.
+When running dnsmasq with <code>noresolv</code> and <code>localuse</code> options and using <abbr title="Domain Name System">DNS</abbr> encryption for local system.
+Fetch peer <abbr title="Domain Name System">DNS</abbr> or use a fallback <abbr title="Domain Name System">DNS</abbr> provider.
+Bypass <abbr title="Domain Name System">DNS</abbr> forwarding for <abbr title="Network Time Protocol">NTP</abbr> provider.
+</p>
+<pre class="code bash">. <span class="sy0">/</span>lib<span class="sy0">/</span>functions<span class="sy0">/</span>network.sh
+network_flush_cache
+<span class="kw1">for</span> IPV <span class="kw1">in</span> <span class="nu0">4</span> <span class="nu0">6</span>
+<span class="kw1">do</span> <span class="kw3">eval</span> network_find_wan<span class="co1">${IPV%4}</span> NET_IF
+network_get_dnsserver NET_DNS <span class="st0">&quot;<span class="es3">${NET_IF}</span>&quot;</span>
+<span class="kw1">case</span> <span class="co1">${IPV}</span> <span class="kw1">in</span>
+<span class="br0">&#40;</span><span class="nu0">4</span><span class="br0">&#41;</span> <span class="re2">NET_DNS</span>=<span class="st0">&quot;<span class="es3">${NET_DNS:-8.8.8.8 8.8.4.4}</span>&quot;</span> <span class="sy0">;;</span>
+<span class="br0">&#40;</span><span class="nu0">6</span><span class="br0">&#41;</span> <span class="re2">NET_DNS</span>=<span class="st0">&quot;<span class="es3">${NET_DNS:-2001:4860:4860::8888 2001:4860:4860::8844}</span>&quot;</span> <span class="sy0">;;</span>
+<span class="kw1">esac</span>
+<span class="kw1">for</span> NET_DNS <span class="kw1">in</span> <span class="co1">${NET_DNS}</span>
+<span class="kw1">do</span> uci get system.ntp.server \
+<span class="sy0">|</span> <span class="kw2">sed</span> <span class="re5">-e</span> <span class="st0">&quot;s/\s/<span class="es1">\n</span>/g&quot;</span> \
+<span class="sy0">|</span> <span class="kw2">sed</span> <span class="re5">-r</span> <span class="re5">-e</span> <span class="st0">&quot;/\.pool\.ntp\.org$/s|^[0-9]*\.||;s|.*|<span class="es1">\
+</span>del_list dhcp.@dnsmasq[0].server='/\0/<span class="es3">${NET_DNS}</span>'<span class="es1">\n</span><span class="es1">\
+</span>add_list dhcp.@dnsmasq[0].server='/\0/<span class="es3">${NET_DNS}</span>'|&quot;</span> \
+<span class="sy0">|</span> uci <span class="re5">-q</span> batch
+<span class="kw1">done</span>
+<span class="kw1">done</span>
+uci commit dhcp
+service dnsmasq restart</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Race conditions with sysntpd&quot;,&quot;hid&quot;:&quot;race_conditions_with_sysntpd&quot;,&quot;codeblockOffset&quot;:34,&quot;secid&quot;:43,&quot;range&quot;:&quot;21097-21986&quot;} -->
+<h3 class="sectionedit44" id="upstream_dns_provider">Upstream DNS provider</h3>
+<div class="level3">
+
+<p>
+<strong>LuCI → Network → Interfaces → <abbr title="Wide Area Network">WAN</abbr> &amp; WAN6 → Edit</strong>
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong>Use <abbr title="Domain Name System">DNS</abbr> servers advertised by peer</strong></div>
+</li>
+<li class="level1"><div class="li"> <strong>Use custom <abbr title="Domain Name System">DNS</abbr> servers</strong></div>
+</li>
+</ul>
+
+<p>
+OpenWrt uses peer <abbr title="Domain Name System">DNS</abbr> as the upstream resolvers for dnsmasq by default.
+These are typically provided by the <abbr title="Internet Service Provider">ISP</abbr> upstream <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> server.
+You can change it to any other <a href="https://en.wikipedia.org/wiki/Public_recursive_name_server" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Public_recursive_name_server">DNS provider</a> or a local <abbr title="Domain Name System">DNS</abbr> server running on another host.
+Use resolvers supporting DNSSEC validation if necessary.
+Specify several resolvers to improve fault tolerance.
+</p>
+<pre class="code bash"><span class="co0"># Configure DNS provider</span>
+uci <span class="re5">-q</span> delete network.wan.dns
+uci add_list network.wan.dns=<span class="st0">&quot;8.8.8.8&quot;</span>
+uci add_list network.wan.dns=<span class="st0">&quot;8.8.4.4&quot;</span>
+&nbsp;
+<span class="co0"># Configure IPv6 DNS provider</span>
+uci <span class="re5">-q</span> delete network.wan6.dns
+uci add_list network.wan6.dns=<span class="st0">&quot;2001:4860:4860::8888&quot;</span>
+uci add_list network.wan6.dns=<span class="st0">&quot;2001:4860:4860::8844&quot;</span>
+&nbsp;
+<span class="co0"># Disable peer DNS</span>
+uci <span class="kw1">set</span> network.wan.peerdns=<span class="st0">&quot;0&quot;</span>
+uci <span class="kw1">set</span> network.wan6.peerdns=<span class="st0">&quot;0&quot;</span>
+&nbsp;
+<span class="co0"># Save and apply</span>
+uci commit network
+service network restart</pre>
+
+</div>
+
+<h4 id="general_notes">General notes</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> Resolvers from all active interfaces are combined in a single runtime configuration indiscriminately.</div>
+</li>
+<li class="level1"><div class="li"> If the interface is down, its resolvers are not used, so it&#039;s reasonable to specify resolvers only on interfaces they are reachable from.</div>
+</li>
+<li class="level1"><div class="li"> Dnsmasq periodically queries all the listed resolvers and then uses the fastest one for a period of time.</div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="multiple_dns_providers">Multiple DNS providers</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> The more <abbr title="Domain Name System">DNS</abbr> providers, the higher the fault tolerance of your <abbr title="Domain Name System">DNS</abbr> relative to <abbr title="Denial of Service">DoS</abbr>.</div>
+</li>
+<li class="level1"><div class="li"> Different <abbr title="Domain Name System">DNS</abbr> providers may return different answers to a <abbr title="Domain Name System">DNS</abbr> query due to differences in caching, synchronization, load balancing, content filtering, etc.</div>
+</li>
+<li class="level1"><div class="li"> To distinguish between correct and incorrect answers such as false-negatives, you need to utilize DNSSEC which may negatively impact fault tolerance and performance.</div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="peer_dns_options">Peer DNS options</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> Keep peer <abbr title="Domain Name System">DNS</abbr> enabled to improve your <abbr title="Domain Name System">DNS</abbr> fault tolerance.</div>
+</li>
+<li class="level1"><div class="li"> Disable peer <abbr title="Domain Name System">DNS</abbr> to prevent <abbr title="Domain Name System">DNS</abbr> leaks if you have configured a <abbr title="Virtual Private Network">VPN</abbr> connection on OpenWrt.</div>
+</li>
+<li class="level1"><div class="li"> Disable peer <abbr title="Domain Name System">DNS</abbr> to actually change your <abbr title="Domain Name System">DNS</abbr> provider and receive more predictable <abbr title="Domain Name System">DNS</abbr> replies.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Upstream DNS provider&quot;,&quot;hid&quot;:&quot;upstream_dns_provider&quot;,&quot;codeblockOffset&quot;:35,&quot;secid&quot;:44,&quot;range&quot;:&quot;21987-&quot;} -->

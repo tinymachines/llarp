@@ -1,0 +1,668 @@
+
+<h1 class="sectionedit1" id="adguard_home">AdGuard Home</h1>
+<div class="level1">
+
+<p>
+<a href="https://adguard.com/en/adguard-home/overview.html" class="urlextern" title="https://adguard.com/en/adguard-home/overview.html" rel="ugc nofollow">AdGuard Home</a> (AGH) is a free and open source network-wide advertising and trackers blocking <abbr title="Domain Name System">DNS</abbr> server. It operates as a <abbr title="Domain Name System">DNS</abbr> server that re-routes tracking domains to a “black hole”, thus preventing your devices from connecting to those servers. It is based on software used with public AdGuard <abbr title="Domain Name System">DNS</abbr> servers.
+</p>
+
+<p>
+In addition, AdGuard Home also offers <abbr title="Domain Name System">DNS</abbr> encryption features such as <abbr title="Domain Name System">DNS</abbr> over <abbr title="Transport Layer Security">TLS</abbr> (<abbr title="DNS over TLS">DoT</abbr>) and <abbr title="Domain Name System">DNS</abbr> over <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> (<abbr title="DNS over HTTPS">DoH</abbr>) built-in without any additional packages needed.
+</p>
+
+<p>
+<a href="/_detail/media/docs/howto/aghome.png?id=docs%3Aguide-user%3Aservices%3Adns%3Aadguard-home" class="media" title="media:docs:howto:aghome.png"><img src="/_media/media/docs/howto/aghome.png" class="media" loading="lazy" alt="" /></a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;AdGuard Home&quot;,&quot;hid&quot;:&quot;adguard_home&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-590&quot;} -->
+<h2 class="sectionedit2" id="prerequisites">Prerequisites</h2>
+<div class="level2">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap" style="width: 100%;">
+<p>
+Routers with low RAM, flash/storage space or slower processors will potentially not be suitable to run AdGuard Home. You may want to run AdGuard Home on another client instead if you have any of the mentioned system resource limitations with your router. The following requirements below are provided as general guidance.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} --><ul>
+<li class="level1"><div class="li"> Minimum of 50MB free RAM.</div>
+</li>
+<li class="level1"><div class="li"> Minimum of 100MB free disk/flash space (<a href="#flashstorage_space_requirements" title="docs:guide-user:services:dns:adguard-home ↵" class="wikilink1">see flash/storage requirements</a>).</div>
+</li>
+<li class="level1"><div class="li"> Higher performance routers i.e. dual-core with higher processor clock speeds are recommended.</div>
+</li>
+</ul>
+
+<p>
+The amount of RAM required will also be relative to the filter lists you use.
+</p>
+
+<p>
+Routers with less than 128MB of RAM or only having a single core processor will tend to perform poorly. The <a href="/toh/bt/homehub_v5a" class="wikilink1" title="toh:bt:homehub_v5a" data-wiki-id="toh:bt:homehub_v5a">homehub_v5a</a> was used for testing the 0.107.0 edge and release builds. 
+</p>
+
+<p>
+An alternative option could be to use a Raspberry Pi Zero plugged into your routers USB port to run AGH. <a href="https://forum.openwrt.org/t/raspberry-pi-zero-as-a-router-attached-ethernet-gadget/112329" class="urlextern" title="https://forum.openwrt.org/t/raspberry-pi-zero-as-a-router-attached-ethernet-gadget/112329" rel="ugc nofollow">Using a Pi Zero for AGH</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Prerequisites&quot;,&quot;hid&quot;:&quot;prerequisites&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;591-1709&quot;} -->
+<h3 class="sectionedit5" id="dns_latencyperformance">DNS latency/performance</h3>
+<div class="level3">
+
+<p>
+For the best performance and lowest latency on <abbr title="Domain Name System">DNS</abbr> requests, AGH should be your primary <abbr title="Domain Name System">DNS</abbr> resolver in your <abbr title="Domain Name System">DNS</abbr> chain. If you currently have dnsmasq or unbound installed, you should move these services to an alternative port and have AGH use <abbr title="Domain Name System">DNS</abbr> port 53 with upstream <abbr title="Domain Name System">DNS</abbr> resolvers of your choice configured. This wiki recommends keeping dnsmasq/unbound as your local/PTR resolver for Reverse <abbr title="Domain Name System">DNS</abbr>.
+</p>
+
+<p>
+The rationale for this is due to resolvers like dnsmasq forking each <abbr title="Domain Name System">DNS</abbr> request when AGH is set as an upstream, this will have an impact on <abbr title="Domain Name System">DNS</abbr> latency which is can be viewed in the AGH dashboard. You will also not benefit from being able to see the <abbr title="Domain Name System">DNS</abbr> requests made by each client if AGH is not your primary <abbr title="Domain Name System">DNS</abbr> resolver as all traffic will appear from your router.
+</p>
+
+<p>
+The install script in the setup section will move dnsmasq to port 54 and set it for AGH to use as local PTR / reverse <abbr title="Domain Name System">DNS</abbr> lookups.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;DNS latency\/performance&quot;,&quot;hid&quot;:&quot;dns_latencyperformance&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;1710-2646&quot;} -->
+<h3 class="sectionedit6" id="flashstorage_space_requirements">Flash/storage space requirements</h3>
+<div class="level3">
+
+<p>
+The compiled <code>AdGuardHome</code> binary has grown since the 0.107.0 release. For many routers this will be quite a significant amount of storage taken up in the overlay filesystem. In addition, features like statistics and query logging will also require further storage space when being written to the working directory. For routers with less flash space, it is highly recommended to use USB or an external storage path to avoid filling up your overlay filesystem. If you have low flash space, you may want to use the custom installation method and have all of the AdGuard Home installation stored outside of your flash storage. Alternatively you can also perform an <a href="/docs/guide-user/additional-software/extroot_configuration" class="wikilink1" title="docs:guide-user:additional-software:extroot_configuration" data-wiki-id="docs:guide-user:additional-software:extroot_configuration">exroot configuration</a>.
+</p>
+
+<p>
+Currently (May 2022 edge build 108) a full install to the /opt folder you really require about 100mb of space.
+</p>
+<ul>
+<li class="level1"><div class="li"> (70mb) 35mb x2 for the AGH binary and again for when it backups and upgrades. (that&#039;s in the agh-backup folder)</div>
+</li>
+<li class="level1"><div class="li"> 20mb for my filters. (Again you can raise or lower this depending on what lists you use)</div>
+</li>
+<li class="level1"><div class="li">  2mb - 90 days of statistics.</div>
+</li>
+<li class="level1"><div class="li"> 53mb - 7 days of query logs.</div>
+</li>
+</ul>
+
+<p>
+You can tweak your logging to keep things smaller if required.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Flash\/storage space requirements&quot;,&quot;hid&quot;:&quot;flashstorage_space_requirements&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;2647-3892&quot;} -->
+<h3 class="sectionedit7" id="querystatistics_logging">Query/statistics logging</h3>
+<div class="level3">
+
+<p>
+One of the main benefits of AGH is the detailed query and statistics data provided, however for many routers having long retention periods for this data can cause issues (see flash/storage space requirements). If you are using the default tmpfs storage, you should set a relatively short retention period or disable logging altogether. If you want to have longer retention periods for query/statistics data, consider moving the storage directory to outside your routers flash space.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Query\/statistics logging&quot;,&quot;hid&quot;:&quot;querystatistics_logging&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;3893-4412&quot;} -->
+<h2 class="sectionedit8" id="installation">Installation</h2>
+<div class="level2">
+
+<p>
+Since 21.02, there is a official <a href="/packages/pkgdata/adguardhome" class="wikilink1" title="packages:pkgdata:adguardhome" data-wiki-id="packages:pkgdata:adguardhome">AdGuard Home package</a> which can be installed through <a href="/docs/guide-user/additional-software/opkg" class="wikilink1" title="docs:guide-user:additional-software:opkg" data-wiki-id="docs:guide-user:additional-software:opkg">opkg</a>. 
+</p>
+
+<p>
+The opkg package for 21.02 has also been confirmed to work on 19.07, but will require transferring the correct ipk through <abbr title="Secure Shell">SSH</abbr> or SCP and installing with opkg manually due to not being present in the 19.07 packages repository.
+</p>
+
+<p>
+Required dependencies (ca-bundle) are automatically resolved and installed when using the official package.
+</p>
+<pre class="code bash">opkg update
+opkg <span class="kw2">install</span> adguardhome</pre>
+
+<p>
+The official OpenWrt package uses the following paths and directories by default:
+</p>
+<ul>
+<li class="level1"><div class="li"> The <code>AdGuardHome</code> application will be installed to <code>/usr/bin/AdGuardHome</code>.</div>
+</li>
+<li class="level1"><div class="li"> The main <code>adguardhome.yaml</code> configuration file is stored at <code>/etc/adguardhome.yaml</code>.</div>
+</li>
+<li class="level1"><div class="li"> The default working directory is <code>/var/adguardhome</code> (By default <code>/var</code> is a symlink to <code>/tmp</code>).</div>
+</li>
+<li class="level1"><div class="li"> The working directory can be configured in <code>/etc/config/adguardhome</code></div>
+</li>
+<li class="level1"><div class="li"> An init.d script is provided at <code>/etc/init.d/adguardhome</code>.</div>
+</li>
+</ul>
+
+<p>
+The default configured working directory will mean query logs and statistics will be lost on a reboot. To avoid this you should configure a persistent storage path such as /opt or /mnt with external storage and update the working directory accordingly.
+</p>
+
+<p>
+To have AdGuard Home automatically start on boot and to start the service:
+</p>
+<pre class="code bash">service adguardhome <span class="kw3">enable</span>
+service adguardhome start</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation&quot;,&quot;hid&quot;:&quot;installation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:8,&quot;range&quot;:&quot;4413-5916&quot;} -->
+<h3 class="sectionedit9" id="setup">Setup</h3>
+<div class="level3">
+
+<p>
+After installing the opkg package, run the following commands through <abbr title="Secure Shell">SSH</abbr> to prepare for making AGH the primary <abbr title="Domain Name System">DNS</abbr> resolver. These instructions assume you are using dnsmasq. This will demote dnsmasq to an internal <abbr title="Domain Name System">DNS</abbr> resolver only.
+</p>
+
+<p>
+The ports chosen are either well known alternate ports or reasonable compromises. You are free to edit the scripts to use your own ports but you should check with <a href="https://en.wikipedia.org/wiki/List_of_TCP_and_UDP_port_numbers" class="urlextern" title="https://en.wikipedia.org/wiki/List_of_TCP_and_UDP_port_numbers" rel="ugc nofollow">https://en.wikipedia.org/wiki/List_of_TCP_and_UDP_port_numbers</a> for reserved ports.
+</p>
+<pre class="code bash"><span class="co0"># Get the first IPv4 and IPv6 Address of router and store them in following variables for use during the script.</span>
+<span class="re2">NET_ADDR</span>=$<span class="br0">&#40;</span><span class="sy0">/</span>sbin<span class="sy0">/</span><span class="kw2">ip</span> <span class="re5">-o</span> <span class="re5">-4</span> addr list br-lan <span class="sy0">|</span> <span class="kw2">awk</span> <span class="st_h">'NR==1{ split($4, ip_addr, &quot;/&quot;); print ip_addr[1]; exit }'</span><span class="br0">&#41;</span>
+<span class="re2">NET_ADDR6</span>=$<span class="br0">&#40;</span><span class="sy0">/</span>sbin<span class="sy0">/</span><span class="kw2">ip</span> <span class="re5">-o</span> <span class="re5">-6</span> addr list br-lan scope global <span class="sy0">|</span> <span class="kw2">awk</span> <span class="st_h">'$4 ~ /^fd|^fc/ { split($4, ip_addr, &quot;/&quot;); print ip_addr[1]; exit }'</span><span class="br0">&#41;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Router IPv4 : &quot;</span><span class="st0">&quot;<span class="es3">${NET_ADDR}</span>&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Router IPv6 : &quot;</span><span class="st0">&quot;<span class="es3">${NET_ADDR6}</span>&quot;</span>
+&nbsp;
+<span class="co0"># 1. Move dnsmasq to port 54.</span>
+<span class="co0"># 2. Set local domain to &quot;lan&quot;.</span>
+<span class="co0"># 3. Add local '/lan/' to make sure all queries *.lan are resolved in dnsmasq;</span>
+<span class="co0"># 4. Add expandhosts '1' to make sure non-expanded hosts are expanded to &quot;.lan&quot;;</span>
+<span class="co0"># 5. Disable dnsmasq cache size as it will only provide PTR/rDNS info, making sure queries are always up to date (even if a device internal IP change after a DHCP lease renew).</span>
+<span class="co0"># 6. Disable reading /tmp/resolv.conf.d/resolv.conf.auto file (which are your ISP nameservers by default), you don't want to leak any queries to your ISP.</span>
+<span class="co0"># 7. Delete all forwarding servers from dnsmasq config.</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.port=<span class="st0">&quot;54&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.domain=<span class="st0">&quot;lan&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.local=<span class="st0">&quot;/lan/&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.expandhosts=<span class="st0">&quot;1&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.cachesize=<span class="st0">&quot;0&quot;</span>
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.noresolv=<span class="st0">&quot;1&quot;</span>
+uci <span class="re5">-q</span> del dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.server
+&nbsp;
+<span class="co0"># Delete existing config ready to install new options.</span>
+uci <span class="re5">-q</span> del dhcp.lan.dhcp_option
+uci <span class="re5">-q</span> del dhcp.lan.dns
+&nbsp;
+<span class="co0"># DHCP option 3: Specifies the gateway the DHCP server should send to DHCP clients.</span>
+uci add_list dhcp.lan.dhcp_option=<span class="st_h">'3,'</span><span class="st0">&quot;<span class="es3">${NET_ADDR}</span>&quot;</span>
+&nbsp;
+<span class="co0"># DHCP option 6: Specifies the DNS server the DHCP server should send to DHCP clients.</span>
+uci add_list dhcp.lan.dhcp_option=<span class="st_h">'6,'</span><span class="st0">&quot;<span class="es3">${NET_ADDR}</span>&quot;</span> 
+&nbsp;
+<span class="co0"># DHCP option 15: Specifies the domain suffix the DHCP server should send to DHCP clients.</span>
+uci add_list dhcp.lan.dhcp_option=<span class="st_h">'15,'</span><span class="st0">&quot;lan&quot;</span>
+&nbsp;
+<span class="co0"># Set IPv6 Announced DNS</span>
+uci add_list dhcp.lan.dns=<span class="st0">&quot;<span class="es2">$NET_ADDR6</span>&quot;</span>
+&nbsp;
+uci commit dhcp
+service dnsmasq restart
+service odhcpd restart
+<span class="kw3">exit</span> <span class="nu0">0</span></pre>
+
+</div>
+
+<h4 id="setup_agh_through_the_web_interface">Setup AGH through the web interface</h4>
+<div class="level4">
+
+<p>
+On first time setup the default web interface port is <abbr title="Transmission Control Protocol">TCP</abbr> 3000.
+</p>
+<ol>
+<li class="level1"><div class="li"> Go to <a href="http://192.168.1.1:3000/" class="urlextern" title="http://192.168.1.1:3000/" rel="ugc nofollow">http://192.168.1.1:3000/</a> (If your router <abbr title="Internet Protocol">IP</abbr> is not 192.168.1.1, change this accordingly)</div>
+</li>
+<li class="level1"><div class="li"> Setup the Admin Web Interface to listen on <code>192.168.1.1</code> at port <code>8080</code>. (Changing the web interface port is optional)</div>
+</li>
+<li class="level1"><div class="li"> Set <abbr title="Domain Name System">DNS</abbr> server to listen on <code>192.168.1.1</code> at port <code>53</code>.</div>
+</li>
+<li class="level1"><div class="li"> Create an user and choose a strong password.</div>
+</li>
+</ol>
+
+</div>
+
+<h4 id="login_agh">Login AGH</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> <a href="http://192.168.1.1:8080/" class="urlextern" title="http://192.168.1.1:8080/" rel="ugc nofollow">http://192.168.1.1:8080/</a> (or whatever listening port you set)</div>
+</li>
+</ul>
+
+<p>
+Feel free to change upstream <abbr title="Domain Name System">DNS</abbr> servers to whatever you like (Adguard Home supports <abbr title="DNS over HTTPS">DoH</abbr>, <abbr title="DNS over TLS">DoT</abbr> and DoQ out of the box), add the blacklists of your preference and enjoy ad-free browsing on all of your devices.
+</p>
+
+<p>
+<a href="/_detail/media/adguard_home_web_interface.gif?id=docs%3Aguide-user%3Aservices%3Adns%3Aadguard-home" class="media" title="media:adguard_home_web_interface.gif"><img src="/_media/media/adguard_home_web_interface.gif?w=600&amp;tok=cd52b1" class="media" loading="lazy" alt="" width="600" /></a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Setup&quot;,&quot;hid&quot;:&quot;setup&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:9,&quot;range&quot;:&quot;5917-9200&quot;} -->
+<h3 class="sectionedit10" id="manual_installation">Manual installation</h3>
+<div class="level3">
+
+<p>
+For older builds, a custom installation or running the latest edge builds you can follow several well written guides by members of the community:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="https://forum.openwrt.org/t/how-to-updated-2021-installing-adguardhome-on-openwrt/113904" class="urlextern" title="https://forum.openwrt.org/t/how-to-updated-2021-installing-adguardhome-on-openwrt/113904" rel="ugc nofollow">Installing AdGuardHome on OpenWrt</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://forum.openwrt.org/t/openwrt-adguard-home-101-dnsmasq/110864" class="urlextern" title="https://forum.openwrt.org/t/openwrt-adguard-home-101-dnsmasq/110864" rel="ugc nofollow">OpenWrt AdGuard Home 101 (dnsmasq)</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://forum.openwrt.org/t/openwrt-adguard-home-101-unbound/112007" class="urlextern" title="https://forum.openwrt.org/t/openwrt-adguard-home-101-unbound/112007" rel="ugc nofollow">OpenWrt AdGuard Home 101 (Unbound)</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Manual installation&quot;,&quot;hid&quot;:&quot;manual_installation&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:10,&quot;range&quot;:&quot;9201-9732&quot;} -->
+<h2 class="sectionedit11" id="configuration">Configuration</h2>
+<div class="level2">
+
+<p>
+Recommendations and best configuration practices for using AGH on OpenWrt.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:11,&quot;range&quot;:&quot;9733-9835&quot;} -->
+<h3 class="sectionedit12" id="web_interface">Web interface</h3>
+<div class="level3">
+
+<p>
+AdGuard Home has it&#039;s own web interface for configuration and management and is not managed through LuCI. There is no official LuCI application for managing AdGuard Home. By default the web setup interface will be on port <abbr title="Transmission Control Protocol">TCP</abbr> 3000. To access the web interface, use the <abbr title="Internet Protocol">IP</abbr> of your router: <a href="http://192.168.1.1:3000" class="urlextern" title="http://192.168.1.1:3000" rel="ugc nofollow">http://192.168.1.1:3000</a>. If this is the first time you have installed AdGuard Home you will go through the setup process. 
+</p>
+
+<p>
+By default LuCI will be configured to use standard ports <abbr title="Transmission Control Protocol">TCP</abbr> 80/443, so AdGuard Home will need to use an alternative port for the web interface. You can use the default setup port <abbr title="Transmission Control Protocol">TCP</abbr> 3000 or change it to an alternative (8080 is the usual port 80 replacememt). 
+</p>
+
+<p>
+Once AGH is active then <a href="https://github.com/AdguardTeam/AdGuardHome/wiki/Configuration" class="urlextern" title="https://github.com/AdguardTeam/AdGuardHome/wiki/Configuration" rel="ugc nofollow">follow the official AdGuard Home wiki instructions</a> to configure upstreams and filters. A list of known <abbr title="Domain Name System">DNS</abbr> providers and settings is here : <a href="https://adguard-dns.io/kb/general/dns-providers/" class="urlextern" title="https://adguard-dns.io/kb/general/dns-providers/" rel="ugc nofollow">Known DNS Providers</a>
+</p>
+
+<p>
+Note: Some settings may not be editable via the web interface and instead will need to be changed by editing the <code>adguardhome.yaml</code> configuration file.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Web interface&quot;,&quot;hid&quot;:&quot;web_interface&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:12,&quot;range&quot;:&quot;9836-10994&quot;} -->
+<h3 class="sectionedit13" id="nginx_reverse_proxy_through_luci">Nginx Reverse proxy through LuCI</h3>
+<div class="level3">
+
+<p>
+If you already use <a href="/docs/guide-user/services/webserver/nginx" class="wikilink1" title="docs:guide-user:services:webserver:nginx" data-wiki-id="docs:guide-user:services:webserver:nginx">Nginx with LuCI</a> rather than <a href="/docs/guide-user/services/webserver/uhttpd" class="wikilink1" title="docs:guide-user:services:webserver:uhttpd" data-wiki-id="docs:guide-user:services:webserver:uhttpd">uHTTPd</a> you can reverse proxy the AdGuard Home interface. This can simplify accessing the AdGuard Home interface and not having to worry about URLs with non standard <abbr title="Hypertext Transfer Protocol">HTTP</abbr> ports. Using a reverse proxy also means you don&#039;t have to specifically configure <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> access through AdGuard Home and can instead utilise the <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> configuration of LuCI instead.
+</p>
+
+<p>
+The following example will allow accessing the AdGuard Home interface as a sub directory path /adguard-home. If your router <abbr title="Internet Protocol">IP</abbr> or AdGuard Home <code>http_port</code> value is different, change it accordingly.
+</p>
+<pre class="code">location /adguard-home/ {
+    proxy_pass http://192.168.1.1:8080/;
+    proxy_redirect / /adguard-home/;
+    proxy_cookie_path / /adguard-home/;
+}</pre>
+
+<p>
+Accessing in your browser: <a href="http://[ROUTER]/adguard-home" class="urlextern" title="http://[ROUTER]/adguard-home" rel="ugc nofollow">http://[ROUTER]/adguard-home</a>.
+</p>
+
+<p>
+You can read more <a href="https://docs.nginx.com/nginx/admin-guide/web-server/reverse-proxy/" class="urlextern" title="https://docs.nginx.com/nginx/admin-guide/web-server/reverse-proxy/" rel="ugc nofollow">reverse proxy configurations</a> from the Nginx docs.
+</p>
+
+<p>
+<strong>Disable <abbr title="DNS over HTTPS">DoH</abbr> encryption on AdGuard Home</strong>
+</p>
+
+<p>
+If you have configured <abbr title="Transport Layer Security">TLS</abbr> on LuCI, there&#039;s no need to use <abbr title="Transport Layer Security">TLS</abbr> on AdGuard Home. Set <code>allow_unencrypted_doh</code> to false in <code>adguardhome.yaml</code> to allow AdGuard Home respond to <abbr title="DNS over HTTPS">DoH</abbr> requests without <abbr title="Transport Layer Security">TLS</abbr> encryption.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Nginx Reverse proxy through LuCI&quot;,&quot;hid&quot;:&quot;nginx_reverse_proxy_through_luci&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:13,&quot;range&quot;:&quot;10995-12348&quot;} -->
+<h3 class="sectionedit14" id="reverse_dns_rdns">Reverse DNS (rDNS)</h3>
+<div class="level3">
+
+<p>
+To enable rDNS so AGH picks up your <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> assignments from OpenWrt.
+</p>
+<ol>
+<li class="level1"><div class="li"> From the AdGuard Home web interface <strong>Settings</strong> → <strong><abbr title="Domain Name System">DNS</abbr> settings</strong></div>
+</li>
+<li class="level1"><div class="li"> Scroll to “Private reverse <abbr title="Domain Name System">DNS</abbr> servers”</div>
+</li>
+<li class="level1"><div class="li"> Add <code>127.0.0.1:54</code> or <code>192.168.1.1:54</code> (using loopback interface [127.0.0.1] is recommended whenever applicable to avoid network overhead and increase performance for rDNS queries).</div>
+</li>
+<li class="level1"><div class="li"> Tick both “<em>Use private reverse <abbr title="Domain Name System">DNS</abbr> resolvers</em>” and “<em>Enable reverse resolving of clients&#039; <abbr title="Internet Protocol">IP</abbr> addresses</em>” boxes and click apply.</div>
+</li>
+</ol>
+
+<p>
+<a href="/_detail/media/doc/howtos/rdns_agh.png?id=docs%3Aguide-user%3Aservices%3Adns%3Aadguard-home" class="media" title="media:doc:howtos:rdns_agh.png"><img src="/_media/media/doc/howtos/rdns_agh.png?w=600&amp;tok=dbe56d" class="media" loading="lazy" alt="" width="600" /></a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Reverse DNS (rDNS)&quot;,&quot;hid&quot;:&quot;reverse_dns_rdns&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:14,&quot;range&quot;:&quot;12349-12933&quot;} -->
+<h3 class="sectionedit15" id="lan_domain_interception">LAN domain interception</h3>
+<div class="level3">
+
+<p>
+Adding the following to the Upstream <abbr title="Domain Name System">DNS</abbr> Server configuration will intercept any <abbr title="Local Area Network">LAN</abbr> domain request or requests without a <abbr title="Fully Qualified Domain Name">FQDN</abbr> and pass those requests to the appropriate resolver, which is mostly like your OpenWrt router but it doesn&#039;t have to be. 
+</p>
+
+<p>
+The default <abbr title="Local Area Network">LAN</abbr> domain configured by OpenWrt is “lan”, but if you have configured you own domain, you can use this in the example code below:
+</p>
+
+<p>
+(127.0.0.1) local loopback is used here to enable statistics tracking but you may also use your router ip (192.168.1.1) here too.
+</p>
+
+<p>
+<strong>Settings</strong> → <strong><abbr title="Domain Name System">DNS</abbr> Settings</strong> &gt; <strong>Upstream Servers</strong>
+</p>
+<pre class="code">[/lan/]127.0.0.1:54
+[//]127.0.0.1:54</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;LAN domain interception&quot;,&quot;hid&quot;:&quot;lan_domain_interception&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:15,&quot;range&quot;:&quot;12934-13603&quot;} -->
+<h3 class="sectionedit16" id="creating_ipset_policies">Creating ipset policies</h3>
+<div class="level3">
+
+<p>
+For users using ipset policies for purposes such as <abbr title="Virtual Private Network">VPN</abbr> split tunnelling, AGH provides ipset functionality similar to dnsmasq. The configuration/syntax is slightly different and you will need to migrate any existing dnsmasq ipset policies to the AGH format and apply these to AGH instead.
+</p>
+
+<p>
+An ipset policy is defined in the <code>adguardhome.yaml</code> file, there is currently no web interface available to add these policies, therefore you must add these to the yaml config manually.
+</p>
+
+<p>
+If ipset is not already installed, install it:
+</p>
+<pre class="code bash">opkg update
+opkg <span class="kw2">install</span> ipset</pre>
+
+<p>
+<strong>Example dnsmasq syntax</strong>
+</p>
+
+<p>
+Using the following example ipset rules in dnsmasq as a reference, the AGH equivalent is demonstrated.
+</p>
+<pre class="code">ipset=/domain.com/ipset_name
+ipset=/domain1.com/domain2.com/ipset_name,ipset_name2</pre>
+
+<p>
+<strong>Example AGH syntax</strong>
+</p>
+<pre class="code yaml"><span class="co4">dns</span>:<span class="co4">
+ ipset</span><span class="sy2">:
+</span> - domain.com/ipset_name
+ - domain1.com,domain2.com/ipset_name,ipset_name2
+<span class="sy1">...</span></pre>
+
+<p>
+The main syntax differences is each domain is separated using a comma (<code>,</code>) not a forward slash (<code>/</code>). A forward slash denotes the end of a domain rule with AGH. When specifying the ipset chain, a comma is used in both examples to denote multiple chains if required.
+</p>
+
+<p>
+Like dnsmasq, an ipset policy in AGH can have one or more domains as well as be assigned to multiple ipset chains. Further information on ipset functionality can be found on the <a href="https://github.com/AdguardTeam/AdGuardHome/wiki/Configuration#configuration-file" class="urlextern" title="https://github.com/AdguardTeam/AdGuardHome/wiki/Configuration#configuration-file" rel="ugc nofollow">official AdGuard Home wiki</a> under “other settings”.
+</p>
+
+<p>
+<strong>Note:</strong> The ipset chains must exist before being used or referenced as AGH does not initialise them. It is possible to potentially encounter a race condition on startup if the ipset chains are not created in time when AGH attempts to start. An alternative is creating a <a href="/docs/techref/initscripts" class="wikilink1" title="docs:techref:initscripts" data-wiki-id="docs:techref:initscripts">custom init script</a> that runs the ipset create command earlier than the START value of AGH.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Creating ipset policies&quot;,&quot;hid&quot;:&quot;creating_ipset_policies&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:16,&quot;range&quot;:&quot;13604-15566&quot;} -->
+<h3 class="sectionedit17" id="agh_as_a_nextdns_client">AGH as a NextDNS client</h3>
+<div class="level3">
+
+<p>
+AGH is recommended to be used with filtering disabled as a NextDNS client. <a href="https://forum.openwrt.org/t/how-to-updated-2021-installing-adguardhome-on-openwrt/113904/6" class="urlextern" title="https://forum.openwrt.org/t/how-to-updated-2021-installing-adguardhome-on-openwrt/113904/6" rel="ugc nofollow">Using AGH as a NextDNS Client</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;AGH as a NextDNS client&quot;,&quot;hid&quot;:&quot;agh_as_a_nextdns_client&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:17,&quot;range&quot;:&quot;15567-15802&quot;} -->
+<h2 class="sectionedit18" id="dns_interception">DNS Interception</h2>
+<div class="level2">
+
+<p>
+Some devices will bypass <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> provided <abbr title="Domain Name System">DNS</abbr> servers e.g. Google Chromecast. 
+</p>
+
+<p>
+In order to make sure all <abbr title="Domain Name System">DNS</abbr> traffic goes through your primary <abbr title="Domain Name System">DNS</abbr> resolver, you can enforce this through firewall rules.
+</p>
+
+<p>
+Please note this <strong>ONLY</strong> enforces <strong>plain</strong> <abbr title="Domain Name System">DNS</abbr> enquiries from your <abbr title="Local Area Network">LAN</abbr> to be redirected through your <abbr title="Domain Name System">DNS</abbr>. To block DOH or other encrypted <abbr title="Domain Name System">DNS</abbr> requires further rules.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;DNS Interception&quot;,&quot;hid&quot;:&quot;dns_interception&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:18,&quot;range&quot;:&quot;15803-16203&quot;} -->
+<h3 class="sectionedit19" id="iptables_firewall3">IPTables (firewall3)</h3>
+<div class="level3">
+
+<p>
+Copy and paste these iptables rules in <strong>Network → Firewall → Custom Rules Tab</strong> or directly to <code>/etc/firewall.user</code>.
+</p>
+<pre class="code bash">iptables <span class="re5">-t</span> nat <span class="re5">-A</span> PREROUTING <span class="re5">-i</span> br-lan <span class="re5">-p</span> tcp <span class="re5">--dport</span> <span class="nu0">53</span> <span class="re5">-j</span> DNAT <span class="re5">--to</span> 192.168.1.1:<span class="nu0">53</span>
+iptables <span class="re5">-t</span> nat <span class="re5">-A</span> PREROUTING <span class="re5">-i</span> br-lan <span class="re5">-p</span> udp <span class="re5">--dport</span> <span class="nu0">53</span> <span class="re5">-j</span> DNAT <span class="re5">--to</span> 192.168.1.1:<span class="nu0">53</span></pre>
+
+<p>
+You can also implement this via a fw3 rule within <code>/etc/config/firewall</code>:
+</p>
+<pre class="code bash">config redirect <span class="st_h">'adguardhome_dns_53'</span>
+        option src <span class="st_h">'lan'</span>
+        option proto <span class="st_h">'tcp udp'</span>
+        option src_dport <span class="st_h">'53'</span>
+        option target <span class="st_h">'DNAT'</span>
+        option name <span class="st_h">'Adguard Home'</span>
+        option dest <span class="st_h">'lan'</span>
+        option dest_port <span class="st_h">'53'</span></pre>
+
+<p>
+These examples are for <abbr title="Internet Protocol version 4">IPv4</abbr> <abbr title="Domain Name System">DNS</abbr> traffic only as they use DNAT.
+</p>
+
+<p>
+<a href="/docs/guide-user/firewall/fw3_configurations/intercept_dns" class="wikilink1" title="docs:guide-user:firewall:fw3_configurations:intercept_dns" data-wiki-id="docs:guide-user:firewall:fw3_configurations:intercept_dns">Further information on DNS interception</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;IPTables (firewall3)&quot;,&quot;hid&quot;:&quot;iptables_firewall3&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:19,&quot;range&quot;:&quot;16204-17060&quot;} -->
+<h3 class="sectionedit20" id="nft_tables_firewall4">NFT Tables (firewall4)</h3>
+<div class="level3">
+
+<p>
+Add a new rule to <strong>Network → Firewall → Port Forwards</strong>, setting “Protocol” as “<abbr title="User Datagram Protocol">UDP</abbr>”, “Source zone” as “lan”, “External port” to 53, “Destination zone” as “unspecified” and “Internal <abbr title="Internet Protocol">IP</abbr> Address” your router address (usually 192.168.1.1) and “Internal port” still 53. Saving and applying the rule all <abbr title="User Datagram Protocol">UDP</abbr>/53 traffic will redirected to your router.
+</p>
+
+<p>
+Alternately a custom rule can be added:
+</p>
+<pre class="code bash">nft add rule nat pre udp dport <span class="nu0">53</span> <span class="kw2">ip</span> saddr 192.168.1.0<span class="sy0">/</span><span class="nu0">24</span> dnat 192.168.1.1:<span class="nu0">53</span></pre>
+
+<p>
+This will redirect all <abbr title="Domain Name System">DNS</abbr> traffic from 192.168.1.0/24 to the 192.168.1.1 server.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;NFT Tables (firewall4)&quot;,&quot;hid&quot;:&quot;nft_tables_firewall4&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:20,&quot;range&quot;:&quot;17061-17666&quot;} -->
+<h2 class="sectionedit21" id="bypassing_encrypted_dns_for_ntp">Bypassing encrypted DNS for NTP</h2>
+<div class="level2">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:22,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap" style="width: 100%;">
+<p>
+In order for <abbr title="Secure Socket Layer">SSL</abbr> to work the correct date/time MUST be set on the device. Not all routers have a Real Time Clock and thus must use <abbr title="Network Time Protocol">NTP</abbr> to update to the correct date/time on boot. As <abbr title="Secure Socket Layer">SSL</abbr> will NOT work without the correct date/time you MUST bypass encrypted <abbr title="Domain Name System">DNS</abbr> to enable <abbr title="Network Time Protocol">NTP</abbr> updates to work. 
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:23,&quot;range&quot;:&quot;0-&quot;} --><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:24,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap" style="width: 100%;">
+<p>
+Your router does NOT need encrypted <abbr title="Domain Name System">DNS</abbr>. Only your clients behind the router require filtering and encryption. Setting your router to use AGH as its <abbr title="Domain Name System">DNS</abbr> <strong>WILL</strong> result in failed <abbr title="Network Time Protocol">NTP</abbr> lookups unless you bypass encrypted lookups for <abbr title="Network Time Protocol">NTP</abbr>. This is <strong>NOT</strong> a recommended setup. Your router should have its own unencrypted upstream for <abbr title="Network Time Protocol">NTP</abbr> lookups.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:25,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+When using a upstream <abbr title="Domain Name System">DNS</abbr> setup that utilises <abbr title="Domain Name System">DNS</abbr> encryption e.g. <abbr title="DNS over TLS">DoT</abbr> or <abbr title="DNS over HTTPS">DoH</abbr>, you may come across a race condition on startup where communication to such <abbr title="Domain Name System">DNS</abbr> resolvers is not possible because of the <abbr title="Network Time Protocol">NTP</abbr> service not being able to establish a connection to a network time source and the set the correct time on your router. Given encrypted <abbr title="Domain Name System">DNS</abbr> relies on <abbr title="Transport Layer Security">TLS</abbr>/certificates, having accurate time is more important. To prevent this, you can allow <abbr title="Network Time Protocol">NTP</abbr> <abbr title="Domain Name System">DNS</abbr> requests to use plain <abbr title="Domain Name System">DNS</abbr>, regardless of the upstream <abbr title="Domain Name System">DNS</abbr> resolvers set.
+</p>
+
+<p>
+From the AdGuard Home web interface: <strong>Settings</strong> → <strong><abbr title="Domain Name System">DNS</abbr> Settings</strong> → <strong>Upstream <abbr title="Domain Name System">DNS</abbr> Servers</strong>
+</p>
+
+<p>
+Add the following to ensure any <abbr title="Domain Name System">DNS</abbr> request for <abbr title="Network Time Protocol">NTP</abbr> uses plain <abbr title="Domain Name System">DNS</abbr>. In this example, Cloudflare resolvers have been used. You can use any resolvers you like however.
+</p>
+<pre class="code">[/pool.ntp.org/]1.1.1.1
+[/pool.ntp.org/]1.0.0.1
+[/pool.ntp.org/]2606:4700:4700::1111
+[/pool.ntp.org/]2606:4700:4700::1001</pre>
+
+<p>
+Click apply to enable these specific <abbr title="Domain Name System">DNS</abbr> rules.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Bypassing encrypted DNS for NTP&quot;,&quot;hid&quot;:&quot;bypassing_encrypted_dns_for_ntp&quot;,&quot;codeblockOffset&quot;:11,&quot;secid&quot;:21,&quot;range&quot;:&quot;17667-19382&quot;} -->
+<h2 class="sectionedit26" id="debugging">Debugging</h2>
+<div class="level2">
+
+<p>
+If AdGuard Home won&#039;t start, you will want to view error logs to understand why.
+</p>
+
+<p>
+If using the opkg package you can view syslog for errors using <code>logread</code>.
+</p>
+<pre class="code bash">logread <span class="re5">-e</span> AdGuardHome</pre>
+
+<p>
+You can also run AdGuardHome from command line and see the output directly.
+</p>
+<pre class="code bash">AdGuardHome <span class="re5">-v</span> <span class="re5">-c</span> <span class="sy0">/</span>etc<span class="sy0">/</span>adguardhome.yaml <span class="re5">-w</span> <span class="sy0">/</span>var<span class="sy0">/</span>adguardhome <span class="re5">--no-check-update</span></pre>
+
+<p>
+This example uses the defaults set in the init script with the extra addition of the verbose flag.
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>-v --verbose</code> - Enables verbose output (useful for debugging).</div>
+</li>
+<li class="level1"><div class="li"> <code>-c --config</code> - Path to the AdGuard Home YAML config.</div>
+</li>
+<li class="level1"><div class="li"> <code>-w --work-dir</code> - Path to the set working directory where data such as logs and statistics are stored.</div>
+</li>
+<li class="level1"><div class="li"> <code>--no-check-update</code> - Disables the built in update checker.</div>
+</li>
+</ul>
+
+<p>
+The most common reason for AdGuard Home not starting is due to syntax errors in the <code>adguardhome.yaml</code> config.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Debugging&quot;,&quot;hid&quot;:&quot;debugging&quot;,&quot;codeblockOffset&quot;:12,&quot;secid&quot;:26,&quot;range&quot;:&quot;19383-20304&quot;} -->
+<h2 class="sectionedit27" id="uninstalling">Uninstalling</h2>
+<div class="level2">
+
+<p>
+This script uninstalls AGH and resets your router <abbr title="Domain Name System">DNS</abbr> to Google <abbr title="Domain Name System">DNS</abbr>. This is a known good default and should always work.
+</p>
+
+<p>
+<strong>Note:</strong> If your router is not at <code>192.168.1.1</code> then replace the router <abbr title="Internet Protocol">IP</abbr> address used in the commands below accordingly.
+</p>
+
+<p>
+<code>uninstallAGH.sh</code>
+</p>
+<pre class="code bash"><span class="co0">#!/bin/sh</span>
+opkg update
+service adguardhome stop
+service adguardhome disable
+opkg remove adguardhome
+&nbsp;
+<span class="co0"># 1. Reverts AdGuard Home configuration and resets settings to default.</span>
+<span class="co0"># 2. Enable rebind protection.</span>
+<span class="co0"># 3. Remove DHCP options for IPv4 and IPv6 </span>
+uci <span class="re5">-q</span> delete dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.noresolv
+uci <span class="re5">-q</span> delete dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.cachesize
+uci <span class="kw1">set</span> dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.rebind_protection=<span class="st_h">'1'</span>
+uci <span class="re5">-q</span> delete dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.server
+uci <span class="re5">-q</span> delete dhcp.<span class="sy0">@</span>dnsmasq<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.port
+uci <span class="re5">-q</span> delete dhcp.lan.dhcp_option
+uci <span class="re5">-q</span> delete dhcp.lan.dns
+&nbsp;
+<span class="co0"># Network Configuration</span>
+<span class="co0"># Disable peer/ISP DNS</span>
+uci <span class="kw1">set</span> network.wan.peerdns=<span class="st0">&quot;0&quot;</span>
+uci <span class="kw1">set</span> network.wan6.peerdns=<span class="st0">&quot;0&quot;</span>
+&nbsp;
+<span class="co0"># Configure DNS provider to Google DNS</span>
+uci <span class="re5">-q</span> delete network.wan.dns
+uci add_list network.wan.dns=<span class="st0">&quot;8.8.8.8&quot;</span>
+uci add_list network.wan.dns=<span class="st0">&quot;8.8.4.4&quot;</span>
+&nbsp;
+<span class="co0"># Configure IPv6 DNS provider to Google DNS</span>
+uci <span class="re5">-q</span> delete network.wan6.dns
+uci add_list network.wan6.dns=<span class="st0">&quot;2001:4860:4860::8888&quot;</span>
+uci add_list network.wan6.dns=<span class="st0">&quot;2001:4860:4860::8844&quot;</span>
+&nbsp;
+<span class="co0"># Save and apply</span>
+uci commit dhcp
+uci commit network
+<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>network restart
+<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>dnsmasq restart
+<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>odhcpd restart</pre>
+
+<p>
+Reconnect your clients to apply the changes.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Uninstalling&quot;,&quot;hid&quot;:&quot;uninstalling&quot;,&quot;codeblockOffset&quot;:14,&quot;secid&quot;:27,&quot;range&quot;:&quot;20305-21758&quot;} -->
+<h2 class="sectionedit28" id="data_files">Data Files</h2>
+<div class="level2">
+
+<p>
+The <code>AdGuardHome/data</code> folder contains the following.
+</p>
+<pre class="code">root@OpenWrt:/opt/AdGuardHome/data# ll -h
+drwxr-xr-x    3 root     root         512 Oct 29 09:42 ./
+drwxrwxrwx    4 root     root         736 Oct 30 09:06 ../
+drwxr-xr-x    2 root     root         800 Nov  2 09:52 filters/
+-rw-r--r--    1 root     root       45.4M Nov  2 20:42 querylog.json
+-rw-r--r--    1 root     root        8.9M Oct 29 09:00 querylog.json.1
+-rw-r--r--    1 root     root       32.0K Oct 30 05:28 sessions.db
+-rw-r--r--    1 root     root        4.0M Nov  2 21:00 stats.db</pre>
+<ul>
+<li class="level1"><div class="li"> <code>querylog.json</code>: These are your <abbr title="Domain Name System">DNS</abbr> queries. Can be removed.</div>
+</li>
+<li class="level1"><div class="li"> <code>sessions.db</code>: active logins to AGH currently. This can be deleted but you will need to relog back in.</div>
+</li>
+<li class="level1"><div class="li"> <code>stats.db</code>: Your statistics database. can purge but you will lose your statistics data.</div>
+</li>
+</ul>
+
+<p>
+The filters folder contains all your filter downloads. Purge if it is full but AGH will re-download your filters.
+</p>
+
+<p>
+If your filters are too large for your diskspace you will have to disable large filters and restrict their usage.
+</p>
+
+<p>
+The <code>AdGuardHome/agh-backup</code> folder contains the previous version of AGH. This also can be removed if space is at a premium.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Data Files&quot;,&quot;hid&quot;:&quot;data_files&quot;,&quot;codeblockOffset&quot;:15,&quot;secid&quot;:28,&quot;range&quot;:&quot;21759-22977&quot;} -->
+<h2 class="sectionedit29" id="references">References</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <a href="https://github.com/AdguardTeam/AdGuardHome/wiki/Configuration" class="urlextern" title="https://github.com/AdguardTeam/AdGuardHome/wiki/Configuration" rel="ugc nofollow">AdGuard Home official Wiki</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/AdguardTeam/AdGuardHome" class="urlextern" title="https://github.com/AdguardTeam/AdGuardHome" rel="ugc nofollow">AdGuard Home source tree</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/AdguardTeam/AdGuardHome/wiki/Platforms" class="urlextern" title="https://github.com/AdguardTeam/AdGuardHome/wiki/Platforms" rel="ugc nofollow">AdGuard Home Supported Platforms and Releases</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/openwrt/packages/tree/master/net/adguardhome" class="urlextern" title="https://github.com/openwrt/packages/tree/master/net/adguardhome" rel="ugc nofollow">OpenWrt AdGuard Home package source</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;References&quot;,&quot;hid&quot;:&quot;references&quot;,&quot;codeblockOffset&quot;:16,&quot;secid&quot;:29,&quot;range&quot;:&quot;22978-&quot;} -->

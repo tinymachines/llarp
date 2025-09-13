@@ -1,0 +1,80 @@
+
+<h1 class="sectionedit1" id="reference_network_topology">Reference network topology</h1>
+<div class="level1">
+
+<p>
+This is the network topology used as a common reference for most configurations for this section.
+</p>
+
+<p>
+Starting from the top of the diagram is the public internet.
+The network has a single public <abbr title="Internet Protocol version 4">IPv4</abbr> address leased from Verizon ($5US/month) terminating on a Verizon <a href="http://www.mocalliance.org/" class="urlextern" title="http://www.mocalliance.org/" rel="ugc nofollow">Multimedia over Coax Alliance (MoCA)</a> router.
+This router handles the telephones, video set top boxes and internet access (triple play).
+There is a single GigE 802.3 interface to the <strong>MAIN</strong> router for all internal wired and wireless internet access.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Interestingly, the Verizon MoCA router runs on an ARM926 using the jungo <code>openrq</code> firmware, based on Linux 2.6.16.
+jungo appears to have been purchased by cisco systems many years ago; cisco is now selling <a href="https://www.cisco.com/c/en/us/products/video/videoscape-openrg/index.html" class="urlextern" title="https://www.cisco.com/c/en/us/products/video/videoscape-openrg/index.html" rel="ugc nofollow">openrq</a>.
+It looks like Verizon has been limping along without developer support since then...
+</p>
+
+<p>
+Now on to more recent technology...
+</p>
+
+<p>
+The router switch in <strong>MAIN</strong> is configured to bridge all <abbr title="Local Area Network">LAN</abbr>-side traffic as the default <code>br-lan</code> interface on the <code>192.16.3.0/24</code> network.
+See <a href="/docs/guide-user/firewall/fw3_network#lan-bridge" class="wikilink1" title="docs:guide-user:firewall:fw3_network" data-wiki-id="docs:guide-user:firewall:fw3_network">lan bridge</a> for a description of this.
+<strong>MAIN</strong> handles all the internal stations using the <code>192.168.3.0/24</code> network, mostly <abbr title="Wireless Local Area Network">WLAN</abbr> stations but several wired Ethernet stations for printing and NAS.
+In the firewall test network:
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong>MAIN</strong> is the OpenWrt production router,</div>
+</li>
+<li class="level1"><div class="li"> <strong>STA1</strong> is a linux laptop from where most of testing is initiated,</div>
+</li>
+<li class="level1"><div class="li"> <strong>DUT</strong> is the OpenWrt <code>Device Under Test</code> router wired to one of the <strong>MAIN</strong> 802.3 Ethernet ports,</div>
+</li>
+<li class="level1"><div class="li"> <strong>STA2</strong> is a linux laptop,</div>
+</li>
+<li class="level1"><div class="li"> <strong>STA3</strong> and <strong>STA4</strong> are 802.11 wifi devices (tablet, phone, etc.)</div>
+</li>
+<li class="level1"><div class="li"> <strong>STA-server1</strong> is a linux server wired to a DUT 802.3 Ethernet port in vlan 102,</div>
+</li>
+<li class="level1"><div class="li"> <strong>STA-server2</strong> is a linux desktop wired to a DUT 802.3 Ethernet port in vlan 103.</div>
+</li>
+</ul>
+
+<p>
+Unless otherwise noted, an <abbr title="Internet Protocol version 4">IPv4</abbr> address is assigned using <abbr title="Dynamic Host Configuration Protocol">DHCP</abbr>.
+</p>
+
+<p>
+<strong>MAIN</strong> is provisioned with a static lease added for <strong>DUT</strong> so the <strong>DUT</strong> will always gets the same <abbr title="Internet Protocol">IP</abbr> address: <code>192.168.3.11</code>.
+Static routes to the <strong>DUT</strong> network(s) must also be added to the <strong>MAIN</strong> routing table so <strong>STA1</strong> can communicate with devices in vlan 102 and vlan 103.
+See <a href="/docs/guide-user/network/ipv4/start" class="wikilink1" title="docs:guide-user:network:ipv4:start" data-wiki-id="docs:guide-user:network:ipv4:start">ipv4 configuration</a> for provisioning static routes.
+</p>
+
+<p>
+The <strong>DUT</strong> is configured with two VLANs.
+<code>eth0.102</code> is a lan bridge using the <code>192.168.10.0/24</code> network for basic firewall testing.
+<code>eth0.103</code> has a single wired Ethernet port using the <code>192.168.30.0/24</code> network for <a href="/docs/guide-user/firewall/fw3_configurations/fw3_dmz" class="wikilink1" title="docs:guide-user:firewall:fw3_configurations:fw3_dmz" data-wiki-id="docs:guide-user:firewall:fw3_configurations:fw3_dmz">DMZ</a> testing.
+</p>
+
+<p>
+The reference topology allows firewall rules to be modified on the <strong>DUT</strong> in a sandbox without exposing it to the Internet; only <strong>MAIN</strong> <abbr title="Local Area Network">LAN</abbr>-side stations can access the <strong>DUT</strong>.
+Of secondary importantce, firewall rule testing has little probability of causing complete comms loss from <strong>STA1</strong> to the <strong>DUT</strong> (but it can still happen if I really hose the firewall rule set!)
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Generally the policy is set to ACCEPT for <abbr title="Local Area Network">LAN</abbr> to <abbr title="Wide Area Network">WAN</abbr> so all traffic initiated from the <abbr title="Local Area Network">LAN</abbr>-side is forwarded.
+In our topology, the policy is set to REJECT, so a firewall rule must be explicitly added for each service from <abbr title="Local Area Network">LAN</abbr> to <abbr title="Wide Area Network">WAN</abbr> (e.g. <abbr title="Internet Control Message Protocol">ICMP</abbr>, <abbr title="Secure Shell">SSH</abbr>, <abbr title="Hypertext Transfer Protocol">HTTP</abbr>).
+This results in less confusion when a packet is forwarded but is expected to be rejected or dropped.
+</p>
+
+<p>
+<a href="/_media/media/firewall-test-topov4.png" class="media" title="media:firewall-test-topov4.png"><img src="/_media/media/firewall-test-topov4.png?w=800&amp;tok=3e7318" class="mediacenter" loading="lazy" alt="" width="800" /></a>
+</p>
+
+</div>

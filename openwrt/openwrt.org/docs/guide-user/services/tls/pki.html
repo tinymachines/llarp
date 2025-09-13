@@ -1,0 +1,117 @@
+
+<h1 class="sectionedit1" id="installing_and_trusting_a_root_ca_certificate_in_a_pki">Installing and trusting a root CA certificate in a PKI</h1>
+<div class="level1">
+
+<p>
+As stated above:
+</p>
+<blockquote><div class="no">
+For enabling <abbr title="Hypertext Transfer Protocol Secure">HTTPS</abbr> for a website&#039;s domain we need a private key and it&#039;s <abbr title="Transport Layer Security">TLS</abbr> certificate that was signed by a Certificate Authority (CA).</div></blockquote>
+
+<p>
+But what if you have your private Certificate Authority in your infrastructure? In that case, your CA will sign your certificate but the root certificate (the one from the private CA) won&#039;t be trusted by your system. It needs to be installed and added to the system&#039;s trust store.
+</p>
+
+<p>
+Steps are as follow:
+</p>
+<ol>
+<li class="level1"><div class="li"> Get the root CA certificate</div>
+</li>
+<li class="level1"><div class="li"> Install the root CA certificate</div>
+</li>
+<li class="level1"><div class="li"> Add the root CA certificate to the system&#039;s trust store</div>
+</li>
+<li class="level1"><div class="li"> A helper script</div>
+</li>
+</ol>
+
+<p>
+For this documentation we will assume:
+</p>
+<ul>
+<li class="level1"><div class="li"> The CA name is <code>ca.private-domain.tld</code></div>
+</li>
+<li class="level1"><div class="li"> The CA server is accessible at <code>ca.private-domain.tld</code>, port <code>443</code></div>
+</li>
+<li class="level1"><div class="li"> The CA cert filename is <code>ca.private-domain.tld.cert</code></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installing and trusting a root CA certificate in a PKI&quot;,&quot;hid&quot;:&quot;installing_and_trusting_a_root_ca_certificate_in_a_pki&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;2-902&quot;} -->
+<h3 class="sectionedit2" id="get_the_root_ca_certificate">1. Get the root CA certificate</h3>
+<div class="level3">
+
+<p>
+Let&#039;s get the root CA cert.
+</p>
+<pre class="code bash">openssl s_client <span class="re5">-connect</span> ca.private-domain.tld:<span class="nu0">443</span> <span class="sy0">&lt;</span> <span class="sy0">/</span>dev<span class="sy0">/</span>null <span class="sy0">&gt;</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>temporary.out
+openssl x509 <span class="re5">-outform</span> PEM <span class="sy0">&lt;</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>temporary.out <span class="sy0">&gt;</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>ca.private-domain.tld.cert
+<span class="kw2">rm</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>temporary.out</pre>
+
+<p>
+Note: Don&#039;t forget to remove the temporary file <code>/tmp/temporary.out</code>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;1. Get the root CA certificate&quot;,&quot;hid&quot;:&quot;get_the_root_ca_certificate&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;903-1254&quot;} -->
+<h3 class="sectionedit3" id="install_the_root_ca_certificate">2. Install the root CA certificate</h3>
+<div class="level3">
+
+<p>
+Trusted certificates are installed in <code>/etc/ssl/certs</code>. However, it is a good practice to follow the <a href="https://refspecs.linuxfoundation.org/FHS_3.0/fhs/ch04s09.html" class="urlextern" title="https://refspecs.linuxfoundation.org/FHS_3.0/fhs/ch04s09.html" rel="ugc nofollow">FHS 3</a> and use <code>/usr/local/share</code> for architecture-independant files.
+</p>
+<pre class="code bash"><span class="kw2">mkdir</span> <span class="re5">-p</span> <span class="sy0">/</span>usr<span class="sy0">/</span>local<span class="sy0">/</span>share<span class="sy0">/</span>ca-certificates
+<span class="kw2">mv</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>ca.private-domain.tld.cert <span class="sy0">/</span>usr<span class="sy0">/</span>local<span class="sy0">/</span>share<span class="sy0">/</span>ca-certificates<span class="sy0">/</span>
+<span class="kw2">ln</span> <span class="re5">-s</span> <span class="sy0">/</span>usr<span class="sy0">/</span>local<span class="sy0">/</span>share<span class="sy0">/</span>ca-certificates<span class="sy0">/</span>ca.private-domain.tld.cert <span class="sy0">/</span>etc<span class="sy0">/</span>ssl<span class="sy0">/</span>certs<span class="sy0">/</span>ca.private-domain.tld.cert
+<span class="kw2">chmod</span> ugo-x <span class="sy0">/</span>usr<span class="sy0">/</span>local<span class="sy0">/</span>share<span class="sy0">/</span>ca-certificates<span class="sy0">/</span>ca.private-domain.tld.cert</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;2. Install the root CA certificate&quot;,&quot;hid&quot;:&quot;install_the_root_ca_certificate&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;1255-1853&quot;} -->
+<h3 class="sectionedit4" id="add_the_root_ca_certificate_to_the_system_s_trust_store">3. Add the root CA certificate to the system&#039;s trust store</h3>
+<div class="level3">
+
+<p>
+The certificate is installed but not yet trusted. You need to provide its hash.
+</p>
+<pre class="code bash"><span class="co0"># Generate the hash</span>
+<span class="re2">HASH</span>=<span class="st0">&quot;<span class="es4">$(openssl x509 -hash -noout -in /etc/ssl/certs/ca.private-domain.tld.cert)</span>.0&quot;</span>
+&nbsp;
+<span class="co0"># Display the hash value</span>
+<span class="kw3">echo</span> <span class="st0">&quot;<span class="es2">$HASH</span>&quot;</span>
+&nbsp;
+<span class="co0"># Link the hash to the certificate</span>
+<span class="kw2">ln</span> <span class="re5">-s</span> <span class="st0">&quot;/etc/ssl/certs/ca.private-domain.tld.cert&quot;</span> <span class="st0">&quot;/etc/ssl/certs/<span class="es2">$HASH</span>&quot;</span></pre>
+
+<p>
+Note: If another cert has the same hash use suffix <code>.1</code> or <code>.2</code> instead of <code>.0</code>.
+</p>
+
+<p>
+Congratulations, you&#039;ve installed and trusted your root CA certificate.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;3. Add the root CA certificate to the system&#039;s trust store&quot;,&quot;hid&quot;:&quot;add_the_root_ca_certificate_to_the_system_s_trust_store&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:4,&quot;range&quot;:&quot;1854-2438&quot;} -->
+<h3 class="sectionedit5" id="a_helper_script">4. A helper script</h3>
+<div class="level3">
+<pre class="code bash"><span class="re2">CA_NAME</span>=<span class="st0">&quot;ca.private-domain.tld&quot;</span>
+<span class="re2">CERT_FILE</span>=<span class="st0">&quot;<span class="es2">$CA_NAME</span>.cert&quot;</span>
+<span class="re2">CERT_INSTALL_DIR</span>=<span class="st0">&quot;/usr/local/share/ca-certificates&quot;</span>
+<span class="re2">CERT_PATH</span>=<span class="st0">&quot;<span class="es3">${CERT_INSTALL_DIR}</span>/<span class="es3">${CERT_FILE}</span>&quot;</span>
+&nbsp;
+openssl s_client <span class="re5">-connect</span> <span class="co1">${CA_NAME}</span>:<span class="nu0">443</span> <span class="sy0">&lt;</span> <span class="sy0">/</span>dev<span class="sy0">/</span>null <span class="sy0">&gt;</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>temporary.out
+<span class="kw2">mkdir</span> <span class="re5">-p</span> <span class="st0">&quot;<span class="es2">$CERT_INSTALL_DIR</span>&quot;</span>
+openssl x509 <span class="re5">-outform</span> PEM <span class="sy0">&lt;</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>temporary.out <span class="sy0">&gt;</span> <span class="st0">&quot;<span class="es2">$CERT_PATH</span>&quot;</span>
+<span class="re2">HASH</span>=<span class="st0">&quot;<span class="es4">$(openssl x509 -hash -noout -in $CERT_PATH)</span>.0&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;<span class="es2">$HASH</span>&quot;</span>
+&nbsp;
+<span class="kw2">ln</span> <span class="re5">-s</span> <span class="st0">&quot;<span class="es2">$CERT_PATH</span>&quot;</span> <span class="st0">&quot;/etc/ssl/certs/<span class="es2">$CERT_FILE</span>&quot;</span>
+<span class="kw2">ln</span> <span class="re5">-s</span> <span class="st0">&quot;/etc/ssl/certs/<span class="es2">$CERT_FILE</span>&quot;</span> <span class="st0">&quot;/etc/ssl/certs/<span class="es2">$HASH</span>&quot;</span>
+<span class="kw2">ls</span> <span class="re5">-al</span> <span class="st0">&quot;/etc/ssl/certs/<span class="es2">$HASH</span>&quot;</span>
+&nbsp;
+<span class="kw2">rm</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>temporary.out</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;4. A helper script&quot;,&quot;hid&quot;:&quot;a_helper_script&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:5,&quot;range&quot;:&quot;2439-&quot;} -->

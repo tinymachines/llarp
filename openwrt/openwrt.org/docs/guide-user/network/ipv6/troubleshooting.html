@@ -1,0 +1,153 @@
+
+<h1 class="sectionedit1" id="ipv6_troubleshooting">IPv6 troubleshooting</h1>
+<div class="level1">
+
+<p>
+<abbr title="Internet Protocol version 6">IPv6</abbr> networks have more configuration options, and more failure modes, than <abbr title="Internet Protocol version 4">IPv4</abbr> networks. This page has suggestions on how to troubleshoot issues such as:
+</p>
+<ul>
+<li class="level1"><div class="li"> Devices cannot obtain <abbr title="Internet Protocol version 6">IPv6</abbr> addresses on the local network</div>
+</li>
+<li class="level1"><div class="li"> Devices cannot communicate with each other over <abbr title="Internet Protocol version 6">IPv6</abbr></div>
+</li>
+<li class="level1"><div class="li"> Outbound requests to <abbr title="Internet Protocol version 6">IPv6</abbr> addresses hang or are rejected</div>
+</li>
+</ul>
+
+<p>
+The discussion in <a href="https://forum.openwrt.org/t/ipv6-routing-does-not-work-on-lan-but-does-work-from-router/192472" class="urlextern" title="https://forum.openwrt.org/t/ipv6-routing-does-not-work-on-lan-but-does-work-from-router/192472" rel="ugc nofollow">this forum thread</a> was used as a starting point for creating this wiki page.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;IPv6 troubleshooting&quot;,&quot;hid&quot;:&quot;ipv6_troubleshooting&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-567&quot;} -->
+<h3 class="sectionedit2" id="basic_concepts">Basic concepts</h3>
+<div class="level3">
+
+<p>
+It is very helpful to understand the concepts involved in <abbr title="Internet Protocol version 6">IPv6</abbr> networking, as they are more complex than those involved in <abbr title="Internet Protocol version 4">IPv4</abbr>.
+</p>
+<ul>
+<li class="level1 node"><div class="li"> There is more than one type of <abbr title="Internet Protocol version 6">IPv6</abbr> address.</div>
+<ul>
+<li class="level2"><div class="li"> Globally-unique address (GUA): identifies a device or subnet globally on the internet. These are in the <code>2000::/7</code> block (from <code>2000::</code> to <code>2800::</code>).</div>
+</li>
+<li class="level2"><div class="li"> Unique local address (ULA): identifies a device or subnet only within a local network. These are in the <code>fd00::/8</code> block (from <code>fd00::</code> to <code>fe00::</code>).</div>
+</li>
+<li class="level2"><div class="li"> Link-local address: identifies a device within a single link (subnetwork that a device is connected to). These are in the <code>fe80::/64</code> block (from <code>fe80::</code> to <code>fe80:0000:0000:1::</code>).</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Under <abbr title="Internet Protocol version 6">IPv6</abbr>, an <abbr title="Internet Service Provider">ISP</abbr> delegates an entire address block (prefix) to your router, rather than assigning it a single address as under <abbr title="Internet Protocol version 4">IPv4</abbr>. The most common block sizes are /56, /60, and /64. There is no such thing as an <abbr title="Internet Protocol version 6">IPv6</abbr> network smaller than /64, so the ideal situation is to subnet within the delegated address block and not use any address translation. If only a /64 is delegated, then address translation is required to subnet.</div>
+</li>
+<li class="level1"><div class="li"> Under <abbr title="Internet Protocol version 4">IPv4</abbr>, devices typically have only one address. Under <abbr title="Internet Protocol version 6">IPv6</abbr>, devices always have a link-local address, and they may additionally have either a GUA or ULA or both, depending on network configuration. Using only GUAs is generally preferred, as it avoids the need for address translation. Bugs have been reported in how OpenWrt handles both GUAs and ULAs assigned on a network in some circumstances, so it is preferable to disable ULA assignment unless it is necessary.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Basic concepts&quot;,&quot;hid&quot;:&quot;basic_concepts&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;568-2199&quot;} -->
+<h3 class="sectionedit3" id="configuration">Configuration</h3>
+<div class="level3">
+
+<p>
+In a typical setup you will want the <abbr title="Internet Service Provider">ISP</abbr> to delegate a prefix to your <code>wan6</code> interface, but disable <code>wan6</code> from delegating prefixes further to <code>lan</code> and other subnetworks, because those subnetworks have only individual devices on them, and not further routers. To implement a setup like that, use the following settings:
+</p>
+<ul>
+<li class="level1"><div class="li"> ULA assignment: disabled (see Network &gt; Interfaces &gt; Global network options)</div>
+</li>
+<li class="level1"><div class="li"> “Request <abbr title="Internet Protocol version 6">IPv6</abbr>-address”: try</div>
+</li>
+<li class="level1"><div class="li"> “Request <abbr title="Internet Protocol version 6">IPv6</abbr>-prefix of length”: set to /64, verify that a block is assigned; set to /60, see if a block is still assigned; repeat until largest possible block is determined. Alternatively, set to automatic to use the default from the <abbr title="Internet Service Provider">ISP</abbr></div>
+</li>
+<li class="level1"><div class="li"> “Do not send a Release when restarting”: enable</div>
+</li>
+<li class="level1"><div class="li"> “Delegate <abbr title="Internet Protocol version 6">IPv6</abbr> prefixes”: enable on <code>wan6</code>, disable everywhere else</div>
+</li>
+<li class="level1"><div class="li"> “<abbr title="Internet Protocol version 6">IPv6</abbr> assignment length”: disable on <code>wan6</code>, enable and set to 64 on <code>lan</code> and other local subnetworks</div>
+</li>
+<li class="level1"><div class="li"> “<abbr title="Internet Protocol version 6">IPv6</abbr> assignment hint”: set to successive integers on each local subnetwork (this determines the /64 ranges that will be assigned to each subnetwork from your prefix delegation)</div>
+</li>
+<li class="level1"><div class="li"> “RA-Service”: disable on <code>wan6</code>, set to server mode on <code>lan</code> and other subnetworks</div>
+</li>
+<li class="level1"><div class="li"> “DHCPv6-Service”: disable on <code>wan6</code>, set to server mode on <code>lan</code> and other subnetworks</div>
+</li>
+<li class="level1"><div class="li"> “NDP-Proxy”: set to relay mode</div>
+</li>
+</ul>
+
+<p>
+In the case that you can only get a /64 from your <abbr title="Internet Service Provider">ISP</abbr>, but still want to subnetwork, then you can instead:
+</p>
+<ul>
+<li class="level1"><div class="li"> Disable “Delegate <abbr title="Internet Protocol version 6">IPv6</abbr> prefixes” (because you would only be able to delegate a prefix to one subnetwork)</div>
+</li>
+<li class="level1"><div class="li"> Disable “<abbr title="Internet Protocol version 6">IPv6</abbr> assignment length” on all interfaces</div>
+</li>
+<li class="level1"><div class="li"> Change “RA-Service” and “DHCPv6-Service” to relay mode so that <abbr title="Internet Protocol">IP</abbr> addresses are requested directly from the <abbr title="Internet Service Provider">ISP</abbr> instead of from local DHCPv6 server (OpenWrt keeps track of the two VLANs but they will have addresses from the same CIDR block)</div>
+</li>
+</ul>
+
+<p>
+To troubleshoot, a good first step is to compare your settings to the ones above and consider whether any differences are intended based on your network setup.
+</p>
+
+</div>
+
+<h4 id="bad_settings">Bad settings</h4>
+<div class="level4">
+
+<p>
+The following settings (or settings combinations) are probably not desired for simple setups (but might be required for advanced configurations):
+</p>
+<ul>
+<li class="level1"><div class="li"> ULA assignment enabled: on some devices for unknown reasons, causes outbound <abbr title="Internet Protocol version 6">IPv6</abbr> connectivity to fail, as discussed <a href="https://github.com/openwrt/openwrt/issues/9881#issuecomment-1711820408" class="urlextern" title="https://github.com/openwrt/openwrt/issues/9881#issuecomment-1711820408" rel="ugc nofollow">on the GitHub issue tracker</a></div>
+</li>
+<li class="level1"><div class="li"> Request <abbr title="Internet Protocol version 6">IPv6</abbr>-prefix of length 64: will prevent subnetting and prefix delegation without additional configuration. Before proceeding with this, verify that a larger prefix cannot be obtained from the <abbr title="Internet Service Provider">ISP</abbr></div>
+</li>
+<li class="level1"><div class="li"> Delegate <abbr title="Internet Protocol version 6">IPv6</abbr> prefixes enabled on interfaces other than <code>wan6</code>: unless you have routers with further subnetworks on <code>lan</code> etc, this doesn&#039;t make much sense</div>
+</li>
+<li class="level1"><div class="li"> <abbr title="Internet Protocol version 6">IPv6</abbr> assignment length on <code>lan</code> set to same as <abbr title="Internet Protocol version 6">IPv6</abbr>-prefix length on <code>wan</code>: this works, but means you can only have one local subnetwork, as the entire available prefix will be assigned to only one of the available subnetworks and there will be no addresses for the others</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;2200-5271&quot;} -->
+<h3 class="sectionedit4" id="expected_appearance">Expected appearance</h3>
+<div class="level3">
+
+<p>
+You should expect to see the following in a properly configured <abbr title="Internet Protocol version 6">IPv6</abbr> enabled network:
+</p>
+<ul>
+<li class="level1"><div class="li"> The <code>wan6</code> interface should have at least a /60 block delegated to it, this will be displayed as “<abbr title="Internet Protocol version 6">IPv6</abbr>-PD” on the interfaces list page in LuCI.</div>
+</li>
+<li class="level1"><div class="li"> The <code>lan</code> interface (and interfaces for any other subnetworks you have created) should have <abbr title="Internet Protocol version 6">IPv6</abbr> addresses assigned to them, which will be displayed as something like <code>xxxx:xxxx:xxxx:xxxx::1/64</code> in the LuCI interfaces list, indicating that a /64 block has been assigned to that subnetwork and the router has been assigned the first valid address in that block, similar to how it works in <abbr title="Internet Protocol version 4">IPv4</abbr>.</div>
+</li>
+<li class="level1"><div class="li"> Interfaces will have GUAs shown if and only if prefix delegation and address assignment is working properly. Interfaces will have ULAs shown if and only if ULA assignment is enabled in the global network options (this doesn&#039;t depend on the <abbr title="Internet Service Provider">ISP</abbr>).</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Expected appearance&quot;,&quot;hid&quot;:&quot;expected_appearance&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;5272-6191&quot;} -->
+<h3 class="sectionedit5" id="gathering_more_data">Gathering more data</h3>
+<div class="level3">
+
+<p>
+In the case that the problem can&#039;t be resolved by inspection, consider using the following diagnostic approaches to help identify at which stage the problem is occurring:
+</p>
+<ul>
+<li class="level1"><div class="li"> Check the address ranges assigned to each interface in LuCI. If there is no GUA assignment for <code>lan</code>, then it won&#039;t be able to contact the public internet unless you have ULA assignment enabled and address translation properly configured.</div>
+</li>
+<li class="level1"><div class="li"> Check whether devices on the network have <abbr title="Internet Protocol version 6">IPv6</abbr> addresses assigned, and if so, whether they have GUAs, ULAs, or both. On Linux, use <code>ip -6 addr</code> to check. Devices will have addresses assigned from the address ranges on the interfaces that they are connected to.</div>
+</li>
+<li class="level1"><div class="li"> Check whether devices on the network can contact the public internet over <abbr title="Internet Protocol version 6">IPv6</abbr> (see <a href="https://test-ipv6.com/" class="urlextern" title="https://test-ipv6.com/" rel="ugc nofollow">Test IPv6</a> or try <code>curl -v -6 <a href="https://example.com" class="urlextern" title="https://example.com" rel="ugc nofollow">https://example.com</a></code>), and separately, check whether the router can do the same (consider <code>wget -O- -6 <a href="https://example.com" class="urlextern" title="https://example.com" rel="ugc nofollow">https://example.com</a></code> when connected over <abbr title="Secure Shell">SSH</abbr>). Also, can devices on the network contact the router over <abbr title="Internet Protocol version 6">IPv6</abbr>?</div>
+</li>
+<li class="level1"><div class="li"> Check the routing tables on individual devices as well as on the router. On Linux (including OpenWrt), use <code>ip -6 route</code>. You can also see the same graphically at Status &gt; Routing on LuCI. Depending on whether <abbr title="Internet Protocol version 6">IPv6</abbr> source routing is enabled, you should expect to see source filters on the forwarding rules based on the assigned address ranges for each interface. If any routing table is missing a default route, connectivity to the internet surely will not be functional.</div>
+</li>
+<li class="level1"><div class="li"> You can use Wireshark and filter for <abbr title="Internet Protocol version 6">IPv6</abbr> packets when connecting to wifi/ethernet on a device to see the RS/RA handshake, which shows explicitly the default routes being advertised to devices on DHCPv6.</div>
+</li>
+<li class="level1"><div class="li"> Consider making use of <code>traceroute</code> to see at what stage traffic is being dropped. You can also use Wireshark to see the packets that are sent out, and potentially the <abbr title="Internet Control Message Protocol">ICMP</abbr> replies from the router or other network nodes.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Gathering more data&quot;,&quot;hid&quot;:&quot;gathering_more_data&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;6192-&quot;} -->

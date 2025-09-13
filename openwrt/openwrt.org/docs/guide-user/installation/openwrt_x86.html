@@ -1,0 +1,575 @@
+
+<h1 class="sectionedit1" id="openwrt_on_x86_hardware_pcvmserver">OpenWrt on x86 hardware (PC / VM / server)</h1>
+<div class="level1">
+
+<p>
+See also: <a href="/docs/guide-developer/uefi-bootable-image" class="wikilink1" title="docs:guide-developer:uefi-bootable-image" data-wiki-id="docs:guide-developer:uefi-bootable-image">OpenWrt on UEFI based x86 systems</a>
+</p>
+
+<p>
+OpenWrt can run in normal PC, VM, or server hardware, and take advantage of the much more powerful hardware the x86 (Intel/AMD) architecture can offer.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;OpenWrt on x86 hardware (PC \/ VM \/ server)&quot;,&quot;hid&quot;:&quot;openwrt_on_x86_hardware_pcvmserver&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-300&quot;} -->
+<h3 class="sectionedit2" id="download_disk_images">Download disk images</h3>
+<div class="level3">
+
+<p>
+<a href="https://downloads.openwrt.org/releases/" class="urlextern" title="https://downloads.openwrt.org/releases/" rel="ugc nofollow">Go here</a>, choose the release version, then click on <strong>target</strong> and then on <strong>x86</strong>.
+You will see different targets.
+</p>
+
+<p>
+There are multiple targets for x86 OpenWrt, some are targeted at old or specific hardware and their build defaults may not be suit modern x86 hardware:
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong>64</strong> is for modern PC hardware (anything from around 2007 onward), it is built for 64-bit capable computers and has support for modern CPU features. Choose this unless you have good reasons not to.</div>
+</li>
+<li class="level1"><div class="li"> <strong>Generic</strong> is for 32-bit-only hardware (either old hardware or some Atom processors), should be <strong>i686</strong> Linux architecture, will work on Pentium 4 and later. Use this only if your hardware can&#039;t run the 64-bit version.</div>
+</li>
+<li class="level1"><div class="li"> <strong>Legacy</strong> is for very old PC hardware, Pentium MMX, what is called <strong>i586</strong> in Linux architecture support. It will miss a lot of features you want/need on modern hardware like multi-core support and support for more than 4GB of RAM, but will actually run on ancient hardware while other versions will not.</div>
+</li>
+<li class="level1"><div class="li"> <strong>Geode</strong> is a custom Legacy target customized for Geode SoCs, which are still in use in many (aging) networking devices, like the older Alix boards from PCEngines.</div>
+</li>
+</ul>
+
+<p>
+Once you select a target, there are multiple disk image files with different characteristics:
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong>ext4-combined-efi.img.gz</strong> This disk image uses a single read-write ext4 partition without a read-only squashfs root filesystem. As a result, the root partition can be expanded to fill a large drive (e.g. SSD/SATA/mSATA/SATA DOM/NVMe/etc). Features like Failsafe Mode or Factory Reset will not be available as they need a read-only squashfs partition in order to function. It has both the boot and root partitions and Master Boot Record (MBR) area with updated GRUB2.</div>
+</li>
+<li class="level1"><div class="li"> <strong>ext4-combined.img.gz</strong> This disk image is the same as above but it is intended to be booted with PC BIOS instead of EFI.</div>
+</li>
+<li class="level1"><div class="li"> <strong>ext4-rootfs.img.gz</strong> This is a partition image of only the root partition. It can be used to install OpenWRT without overwriting the boot partition and Master Boot Record (MBR).</div>
+</li>
+<li class="level1"><div class="li"> <strong>kernel.bin</strong></div>
+</li>
+<li class="level1"><div class="li"> <strong>squashfs-combined-efi.img.gz</strong> This disk image uses the traditional OpenWrt layout, a squashfs read-only root filesystem and a read-write partition where settings and packages you install are stored. Due to how this image is assembled, you will have less than 100MB of space to store additional packages and configuration, and extroot does not work. It supports booting from EFI.</div>
+</li>
+<li class="level1"><div class="li"> <strong>squashfs-combined.img.gz</strong> This disk image is the same as above but it is intended to be booted with PC BIOS instead of EFI.</div>
+</li>
+<li class="level1"><div class="li"> <strong>squashfs-rootfs.img.gz</strong> </div>
+</li>
+<li class="level1"><div class="li"> <strong>rootfs.tar.gz</strong> This contains all the files from the root partition. It can be extracted onto a root filesystem without the need of overwriting the partition. To avoid conflicts, it is highly recommended you backup any older files and extract this file onto an empty filesystem.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Download disk images&quot;,&quot;hid&quot;:&quot;download_disk_images&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;301-3286&quot;} -->
+<h2 class="sectionedit3" id="hardware_support">Hardware support</h2>
+<div class="level2">
+
+<p>
+All images support basic video output (screen text terminal), so you can connect a screen to the device&#039;s video ports and see it boot up.
+</p>
+
+<p>
+Some images support keyboard input which can be used to configure OpenWrt.
+</p>
+
+<p>
+To communicate through a PC serial port you will need a “null-modem” aka “crossed” serial cable to connect the device&#039;s serial port to your PC&#039;s serial port.
+</p>
+
+<p>
+To be able to connect to your device, the image must support the Ethernet hardware.
+</p>
+<ul>
+<li class="level1"><div class="li"> The <a href="https://downloads.openwrt.org/snapshots/targets/x86/64/profiles.json" class="urlextern" title="https://downloads.openwrt.org/snapshots/targets/x86/64/profiles.json" rel="ugc nofollow">64-bit</a> image supports Intel and Realtek Ethernet chipsets.</div>
+</li>
+<li class="level1"><div class="li"> The <a href="https://downloads.openwrt.org/snapshots/targets/x86/generic/profiles.json" class="urlextern" title="https://downloads.openwrt.org/snapshots/targets/x86/generic/profiles.json" rel="ugc nofollow">Generic</a> and <a href="https://downloads.openwrt.org/snapshots/targets/x86/legacy/profiles.json" class="urlextern" title="https://downloads.openwrt.org/snapshots/targets/x86/legacy/profiles.json" rel="ugc nofollow">Legacy</a> images support Intel, Realtek, Via and some other ethernet chipsets.</div>
+</li>
+<li class="level1"><div class="li"> The <a href="https://downloads.openwrt.org/snapshots/targets/x86/geode/profiles.json" class="urlextern" title="https://downloads.openwrt.org/snapshots/targets/x86/geode/profiles.json" rel="ugc nofollow">Geode</a> images support Geode hardware so as long as you have a Geode-based board you should be fine.</div>
+</li>
+</ul>
+
+<p>
+NVMe SSD support is available since OpenWrt 21.02.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Hardware support&quot;,&quot;hid&quot;:&quot;hardware_support&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;3287-4401&quot;} -->
+<h2 class="sectionedit4" id="packages_to_consider_on_x86">Packages to consider on x86</h2>
+<div class="level2">
+
+<p>
+OpenWrt has a minimalist philosophy regarding packaging strategy due to limited space on embedded devices.  For many x86 machines, disk space is likely not a limiting factor.  Users coming from desktop distros where thousand of modules are provided in the default image, might be surprised to see that on OpenWrt, the default number of drivers is also minimal.  Therefore, it may be necessary to identify and obtain the needed modules for things like: storage controllers (SATA/USB etc.), sound module, crypto modules, video modules, etc.
+</p>
+
+<p>
+One strategy to identify needed modules is to boot into a live Linux distro (for example <a href="https://archlinux.org/download" class="urlextern" title="https://archlinux.org/download" rel="ugc nofollow">Arch Linux</a>) and inspect the output of <code>lsmod</code> or <code>lspci -vvv | grep driver</code> and then search for corresponding OpenWrt kmod packages.
+</p>
+
+<p>
+Another option if building your own image is to build all modules <code>ALL_KMODS=y</code> and see what works.  Newer hardware may not be supported out-of-the-box.
+</p>
+
+<p>
+Beyond the kmods, some common packages to consider installing on x86 are listed below:
+</p>
+<ul>
+<li class="level1"><div class="li"> For CPU/APU microcode updates for AMD processors, <a href="/packages/pkgdata/amd64-microcode" class="wikilink1" title="packages:pkgdata:amd64-microcode" data-wiki-id="packages:pkgdata:amd64-microcode">amd64-microcode</a> and for Intel processors, <a href="/packages/pkgdata/intel-microcode" class="wikilink1" title="packages:pkgdata:intel-microcode" data-wiki-id="packages:pkgdata:intel-microcode">intel-microcode</a>.</div>
+</li>
+<li class="level1"><div class="li"> For disk monitoring, <a href="/packages/pkgdata_owrt21_2/smartmontools" class="wikilink1" title="packages:pkgdata_owrt21_2:smartmontools" data-wiki-id="packages:pkgdata_owrt21_2:smartmontools">smartmontools</a>, see: <a href="/docs/guide-user/additional-software/smartmontools" class="wikilink1" title="docs:guide-user:additional-software:smartmontools" data-wiki-id="docs:guide-user:additional-software:smartmontools">smartmontools</a></div>
+</li>
+<li class="level1"><div class="li"> For hardware monitoring, <a href="/packages/pkgdata/lm-sensors" class="wikilink1" title="packages:pkgdata:lm-sensors" data-wiki-id="packages:pkgdata:lm-sensors">lm-sensors</a></div>
+</li>
+<li class="level1"><div class="li"> For hardware watchdog support, see: <a href="/docs/guide-user/hardware/watchdog" class="wikilink1" title="docs:guide-user:hardware:watchdog" data-wiki-id="docs:guide-user:hardware:watchdog">watchdog</a></div>
+</li>
+<li class="level1"><div class="li"> For kernel entropy, <a href="/packages/pkgdata/rng-tools" class="wikilink1" title="packages:pkgdata:rng-tools" data-wiki-id="packages:pkgdata:rng-tools">rng-tools</a>, see: <a href="/docs/guide-user/services/rng" class="wikilink1" title="docs:guide-user:services:rng" data-wiki-id="docs:guide-user:services:rng">rng</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Packages to consider on x86&quot;,&quot;hid&quot;:&quot;packages_to_consider_on_x86&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;4402-6012&quot;} -->
+<h2 class="sectionedit5" id="installation">Installation</h2>
+<div class="level2">
+
+<p>
+The installation consists of writing a raw disk image on the drive which will boot OpenWrt system.
+It may be a USB flash drive, USB SDcard reader with SDcard or in a SATA hard drive or SSD (recommended).
+You can do it either on a secondary PC, or booting the router machine with a Live CD/USB.
+</p>
+
+<p>
+Installation procedure differs depending from what <abbr title="Operating System">OS</abbr> you are using to write the raw disk image from, mostly because of different tools you have to use.
+</p>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:6,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap">
+<p>
+Writing raw image files DELETES the content of the drive you write them on.
+Be sure to select the correct drive so you do not delete anything important.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:7,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation&quot;,&quot;hid&quot;:&quot;installation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;6013-6665&quot;} -->
+<h3 class="sectionedit8" id="windowsmacos">Windows / macOS</h3>
+<div class="level3">
+
+<p>
+If you are using a Windows / macOS, you will need a program to extract the raw disk image from the compressed archive you downloaded.
+Then you will need to open the raw image file with a program that can write it on the drive you want to install OpenWrt on.
+</p>
+
+<p>
+A good free and opensource archiver program you can use is <a href="https://www.7-zip.org/" class="urlextern" title="https://www.7-zip.org/" rel="ugc nofollow">7zip</a>, or <a href="https://www.keka.io/en/" class="urlextern" title="https://www.keka.io/en/" rel="ugc nofollow">Keka</a>.
+</p>
+
+<p>
+A good free and opensource raw disk image writer program you can use is <a href="https://sourceforge.net/projects/win32diskimager/" class="urlextern" title="https://sourceforge.net/projects/win32diskimager/" rel="ugc nofollow">Win32 Disk Imager</a>, or <a href="https://www.balena.io/etcher/" class="urlextern" title="https://www.balena.io/etcher/" rel="ugc nofollow">Etcher</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Windows \/ macOS&quot;,&quot;hid&quot;:&quot;windowsmacos&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:8,&quot;range&quot;:&quot;6666-7271&quot;} -->
+<h3 class="sectionedit9" id="linux">Linux</h3>
+<div class="level3">
+
+<p>
+Extract the image file from the archive.
+Most sane distros will let you do so by right click and then select “extract”, or you will have to open up your graphical archive manager and do it from there.
+Then write the image file you extracted to the drive you want to install OpenWrt in.
+Many distros include a disk image writer application such as GNOME Disks.
+Identify the disk you want to write the image on, e.g. sda, sdb, sdc, etc., and write the image with dd tool where using the previously identified drive name.
+Note you have to gain administrative privileges with sudo and write to the drive (sda, sdb), not to a partition (sda1, sdb3).
+</p>
+<pre class="code bash"><span class="co0"># Unpack image</span>
+<span class="kw2">gunzip</span> openwrt-<span class="sy0">*</span>.img.gz
+&nbsp;
+<span class="co0"># Identify disk (to replace sdX in the following command below)</span>
+lsblk
+&nbsp;
+<span class="co0"># Write image</span>
+<span class="kw2">dd</span> <span class="re2">if</span>=openwrt-21.02.0-x86-<span class="nu0">64</span>-generic-ext4-combined.img <span class="re2">bs</span>=1M <span class="re2">of</span>=<span class="sy0">/</span>dev<span class="sy0">/</span>sdX</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Linux&quot;,&quot;hid&quot;:&quot;linux&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:9,&quot;range&quot;:&quot;7272-8152&quot;} -->
+<h2 class="sectionedit10" id="installing_openwrt_on_an_internal_drive">Installing OpenWrt on an internal drive</h2>
+<div class="level2">
+
+<p>
+If you want to write OpenWrt in SATA or IDE drives or CF Cards or SD cards, you can just remove them from the device and flash the image raw from your PC.
+Also sometimes eMMC is removable or can be put in “usb write mode” in some devices.
+</p>
+
+<p>
+But if you cannot remove the storage from the device (or do not have an adapter to connect them to the PC), you can write OpenWrt on a USB drive (or another removable storage device), then you can then insert it in a USB port or slot.
+When booting select the drive where you installed OpenWrt.
+</p>
+
+<p>
+Then you need to identify how is the internal storage device called with lsblk or dmesg:
+</p>
+<pre class="code bash">opkg update
+opkg <span class="kw2">install</span> lsblk
+lsblk
+<span class="kw2">dmesg</span> <span class="sy0">|</span> <span class="kw2">grep</span> <span class="re5">-e</span> sd</pre>
+
+<p>
+Be aware that you will also see the USB drive or the storage device you have temporarily installed OpenWrt on.
+</p>
+
+<p>
+This for example is the output of a 4GB USB drive with 2 partitions on it that was assigned the name /dev/sda:
+</p>
+<pre class="code">[    2.807590] sd 4:0:0:0: [sda] 7839744 512-byte logical blocks: (4.01 GB/3.74 GiB)
+[    2.808703] sd 4:0:0:0: [sda] Write Protect is off
+[    2.808754] sd 4:0:0:0: [sda] Mode Sense: 23 00 00 00
+[    2.809827] sd 4:0:0:0: [sda] Write cache: disabled, read cache: enabled, doesn&#039;t support DPO or FUA
+[    2.814991]  sda: sda1 sda2
+[    2.818338] sd 4:0:0:0: [sda] Attached SCSI removable disk</pre>
+
+<p>
+After you have identified the onboard storage you want to install OpenWrt in, you can follow the Linux install instructions <a href="/docs/guide-user/installation/openwrt_x86#linux" class="wikilink1" title="docs:guide-user:installation:openwrt_x86" data-wiki-id="docs:guide-user:installation:openwrt_x86">above</a>.
+Then power off the system, unplug the removable storage device you used to install OpenWrt, and power on again.
+Now it should boot from the internal storage.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installing OpenWrt on an internal drive&quot;,&quot;hid&quot;:&quot;installing_openwrt_on_an_internal_drive&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:10,&quot;range&quot;:&quot;8153-9880&quot;} -->
+<h2 class="sectionedit11" id="partition_layout">Partition layout</h2>
+<div class="level2">
+
+<p>
+The x86 image is using the following partition layout (as seen from inside of the device):
+</p>
+<ol>
+<li class="level1"><div class="li"> /dev/sda1 is a 16MB ext4 /boot partition where GRUB and the kernel are stored.</div>
+</li>
+<li class="level1"><div class="li"> /dev/sda2 is a 104MB partition containing the squashfs root filesystem and a read-write f2fs filesystem OR the ext4 root filesystem (depending on what image you have chosen).</div>
+</li>
+</ol>
+
+<p>
+Any additional space in the device is unallocated.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Partition layout&quot;,&quot;hid&quot;:&quot;partition_layout&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:11,&quot;range&quot;:&quot;9881-10315&quot;} -->
+<h2 class="sectionedit12" id="expanding_root_partition_and_filesystem">Expanding root partition and filesystem</h2>
+<div class="level2">
+
+<p>
+See also automated script on: <a href="/docs/guide-user/advanced/expand_root" class="wikilink1" title="docs:guide-user:advanced:expand_root" data-wiki-id="docs:guide-user:advanced:expand_root">Expanding root partition and filesystem</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Expanding root partition and filesystem&quot;,&quot;hid&quot;:&quot;expanding_root_partition_and_filesystem&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:12,&quot;range&quot;:&quot;10316-10480&quot;} -->
+<h3 class="sectionedit13" id="expanding_root_partition">Expanding root partition</h3>
+<div class="level3">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:14,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap">
+<p>
+When installing OpenWrt on a VM, be sure to <a href="/docs/guide-user/virtualization/qemu#preparation" class="wikilink1" title="docs:guide-user:virtualization:qemu" data-wiki-id="docs:guide-user:virtualization:qemu">expand the underlying disk image</a> before expanding the partition.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:15,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+Use <a href="http://man.cx/parted" class="interwiki iw_man" title="http://man.cx/parted">parted</a> to fix the partition table, identify and expand the root partition.
+</p>
+<pre class="code bash"><span class="co0"># Install packages</span>
+opkg update
+opkg <span class="kw2">install</span> parted
+&nbsp;
+<span class="co0"># Identify disk name and partition number</span>
+parted <span class="re5">-l</span> <span class="re5">-s</span>
+&nbsp;
+<span class="co0"># Expand root partition</span>
+parted <span class="re5">-f</span> <span class="re5">-s</span> <span class="sy0">/</span>dev<span class="sy0">/</span>sda resizepart <span class="nu0">2</span> <span class="nu0">100</span><span class="sy0">%</span>
+&nbsp;
+<span class="co0"># Apply changes</span>
+reboot</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Expanding root partition&quot;,&quot;hid&quot;:&quot;expanding_root_partition&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:13,&quot;range&quot;:&quot;10481-11007&quot;} -->
+<h3 class="sectionedit16" id="expanding_root_filesystem">Expanding root filesystem</h3>
+<div class="level3">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:17,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap">
+<p>
+Be sure to <a href="/docs/guide-user/installation/openwrt_x86#expanding_root_partition" class="wikilink1" title="docs:guide-user:installation:openwrt_x86" data-wiki-id="docs:guide-user:installation:openwrt_x86">expand the underlying partition</a> before expanding the filesystem.
+</p>
+
+<p>
+It is possible to expand the root filesystem online while OpenWrt is booted.
+You can also perform this operation offline to reduce the chance of filesystem corruption.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:18,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+Use <a href="http://man.cx/losetup" class="interwiki iw_man" title="http://man.cx/losetup">losetup</a> to map the root partition and <a href="http://man.cx/resize2fs" class="interwiki iw_man" title="http://man.cx/resize2fs">resize2fs</a> to expand the root filesystem.
+</p>
+<pre class="code bash"><span class="co0"># Install packages</span>
+opkg update
+opkg <span class="kw2">install</span> losetup resize2fs
+&nbsp;
+<span class="co0"># Map loop device to root partition</span>
+losetup <span class="sy0">/</span>dev<span class="sy0">/</span>loop0 <span class="sy0">/</span>dev<span class="sy0">/</span>sda2 <span class="nu0">2</span><span class="sy0">&gt;</span> <span class="sy0">/</span>dev<span class="sy0">/</span>null
+&nbsp;
+<span class="co0"># Expand root filesystem</span>
+resize2fs <span class="re5">-f</span> <span class="sy0">/</span>dev<span class="sy0">/</span>loop0
+&nbsp;
+<span class="co0"># Apply changes</span>
+reboot</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Expanding root filesystem&quot;,&quot;hid&quot;:&quot;expanding_root_filesystem&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:16,&quot;range&quot;:&quot;11008-11720&quot;} -->
+<h3 class="sectionedit19" id="expanding_root_partition_with_fdisk">Expanding root partition with fdisk</h3>
+<div class="level3">
+
+<p>
+You can also use <code>fdisk</code> to expand the root partition if <code>parted</code> does not work for you.
+The easiest way to do this is from the machine booted with a “live CD” distro like <a href="https://www.finnix.org" class="urlextern" title="https://www.finnix.org" rel="ugc nofollow">Finnix</a>.
+</p>
+
+<p>
+Here&#039;s an overview of the steps:
+</p>
+<ol>
+<li class="level1"><div class="li"> Use fdisk to display the partition table. Notice the ~100MB root partition.</div>
+</li>
+<li class="level1"><div class="li"> Write down the starting sector address of the root partition (Usually <code>/dev/sda2</code> or <code>/dev/nvme0n1p2</code>).</div>
+</li>
+<li class="level1"><div class="li"> Use fdisk to delete partition 2 but don&#039;t write the changes to disk yet.</div>
+</li>
+<li class="level1 node"><div class="li"> Use fdisk to create a new partition 2.</div>
+<ol>
+<li class="level2"><div class="li"> choose/type the starting sector address you wrote down earlier (as by default it will try to place it somewhere else).</div>
+</li>
+<li class="level2"><div class="li"> leave the default end sector address (this will mean the partition will now use all available space).</div>
+</li>
+</ol>
+</li>
+<li class="level1 node"><div class="li"> Write the partition table changes to disk.</div>
+<ol>
+<li class="level2"><div class="li"> When it warns about partition signatures being present, type <strong>n</strong> to NOT remove the partition signature to proceed.</div>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> Proceed with updating <code>/boot/grub/grub.cfg</code> with the new partition UUID</div>
+</li>
+</ol>
+
+<p>
+Example output:
+</p>
+<pre class="code">Welcome to fdisk (util-linux 2.32).
+Changes will remain in memory only, until you decide to write them.
+Be careful before using the write command.
+
+Command (m for help): p
+Disk /dev/sda: 7.2 GiB, 7751073792 bytes, 15138816 sectors
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disklabel type: dos
+Disk identifier: 0xcbad8a62
+
+Device     Boot Start    End Sectors  Size Id Type
+/dev/sda1  *      512  33279   32768   16M 83 Linux
+/dev/sda2       33792 246783  212992  104M 83 Linux
+
+Command (m for help): d
+Partition number (1,2, default 2): 
+
+Partition 2 has been deleted.
+
+Command (m for help): n
+Partition type
+   p   primary (1 primary, 0 extended, 3 free)
+   e   extended (container for logical partitions)
+Select (default p): 
+Partition number (2-4, default 2): 
+First sector (33280-15138815, default 34816): 33792
+Last sector, +sectors or +size{K,M,G,T,P} (33792-15138815, default 15138815): 
+
+Created a new partition 2 of type &#039;Linux&#039; and of size 7.2 GiB.
+Partition #2 contains a ext4 signature.
+
+Do you want to remove the signature? [Y]es/[N]o: n
+
+Command (m for help): w
+
+The partition table has been altered.
+Syncing disks.</pre>
+
+<p>
+Be aware that deleting and recreating the root partition can change its UUID.
+Make sure to update the root partition UUID in your GRUB configuration <code>/boot/grub/grub.cfg</code> in order for the system to be bootable.
+</p>
+<pre class="code bash"><span class="co0"># Update GRUB configuration</span>
+<span class="re2">ROOT_BLK</span>=<span class="st0">&quot;$(readlink -f /sys/dev/block/&quot;</span>$<span class="br0">&#40;</span><span class="kw2">awk</span> <span class="re5">-e</span> \
+<span class="st_h">'$9==&quot;/dev/root&quot;{print $3}'</span> <span class="sy0">/</span>proc<span class="sy0">/</span>self<span class="sy0">/</span>mountinfo<span class="br0">&#41;</span><span class="st0">&quot;)&quot;</span>
+<span class="re2">ROOT_DISK</span>=<span class="st0">&quot;/dev/<span class="es4">$(basename &quot;${ROOT_BLK%/*}&quot;)</span>&quot;</span>
+<span class="re2">ROOT_DEV</span>=<span class="st0">&quot;/dev/<span class="es3">${ROOT_BLK##*/}</span>&quot;</span>
+<span class="re2">ROOT_UUID</span>=<span class="st0">&quot;<span class="es4">$(partx -g -o UUID &quot;${ROOT_DEV}&quot; &quot;${ROOT_DISK}&quot;)</span>&quot;</span>
+<span class="kw2">sed</span> <span class="re5">-i</span> <span class="re5">-r</span> <span class="re5">-e</span> <span class="st0">&quot;s|(PARTUUID=)\S+|\1<span class="es3">${ROOT_UUID}</span>|g&quot;</span> <span class="sy0">/</span>boot<span class="sy0">/</span>grub<span class="sy0">/</span>grub.cfg</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Expanding root partition with fdisk&quot;,&quot;hid&quot;:&quot;expanding_root_partition_with_fdisk&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:19,&quot;range&quot;:&quot;11721-14643&quot;} -->
+<h2 class="sectionedit20" id="adding_extra_partitions">Adding extra partitions</h2>
+<div class="level2">
+
+<p>
+When OpenWrt is installed on a x86 machine using <strong>generic-ext4-combined.img.gz</strong>, the drive&#039;s partition table is overwritten, which means that any existing partition is deleted.
+Any remaining space will be unallocated and the drive will have a normal MBR partition table.
+</p>
+
+<p>
+Any partition management tool that supports MBR and ext4 can be used to create extra partitions on the drive, e.g. <a href="/packages/pkgdata/parted" class="wikilink1" title="packages:pkgdata:parted" data-wiki-id="packages:pkgdata:parted">parted</a>, <a href="/packages/pkgdata/fdisk" class="wikilink1" title="packages:pkgdata:fdisk" data-wiki-id="packages:pkgdata:fdisk">fdisk</a>.
+</p>
+
+<p>
+But attention must be taken for future upgrades.
+If extra partitions are added, you cannot use <strong>-combined.img.gz</strong> images anymore, because writing this type of image will override the drive&#039;s partition table and delete any existing extra partition, and also revert boot and rootfs partitions back to default size.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Adding extra partitions&quot;,&quot;hid&quot;:&quot;adding_extra_partitions&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:20,&quot;range&quot;:&quot;14644-15442&quot;} -->
+<h2 class="sectionedit21" id="upgrading">Upgrading</h2>
+<div class="level2">
+
+<p>
+On most embedded devices that run OpenWrt, upgrading is much simpler than the first installation and consists of simply executing the <code>sysupgrade</code> command.  This holds true for the x86 platforms as well.
+</p>
+
+<p>
+Use any of the usual <a href="/docs/guide-user/installation/generic.sysupgrade" class="wikilink1" title="docs:guide-user:installation:generic.sysupgrade" data-wiki-id="docs:guide-user:installation:generic.sysupgrade">sysupgrade</a>, <a href="/docs/guide-user/installation/attended.sysupgrade" class="wikilink1" title="docs:guide-user:installation:attended.sysupgrade" data-wiki-id="docs:guide-user:installation:attended.sysupgrade">LuCI Attended Sysupgrade</a>, <a href="/docs/guide-user/installation/sysupgrade.owut" class="wikilink1" title="docs:guide-user:installation:sysupgrade.owut" data-wiki-id="docs:guide-user:installation:sysupgrade.owut">owut</a> or <a href="https://firmware-selector.openwrt.org/" class="urlextern" title="https://firmware-selector.openwrt.org/" rel="ugc nofollow">Firmware Selector</a> tools for upgrading your x86 device.  But:
+</p>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:22,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_important plugin_wrap" style="width: 100%;">
+<p>
+Your first step is always...
+</p>
+
+<p>
+<strong>Make a backup!</strong>
+</p>
+<ul>
+<li class="level1"><div class="li"> From LuCI, go to <strong>System → Backup/Flash firmware</strong>.  Click <strong>Generate archive</strong>.</div>
+</li>
+<li class="level1"><div class="li"> From CLI use <code>sysupgrade --create-backup /tmp/backup.tar.gz</code> and use <code>scp</code> or some other tool to copy the file to a safe location (usually another host).</div>
+</li>
+</ul>
+
+<p>
+<em>Just do it. Every time...</em>
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:23,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Upgrading&quot;,&quot;hid&quot;:&quot;upgrading&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:21,&quot;range&quot;:&quot;15443-16360&quot;} -->
+<h3 class="sectionedit24" id="extracting_boot_partition_image">Extracting boot partition image</h3>
+<div class="level3">
+
+<p>
+The boot partition contains part of GRUB2 software, Linux kernel and <code>grub.cfg</code> with boot options.
+rootfs partition contains OpenWrt files, packages and configs.
+</p>
+
+<p>
+At the moment, it&#039;s not built a separated image file with boot partition, as it&#039;s available for rootfs.
+To be able to upgrade boot partition without overriding the whole drive, we must extract it from <strong>ext4-combined.img.gz</strong>, this requires a spare empty drive or a virtual machine.
+</p>
+<ol>
+<li class="level1"><div class="li"> Uncompress combined partitions image: <code>gzip -d openwrt-19.07.8-x86-64-generic-ext4-combined.img.gz</code></div>
+</li>
+<li class="level1"><div class="li"> Write the image to the <strong>empty</strong> drive: <code>dd if=openwrt-19.07.8-x86-64-generic-ext4-combined.img of=/dev/sdd</code> (drive may be on sda, sdb, nvme0n1, etc)</div>
+</li>
+<li class="level1"><div class="li"> Extract boot partition image: <code>dd if=/dev/sdd1 of=openwrt-19.07.8-x86-64-generic-ext4-boot.img</code></div>
+</li>
+</ol>
+
+<p>
+We will end up with the partition image <strong>openwrt-19.07.8-x86-64-generic-ext4-boot.img</strong>.
+Back to OpenWRT machine/drive, if the drive is on sdd and GRUB2 boot partition is on sdd1, we can write the updated image with <code>dd if=openwrt-19.07.8-x86-64-generic-ext4-boot.img of=/dev/sdd1</code>.
+Note we&#039;re here writing on the partition sdd1, not on the drive sdd.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Extracting boot partition image&quot;,&quot;hid&quot;:&quot;extracting_boot_partition_image&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:24,&quot;range&quot;:&quot;16361-17572&quot;} -->
+<h3 class="sectionedit25" id="upgrading_rootfs_partition">Upgrading rootfs partition</h3>
+<div class="level3">
+
+<p>
+As said above, there are 2 options for upgrading rootfs partition, when we are using the ext4 filesystem and not squashfs: writing <strong>ext4-rootfs.img.gz</strong> image or uncompressing <strong>rootfs.tar.gz</strong> into existing partition.
+</p>
+
+<p>
+Writing <strong>ext4-rootfs.img.gz</strong> will delete any file on the partition.
+When using <code>dd</code>, it will preserve partition&#039;s actual size, it won&#039;t revert its size to image&#039;s.
+</p>
+<ol>
+<li class="level1"><div class="li"> Uncompress rootfs image: <code>gzip -d openwrt-19.07.8-x86-64-generic-ext4-rootfs.img.gz</code></div>
+</li>
+<li class="level1"><div class="li"> Write the image to the partition: <code>dd if=openwrt-19.07.8-x86-64-generic-ext4-rootfs.img of=/dev/sdd2</code></div>
+</li>
+</ol>
+
+<p>
+For uncompressing <strong>rootfs.tar.gz</strong>, we must mount rootfs partition, delete all files from it, then uncompress updated files.
+</p>
+
+<p>
+It may be tempting to not delete config files, but the risk isn&#039;t worth it, because some file may conflict and not be properly upgraded.
+It&#039;s safer to backup config files (as we should also backup whole drive before upgrading) and copy them back after upgrading.
+I suggest going further and having a Subversion repository on another computer where all config files are saved and their changes are tracked, and use <strong>rsync</strong> to sync between the repository working copy and production files on the router.
+</p>
+<pre class="code bash"><span class="co0"># mount rootfs partition, in this example it's on sdd2</span>
+<span class="kw2">mkdir</span> <span class="sy0">/</span>mnt<span class="sy0">/</span>rootfs
+<span class="kw2">mount</span> <span class="re5">-v</span> <span class="sy0">/</span>dev<span class="sy0">/</span>sdd2 <span class="sy0">/</span>mnt<span class="sy0">/</span>rootfs
+<span class="kw3">cd</span> <span class="sy0">/</span>mnt<span class="sy0">/</span>rootfs
+&nbsp;
+<span class="co0"># delete all files on the partition</span>
+<span class="kw2">rm</span> <span class="re5">-Rf</span> <span class="sy0">*</span>
+&nbsp;
+<span class="co0"># copy rootfs.tar.gz here then uncompress it</span>
+<span class="kw2">tar</span> <span class="re5">-xvzf</span> openwrt-19.07.8-x86-<span class="nu0">64</span>-generic-rootfs.tar.gz
+&nbsp;
+<span class="co0"># wait for uncompress then delete the file</span>
+<span class="kw2">rm</span> openwrt-19.07.8-x86-<span class="nu0">64</span>-generic-rootfs.tar.gz</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Upgrading rootfs partition&quot;,&quot;hid&quot;:&quot;upgrading_rootfs_partition&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:25,&quot;range&quot;:&quot;17573-19210&quot;} -->
+<h2 class="sectionedit26" id="building_your_own_image_with_larger_partition_size">Building your own image with larger partition size</h2>
+<div class="level2">
+
+<p>
+Anyone can compile OpenWrt from source, but it&#039;s a complex procedure with many options which require some experience, specially for using it on a production router.
+</p>
+
+<p>
+Different from compiling, we can build our own custom image using the <a href="/docs/guide-user/additional-software/imagebuilder" class="wikilink1" title="docs:guide-user:additional-software:imagebuilder" data-wiki-id="docs:guide-user:additional-software:imagebuilder">Image Builder</a>.
+This doesn&#039;t compile the whole software, instead it downloads required packages from the same repository used by OpenWrt to install them.
+Image Builder builds the same image files used for installing and upgrading OpenWrt.
+</p>
+
+<p>
+Due to that it&#039;s much simpler than compiling and offers great advantages, like adding directly to the image all packages we need, removing those we don&#039;t need, and also adding to it our config files.
+Having packages on the image, we don&#039;t need to reinstall all of them after an upgrade.
+And having our config files directly on the image, we don&#039;t need to reconfigure everything or copy all files from backup, which is specially difficult when default network configs don&#039;t work with our router&#039;s interfaces or it doesn&#039;t start with correct <abbr title="Internet Protocol">IP</abbr> address.
+In many cases, OpenWrt will be back fully working on first boot after upgrading.
+</p>
+
+<p>
+Another advantage for building a custom image is when the default rootfs partition size is too small to store all packages and we need to expand it.
+Note that, when following above procedures of installing then expanding partition and upgrading by writing partition image or extracting rootfs.tar.gz, we don&#039;t need to build the image with the final size of the partition.
+Doing so would result in the too large image file and would require enough RAM to store the whole file during building.
+It&#039;s recommended to use on the image just enough size to store all packages plus a small amount of free space.
+</p>
+
+<p>
+Follow the <a href="/docs/guide-user/additional-software/imagebuilder" class="wikilink1" title="docs:guide-user:additional-software:imagebuilder" data-wiki-id="docs:guide-user:additional-software:imagebuilder">Image Builder</a> tutorial to setup the building environment using the x86/64 target.
+Once the building environment is setup, we use the <code>make image</code> command to build an image, which results on a set of files with the types of images described on this page.
+They are saved on <code>bin/targets/x86/64</code> inside the building folder.
+</p>
+
+<p>
+Because x86 hardware doesn&#039;t have profiles, we don&#039;t need to use the <code>PROFILE</code> parameter.
+With <code>PACKAGES</code> parameter we set all packages we want to add to or remove from default list.
+The command <code>make info</code> lists default packages list.
+<code>FILES</code> parameter is used to add custom config and script files to be added to the image, it points to a folder which represents root folder when OpenWrt is running.
+</p>
+
+<p>
+For changing default partition sizes use parameters <code>CONFIG_TARGET_KERNEL_PARTSIZE</code> and <code>CONFIG_TARGET_ROOTFS_PARTSIZE</code>.
+We can either edit <code>.config</code> file on building folder or pass them directly to <code>make image</code>.
+Example <code>CONFIG_TARGET_KERNEL_PARTSIZE=128 CONFIG_TARGET_ROOTFS_PARTSIZE=512</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Building your own image with larger partition size&quot;,&quot;hid&quot;:&quot;building_your_own_image_with_larger_partition_size&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:26,&quot;range&quot;:&quot;19211-&quot;} -->

@@ -1,0 +1,134 @@
+<div class="docnavbar"><div class="leftnav">← <a href="/docs/guide-developer/helloworld/chapter2" class="wikilink1" title="docs:guide-developer:helloworld:chapter2" data-wiki-id="docs:guide-developer:helloworld:chapter2">Previous Chapter </a>&nbsp;</div><div class="rightnav">&nbsp;<a href="/docs/guide-developer/helloworld/chapter4" class="wikilink1" title="docs:guide-developer:helloworld:chapter4" data-wiki-id="docs:guide-developer:helloworld:chapter4">Next Chapter </a> →</div></div>
+<h1 class="sectionedit1" id="creating_a_package_from_your_application">Creating a package from your application</h1>
+<div class="level1">
+
+<p>
+This is the third chapter in the “Hello, world!” for OpenWrt article series. At this point, you should&#039;ve already accomplished the following tasks:
+</p>
+<ul>
+<li class="level1"><div class="li"> Commissioned your development environment</div>
+</li>
+<li class="level1"><div class="li"> Prepared, configured and built the tools and the cross-compilation toolchain</div>
+</li>
+<li class="level1"><div class="li"> Configured the PATH environment variable</div>
+</li>
+<li class="level1"><div class="li"> Created a simple “Hello, world!” application using native compilation tools</div>
+</li>
+</ul>
+
+<p>
+If you missed one or more of these steps, review the previous chapters.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Creating a package from your application&quot;,&quot;hid&quot;:&quot;creating_a_package_from_your_application&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;128-657&quot;} -->
+<h2 class="sectionedit2" id="creating_a_package_feed_for_your_packages">Creating a package feed for your packages</h2>
+<div class="level2">
+
+<p>
+The OpenWrt build system revolves heavily around the concept of packages. They are the bread and butter of the system. No matter the software, there&#039;s almost always a package for it. This applies to nearly everything in the system, be it the target-independent tools, the cross-compilation toolchain, the Linux kernel of the target firmware, the additional modules that are bundled with the kernel or the various applications that will be installed onto the root file system of the target firmware.
+</p>
+
+<p>
+Due to this package-oriented nature, it is only logical to utilize the same approach for the “Hello, World! -application as well.
+</p>
+
+<p>
+The primary delivery system for packages that are not an integral part of the build system itself is a package feed. It is simply a repository of packages that are candidates for inclusion into the final firmware. The repository can reside on a local directory, or it can be on a network share or it can be on a version control system such as GitHub. Creating and maintaining a package feed allows us to maintain our separation of concerns by keeping the package-related files separate from the source code of our sample application.
+</p>
+
+<p>
+For the purposes of this article, we create a new package repository into a local directory. The name of this repository is &#039;mypackages&#039;, and it contains a single category called &#039;examples&#039;. In this category, there is only a single entry, our &#039;helloworld&#039; application:
+</p>
+<pre class="code">cd /home/buildbot
+mkdir -p mypackages/examples/helloworld</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Creating a package feed for your packages&quot;,&quot;hid&quot;:&quot;creating_a_package_feed_for_your_packages&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;658-2221&quot;} -->
+<h2 class="sectionedit3" id="creating_the_package_manifest_file">Creating the package manifest file</h2>
+<div class="level2">
+
+<p>
+Each package in the OpenWrt build system is described by a package manifest file. The manifest file is responsible for describing the package, what it does, and must at least provide instructions on where to obtain the source code, how to build it and which files should be contained in the final installable package. A package manifest may additionally contain options for optional configuration scripts, specify dependencies between packages and so on.
+</p>
+
+<p>
+In order for the source code of our application to become a package, and become a part of the package repository that we previously created, we will need to create a package manifest for it:
+</p>
+<pre class="code bash"><span class="kw3">cd</span> home<span class="sy0">/</span>buildbot<span class="sy0">/</span>mypackages<span class="sy0">/</span>examples<span class="sy0">/</span>helloworld
+<span class="kw2">touch</span> Makefile</pre>
+
+<p>
+Using your favorite text editor, enter the following text as the content of the package manifest. Note that several sections of this file are used by the build system&#039;s own GNU make tool, and for this reason, there are <strong>both shorter and longer whitespace indentations</strong> in the file. Shorter ones are simple space characters, while the longer ones are hard tabs. Note that some code editors may convert the tab character to space characters but <a href="https://beebo.org/haycorn/2015-04-20_tabs-and-makefiles.html" class="urlextern" title="https://beebo.org/haycorn/2015-04-20_tabs-and-makefiles.html" rel="ugc nofollow">GNU make does not accept spaces</a>.
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-developer/helloworld/chapter3?codeblock=2" title="Download Snippet" class="mediafile mf_">Makefile</a></dt>
+<dd><pre class="code make"><span class="kw1">include</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">TOPDIR</span><span class="br0">&#41;</span><span class="sy0">/</span>rules<span class="sy0">.</span>mk
+&nbsp;
+<span class="co1"># Name, version and release number</span>
+<span class="co1"># The name and version of your package are used to define the variable to point to the build directory of your package: $(PKG_BUILD_DIR)</span>
+PKG_NAME<span class="sy0">:=</span>helloworld
+PKG_VERSION<span class="sy0">:=</span><span class="nu0">1.0</span>
+PKG_RELEASE<span class="sy0">:=</span><span class="nu0">1</span>
+&nbsp;
+<span class="co1"># Source settings (i.e. where to find the source codes)</span>
+<span class="co1"># This is a custom variable, used below</span>
+SOURCE_DIR<span class="sy0">:=/</span>home<span class="sy0">/</span>buildbot<span class="sy0">/</span>helloworld
+&nbsp;
+<span class="kw1">include</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">INCLUDE_DIR</span><span class="br0">&#41;</span><span class="sy0">/</span>package<span class="sy0">.</span>mk
+&nbsp;
+<span class="co1"># Package definition; instructs on how and where our package will appear in the overall configuration menu ('make menuconfig')</span>
+define Package<span class="sy0">/</span>helloworld
+  SECTION<span class="sy0">:=</span>examples
+  CATEGORY<span class="sy0">:=</span>Examples
+  TITLE<span class="sy0">:=</span>Hello<span class="sy0">,</span> World<span class="sy0">!</span>
+endef
+&nbsp;
+<span class="co1"># Package description; a more verbose description on what our package does</span>
+define Package<span class="sy0">/</span>helloworld<span class="sy0">/</span>description
+  A simple <span class="st0">&quot;Hello, world!&quot;</span> <span class="sy0">-</span>application<span class="sy0">.</span>
+endef
+&nbsp;
+<span class="co1"># Package preparation instructions; create the build directory and copy the source code. </span>
+<span class="co1"># The last command is necessary to ensure our preparation instructions remain compatible with the patching system.</span>
+define Build<span class="sy0">/</span>Prepare
+		mkdir <span class="sy0">-</span>p <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">PKG_BUILD_DIR</span><span class="br0">&#41;</span>
+		cp <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">SOURCE_DIR</span><span class="br0">&#41;</span><span class="sy0">/*</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">PKG_BUILD_DIR</span><span class="br0">&#41;</span>
+		<span class="sy0">$</span><span class="br0">&#40;</span>Build<span class="sy0">/</span>Patch<span class="br0">&#41;</span>
+endef
+&nbsp;
+<span class="co1"># Package build instructions; invoke the target-specific compiler to first compile the source file, and then to link the file into the final executable</span>
+define Build<span class="sy0">/</span>Compile
+		<span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">TARGET_CC</span><span class="br0">&#41;</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">TARGET_CFLAGS</span><span class="br0">&#41;</span> <span class="sy0">-</span>o <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">PKG_BUILD_DIR</span><span class="br0">&#41;</span><span class="sy0">/</span>helloworld<span class="sy0">.</span>o <span class="sy0">-</span>c <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">PKG_BUILD_DIR</span><span class="br0">&#41;</span><span class="sy0">/</span>helloworld<span class="sy0">.</span>c
+		<span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">TARGET_CC</span><span class="br0">&#41;</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">TARGET_LDFLAGS</span><span class="br0">&#41;</span> <span class="sy0">-</span>o <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">PKG_BUILD_DIR</span><span class="br0">&#41;</span><span class="sy0">/</span><span class="re0">$1</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">PKG_BUILD_DIR</span><span class="br0">&#41;</span><span class="sy0">/</span>helloworld<span class="sy0">.</span>o
+endef
+&nbsp;
+<span class="co1"># Package install instructions; create a directory inside the package to hold our executable, and then copy the executable we built previously into the folder</span>
+define Package<span class="sy0">/</span>helloworld<span class="sy0">/</span>install
+		<span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">INSTALL_DIR</span><span class="br0">&#41;</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="nu0">1</span><span class="br0">&#41;</span><span class="sy0">/</span>usr<span class="sy0">/</span>bin
+		<span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">INSTALL_BIN</span><span class="br0">&#41;</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">PKG_BUILD_DIR</span><span class="br0">&#41;</span><span class="sy0">/</span>helloworld <span class="sy0">$</span><span class="br0">&#40;</span><span class="nu0">1</span><span class="br0">&#41;</span><span class="sy0">/</span>usr<span class="sy0">/</span>bin
+endef
+&nbsp;
+<span class="co1"># This command is always the last, it uses the definitions and variables we give above in order to get the job done</span>
+<span class="sy0">$</span><span class="br0">&#40;</span><span class="re1">eval</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re1">call</span> BuildPackage<span class="sy0">,</span>helloworld<span class="br0">&#41;</span><span class="br0">&#41;</span></pre>
+</dd></dl>
+
+<p>
+A complete dissection of the package manifest file will not be performed in this article, as that is a subject best left to an article of its own. Hopefully the comments will assist in understanding what each section is intended for. There are many, many ways to define packages and their build instructions; this example is just one of many.
+</p>
+
+<p>
+The package manifest system contains a lot of variables and intelligent defaults, and often giving explicit instructions like we do above is not even necessary. For the purposes of this article, the level of detail in the package manifest is higher. We also make use of some of these pre-defined variables to determine the cross-compilation tool, and target-dependent compilation and linking flags. Again, wading through all of these defaults and variables is a subject for another article altogether.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Creating the package manifest file&quot;,&quot;hid&quot;:&quot;creating_the_package_manifest_file&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;2222-6352&quot;} -->
+<h2 class="sectionedit4" id="conclusion">Conclusion</h2>
+<div class="level2">
+
+<p>
+In this chapter, we created a new local package feed and added a package manifest file for the application, specifying the name, version, description and build instructions on how to construct an installable package from the source code we wrote in the previous chapter.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Conclusion&quot;,&quot;hid&quot;:&quot;conclusion&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:4,&quot;range&quot;:&quot;6353-&quot;} --><div class="clearer"></div><div class="docnavbar showtoc"><div class="leftnav">← <a href="/docs/guide-developer/helloworld/chapter2" class="wikilink1" title="docs:guide-developer:helloworld:chapter2" data-wiki-id="docs:guide-developer:helloworld:chapter2">Previous Chapter </a>&nbsp;</div><div class="centernav"><a href="/docs/guide-developer/helloworld/start" class="wikilink1" title="docs:guide-developer:helloworld:start" data-wiki-id="docs:guide-developer:helloworld:start">Helloworld overview </a>&nbsp;</div><div class="rightnav">&nbsp;<a href="/docs/guide-developer/helloworld/chapter4" class="wikilink1" title="docs:guide-developer:helloworld:chapter4" data-wiki-id="docs:guide-developer:helloworld:chapter4">Next Chapter </a> →</div></div>

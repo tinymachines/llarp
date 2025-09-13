@@ -1,0 +1,395 @@
+
+<h1 class="sectionedit1" id="upgrading_openwrt_firmware_using_cli">Upgrading OpenWrt firmware using CLI</h1>
+<div class="level1">
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> <strong>For experienced users only!</strong>
+</p>
+<ul>
+<li class="level1"><div class="li"> This HOWTO will upgrade an existing OpenWrt firmware to a new version from the <abbr title="Secure Shell">SSH</abbr> command line.</div>
+</li>
+<li class="level1"><div class="li"> A lot of information in this wiki page duplicates content of <a href="/docs/guide-user/installation/generic.sysupgrade" class="wikilink1" title="docs:guide-user:installation:generic.sysupgrade" data-wiki-id="docs:guide-user:installation:generic.sysupgrade">generic OpenWrt OS upgrade procedure</a>.</div>
+</li>
+<li class="level1"><div class="li"> Non-experienced users are strongly advised to <a href="/docs/guide-quick-start/sysupgrade.luci" class="wikilink1" title="docs:guide-quick-start:sysupgrade.luci" data-wiki-id="docs:guide-quick-start:sysupgrade.luci">Upgrading OpenWrt firmware using LuCI</a> instead.</div>
+</li>
+<li class="level1"><div class="li"> If you need some configuration options changed for the first boot, for example you need Wi-Fi enabled after flashing, follow <a href="/docs/guide-user/installation/flashing_openwrt_with_wifi_enabled_on_first_boot" class="wikilink1" title="docs:guide-user:installation:flashing_openwrt_with_wifi_enabled_on_first_boot" data-wiki-id="docs:guide-user:installation:flashing_openwrt_with_wifi_enabled_on_first_boot">this guide</a>.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Upgrading OpenWrt firmware using CLI&quot;,&quot;hid&quot;:&quot;upgrading_openwrt_firmware_using_cli&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-708&quot;} -->
+<h2 class="sectionedit2" id="back_up_openwrt_configuration">Back up OpenWrt configuration</h2>
+<div class="level2">
+
+<p>
+Follow <a href="/docs/guide-user/troubleshooting/backup_restore" class="wikilink1" title="docs:guide-user:troubleshooting:backup_restore" data-wiki-id="docs:guide-user:troubleshooting:backup_restore">Backup and restore</a>, or skip this section if you do not want to preserve existing configuration.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Back up OpenWrt configuration&quot;,&quot;hid&quot;:&quot;back_up_openwrt_configuration&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;709-905&quot;} -->
+<h2 class="sectionedit3" id="download_and_verify_the_openwrt_firmware_upgrade_image">Download and verify the OpenWrt firmware upgrade image</h2>
+<div class="level2">
+
+<p>
+Download and use only OpenWrt firmware images ending in <strong>“-sysupgrade.bin”</strong> for command line upgrades.<br/>
+
+For x86 systems there is no “sysupgrade” image, just be sure the new firmware image has the same family of filesystem as your old one.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Note: upgrade files must be placed in /tmp, as the sysupgrade procedure unmounts flash storage during the upgrade process. If the upgrade file is not in <strong>/tmp</strong>, sysupgrade will NOT perform any upgrade and only reboot the system.
+</p>
+
+<p>
+Download the desired upgrade file to your OpenWrt&#039;s <code>/tmp</code> directory and <a href="/docs/guide-quick-start/verify_firmware_checksum" class="wikilink1" title="docs:guide-quick-start:verify_firmware_checksum" data-wiki-id="docs:guide-quick-start:verify_firmware_checksum">verify firmware checksum</a>. <code>/tmp</code> directory is stored in the device RAM:
+</p>
+<ol>
+<li class="level1"><div class="li"> Check free memory is available: Run <code>free</code>. Proceed, if “free Mem” is the size of your firmware file + some extra mem (at least twice the size of your firmware file is perfect).</div>
+</li>
+<li class="level1"><div class="li"> Set the following variables to the download address of your OpenWrt firmware file (you must customize the <abbr title="Uniform Resource Locator">URL</abbr>!). You&#039;ll find a link to the file “sha256sums” in the Supplementary Files section of the download page for the architecture of your router, beneath the Image Files section:</div>
+</li>
+<li class="level1"><div class="li"> <pre class="code">DOWNLOAD_LINK=&quot;http://URLOFFIRMWAREBIN&quot;; SHA256SUMS=&quot;http://URLOFSHA256&quot;</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Download and check the firmware checksum with: <pre class="code">cd /tmp;wget $DOWNLOAD_LINK;wget $SHA256SUMS;sha256sum -c sha256sums 2&gt;/dev/null|grep OK</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> In the screen output, look for the correct checksum verification: <pre class="code">FILE_NAME: OK</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Do not continue, if the checksum verification mismatches!</div>
+</li>
+</ol>
+
+<p>
+<strong>Troubleshooting:</strong>
+</p>
+<ul>
+<li class="level1 node"><div class="li"> If you <strong>cant use &#039;wget&#039;</strong> (e.g. because you want to transfer firmware from your PC to your OpenWrt device)</div>
+<ul>
+<li class="level2"><div class="li"> you can use <strong>scp</strong>: <code>scp openwrt-ar71xx-tl-wr1043nd-v1-squashfs-sysupgrade.bin root@192.168.1.1:/tmp</code> (Ensure you have set a non-null password for your device root account to properly use scp.)</div>
+</li>
+<li class="level2"><div class="li"> you can use <strong>ssh</strong>: <code>ssh root@192.168.1.1 “cat &gt; /tmp/openwrt-ar71xx-tl-wr1043nd-v1-squashfs-sysupgrade.bin” &lt; openwrt-ar71xx-tl-wr1043nd-v1-squashfs-sysupgrade.bin</code> (Also ensure you have set a non-null password for your device root account.)</div>
+</li>
+<li class="level2 node"><div class="li"> you can also use <strong>nc/netcat</strong>:</div>
+<ol>
+<li class="level3"><div class="li"> On your Linux PC run: <code>cat [specified firmware].bin | pv -b | nc -l -p 3333</code></div>
+</li>
+<li class="level3"><div class="li"> On your OpenWrt device run (Assuming 192.168.1.111 is the <abbr title="Internet Protocol">IP</abbr> of your Linux PC): <code>nc 192.168.1.111 3333 &gt; /tmp/[specified firmware].bin</code></div>
+</li>
+</ol>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> If the <strong>checksum mismatches</strong>: Redo the firmware download, if the mismatch remains, ask for help in the <a href="https://forum.openwrt.org/c/installation" class="urlextern" title="https://forum.openwrt.org/c/installation" rel="ugc nofollow">&quot;Installing and Using OpenWrt&quot; Forum</a></div>
+</li>
+<li class="level1"><div class="li"> If <strong>low on RAM</strong> see: <a href="/docs/guide-user/installation/sysupgrade.cli#low_memory_workaroundstmp_is_too_small_to_hold_the_downloaded_file" class="wikilink1" title="docs:guide-user:installation:sysupgrade.cli" data-wiki-id="docs:guide-user:installation:sysupgrade.cli">CLI - Low Memory Workarounds</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Download and verify the OpenWrt firmware upgrade image&quot;,&quot;hid&quot;:&quot;download_and_verify_the_openwrt_firmware_upgrade_image&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;906-3749&quot;} -->
+<h3 class="sectionedit4" id="command-line_instructions">Command-line instructions</h3>
+<div class="level3">
+
+<p>
+OpenWrt provides <a href="/docs/techref/sysupgrade" class="wikilink1" title="docs:techref:sysupgrade" data-wiki-id="docs:techref:sysupgrade">sysupgrade</a> utility for firmware upgrade procedure.
+</p>
+
+<p>
+<a href="/docs/guide-quick-start/verify_firmware_checksum" class="wikilink1" title="docs:guide-quick-start:verify_firmware_checksum" data-wiki-id="docs:guide-quick-start:verify_firmware_checksum">Verify</a> firmware image checksum.
+Verify the router has enough free RAM.
+Upload the firmware from local PC.
+Flash the firmware.
+</p>
+<pre class="code bash"><span class="co0"># Check the free RAM </span>
+<span class="kw2">free</span>
+&nbsp;
+<span class="co0"># Upload firmware</span>
+<span class="kw2">scp</span> firmware_image.bin root<span class="sy0">@</span>openwrt.lan:<span class="sy0">/</span>tmp
+&nbsp;
+<span class="co0"># Flash firmware</span>
+sysupgrade <span class="re5">-v</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>firmware_image.bin</pre>
+
+<p>
+<strong>Troubleshooting:</strong>
+</p>
+<ul>
+<li class="level1"><div class="li"> If you get the error <code>ash: /usr/libexec/sftp-server: not found</code> for the scp command, you are using an OpenSSH Release &gt;= 9 which defaults to using sftp which is not installed by default on OpenWRT. To fallback to the legacy scp/rcp, use the -O flag: <code>scp -O firmware_image.bin root@openwrt.lan:/tmp</code>.</div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="if_sysupgrade_is_not_available">If sysupgrade is not available.</h4>
+<div class="level4">
+<pre class="code bash"><span class="co0"># Flash firmware</span>
+mtd <span class="re5">-r</span> <span class="kw2">write</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>firmware_image.bin firmware</pre>
+<ul>
+<li class="level1"><div class="li"> The sysupgrade verbose-option should give some output similar to this. The list of configuration files saved will change depending on what packages you have installed and which files you have configured to be saved, as per above.</div>
+</li>
+</ul>
+<pre class="code">Saving config files...
+etc/config/dhcp
+etc/config/dropbear
+etc/config/firewall
+etc/config/luci
+etc/config/network
+etc/config/snmpd
+etc/config/system
+etc/config/ubootenv
+etc/config/ucitrack
+etc/config/uhttpd
+etc/config/wireless
+etc/dropbear/authorized_keys
+etc/dropbear/dropbear_dss_host_key
+etc/dropbear/dropbear_rsa_host_key
+etc/firewall.user
+etc/group
+etc/hosts
+etc/inittab
+etc/passwd
+etc/profile
+etc/rc.local
+etc/shadow
+etc/shells
+etc/sudoers
+etc/sudoers.d/custom
+etc/sysctl.conf
+etc/sysupgrade.conf
+killall: watchdog: no process killed
+Sending TERM to remaining processes ... ubusd askfirst logd logread netifd odhcpd snmpd uhttpd ntpd dnsmasq
+Sending KILL to remaining processes ... askfirst
+Switching to ramdisk...
+Performing system upgrade...
+Unlocking firmware ...
+
+Writing from &lt;stdin&gt; to firmware ...  [w]
+Appending jffs2 data from /tmp/sysupgrade.tgz to firmware...TRX header not found
+Error fixing up TRX header
+Upgrade completed
+Rebooting system...</pre>
+
+<p>
+Note: The “TRX header not found” and “Error fixing up TRX header” errors are not a problem as per OpenWrt developer jow&#039;s post at <a href="https://dev.openwrt.org/ticket/8623" class="urlextern" title="https://dev.openwrt.org/ticket/8623" rel="ugc nofollow">https://dev.openwrt.org/ticket/8623</a>
+</p>
+<ul>
+<li class="level1"><div class="li"> Wait until the router comes back online</div>
+</li>
+<li class="level1"><div class="li"> After the automatic reboot, the system should come up the same configuration settings as before: the same network <abbr title="Internet Protocol">IP</abbr> addresses, same <abbr title="Secure Shell">SSH</abbr> password, etc.</div>
+</li>
+<li class="level1"><div class="li"> Proceed to the “Additional configuration after an OpenWrt upgrade” section, below</div>
+</li>
+</ul>
+
+<p>
+<strong> Troubleshooting </strong>
+</p>
+<ul>
+<li class="level1"><div class="li">In case it does not help, try a <a href="https://en.wikipedia.org/wiki/Booting#Hard_reboot" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Booting#Hard_reboot">cold reset</a> (= interrupt the electrical current to the device, wait a couple of seconds and then connect it again). Be careful about <code>/etc/opkg.conf</code> as explained <a href="https://dev.openwrt.org/ticket/13309" class="urlextern" title="https://dev.openwrt.org/ticket/13309" rel="ugc nofollow">here</a>. For unknown reasons such a cold reset has often been reported to be necessary after a sysupgrade. This is very very bad in case you performed this remotely.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Command-line instructions&quot;,&quot;hid&quot;:&quot;command-line_instructions&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:4,&quot;range&quot;:&quot;3750-6802&quot;} -->
+<h2 class="sectionedit5" id="flash_the_new_openwrt_firmware">Flash the new OpenWrt firmware</h2>
+<div class="level2">
+<ol>
+<li class="level1"><div class="li"> The firmware file is now in /tmp, so you can start the flashing process</div>
+</li>
+<li class="level1"><div class="li"> Preferably have an assistant physically present at the location of the device, if you upgrade it from remote (as some devices may require a hard reset after the update)</div>
+</li>
+<li class="level1"><div class="li"> Execute the following command to upgrade: <pre class="code">sysupgrade -v /tmp/firmware_image.bin</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> You can add the `-n` option if you DO NOT want to preserve any old configuration files and configure upgraded device from clean state (network/system settings will be lost as well)</div>
+</li>
+<li class="level1"><div class="li"> While the new firmware gets flashed, an output similar to the following will be shown:<pre class="code">Saving config files...
+etc/config/dhcp
+...
+etc/config/wireless
+etc/dropbear/authorized_keys
+...
+etc/sysupgrade.conf
+killall: watchdog: no process killed
+Sending TERM to remaining processes ... ubusd askfirst logd logread netifd odhcpd snmpd uhttpd ntpd dnsmasq
+Sending KILL to remaining processes ... askfirst
+Switching to ramdisk...
+Performing system upgrade...
+Unlocking firmware ...
+Writing from &lt;stdin&gt; to firmware ...  [w]
+Appending jffs2 data from /tmp/sysupgrade.tgz to firmware...TRX header not found
+Error fixing up TRX header
+Upgrade completed
+Rebooting system...</pre>
+</div>
+</li>
+<li class="level1"><div class="li"> Ignore the “TRX header not found” and “Error fixing up TRX header” errors. These errors are not relevant according to <a href="https://dev.openwrt.org/ticket/8623" class="urlextern" title="https://dev.openwrt.org/ticket/8623" rel="ugc nofollow">https://dev.openwrt.org/ticket/8623</a></div>
+</li>
+<li class="level1"><div class="li"> Wait until the router comes back online. The system should come up the same configuration settings as before (same network <abbr title="Internet Protocol">IP</abbr> addresses, same <abbr title="Secure Shell">SSH</abbr> password, etc.)</div>
+</li>
+</ol>
+
+<p>
+<strong>Troubleshooting:</strong>
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong>does not reboot automatically or remains unresponsive</strong>: Wait 5 minutes, then do a hard reset: Turn it off, wait 2-3 seconds and turn it back on (or pull the power plug and plug it back in).<br/>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Doing this while the device is still updating might softbrick it and require serial or even jtag connection to recover it. Such a cold restart has been reported to be required often after a sysupgrade by command line.</div>
+</li>
+<li class="level1"><div class="li"> <strong>OPKG issues</strong>: if after flashing you have issues with package installation or because opkg.conf has outdated data, read <a href="https://dev.openwrt.org/ticket/13309" class="urlextern" title="https://dev.openwrt.org/ticket/13309" rel="ugc nofollow">https://dev.openwrt.org/ticket/13309</a></div>
+</li>
+<li class="level1"><div class="li"> <strong>&#039;sysupgrade&#039; not available</strong> on your OpenWrt device, you can use &#039;mtd&#039; instead to flash the firmware: <code>mtd -r write /tmp/openwrt-ar71xx-generic-wzr-hp-ag300h-squashfs-sysupgrade.bin firmware</code></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Flash the new OpenWrt firmware&quot;,&quot;hid&quot;:&quot;flash_the_new_openwrt_firmware&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:5,&quot;range&quot;:&quot;6803-9194&quot;} -->
+<h2 class="sectionedit6" id="post-upgrade_steps">Post-upgrade steps</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Verify the new <abbr title="Operating System">OS</abbr> version: The simpler way to see if the firmware was actually upgraded. In <abbr title="Secure Shell">SSH</abbr>, the login banner states the release information like version and so on.</div>
+</li>
+<li class="level1"><div class="li"> If you used extroot, then see <a href="https://wiki.mbirth.de/know-how/software/openwrt/sysupgrade-with-extroot.html" class="urlextern" title="https://wiki.mbirth.de/know-how/software/openwrt/sysupgrade-with-extroot.html" rel="ugc nofollow">this how-to</a> about restoring it.</div>
+</li>
+<li class="level1"><div class="li"> Check for any <a href="/docs/guide-user/additional-software/opkg#upgrading_packages" class="wikilink1" title="docs:guide-user:additional-software:opkg" data-wiki-id="docs:guide-user:additional-software:opkg">upgradable packages</a>. After the firmware update, it is good to check for any updated packages released after the base <abbr title="Operating System">OS</abbr> firmware image was built.</div>
+</li>
+<li class="level1"><div class="li"> Reinstall user-installed packages. After a successful upgrade, you will need to reinstall all previously installed packages according to your notes. Package configuration files should have been preserved due to steps above, but not the actual packages themselves. If you used the scripts provided in the forum, this step might not be necessary.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Post-upgrade steps&quot;,&quot;hid&quot;:&quot;post-upgrade_steps&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:6,&quot;range&quot;:&quot;9195-10124&quot;} -->
+<h3 class="sectionedit7" id="comparing_new_package_config_options">Comparing new package config options</h3>
+<div class="level3">
+
+<p>
+See also:
+<a href="/docs/guide-user/advanced/opkg_extras" class="wikilink1" title="docs:guide-user:advanced:opkg_extras" data-wiki-id="docs:guide-user:advanced:opkg_extras">Opkg extras</a>,
+<a href="/docs/guide-user/advanced/uci_extras" class="wikilink1" title="docs:guide-user:advanced:uci_extras" data-wiki-id="docs:guide-user:advanced:uci_extras">UCI extras</a>
+</p>
+
+<p>
+The new package installations will have installed new, default versions of package configuration files.
+As your existing configuration files were already in place, opkg would have displayed a warning about this and saved the new configuration file versions under <code>*-opkg</code> filenames.
+</p>
+
+<p>
+The new package-provided configuration files should be compared with your older customized files to merge in any new options or changes of syntax in these files.
+The <code>diff</code> tool is helpful for this.
+</p>
+<pre class="code bash"><span class="co0"># Install packages</span>
+opkg update
+opkg <span class="kw2">install</span> diffutils
+&nbsp;
+<span class="co0"># Find new configurations</span>
+<span class="kw2">find</span> <span class="sy0">/</span>etc <span class="re5">-name</span> <span class="st0">&quot;*-opkg&quot;</span>
+&nbsp;
+<span class="co0"># Compare UCI configurations</span>
+<span class="kw2">diff</span> <span class="sy0">/</span>etc<span class="sy0">/</span>config<span class="sy0">/</span>snmpd <span class="sy0">/</span>etc<span class="sy0">/</span>config<span class="sy0">/</span>snmpd-opkg
+&nbsp;
+<span class="co0"># Manually merge changes to the current config and remove default config</span>
+<span class="kw2">vi</span> <span class="sy0">/</span>etc<span class="sy0">/</span>config<span class="sy0">/</span>snmpd
+<span class="kw2">rm</span> <span class="sy0">/</span>etc<span class="sy0">/</span>config<span class="sy0">/</span>snmpd-opkg
+&nbsp;
+<span class="co0"># Or replace current config with the default one</span>
+<span class="kw2">mv</span> <span class="sy0">/</span>etc<span class="sy0">/</span>config<span class="sy0">/</span>snmpd-opkg <span class="sy0">/</span>etc<span class="sy0">/</span>config<span class="sy0">/</span>snmpd
+&nbsp;
+<span class="co0"># Apply changes</span>
+<span class="sy0">/</span>etc<span class="sy0">/</span>init.d<span class="sy0">/</span>snmpd restart
+reboot</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Comparing new package config options&quot;,&quot;hid&quot;:&quot;comparing_new_package_config_options&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:7,&quot;range&quot;:&quot;10125-11243&quot;} -->
+<h3 class="sectionedit8" id="low_memory_workaroundstmp_is_too_small_to_hold_the_downloaded_file">Low memory workarounds: /tmp is too small to hold the downloaded file</h3>
+<div class="level3">
+
+<p>
+If your device&#039;s /tmp filesystem is not large enough to store the OpenWrt upgrade image, this section provides tips to temporarily free up RAM.
+</p>
+
+<p>
+First check memory usage with the <code>free</code> or <code>top</code> or <code>cat /proc/meminfo</code> commands; proceed if you have as much free RAM as the image is in size plus an some additional MiB of free memory.
+</p>
+<pre class="code bash"><span class="co0"># free</span>
+             total         used         <span class="kw2">free</span>       shared      buffers
+Mem:         <span class="nu0">29540</span>        <span class="nu0">18124</span>        <span class="sy0">**</span><span class="nu0">11416</span><span class="sy0">**</span>         <span class="nu0">0</span>         <span class="nu0">1248</span>
+-<span class="sy0">/</span>+ buffers:              <span class="nu0">16876</span>        <span class="nu0">12664</span>
+Swap:            <span class="nu0">0</span>            <span class="nu0">0</span>            <span class="nu0">0</span></pre>
+
+<p>
+In this example there are precisely 11416 KiB of RAM unused.
+All the rest 32768 - 11416 = 21352 KiB are used somehow and a portion of it can and will be made available by the kernel, if it be needed, the problem is, we do not know how much exactly that is.
+Make sure <em>enough</em> is available.
+Free space in /tmp also counts towards free memory.
+Therefore with: 
+</p>
+<pre class="code bash"><span class="co0"># free</span>
+Mem:         <span class="nu0">13388</span>        <span class="nu0">12636</span>          <span class="nu0">752</span>            <span class="nu0">0</span>         <span class="nu0">1292</span>
+Swap:            <span class="nu0">0</span>            <span class="nu0">0</span>            <span class="nu0">0</span>
+Total:       <span class="nu0">13388</span>        <span class="nu0">12636</span>          <span class="nu0">752</span>
+&nbsp;
+<span class="co0"># df</span>
+Filesystem           1K-blocks      Used Available Use<span class="sy0">%</span> Mounted on
+<span class="sy0">/</span>dev<span class="sy0">/</span>root                 <span class="nu0">2304</span>      <span class="nu0">2304</span>         <span class="nu0">0</span> <span class="nu0">100</span><span class="sy0">%</span> <span class="sy0">/</span>rom
+tmpfs                     <span class="nu0">6696</span>        <span class="nu0">60</span>      <span class="nu0">6636</span>   <span class="nu0">1</span><span class="sy0">%</span> <span class="sy0">/</span>tmp
+tmpfs                      <span class="nu0">512</span>         <span class="nu0">0</span>       <span class="nu0">512</span>   <span class="nu0">0</span><span class="sy0">%</span> <span class="sy0">/</span>dev
+<span class="sy0">/</span>dev<span class="sy0">/</span>mtdblock3             <span class="nu0">576</span>       <span class="nu0">288</span>       <span class="nu0">288</span>  <span class="nu0">50</span><span class="sy0">%</span> <span class="sy0">/</span>overlay
+mini_fo:<span class="sy0">/</span>overlay          <span class="nu0">2304</span>      <span class="nu0">2304</span>         <span class="nu0">0</span> <span class="nu0">100</span><span class="sy0">%</span> <span class="sy0">/</span></pre>
+
+<p>
+One has actually 752+6636 KiB of free memory available.
+</p>
+<ul>
+<li class="level1"><div class="li"> quickest and safest way to free up, some RAM is to delete the package lists:</div>
+</li>
+</ul>
+<pre class="code bash"><span class="kw2">rm</span> <span class="re5">-r</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>opkg-lists<span class="sy0">/</span></pre>
+<ul>
+<li class="level1"><div class="li"> drop caches:</div>
+</li>
+</ul>
+<pre class="code bash"><span class="kw2">sync</span> <span class="sy0">&amp;&amp;</span> <span class="kw3">echo</span> <span class="nu0">3</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>proc<span class="sy0">/</span>sys<span class="sy0">/</span>vm<span class="sy0">/</span>drop_caches</pre>
+<ul>
+<li class="level1"><div class="li"> prevent wireless drivers to be loaded at next boot and then reboot:</div>
+</li>
+</ul>
+<pre class="code bash"><span class="kw2">rm</span> <span class="sy0">/</span>etc<span class="sy0">/</span>modules.d<span class="sy0">/*</span><span class="nu0">80211</span><span class="sy0">*</span>
+<span class="kw2">rm</span> <span class="sy0">/</span>etc<span class="sy0">/</span>modules.d<span class="sy0">/*</span>ath9k<span class="sy0">*</span>
+<span class="kw2">rm</span> <span class="sy0">/</span>etc<span class="sy0">/</span>modules.d<span class="sy0">/</span>b43<span class="sy0">*</span>
+reboot</pre>
+
+<p>
+The wireless drivers usually take up quite some amount of RAM and are not required if you are connected by wire.
+You can delete the relevant symlinks in <code>etc/modules.d</code> and reboot to free up the RAM.
+</p>
+
+</div>
+
+<h4 id="still_no_room_intmp">Still no room in /tmp?</h4>
+<div class="level4">
+
+<p>
+Use <a href="http://man.cx/netcat%281%29" class="interwiki iw_man" title="http://man.cx/netcat%281%29">netcat</a> only if you really cannot free <strong>enough RAM</strong> with other means.
+Any network issues during the process are likely to brick your device.
+</p>
+
+</div>
+
+<h4 id="flash_using_ssh">Flash using ssh</h4>
+<div class="level4">
+<pre class="code bash"><span class="co0"># Linux PC</span>
+<span class="kw2">cat</span> firmware_image.bin <span class="sy0">|</span> <span class="kw2">ssh</span> root<span class="sy0">@</span>openwrt.lan mtd <span class="kw2">write</span> - firmware</pre>
+
+</div>
+
+<h4 id="flash_using_netcat">Flash using netcat</h4>
+<div class="level4">
+<pre class="code bash"><span class="co0"># Linux PC</span>
+nc <span class="re5">-q</span> <span class="nu0">0</span> 192.168.1.1 <span class="nu0">1234</span> <span class="sy0">&lt;</span> openwrt-ar71xx-tl-wr1043nd-v1-squashfs-sysupgrade.bin
+&nbsp;
+<span class="co0"># OpenWrt</span>
+nc <span class="re5">-l</span> <span class="re5">-p</span> <span class="nu0">1234</span> <span class="sy0">|</span> mtd <span class="kw2">write</span> - firmware</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Low memory workarounds: \/tmp is too small to hold the downloaded file&quot;,&quot;hid&quot;:&quot;low_memory_workaroundstmp_is_too_small_to_hold_the_downloaded_file&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:8,&quot;range&quot;:&quot;11244-&quot;} -->

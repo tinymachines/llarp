@@ -1,0 +1,199 @@
+<div class="docnavbar"><div class="leftnav">← <a href="/docs/guide-developer/helloworld/chapter5" class="wikilink1" title="docs:guide-developer:helloworld:chapter5" data-wiki-id="docs:guide-developer:helloworld:chapter5">Previous Chapter </a>&nbsp;</div><div class="rightnav">&nbsp;<a href="/docs/guide-developer/helloworld/chapter7" class="wikilink1" title="docs:guide-developer:helloworld:chapter7" data-wiki-id="docs:guide-developer:helloworld:chapter7">Next Chapter </a> →</div></div>
+<h1 class="sectionedit1" id="migrating_to_use_gnu_make_in_your_application">Migrating to use GNU make in your application</h1>
+<div class="level1">
+
+<p>
+This is the sixth chapter in the “Hello, world!” for OpenWrt article series. At this point, you should&#039;ve already accomplished the following tasks:
+</p>
+<ul>
+<li class="level1"><div class="li"> Commissioned your development environment</div>
+</li>
+<li class="level1"><div class="li"> Prepared, configured and built the tools and the cross-compilation toolchain</div>
+</li>
+<li class="level1"><div class="li"> Configured the <code>PATH</code> environment variable</div>
+</li>
+<li class="level1"><div class="li"> Created a simple “Hello, world!” application using native compilation tools</div>
+</li>
+<li class="level1"><div class="li"> Created a local package feed for your application</div>
+</li>
+<li class="level1"><div class="li"> Created a package manifest file for your application</div>
+</li>
+<li class="level1"><div class="li"> Included your new package feed into the OpenWrt build system</div>
+</li>
+<li class="level1"><div class="li"> Updated the package index, and installed your package from the feed</div>
+</li>
+<li class="level1"><div class="li"> Built, deployed and tested the application on your target device</div>
+</li>
+</ul>
+
+<p>
+If you missed one or more of these steps, review the previous chapters.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Migrating to use GNU make in your application&quot;,&quot;hid&quot;:&quot;migrating_to_use_gnu_make_in_your_application&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;128-992&quot;} -->
+<h2 class="sectionedit2" id="why_use_gnu_make">Why use GNU make ?</h2>
+<div class="level2">
+
+<p>
+Our test application is still quite simple, containing only a single source file. As a result, it is quite straightforward to compile and link it, although the syntax to do so is somewhat obscure in the package manifest:
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-developer/helloworld/chapter6?codeblock=0" title="Download Snippet" class="mediafile mf_">Makefile</a></dt>
+<dd><pre class="code make"><span class="co1"># Package build instructions; invoke the target-specific compiler to first compile the source file, and then to link the file into the final executable</span>
+define Build<span class="sy0">/</span>Compile
+        <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">TARGET_CC</span><span class="br0">&#41;</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">TARGET_CFLAGS</span><span class="br0">&#41;</span> <span class="sy0">-</span>o <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">PKG_BUILD_DIR</span><span class="br0">&#41;</span><span class="sy0">/</span>helloworld<span class="sy0">.</span>o <span class="sy0">-</span>c <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">PKG_BUILD_DIR</span><span class="br0">&#41;</span><span class="sy0">/</span>helloworld<span class="sy0">.</span>c
+        <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">TARGET_CC</span><span class="br0">&#41;</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">TARGET_LDFLAGS</span><span class="br0">&#41;</span> <span class="sy0">-</span>o <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">PKG_BUILD_DIR</span><span class="br0">&#41;</span><span class="sy0">/</span><span class="re0">$1</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">PKG_BUILD_DIR</span><span class="br0">&#41;</span><span class="sy0">/</span>helloworld<span class="sy0">.</span>o
+endef</pre>
+</dd></dl>
+
+<p>
+As we can see, it is necessary to specify quite many options, including compilation and linking flags, source and object file names, and even the final executable name. 
+</p>
+
+<p>
+The working directory of the build system, when executing the instructions in the package manifest file, is the root directory where the package manifest file itself is found. As a result, if the folder variables such as $(PKG_BUILD_DIR) are not used, then the source files may not be found or the build artifacts may be placed into the incorrect directory.
+</p>
+
+<p>
+Using GNU make is one approach to solving some of these problems.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Why use GNU make ?&quot;,&quot;hid&quot;:&quot;why_use_gnu_make&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;993-2246&quot;} -->
+<h2 class="sectionedit3" id="creating_a_makefile">Creating a Makefile</h2>
+<div class="level2">
+
+<p>
+In order to use GNU make, it is necessary to create a Makefile for our test application. When writing the Makefile, you will only need to pay attention to the source files of your application; the integration into the OpenWrt build system is done at a later stage.
+</p>
+
+<p>
+Let&#039;s change to the source directory of the application and create the Makefile:
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-developer/helloworld/chapter6?codeblock=1" title="Download Snippet" class="mediafile mf_">Makefile</a></dt>
+<dd><pre class="code make">cd <span class="sy0">/</span>home<span class="sy0">/</span>buildbot<span class="sy0">/</span>helloworld
+touch Makefile</pre>
+</dd></dl>
+
+<p>
+Using a text editor, paste the following content into the file. Note that similar to the package manifest, the Makefile contains long whitespace indentations. They should be replaced with a hard tab character when editing the file:
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-developer/helloworld/chapter6?codeblock=2" title="Download Snippet" class="mediafile mf_">Makefile</a></dt>
+<dd><pre class="code make"><span class="co1"># Global target; when 'make' is run without arguments, this is what it should do</span>
+all<span class="sy0">:</span> helloworld
+&nbsp;
+<span class="co1"># These variables hold the name of the compilation tool, the compilation flags and the link flags</span>
+<span class="co1"># We make use of these variables in the package manifest</span>
+CC <span class="sy0">=</span> gcc
+CFLAGS <span class="sy0">=</span> <span class="sy0">-</span>Wall
+LDFLAGS <span class="sy0">=</span> 
+&nbsp;
+<span class="co1"># This variable identifies all header files in the directory; we use it to create a dependency chain between the object files and the source files</span>
+<span class="co1"># This approach will re-build your application whenever any header file changes. In a more complex application, such behavior is often undesirable</span>
+DEPS <span class="sy0">=</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re1">wildcard</span> <span class="sy0">*.</span>h<span class="br0">&#41;</span>
+&nbsp;
+<span class="co1"># This variable holds all source files to consider for the build; we use a wildcard to pick all files</span>
+SRC <span class="sy0">=</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re1">wildcard</span> <span class="sy0">*.</span>c<span class="br0">&#41;</span>
+&nbsp;
+<span class="co1"># This variable holds all object file names, constructed from the source file names using pattern substitution</span>
+OBJ <span class="sy0">=</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re1">patsubst</span> <span class="sy0">%.</span>c<span class="sy0">,</span> <span class="sy0">%.</span>o<span class="sy0">,</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">SRC</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+&nbsp;
+<span class="co1"># This rule builds individual object files, and depends on the corresponding C source files and the header files</span>
+<span class="sy0">%.</span>o<span class="sy0">:</span> <span class="sy0">%.</span>c <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">DEPS</span><span class="br0">&#41;</span>
+        <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">CC</span><span class="br0">&#41;</span> <span class="sy0">-</span>c <span class="sy0">-</span>o <span class="re0">$@</span> <span class="re0">$&lt;</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">CFLAGS</span><span class="br0">&#41;</span>
+&nbsp;
+<span class="co1"># To build 'helloworld', we depend on the object files, and link them all into a single executable using the compilation tool</span>
+<span class="co1"># We use automatic variables to specify the final executable name 'helloworld', using '$@' and the '$^' will hold the names of all the</span>
+<span class="co1"># dependencies of this rule</span>
+helloworld<span class="sy0">:</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">OBJ</span><span class="br0">&#41;</span>
+        <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">CC</span><span class="br0">&#41;</span> <span class="sy0">-</span>o <span class="re0">$@</span> <span class="re0">$^</span> <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">LDFLAGS</span><span class="br0">&#41;</span>
+&nbsp;
+<span class="co1"># To clean build artifacts, we specify a 'clean' rule, and use PHONY to indicate that this rule never matches with a potential file in the directory</span>
+<span class="kw2">.PHONY</span><span class="sy0">:</span> clean
+&nbsp;
+clean<span class="sy0">:</span>
+        rm <span class="sy0">-</span>f helloworld <span class="sy0">*.</span>o        </pre>
+</dd></dl>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Creating a Makefile&quot;,&quot;hid&quot;:&quot;creating_a_makefile&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:3,&quot;range&quot;:&quot;2247-4559&quot;} -->
+<h2 class="sectionedit4" id="testing_the_makefile_using_native_tools">Testing the Makefile using native tools</h2>
+<div class="level2">
+
+<p>
+Before modifying our package manifest, it is important that we test the makefile-based build process. To build the &#039;helloworld&#039; executable, you can simply issue the following command:
+</p>
+<pre class="code">make</pre>
+
+<p>
+If you get the message <code>make: Nothing to be done for `all`</code> this means the executable is already up to date.  To mimic a change in the code, let&#039;s update the source file, then try the make command again:
+</p>
+<pre class="code bash"><span class="kw2">touch</span> helloworld.c
+<span class="kw2">make</span></pre>
+
+<p>
+This will build the application using the native compilation tools.
+</p>
+
+<p>
+You&#039;ll see that GNU <code>make</code> will output the steps it took to build the application and that these steps are quite similar to the manual steps you took in chapter 2. If you encounter errors during the process, then one of the most common errors is that the whitespaces at the start of the rows in the Makefile are not tab characters.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Testing the Makefile using native tools&quot;,&quot;hid&quot;:&quot;testing_the_makefile_using_native_tools&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:4,&quot;range&quot;:&quot;4560-5473&quot;} -->
+<h2 class="sectionedit5" id="modifying_the_package_manifest_and_testing_the_build">Modifying the package manifest, and testing the build</h2>
+<div class="level2">
+
+<p>
+Now that our package&#039;s Makefile is created and tested, we can integrate it into the package manifest. To do so, we modify the build instructions in the package manifest to contain the necessary instructions. This file is located in <code>/home/buildbot/mypackages/examples/helloworld/</code> directory.  Open this particular <code>Makefile</code> in your preferred editor.
+</p>
+
+<p>
+When migrating to use the GNU make tool, you might not need to use hard tabs anymore. However, I find it good practise to use a hard tab at the start of each command row. When using the multi-line separator &#039;\&#039;, the adjacent lines do not need hard tabs.
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-developer/helloworld/chapter6?codeblock=5" title="Download Snippet" class="mediafile mf_">Makefile</a></dt>
+<dd><pre class="code make"><span class="co1"># Package build instructions; invoke the GNU make tool to build our package</span>
+define Build<span class="sy0">/</span>Compile
+        <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">MAKE</span><span class="br0">&#41;</span> <span class="sy0">-</span>C <span class="sy0">$</span><span class="br0">&#40;</span><span class="re2">PKG_BUILD_DIR</span><span class="br0">&#41;</span> \
+               CC<span class="sy0">=</span><span class="st0">&quot;$(TARGET_CC)&quot;</span> \
+           CFLAGS<span class="sy0">=</span><span class="st0">&quot;$(TARGET_CFLAGS)&quot;</span> \
+          LDFLAGS<span class="sy0">=</span><span class="st0">&quot;$(TARGET_LDFLAGS)&quot;</span>
+endef</pre>
+</dd></dl>
+
+<p>
+After modifying your package manifest, test the package build process again from the OpenWrt build system&#039;s folder:
+</p>
+<pre class="code bash"><span class="kw3">cd</span> <span class="sy0">/</span>home<span class="sy0">/</span>buildbot<span class="sy0">/</span><span class="kw3">source</span>
+<span class="kw2">make</span> package<span class="sy0">/</span>helloworld<span class="sy0">/</span><span class="br0">&#123;</span>clean,compile<span class="br0">&#125;</span></pre>
+
+<p>
+This command performs both package clean and compile in a one-liner.
+</p>
+
+<p>
+If you encounter errors when building it using GNU make, it is sometimes necessary to manually update and install the feeds. Perform the same steps that we did in chapter 4:
+</p>
+<pre class="code bash"><span class="kw3">cd</span> <span class="sy0">/</span>home<span class="sy0">/</span>buildbot<span class="sy0">/</span><span class="kw3">source</span>
+.<span class="sy0">/</span>scripts<span class="sy0">/</span>feeds update mypackages
+.<span class="sy0">/</span>scripts<span class="sy0">/</span>feeds <span class="kw2">install</span> <span class="re5">-a</span> <span class="re5">-p</span> mypackages</pre>
+
+<p>
+If still having issues, ensure your source directory (/home/buildbot/helloworld) is cleaned of any *.o files or final executables built for your host rather than OpenWRT (only <code>.c</code> and <code>Makefile</code>).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Modifying the package manifest, and testing the build&quot;,&quot;hid&quot;:&quot;modifying_the_package_manifest_and_testing_the_build&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:5,&quot;range&quot;:&quot;5474-7202&quot;} -->
+<h2 class="sectionedit6" id="conclusion">Conclusion</h2>
+<div class="level2">
+
+<p>
+In this lengthy chapter, we modified our original application to use GNU make instead of direct compilation commands. We wrote a simple makefile to evaluate all source code files in the directory, compile them, and link the generated object files into an executable. We then tested the makefile using native compilation tools to ensure it runs properly, and finally modified our package manifest to use the GNU make build process instead of the hard-coded compilation commands.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Conclusion&quot;,&quot;hid&quot;:&quot;conclusion&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:6,&quot;range&quot;:&quot;7203-&quot;} --><div class="clearer"></div><div class="docnavbar showtoc"><div class="leftnav">← <a href="/docs/guide-developer/helloworld/chapter5" class="wikilink1" title="docs:guide-developer:helloworld:chapter5" data-wiki-id="docs:guide-developer:helloworld:chapter5">Previous Chapter </a>&nbsp;</div><div class="centernav"><a href="/docs/guide-developer/helloworld/start" class="wikilink1" title="docs:guide-developer:helloworld:start" data-wiki-id="docs:guide-developer:helloworld:start">Helloworld overview </a>&nbsp;</div><div class="rightnav">&nbsp;<a href="/docs/guide-developer/helloworld/chapter7" class="wikilink1" title="docs:guide-developer:helloworld:chapter7" data-wiki-id="docs:guide-developer:helloworld:chapter7">Next Chapter </a> →</div></div>

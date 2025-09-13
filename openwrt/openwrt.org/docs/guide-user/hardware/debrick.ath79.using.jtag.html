@@ -1,0 +1,567 @@
+
+<h1 class="sectionedit1" id="debrick_ath79_using_jtag">Debrick ath79 using JTAG</h1>
+<div class="level1">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_center wrap_round wrap_important plugin_wrap">
+<p>
+Since with <a href="http://openocd.zylin.com/gitweb?p=openocd.git;a=commitdiff;h=6b9d19d3675a82ccc501fd7cba036c5b04d04590" class="urlextern" title="http://openocd.zylin.com/gitweb?p=openocd.git;a=commitdiff;h=6b9d19d3675a82ccc501fd7cba036c5b04d04590" rel="ugc nofollow">this commit</a> and <a href="http://openocd.zylin.com/gitweb?p=openocd.git;a=commitdiff;h=1025be363e2bf42f1613083223a2322cc3a9bd4c" class="urlextern" title="http://openocd.zylin.com/gitweb?p=openocd.git;a=commitdiff;h=1025be363e2bf42f1613083223a2322cc3a9bd4c" rel="ugc nofollow">this fix</a> now OpenOCD program support SPI driver for ATH79 SoCs.
+</p>
+
+<p>
+<em>This means, that you do NOT need to patch the OpenOCD program for support the ath79-spi driver. However, you may need to change the /openocd/src/flash/nor/spi.c source file for support your NOR-flash chip with specific JEDEC ID.
+</em>
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+Supported SoCs: <strong>AR71xx</strong>, <strong>AR91xx</strong>, <strong>AR724x</strong>, <strong>AR93xx</strong>, <strong>QCA95xx</strong>.
+</p>
+
+<p>
+Unlike the <a href="/ru/toh/tp-link/tl-mr3420/debrick.using.jtag" class="wikilink1" title="ru:toh:tp-link:tl-mr3420:debrick.using.jtag" data-wiki-id="ru:toh:tp-link:tl-mr3420:debrick.using.jtag">method</a> with initializing a processor and memory - this method is more functional because You do not need to look for special registers for a specific SoC.
+The OpenOCD program will be use the SPI-chip directly. Therefore, this method is good for the recovery of data on flash with any processor of the ath79 family where there is → <a href="/docs/techref/hardware/port.jtag" class="wikilink1" title="docs:techref:hardware:port.jtag" data-wiki-id="docs:techref:hardware:port.jtag">JTAG port</a>.
+</p>
+
+<p>
+Pinout <a href="http://www.linux-mips.org/wiki/JTAG" class="urlextern" title="http://www.linux-mips.org/wiki/JTAG" rel="ugc nofollow">EJTAG v3.1</a> port on ath79 looks like this:
+</p>
+<div class="table sectionedit4"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> EJTAG on DIR-615 Ex </th><th class="col1"> EJTAG on TL-WR1043ND </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> <a href="/_detail/media/dlink/dir-615/e4-photos/d-link.dir-615e4-jtag.jpg?id=docs%3Aguide-user%3Ahardware%3Adebrick.ath79.using.jtag" class="media" title="media:dlink:dir-615:e4-photos:d-link.dir-615e4-jtag.jpg"><img src="/_media/media/dlink/dir-615/e4-photos/d-link.dir-615e4-jtag.jpg?w=400&amp;tok=445e53" class="media" loading="lazy" title="ASCII" alt="ASCII" width="400" /></a> </td><td class="col1"> <a href="/_detail/media/tplink/tl-wr1043/tl-wr1043nd_serial.jpg?id=docs%3Aguide-user%3Ahardware%3Adebrick.ath79.using.jtag" class="media" title="media:tplink:tl-wr1043:tl-wr1043nd_serial.jpg"><img src="/_media/media/tplink/tl-wr1043/tl-wr1043nd_serial.jpg?w=400&amp;tok=aca19b" class="media" loading="lazy" title="tl-wr1043nd_serial.jpg" alt="tl-wr1043nd_serial.jpg" width="400" /></a> </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;1224-1396&quot;} -->
+<p>
+Using <strong>nSRST</strong> (<strong>RST</strong>) pin - in the case of damage the bootloader this pin is optional. Even more, on the Atheros SoC, it not only resets SoC also it resets the TAP controller. <br/>
+
+In the case your bootloader <strong>is not damaged</strong> the JTAG on router may <strong>not work</strong> at all, because during the boot process, in the bootloader, JTAG can be disabled and configured for GPIOs or other stuff. <br/>
+
+Limit only in that, does support your NOR-flash chip by OpenOCD program or not. If not - you can manual add support of your NOR-flash chip in program at the stage of compiling the program.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Debrick ath79 using JTAG&quot;,&quot;hid&quot;:&quot;debrick_ath79_using_jtag&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1978&quot;} -->
+<h2 class="sectionedit5" id="how_to_build">How to Build</h2>
+<div class="level2">
+
+<p>
+For build the program I use Linux (Ubuntu) and <a href="http://shukra.cedt.iisc.ernet.in/edwiki/EmSys:Compiling_OpenOCD_v0.8.0_Linux" class="urlextern" title="http://shukra.cedt.iisc.ernet.in/edwiki/EmSys:Compiling_OpenOCD_v0.8.0_Linux" rel="ugc nofollow">this guide</a> or <a href="http://airsupplylab.com/index.php/learn/12-embedded/12-how-to-install-openocd-v0-8-0" class="urlextern" title="http://airsupplylab.com/index.php/learn/12-embedded/12-how-to-install-openocd-v0-8-0" rel="ugc nofollow">this guide</a>:
+</p>
+<pre class="code">sudo apt-get update
+sudo apt-get install libtool automake libusb-1.0 git
+git clone git://openocd.git.sourceforge.net/gitroot/openocd/openocd
+cd ~/openocd
+git pull
+./bootstrap</pre>
+
+<p>
+<em><strong>Note:</strong> I use a short version of the packages installation for Ubuntu to support OpenOCD because I only need the parallel port.</em>
+</p>
+
+<p>
+The next step configures support of program OpenOCD specific interfaces, for more help, see “./configure -help” option.
+<br/>
+
+Most likely you will need to use other options for your JTAG-interface. For example, I&#039;ll use (<a href="http://ciclamab.altervista.org/hard_corpo_jtag.htm" class="urlextern" title="http://ciclamab.altervista.org/hard_corpo_jtag.htm" rel="ugc nofollow">Wiggler parallel port JTAG adapter</a>) and here my options:
+</p>
+<pre class="code">./configure --enable-maintainer-mode --disable-werror --disable-shared --enable-parport --enable-parport_ppdev</pre>
+
+<p>
+<em><strong>Note:</strong> Besides in my case, I compile with <code>“--disable-werror”</code> option because I have Warning messages, otherwise it will be have error at the stage of compiling the program.</em>
+</p>
+
+<p>
+Before we <code>make</code> and <code>install</code> the program, what you should do next is located in the file  /openocd/src/flash/nor/spi.c of source - you must find name of your NOR-flash chip in this list.
+If your chip not listed, then go to <a href="/docs/guide-user/hardware/debrick.ath79.using.jtag#unknown_flash_device" class="wikilink1" title="docs:guide-user:hardware:debrick.ath79.using.jtag" data-wiki-id="docs:guide-user:hardware:debrick.ath79.using.jtag">this point</a>, okay, now make it:
+</p>
+<pre class="code">make
+sudo make install</pre>
+
+<p>
+<br/>
+
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;How to Build&quot;,&quot;hid&quot;:&quot;how_to_build&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;1979-3589&quot;} -->
+<h3 class="sectionedit6" id="supported_nor-flash_chips_by_default_020617">Supported NOR-flash chips by default (02.06.17)</h3>
+<div class="level3">
+<pre class="code c">	...
+	<span class="coMULTI">/* name, erase_cmd, chip_erase_cmd, device_id, pagesize, sectorsize, size_in_bytes */</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;st m25p05&quot;</span><span class="sy0">,</span>      <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x00102020</span><span class="sy0">,</span> <span class="nu12">0x80</span><span class="sy0">,</span>  <span class="nu12">0x8000</span><span class="sy0">,</span>  <span class="nu12">0x10000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;st m25p10&quot;</span><span class="sy0">,</span>      <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x00112020</span><span class="sy0">,</span> <span class="nu12">0x80</span><span class="sy0">,</span>  <span class="nu12">0x8000</span><span class="sy0">,</span>  <span class="nu12">0x20000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;st m25p20&quot;</span><span class="sy0">,</span>      <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x00122020</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x40000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;st m25p40&quot;</span><span class="sy0">,</span>      <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x00132020</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x80000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;st m25p80&quot;</span><span class="sy0">,</span>      <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x00142020</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x100000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;st m25p16&quot;</span><span class="sy0">,</span>      <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x00152020</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x200000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;st m25p32&quot;</span><span class="sy0">,</span>      <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x00162020</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x400000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;st m25p64&quot;</span><span class="sy0">,</span>      <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x00172020</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x800000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;st m25p128&quot;</span><span class="sy0">,</span>     <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x00182020</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x40000</span><span class="sy0">,</span> <span class="nu12">0x1000000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;st m45pe10&quot;</span><span class="sy0">,</span>     <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0x00114020</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x20000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;st m45pe20&quot;</span><span class="sy0">,</span>     <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0x00124020</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x40000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;st m45pe40&quot;</span><span class="sy0">,</span>     <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0x00134020</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x80000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;st m45pe80&quot;</span><span class="sy0">,</span>     <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0x00144020</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x100000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;sp s25fl004&quot;</span><span class="sy0">,</span>    <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x00120201</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x80000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;sp s25fl008&quot;</span><span class="sy0">,</span>    <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x00130201</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x100000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;sp s25fl016&quot;</span><span class="sy0">,</span>    <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x00140201</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x200000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;sp s25fl116k&quot;</span><span class="sy0">,</span>   <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x00154001</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x200000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;sp s25fl032&quot;</span><span class="sy0">,</span>    <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x00150201</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x400000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;sp s25fl132k&quot;</span><span class="sy0">,</span>   <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x00164001</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x400000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;sp s25fl064&quot;</span><span class="sy0">,</span>    <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x00160201</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x800000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;sp s25fl164k&quot;</span><span class="sy0">,</span>   <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x00174001</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x800000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;sp s25fl128&quot;</span><span class="sy0">,</span>    <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x00182001</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x1000000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;sp s25fl256&quot;</span><span class="sy0">,</span>    <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x00190201</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x2000000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;atmel 25f512&quot;</span><span class="sy0">,</span>   <span class="nu12">0x52</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x0065001f</span><span class="sy0">,</span> <span class="nu12">0x80</span><span class="sy0">,</span>  <span class="nu12">0x8000</span><span class="sy0">,</span>  <span class="nu12">0x10000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;atmel 25f1024&quot;</span><span class="sy0">,</span>  <span class="nu12">0x52</span><span class="sy0">,</span> <span class="nu12">0x62</span><span class="sy0">,</span> <span class="nu12">0x0060001f</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x8000</span><span class="sy0">,</span>  <span class="nu12">0x20000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;atmel 25f2048&quot;</span><span class="sy0">,</span>  <span class="nu12">0x52</span><span class="sy0">,</span> <span class="nu12">0x62</span><span class="sy0">,</span> <span class="nu12">0x0063001f</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x40000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;atmel 25f4096&quot;</span><span class="sy0">,</span>  <span class="nu12">0x52</span><span class="sy0">,</span> <span class="nu12">0x62</span><span class="sy0">,</span> <span class="nu12">0x0064001f</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x80000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;atmel 25fs040&quot;</span><span class="sy0">,</span>  <span class="nu12">0xd7</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x0004661f</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x80000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;mac 25l512&quot;</span><span class="sy0">,</span>     <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x001020c2</span><span class="sy0">,</span> <span class="nu12">0x010</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;mac 25l1005&quot;</span><span class="sy0">,</span>    <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x001120c2</span><span class="sy0">,</span> <span class="nu12">0x010</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x20000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;mac 25l2005&quot;</span><span class="sy0">,</span>    <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x001220c2</span><span class="sy0">,</span> <span class="nu12">0x010</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x40000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;mac 25l4005&quot;</span><span class="sy0">,</span>    <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x001320c2</span><span class="sy0">,</span> <span class="nu12">0x010</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x80000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;mac 25l8005&quot;</span><span class="sy0">,</span>    <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x001420c2</span><span class="sy0">,</span> <span class="nu12">0x010</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x100000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;mac 25l1605&quot;</span><span class="sy0">,</span>    <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x001520c2</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x200000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;mac 25l3205&quot;</span><span class="sy0">,</span>    <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x001620c2</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x400000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;mac 25l6405&quot;</span><span class="sy0">,</span>    <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x001720c2</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x800000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;micron n25q064&quot;</span><span class="sy0">,</span> <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x0017ba20</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x800000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;micron n25q128&quot;</span><span class="sy0">,</span> <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x0018ba20</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x1000000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;win w25q80bv&quot;</span><span class="sy0">,</span>   <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x001440ef</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x100000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;win w25q32fv&quot;</span><span class="sy0">,</span>   <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x001640ef</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x400000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;win w25q32dw&quot;</span><span class="sy0">,</span>   <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x001660ef</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x400000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;win w25q64cv&quot;</span><span class="sy0">,</span>   <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x001740ef</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x800000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;win w25q128fv&quot;</span><span class="sy0">,</span>  <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x001840ef</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x1000000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;gd gd25q20&quot;</span><span class="sy0">,</span>     <span class="nu12">0x20</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x00c84012</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x1000</span><span class="sy0">,</span>  <span class="nu12">0x80000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;gd gd25q16c&quot;</span><span class="sy0">,</span>    <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x001540c8</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x200000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;gd gd25q32c&quot;</span><span class="sy0">,</span>    <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x001640c8</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x400000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span><span class="st0">&quot;gd gd25q128c&quot;</span><span class="sy0">,</span>   <span class="nu12">0xd8</span><span class="sy0">,</span> <span class="nu12">0xc7</span><span class="sy0">,</span> <span class="nu12">0x001840c8</span><span class="sy0">,</span> <span class="nu12">0x100</span><span class="sy0">,</span> <span class="nu12">0x10000</span><span class="sy0">,</span> <span class="nu12">0x1000000</span><span class="br0">&#41;</span><span class="sy0">,</span>
+	FLASH_ID<span class="br0">&#40;</span>NULL<span class="sy0">,</span>             <span class="nu0">0</span><span class="sy0">,</span>    <span class="nu0">0</span><span class="sy0">,</span>	   <span class="nu0">0</span><span class="sy0">,</span>          <span class="nu0">0</span><span class="sy0">,</span>     <span class="nu0">0</span><span class="sy0">,</span>       <span class="nu0">0</span><span class="br0">&#41;</span></pre>
+
+<p>
+<em>Also you can manual add your not listed NOR-flash chip in <code>/openocd/src/flash/nor/spi.c</code> file of OpenOCD sources. <br/>
+
+<strong>Note:</strong> That JEDEC ID here in the reversed byte (big-endian) ordering format (for example: <code>0x001840ef</code> = <code>0xef401800</code>). </em>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Supported NOR-flash chips by default (02.06.17)&quot;,&quot;hid&quot;:&quot;supported_nor-flash_chips_by_default_020617&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:6,&quot;range&quot;:&quot;3590-7783&quot;} -->
+<h2 class="sectionedit7" id="using_openocd">Using OpenOCD</h2>
+<div class="level2">
+
+<p>
+This part includes a list of programs that will be needed in the process of debugging and recovery through the JTAG interface. Also, this section contains a list of used OpenOCD commands and configuration file for ATH79 SoC&#039;s.
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong>telnet</strong> console - for linux or <strong>PuTTY</strong> console - for Windows.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> <strong><a href="#ath79cfg" title="docs:guide-user:hardware:debrick.ath79.using.jtag ↵" class="wikilink1">ath79.cfg</a></strong> - config. file for the OpenOCD program and your target device (config. file must be copied to OpenOCD your installation folder as the <code>/usr/local/share/openocd/scripts/target/ath79.cfg</code>).</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> <strong>backup.bin</strong> - conditional bootloader or other fragment of SPI-flash memory data you want to restore.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Using OpenOCD&quot;,&quot;hid&quot;:&quot;using_openocd&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:7,&quot;range&quot;:&quot;7784-8442&quot;} -->
+<h3 class="sectionedit8" id="used_commands_in_openocd">Used commands in OpenOCD</h3>
+<div class="level3">
+<pre class="code">reset</pre>
+
+<p>
+<em>The example presented in this section, the command is only used as - identify the ID and state of the processor, not more.</em>
+</p>
+
+<p>
+<br/>
+
+</p>
+<pre class="code">halt</pre>
+
+<p>
+<em>Put the processor in debug state (receiving commands from operator).</em>
+</p>
+
+<p>
+<br/>
+
+</p>
+<pre class="code">reset init</pre>
+
+<p>
+<em>After running this command, the script will be executed for this event (enclosed in braces), which is in the config. file (send commands to the processor).</em>
+</p>
+
+<p>
+<br/>
+
+</p>
+<pre class="code">dump_image &lt;filename&gt; &lt;starting address in memory or flash-chip&gt; &lt;size&gt;</pre>
+
+<p>
+<em>This command saves a dump of the memory/flash-chip to the file. Command can be executed before initialize the CPU and memory. To read the flash memory, use the address <code>0x9f000000</code></em>
+</p>
+
+<p>
+<br/>
+
+</p>
+<pre class="code">flash write_image unlock &lt;filename&gt; &lt;starting address in flash-chip&gt;</pre>
+
+<p>
+<em>This command starts writing flash-chip from file at starting address.</em>
+</p>
+
+<p>
+<br/>
+
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Used commands in OpenOCD&quot;,&quot;hid&quot;:&quot;used_commands_in_openocd&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:8,&quot;range&quot;:&quot;8443-9361&quot;} -->
+<h3 class="sectionedit9" id="ath79cfg">ath79.cfg</h3>
+<div class="level3">
+<pre class="code"># Atheros ATH79 MIPS SoC.
+# tested on AP83 and AP99 reference board
+#
+# source: https://forum.openwrt.org/viewtopic.php?pid=297299#p297299
+
+if { [info exists CHIPNAME] } {
+   set _CHIPNAME $CHIPNAME
+} else {
+   set _CHIPNAME ath79
+}
+
+if { [info exists ENDIAN] } {
+   set _ENDIAN $ENDIAN
+} else {
+   set _ENDIAN big
+}
+
+if { [info exists CPUTAPID] } {
+   set _CPUTAPID $CPUTAPID
+} else {
+   set _CPUTAPID 0x00000001
+}
+
+jtag_ntrst_assert_width 200
+jtag_ntrst_delay 1
+
+reset_config trst_only
+
+jtag newtap $_CHIPNAME cpu -irlen 5 -ircapture 0x1 -irmask 0x1f -expected-id $_CPUTAPID
+
+set _TARGETNAME $_CHIPNAME.cpu
+target create $_TARGETNAME mips_m4k -endian $_ENDIAN -chain-position $_TARGETNAME
+
+$_TARGETNAME configure -event reset-init {
+	# disable flash remap
+	mww 0xbf000004 0x43
+}
+
+# serial SPI capable flash
+# flash bank &lt;driver&gt; &lt;base&gt; &lt;size&gt; &lt;chip_width&gt; &lt;bus_width&gt;
+set _FLASHNAME $_CHIPNAME.flash
+flash bank $_FLASHNAME ath79 0xbf000000 0x01000000 0 0 $_TARGETNAME</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;ath79.cfg&quot;,&quot;hid&quot;:&quot;ath79cfg&quot;,&quot;codeblockOffset&quot;:9,&quot;secid&quot;:9,&quot;range&quot;:&quot;9362-10368&quot;} -->
+<h3 class="sectionedit10" id="recovery_example">Recovery example</h3>
+<div class="level3">
+
+<p>
+Recovery the bootloader u-boot and art section, on the AR7241 SoC in the Ubuntu operating system. If you need, in the same way, additionally, it is possible to flash the firmware image or fully flash-chip - fullflash.
+</p>
+<ul>
+<li class="level1"><div class="li"> After we make and install the OpenOCD program, <a href="#ath79cfg" title="docs:guide-user:hardware:debrick.ath79.using.jtag ↵" class="wikilink1">ath79.cfg</a> config. file must be copied to your OpenOCD installation folder as the <code>/usr/local/share/openocd/scripts/target/ath79.cfg</code></div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> Connect JTAG to the PC and router (router must be <strong>turned OFF</strong>).</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> After that <strong>turn ON</strong> your bricked router.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> Run OpenOCD with next parameters: <br/>
+<pre class="code">sudo openocd -f interface/parport.cfg -f target/ath79.cfg -c &quot;adapter_khz 6000&quot;</pre>
+
+<p>
+<em>If you use a different JTAG adapter, <strong>parport.cfg</strong> name of interface should be changed to the appropriate name of the configuration file for your JTAG adapter. Of course, you have to pre-build OpenOCD program with support this interface.</em>
+</p>
+</div>
+</li>
+</ul>
+
+</div>
+
+<h4 id="working_with_the_program_openocd">Working with the program OpenOCD</h4>
+<div class="level4">
+<ul>
+<li class="level1"><div class="li"> Once we have turned ON the router, our target is to detect ID 0x00000001 (standard Atheros CPU identifier): <pre class="code">ubuntu@ubuntu:~$ sudo openocd -f interface/parport.cfg -f target/ath79.cfg -c &quot;adapter_khz 6000&quot;
+Open On-Chip Debugger 0.10.0-dev-00247-g73b676c-dirty (2016-03-12-07:52)
+Licensed under GNU GPL v2
+For bug reports, read
+	http://openocd.org/doc/doxygen/bugs.html
+Warn : Adapter driver &#039;parport&#039; did not declare which transports it allows; assuming legacy JTAG-only
+Info : only one transport option; autoselect &#039;jtag&#039;
+parport port = 0x0
+jtag_ntrst_assert_width: 200
+jtag_ntrst_delay: 1
+trst_only separate trst_push_pull
+adapter speed: 6000 kHz
+Info : clock speed 500 kHz
+Info : JTAG tap: ath79.cpu tap/device found: 0x00000001 (mfg: 0x000 (&lt;invalid&gt;), part: 0x0000, ver: 0x0)
+Info : accepting &#039;telnet&#039; connection on tcp/4444</pre>
+
+<p>
+<em>If you could not identify the ID at once, try to go to the next step and enter “reset” in the telnet console. If the program still does not identify the CPU ID, check the JTAG connection cable for possible errors, as the cause of a problem may lie in the length of the cable used.</em>
+</p>
+</div>
+</li>
+</ul>
+<ul>
+<li class="level1 node"><div class="li"> If everything is successful, run in new shell telnet console or PuTTY at address 127.0.0.1 and port 4444, after connecting to the console should display input prompt: <pre class="code">ubuntu@ubuntu:~$ telnet localhost 4444
+Trying 127.0.0.1...
+Connected to localhost.
+Escape character is &#039;^]&#039;.
+Open On-Chip Debugger
+&gt; </pre>
+</div>
+<ul>
+<li class="level3"><div class="li"> Next, enter the commands: <pre class="code">&gt; reset
+JTAG tap: ath79.cpu tap/device found: 0x00000001 (mfg: 0x000 (&lt;invalid&gt;), part: 0x0000, ver: 0x0)
+&gt; </pre>
+
+<p>
+<em>This command does not affect the state of the processor, because we do not use <strong>RST</strong> pin. However, the command once again detects the ID and state of the processor.</em> <br/>
+<br/>
+<br/>
+
+</p>
+<pre class="code">&gt; halt      
+ath79.cpu: target state: halted
+target halted in MIPS32 mode due to debug-request, pc: 0xbfc03860
+&gt; </pre>
+
+<p>
+<em>This command puts the processor from the state “running” to the state “halted” - in this state, the processor receives commands from operator.</em> <br/>
+<br/>
+<br/>
+
+</p>
+<pre class="code">&gt; reset init
+JTAG tap: ath79.cpu tap/device found: 0x00000001 (mfg: 0x000 (&lt;invalid&gt;), part: 0x0000, ver: 0x0)
+ath79.cpu: target state: halted
+target halted in MIPS32 mode due to debug-request, pc: 0xbfc03860
+&gt; </pre>
+
+<p>
+<em>Initializing the main script in the <a href="#ath79cfg" title="docs:guide-user:hardware:debrick.ath79.using.jtag ↵" class="wikilink1">ath79.cfg</a> configuration file. In this case, the script commands sent a group of commands (enclosed in braces) for the event <code>reset init</code>.</em> <br/>
+<br/>
+<br/>
+
+</p>
+<pre class="code">&gt; flash probe 0
+read_flash_id: 16311c
+Found flash device &#039;eon en25f32&#039; (ID 0x0016311c)
+flash &#039;ath79&#039; found at 0xbf000000
+&gt; </pre>
+
+<p>
+<em>Probing the flash. Detects flash memory identifier, if the flash-chip is not supported by the driver, there will be written.</em> <br/>
+<br/>
+<br/>
+
+</p>
+<pre class="code">&gt; flash info 0
+#0 : ath79 at 0xbf000000, size 0x00400000, buswidth 0, chipwidth 0
+	#  0: 0x00000000 (0x10000 64kB) protected
+	#  1: 0x00010000 (0x10000 64kB) protected
+	#  2: 0x00020000 (0x10000 64kB) protected
+	#  3: 0x00030000 (0x10000 64kB) protected
+	#  4: 0x00040000 (0x10000 64kB) protected
+	#  5: 0x00050000 (0x10000 64kB) protected
+	#  6: 0x00060000 (0x10000 64kB) protected
+	#  7: 0x00070000 (0x10000 64kB) protected
+	#  8: 0x00080000 (0x10000 64kB) protected
+	#  9: 0x00090000 (0x10000 64kB) protected
+	# 10: 0x000a0000 (0x10000 64kB) protected
+	# 11: 0x000b0000 (0x10000 64kB) protected
+	# 12: 0x000c0000 (0x10000 64kB) protected
+	# 13: 0x000d0000 (0x10000 64kB) protected
+	# 14: 0x000e0000 (0x10000 64kB) protected
+	# 15: 0x000f0000 (0x10000 64kB) protected
+	# 16: 0x00100000 (0x10000 64kB) protected
+	# 17: 0x00110000 (0x10000 64kB) protected
+	# 18: 0x00120000 (0x10000 64kB) protected
+	# 19: 0x00130000 (0x10000 64kB) protected
+	# 20: 0x00140000 (0x10000 64kB) protected
+	# 21: 0x00150000 (0x10000 64kB) protected
+	# 22: 0x00160000 (0x10000 64kB) protected
+	# 23: 0x00170000 (0x10000 64kB) protected
+	# 24: 0x00180000 (0x10000 64kB) protected
+	# 25: 0x00190000 (0x10000 64kB) protected
+	# 26: 0x001a0000 (0x10000 64kB) protected
+	# 27: 0x001b0000 (0x10000 64kB) protected
+	# 28: 0x001c0000 (0x10000 64kB) protected
+	# 29: 0x001d0000 (0x10000 64kB) protected
+	# 30: 0x001e0000 (0x10000 64kB) protected
+	# 31: 0x001f0000 (0x10000 64kB) protected
+	# 32: 0x00200000 (0x10000 64kB) protected
+	# 33: 0x00210000 (0x10000 64kB) protected
+	# 34: 0x00220000 (0x10000 64kB) protected
+	# 35: 0x00230000 (0x10000 64kB) protected
+	# 36: 0x00240000 (0x10000 64kB) protected
+	# 37: 0x00250000 (0x10000 64kB) protected
+	# 38: 0x00260000 (0x10000 64kB) protected
+	# 39: 0x00270000 (0x10000 64kB) protected
+	# 40: 0x00280000 (0x10000 64kB) protected
+	# 41: 0x00290000 (0x10000 64kB) protected
+	# 42: 0x002a0000 (0x10000 64kB) protected
+	# 43: 0x002b0000 (0x10000 64kB) protected
+	# 44: 0x002c0000 (0x10000 64kB) protected
+	# 45: 0x002d0000 (0x10000 64kB) protected
+	# 46: 0x002e0000 (0x10000 64kB) protected
+	# 47: 0x002f0000 (0x10000 64kB) protected
+	# 48: 0x00300000 (0x10000 64kB) protected
+	# 49: 0x00310000 (0x10000 64kB) protected
+	# 50: 0x00320000 (0x10000 64kB) protected
+	# 51: 0x00330000 (0x10000 64kB) protected
+	# 52: 0x00340000 (0x10000 64kB) protected
+	# 53: 0x00350000 (0x10000 64kB) protected
+	# 54: 0x00360000 (0x10000 64kB) protected
+	# 55: 0x00370000 (0x10000 64kB) protected
+	# 56: 0x00380000 (0x10000 64kB) protected
+	# 57: 0x00390000 (0x10000 64kB) protected
+	# 58: 0x003a0000 (0x10000 64kB) protected
+	# 59: 0x003b0000 (0x10000 64kB) protected
+	# 60: 0x003c0000 (0x10000 64kB) protected
+	# 61: 0x003d0000 (0x10000 64kB) protected
+	# 62: 0x003e0000 (0x10000 64kB) protected
+	# 63: 0x003f0000 (0x10000 64kB) protected
+
+SMI flash information:
+  Device &#039;eon en25f32&#039; (ID 0x0016311c)
+
+&gt; </pre>
+
+<p>
+<em>Where first two sectors (#0,#1) is <strong>uboot</strong> and last sector (#63) is <strong>art</strong> partition (for 4MByte flash and TP-LINK platform).</em> <br/>
+<br/>
+<br/>
+
+</p>
+<pre class="code">&gt; dump_image uboot.bin 0x9f000000 0x20000  
+dumped 131072 bytes in 88.281433s (1.450 KiB/s)
+&gt; dump_image art.bin 0x9f3f0000 0x10000    
+dumped 65536 bytes in 47.600506s (1.345 KiB/s)
+&gt; </pre>
+
+<p>
+<em>Buckup <strong>uboot</strong> and <strong>art</strong> partition.</em><br/>
+<br/>
+<br/>
+
+</p>
+<pre class="code">&gt; flash write_image unlock uboot.bin 0xbf000000
+auto unlock enabled
+writing 256 bytes to flash page @0x00000000
+writing 256 bytes to flash page @0x00000100
+writing 256 bytes to flash page @0x00000200
+writing 256 bytes to flash page @0x00000300
+writing 256 bytes to flash page @0x00000400
+writing 256 bytes to flash page @0x00000500
+...
+writing 256 bytes to flash page @0x0001ef00
+writing 256 bytes to flash page @0x0001f000
+writing 256 bytes to flash page @0x0001fb00
+writing 256 bytes to flash page @0x0001fc00
+writing 256 bytes to flash page @0x0001fd00
+writing 256 bytes to flash page @0x0001fe00
+wrote 131072 bytes from file uboot.bin in 1968.353027s (0.065 KiB/s)</pre>
+
+<p>
+<em>Writing flash at base (bank) flash address.</em> <br/>
+<strong>Note:</strong> This is not very high Write speed because I use the <a href="/docs/techref/hardware/port.jtag.cable.buffered" class="wikilink1" title="docs:techref:hardware:port.jtag.cable.buffered" data-wiki-id="docs:techref:hardware:port.jtag.cable.buffered">old JTAG adapter</a> (500KHz).
+</p>
+</div>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Recovery example&quot;,&quot;hid&quot;:&quot;recovery_example&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:10,&quot;range&quot;:&quot;10369-18306&quot;} -->
+<h2 class="sectionedit11" id="problems">Problems</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Problems&quot;,&quot;hid&quot;:&quot;problems&quot;,&quot;codeblockOffset&quot;:20,&quot;secid&quot;:11,&quot;range&quot;:&quot;18307-18327&quot;} -->
+<h3 class="sectionedit12" id="unknown_flash_device">Unknown flash device</h3>
+<div class="level3">
+<pre class="code">&gt; flash probe 0
+read_flash_id: 16311c
+Unknown flash device (ID 0x0016311c)
+in procedure &#039;flash&#039;
+&gt; </pre>
+
+<p>
+Solution: You can add manual support for your flash-chip by editing <code>/openocd/src/flash/nor/spi.c</code> file of OpenOCD sources.
+</p>
+
+<p>
+Read datasheet for your SPI NOR flash-chip(search by name of flash on package), in datasheet you can find necessary registers for the driver. Or copy it from <a href="http://fossies.org/linux/qemu/hw/block/m25p80.c" class="urlextern" title="http://fossies.org/linux/qemu/hw/block/m25p80.c" rel="ugc nofollow">other driver</a>. <br/>
+
+<strong>Note:</strong> That JEDEC ID here in the reversed byte (big-endian) ordering format (for example: <code>0x0016311c</code> = <code>0x1c311600</code>). 
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Unknown flash device&quot;,&quot;hid&quot;:&quot;unknown_flash_device&quot;,&quot;codeblockOffset&quot;:20,&quot;secid&quot;:12,&quot;range&quot;:&quot;18328-18954&quot;} -->
+<h3 class="sectionedit13" id="errorjtag_scan_chain_interrogation_failedall_ones">Error: JTAG scan chain interrogation failed: all ones</h3>
+<div class="level3">
+<pre class="code">ubuntu@ubuntu:~/openocd$ sudo openocd -f interface/parport.cfg -f target/ath79.cfg -c &quot;adapter_khz 6000&quot;
+Open On-Chip Debugger 0.10.0-dev-00247-g73b676c-dirty (2016-03-12-07:52)
+Licensed under GNU GPL v2
+For bug reports, read
+	http://openocd.org/doc/doxygen/bugs.html
+Warn : Adapter driver &#039;parport&#039; did not declare which transports it allows; assuming legacy JTAG-only
+Info : only one transport option; autoselect &#039;jtag&#039;
+parport port = 0x0
+jtag_ntrst_assert_width: 200
+jtag_ntrst_delay: 1
+trst_only separate trst_push_pull
+adapter speed: 6000 kHz
+Info : clock speed 500 kHz
+Error: JTAG scan chain interrogation failed: all ones
+Error: Check JTAG interface, timings, target power, etc.
+Error: Trying to use configured scan chain anyway...
+Error: ath79.cpu: IR capture error; saw 0x1f not 0x01
+Warn : Bypassing JTAG setup events due to errors</pre>
+
+<p>
+Solution: Check the JTAG connection cable for possible errors, Check TDO signal
+</p>
+
+<p>
+When TDO is connected to the JTAG adapter the signal must return to 3.3V in rest. Optionally add a 10kΩ pullup resistor to 3V3 (between pins TDO and VCC 3V3). 
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Error: JTAG scan chain interrogation failed: all ones&quot;,&quot;hid&quot;:&quot;errorjtag_scan_chain_interrogation_failedall_ones&quot;,&quot;codeblockOffset&quot;:21,&quot;secid&quot;:13,&quot;range&quot;:&quot;18955-20119&quot;} -->
+<h2 class="sectionedit14" id="forum_discussion_and_source">Forum discussion and source</h2>
+<div class="level2">
+
+<p>
+<a href="https://forum.openwrt.org/viewtopic.php?id=34993" class="urlextern" title="https://forum.openwrt.org/viewtopic.php?id=34993" rel="ugc nofollow">https://forum.openwrt.org/viewtopic.php?id=34993</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Forum discussion and source&quot;,&quot;hid&quot;:&quot;forum_discussion_and_source&quot;,&quot;codeblockOffset&quot;:22,&quot;secid&quot;:14,&quot;range&quot;:&quot;20120-&quot;} -->

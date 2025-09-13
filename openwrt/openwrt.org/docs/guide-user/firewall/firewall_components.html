@@ -1,0 +1,139 @@
+
+<h1 class="sectionedit1" id="firewall_components">Firewall components</h1>
+<div class="level1">
+
+<p>
+The OpenWrt firewall implementation is the mechanism by which network traffic is filtered coming through the router.
+At a high level, one of three outcomes will occur: either the packet is discarded (dropped) without any further action, rejected (with an appropriate response to the source), or accepted (routed to the destination).
+Note that the router itself is a destination for management and monitoring.
+</p>
+
+<p>
+The OpenWrt firewall revolves around the Linux <a href="http://www.netfilter.org" class="urlextern" title="http://www.netfilter.org" rel="ugc nofollow">netfilter</a> project.
+There are the following main components to the OpenWrt firewall:
+</p>
+<ol>
+<li class="level1"><div class="li"> the <a href="/docs/guide-user/firewall/overview" class="wikilink1" title="docs:guide-user:firewall:overview" data-wiki-id="docs:guide-user:firewall:overview">firewall3</a> application</div>
+</li>
+<li class="level1"><div class="li"> a set of netfilter hooks in the kernel networking stacks</div>
+</li>
+<li class="level1"><div class="li"> a set of linux kernel modules that handle the inspection of network packets</div>
+</li>
+<li class="level1"><div class="li"> a set of kernel tuning parameters to configure the network stacks and firewall modules</div>
+</li>
+</ol>
+
+<p>
+This documentation is based on <a href="/releases/18.06/notes-18.06.0" class="wikilink1" title="releases:18.06:notes-18.06.0" data-wiki-id="releases:18.06:notes-18.06.0">OpenWrt 18.06.0</a>.
+Many of the configurations have been tested against this release using the <a href="/docs/guide-user/firewall/fw3_configurations/fw3_ref_topo" class="wikilink1" title="docs:guide-user:firewall:fw3_configurations:fw3_ref_topo" data-wiki-id="docs:guide-user:firewall:fw3_configurations:fw3_ref_topo">test network</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Firewall components&quot;,&quot;hid&quot;:&quot;firewall_components&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1137&quot;} -->
+<h2 class="sectionedit2" id="firewall3_fw3">Firewall3 (fw3)</h2>
+<div class="level2">
+
+<p>
+The <a href="/docs/guide-user/firewall/overview" class="wikilink1" title="docs:guide-user:firewall:overview" data-wiki-id="docs:guide-user:firewall:overview">fw3 application</a> package is the main application used to provision the firewall.
+It was developed by the OpenWrt team specifically for the project.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Firewall3 (fw3)&quot;,&quot;hid&quot;:&quot;firewall3_fw3&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;1138-1355&quot;} -->
+<h2 class="sectionedit3" id="kernel_netfilter_hooks">Kernel netfilter hooks</h2>
+<div class="level2">
+
+<p>
+Each of the network stacks have netfilter functions call <code>hooks</code> embedded at specific places in the code.
+As a network packet moves through the stack, each hook is called to check the packet against possible netfilter rules bound to the hook.
+</p>
+
+<p>
+The netfilter hook code uses the <code>NF_HOOK</code> set of macros.
+Each hook takes the following arguments:
+</p>
+<ul>
+<li class="level1"><div class="li"> network protocol: unspec (all), ipv4, ipv6, arp, bridge, decnet</div>
+</li>
+<li class="level1"><div class="li"> hook num: PRE_ROUTING, LOCAL_IN, FORWARD, LOCAL_OUT, POST_ROUTING</div>
+</li>
+<li class="level1"><div class="li"> net structure: context for the network stack</div>
+</li>
+<li class="level1"><div class="li"> socket: BSD socket used for packet</div>
+</li>
+<li class="level1"><div class="li"> network packet: a socket buffer containing the network packet</div>
+</li>
+<li class="level1"><div class="li"> incoming device (interface): the source of the packet</div>
+</li>
+<li class="level1"><div class="li"> outgoing device (interface): the destination of the packet after routing</div>
+</li>
+<li class="level1"><div class="li"> a function callback if the packet passes the filter</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Kernel netfilter hooks&quot;,&quot;hid&quot;:&quot;kernel_netfilter_hooks&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;1356-2223&quot;} -->
+<h2 class="sectionedit4" id="kernel_netfilter_modules">Kernel netfilter modules</h2>
+<div class="level2">
+
+<p>
+The netfilter kernel modules are loaded at boot depend on the configured.
+There are roughly 35 kernel modules to support the standard netfilter capabilities but there are many more depending on the requirements of the router.
+For example, many routers use the <a href="http://ipset.netfilter.org/" class="urlextern" title="http://ipset.netfilter.org/" rel="ugc nofollow">ipset</a> feature.
+This adds ~16 additional kernel modules.
+</p>
+
+<p>
+Most of the netfilter modules are small, providing a single specific capability.
+For example:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>ipt_REJECT</code> performs REJECT (target),</div>
+</li>
+<li class="level1"><div class="li"> <code>xt_multiport</code> performs match of the <abbr title="Internet Protocol">IP</abbr> port (match)</div>
+</li>
+<li class="level1"><div class="li"> <code>xt_TCPMSS</code> performs Maximum Segment Size adjustment in the <abbr title="Transmission Control Protocol">TCP</abbr> header (target in <code>mangle</code> table)</div>
+</li>
+</ul>
+
+<p>
+Several of the netfilter modules are larger.
+For example:
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>nf_conntrack</code> performs connection tracking for masquerading (<abbr title="Network Address Translation">NAT</abbr>) and packet de-fragmentation.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Kernel netfilter modules&quot;,&quot;hid&quot;:&quot;kernel_netfilter_modules&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;2224-3077&quot;} -->
+<h2 class="sectionedit5" id="kernel_tuning_via_sysctl">Kernel tuning via sysctl</h2>
+<div class="level2">
+
+<p>
+The <code>sysctl</code> service is executed at boot time.
+This is a shell script that loads <code>/etc/sysctl.conf</code> and all files under <code>/etc/sysctl.d/</code>.
+These set/tune kernel parameters to provide OpenWrt features.
+See <a href="http://man.cx/sysctl.conf" class="interwiki iw_man" title="http://man.cx/sysctl.conf">sysctl.conf</a>.
+</p>
+
+<p>
+All are parameters documented under the <code>Documentation/networking</code> directory of kernel source tree so the specifics will not be repeated here.
+See <code>ip-sysctl.txt</code> and <code>nf_conntrack-sysctl.txt</code> for reference.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Since the OpenWrt feature set is fairly static, the kernel parameters almost certainly do not need to tuned beyond the defaults provided in the build.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> Notice that netfilter bridging support in the kernel is disabled!
+See <code>ip-sysctl.txt</code>:
+</p>
+<pre class="code">bridge-nf-call-iptables - BOOLEAN
+	1 : pass bridged IPv4 traffic to iptables&#039; chains.
+	0 : disable this.
+	Default: 1</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Kernel tuning via sysctl&quot;,&quot;hid&quot;:&quot;kernel_tuning_via_sysctl&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;3078-&quot;} -->

@@ -1,0 +1,143 @@
+
+<h1 class="sectionedit1" id="overview">Overview</h1>
+<div class="level1">
+
+<p>
+If you are familiar with GNU/Linux systems, you should find your way around pretty easily; if you are not, you will need to learn some basic concepts and terminology first.
+</p>
+
+<p>
+You might have read that OpenWrt is a <strong>GNU/Linux distribution</strong> (or “distro”) aimed at embedded devices.<br/>
+
+A GNU/Linux <strong>distribution</strong> is a project that creates and maintains <em>packages</em>, used with a Linux kernel to create a GNU/Linux operating system tailored to users&#039; needs.<br/>
+
+A <strong>package</strong> is a compressed archive containing a program, a <a href="https://en.wikipedia.org/wiki/Library_(computing)" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Library_(computing)">library</a> or some scripts, its accompanying configuration files and also information used to integrate it in the operating system. These packages are handled by a <strong>package manager</strong> (opkg in OpenWrt); a program that downloads/opens/installs/uninstalls the packages.<br/>
+
+So, an OpenWrt firmware is made by assembling packages around a Linux kernel.
+</p>
+
+<p>
+Each package is compiled separately, and when all are done the needed packages are “installed” in a temporary directory that will then be the compressed-read-only <a href="https://en.wikipedia.org/wiki/SquashFS" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/SquashFS">SquashFS</a> partition in the device firmware.
+</p>
+
+<p>
+While the kernel is handled as a package, it is added to firmware images in the special way each device&#039;s bootloader expects. So you can replace the stock firmware without touching the bootloader (which is dangerous and not always possible).
+</p>
+
+<p>
+The last step in the build process is actually creating the firmware file, the file to install or upgrade OpenWrt.<br/>
+
+This file is usually a memory image ready to be written as is on the internal flash storage of the device. You may notice that many developers simply call it “image” on <abbr title="Internet Relay Chat">IRC</abbr> or in the mailing list.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Overview&quot;,&quot;hid&quot;:&quot;overview&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1688&quot;} -->
+<h2 class="sectionedit2" id="how_packages_are_compiled">How Packages are Compiled</h2>
+<div class="level2">
+
+<p>
+If you look at a package&#039;s <strong>Makefile</strong><sup><a href="#fn__1" id="fnt__1" class="fn_top">1)</a></sup>, you will notice it states the official download link for the sources to be compiled, a SHA256 hash to check the integrity of such download, a version number of the upstream project as package base and a release number to indicate OpenWrt changes.
+On some packages the version number states git commit, timestamp or another expression to identify the source code version to pull down and build.
+They generally favor archives with sources from official releases, but some upstream projects don&#039;t always have that.
+</p>
+
+<p>
+In <strong>patches</strong> directory of each package you will find any patches that will be applied to the source after downloading and before compiling it: (e.g. <a href="https://github.com/openwrt/openwrt/tree/master/package/utils/busybox/patches" class="urlextern" title="https://github.com/openwrt/openwrt/tree/master/package/utils/busybox/patches" rel="ugc nofollow">pathches dir of busybox</a>).
+There are also other directories for configuration files or uci integration.
+</p>
+
+<p>
+The kernel&#039;s Makefile is a bit more complex, but you can see that it still uses the same structure for pulling down the same kernel version depending on device every time. e.g. <a href="https://github.com/openwrt/openwrt/blob/master/package/kernel/linux/Makefile" class="urlextern" title="https://github.com/openwrt/openwrt/blob/master/package/kernel/linux/Makefile" rel="ugc nofollow">Linux Makefile</a>
+</p>
+
+<p>
+All packages are compiled by OpenWrt&#039;s own toolchain, which is also handled like packages (see /toolchain and /tools in the source), so you will always have the same compilers/tools as everyone else as they are downloaded from the same sources at the same version.
+</p>
+
+<p>
+When you run <code>make</code> the OpenWrt build system will use your system&#039;s existing building infrastructure to compile the OpenWrt&#039;s toolchain first, and then use that to compile the packages. This also has the major benefit of not requiring the user to set up a cross-compiling toolchain that is rather annoying and relatively complex.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;How Packages are Compiled&quot;,&quot;hid&quot;:&quot;how_packages_are_compiled&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;1689-3642&quot;} -->
+<h2 class="sectionedit3" id="package_feeds">Package Feeds</h2>
+<div class="level2">
+
+<p>
+Not all packages you can install in OpenWrt are from OpenWrt project proper, in fact most packages are not.
+</p>
+
+<p>
+The packages from OpenWrt&#039;s main repository are maintained directly by core developers, and they are the important, even essential components of OpenWrt firmware or parts of the build system. “<strong>package feeds</strong>” are source repositories that contain additional packages maintained by the community, and each package has its own maintainer.
+</p>
+
+<p>
+This is OpenWrt&#039;s main repo on github: <a href="https://github.com/openwrt/openwrt" class="urlextern" title="https://github.com/openwrt/openwrt" rel="ugc nofollow">https://github.com/openwrt/openwrt</a>
+</p>
+
+<p>
+These are official package feeds:
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="https://github.com/openwrt/luci" class="urlextern" title="https://github.com/openwrt/luci" rel="ugc nofollow">https://github.com/openwrt/luci</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/openwrt/telephony" class="urlextern" title="https://github.com/openwrt/telephony" rel="ugc nofollow">https://github.com/openwrt/telephony</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/openwrt-routing/packages" class="urlextern" title="https://github.com/openwrt-routing/packages" rel="ugc nofollow">https://github.com/openwrt-routing/packages</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/openwrt/packages" class="urlextern" title="https://github.com/openwrt/packages" rel="ugc nofollow">https://github.com/openwrt/packages</a></div>
+</li>
+</ul>
+
+<p>
+Being “official feeds”, the packages therein will be compiled and offered by the official download server, but they are not technically OpenWrt proper, they are community-maintained.
+The “package feed” system is designed to allow easy addition of your own custom feeds to your own custom firmware images, but of course you will have to compile them and host them on your own servers.
+</p>
+
+<p>
+If you look at the built packages <a href="https://downloads.openwrt.org/releases/21.02.1/packages/x86_64/" class="urlextern" title="https://downloads.openwrt.org/releases/21.02.1/packages/x86_64/" rel="ugc nofollow">here</a> on the download server (this is the same server opkg uses to download packages in a live OpenWrt system), they are divided by feed name, packages in “base” come from the main repository, and also from main repository are packages that are found in target-specific directories, for example <a href="https://downloads.openwrt.org/releases/24.10.1/packages/x86_64/packages/" class="urlextern" title="https://downloads.openwrt.org/releases/24.10.1/packages/x86_64/packages/" rel="ugc nofollow">here</a> what you see are mostly drivers like kmod-*.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Package Feeds&quot;,&quot;hid&quot;:&quot;package_feeds&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;3643-5322&quot;} -->
+<h2 class="sectionedit4" id="package_versions">Package Versions</h2>
+<div class="level2">
+
+<p>
+As stated above, package Makefiles have a PKG_VERSION tag that shows the upstream version which is the major version of the package, and a PKG_RELEASE tag that is used to show changes on the OpenWrt side, that is the minor version. If you see a package that lists version as 123-1, its major version is 123 and minor version is 1.
+</p>
+
+<p>
+Some packages have timestamp or git commit as major version, for example  2016-09-21-42ad5367-1 where the last “1” is the minor version.
+</p>
+
+<p>
+You can see all versions used in the first page of the <a href="/packages/table/start" class="wikilink1" title="packages:table:start" data-wiki-id="packages:table:start">table of packages</a>.
+</p>
+
+<p>
+Or by browsing a Package.manifest in the package download directory <a href="https://downloads.openwrt.org/releases/24.10.1/packages/mips_24kc/base/Packages.manifest" class="urlextern" title="https://downloads.openwrt.org/releases/24.10.1/packages/mips_24kc/base/Packages.manifest" rel="ugc nofollow">https://downloads.openwrt.org/releases/24.10.1/packages/mips_24kc/base/Packages.manifest</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Package Versions&quot;,&quot;hid&quot;:&quot;package_versions&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;5323-6083&quot;} -->
+<h2 class="sectionedit5" id="repeatable_builds">Repeatable Builds</h2>
+<div class="level2">
+
+<p>
+The aforementioned system allows repeatable builds. The major version of source archives are written in the packages&#039; Makefiles in the git repositories of main and community package feeds; you can see full history of changes to that file with <em>git</em>.
+</p>
+
+<p>
+There is a cache server that stores source archives because it&#039;s more convenient than having the build bots spamming the upstream download servers, and it is also a fallback should the upstream server disappear. It should keep the packages&#039; sources for a long while, as they are used by build bots for as long as the releases that depend on them are supported.
+</p>
+
+<p>
+This server index may be browsed here: <a href="https://sources.openwrt.org/" class="urlextern" title="https://sources.openwrt.org/" rel="ugc nofollow">https://sources.openwrt.org/</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Repeatable Builds&quot;,&quot;hid&quot;:&quot;repeatable_builds&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;6084-&quot;} --><div class="footnotes">
+<div class="fn"><sup><a href="#fnt__1" id="fn__1" class="fn_bot">1)</a></sup> 
+<div class="content">the file defines settings for building the package, <a href="https://github.com/openwrt/openwrt/blob/master/package/utils/busybox/Makefile" class="urlextern" title="https://github.com/openwrt/openwrt/blob/master/package/utils/busybox/Makefile" rel="ugc nofollow">e.g. busybox&#039;s</a></div></div>
+</div>

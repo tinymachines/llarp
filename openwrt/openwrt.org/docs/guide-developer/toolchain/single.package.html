@@ -1,0 +1,116 @@
+
+<h1 class="sectionedit1" id="building_a_single_package">Building a single package</h1>
+<div class="level1">
+
+<p>
+Useful if you want to upgrade a package without reflashing the router.
+</p>
+
+<p>
+Follow the <a href="/docs/guide-developer/toolchain/use-buildsystem" class="wikilink1" title="docs:guide-developer:toolchain:use-buildsystem" data-wiki-id="docs:guide-developer:toolchain:use-buildsystem">Build system usage</a> up to the point when you <code>make menuconfig</code>.
+In here, select the target platform, then tick the package you want to build, and also its dependencies.
+If the package isn&#039;t ticked, the below commands will succeed without actually building the package.
+If you don&#039;t know the dependencies, you can ask the router.
+Let&#039;s assume we want to build <code>nano</code>:
+</p>
+<pre class="code bash"><span class="co0"># opkg info nano</span>
+Package: <span class="kw2">nano</span>
+Version: 2.2.5-<span class="nu0">1</span>
+Depends: libncurses
+Provides:
+Status: <span class="kw2">install</span> user installed
+Architecture: ar71xx
+Installed-Time: <span class="nu0">1300757537</span></pre>
+
+<p>
+The <code>Depends:</code> line is what we&#039;re interested into.
+The same information can also be found in the <code>Packages</code> file from the <a href="/packages/start#package_lists_for_legacy_releases" class="wikilink1" title="packages:start" data-wiki-id="packages:start">package repository</a>.
+</p>
+
+<p>
+Now issue the following commands:
+</p>
+<pre class="code bash"><span class="kw2">make</span> tools<span class="sy0">/</span><span class="kw2">install</span>
+<span class="kw2">make</span> toolchain<span class="sy0">/</span><span class="kw2">install</span></pre>
+
+<p>
+The next step is building the dependencies.
+Back to our nano example:
+</p>
+<pre class="code bash"><span class="kw2">make</span> package<span class="sy0">/</span>ncurses<span class="sy0">/</span>compile</pre>
+
+<p>
+To build the host version of <code>ncurses</code> (that&#039;s used by <code>make menuconfig</code> below, for example):
+</p>
+<pre class="code bash"><span class="kw2">make</span> package<span class="sy0">/</span>ncurses<span class="sy0">/</span>host<span class="sy0">/</span>compile</pre>
+
+<p>
+And finally, you get to build the package:
+</p>
+<pre class="code bash"><span class="kw2">make</span> package<span class="sy0">/</span>nano<span class="sy0">/</span>compile
+<span class="kw2">make</span> package<span class="sy0">/</span>index</pre>
+
+<p>
+Done!
+You will find your coveted package in the <code>bin/</code> directory.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> If you get errors about not finding opkg in the staging directory, compile and install <code>package/base-files</code>.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> If you get errors that the package is not found, make sure you&#039;re typing the package directory name, not the package name listed in the Makefile (which may be different when a single Makefile builds multiple packages).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Building a single package&quot;,&quot;hid&quot;:&quot;building_a_single_package&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1815&quot;} -->
+<h2 class="sectionedit2" id="package_maintenance_on_self-compiled_kernel_from_latest_snapshot">Package maintenance on self-compiled kernel from latest snapshot</h2>
+<div class="level2">
+
+<p>
+The problem we face when using the Latest snapshot, is that opkg quickly becomes incompatible with the snapshot as it moves forward in time.
+The idea is to use the feeds script with <code>-a</code> flag to prep all possible packages.
+Then when you want to install packages down the road, you go into <code>make menuconfig</code>, set the packages you want as modules <code>&lt;M&gt;</code>.
+Then do make package/compile to compile them as IPK files to the bin directory.
+Then you can scp them to the router <code>/tmp</code> for instance, and opkg install them.
+Sometimes opkg complains about MD5 mismatch with remote, or kernel version mismatch.
+Use opkg override flags if you must, E.G. <code>--force-depends</code> and/or <code>--force-checksum</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Package maintenance on self-compiled kernel from latest snapshot&quot;,&quot;hid&quot;:&quot;package_maintenance_on_self-compiled_kernel_from_latest_snapshot&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:2,&quot;range&quot;:&quot;1816-2597&quot;} -->
+<h2 class="sectionedit3" id="kernel_modules">Kernel modules</h2>
+<div class="level2">
+
+<p>
+One way or another, you&#039;ll need the <a href="/docs/guide-developer/toolchain/using_the_sdk" class="wikilink1" title="docs:guide-developer:toolchain:using_the_sdk" data-wiki-id="docs:guide-developer:toolchain:using_the_sdk">toolchain</a> first.
+<code>make package/[kernel-module]</code> will not <em>build</em> modules, only package them.
+If they weren&#039;t built previously then you&#039;ll only get empty module packages.
+Instead:
+</p>
+<pre class="code bash"><span class="kw2">make</span> menuconfig</pre>
+
+<p>
+In the menuconfig, select your module such that an <code>&lt;M&gt;</code> appears, save and exit.
+</p>
+<pre class="code bash"><span class="kw2">make</span> target<span class="sy0">/</span>linux<span class="sy0">/</span>compile
+<span class="kw2">make</span> package<span class="sy0">/</span>kernel<span class="sy0">/</span>linux<span class="sy0">/</span>compile</pre>
+
+<p>
+The resulting ipk will be in the <code>bin/targets/[target]/[subtarget]/packages</code> directory.
+You can <code>scp</code> it to the router and use <code>opkg install</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Kernel modules&quot;,&quot;hid&quot;:&quot;kernel_modules&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:3,&quot;range&quot;:&quot;2598-3246&quot;} -->
+<h2 class="sectionedit4" id="if_the_above_does_not_work">If the above does not work</h2>
+<div class="level2">
+
+<p>
+You can always just rebuild everything.
+</p>
+<pre class="code bash"><span class="kw2">make</span> defconfig download clean world</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;If the above does not work&quot;,&quot;hid&quot;:&quot;if_the_above_does_not_work&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:4,&quot;range&quot;:&quot;3247-&quot;} -->

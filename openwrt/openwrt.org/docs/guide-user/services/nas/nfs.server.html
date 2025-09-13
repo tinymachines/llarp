@@ -1,0 +1,217 @@
+
+<h1 class="sectionedit1" id="network_file_system_nfs">Network File System (NFS)</h1>
+<div class="level1">
+
+<p>
+The <a href="https://en.wikipedia.org/wiki/Network File System" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Network File System">Network File System</a> is the protocol of choice to share files over an internal Local Area Network. Depending on your needs, you may also want to use <a href="/docs/guide-user/services/nas/samba" class="wikilink1" title="docs:guide-user:services:nas:samba" data-wiki-id="docs:guide-user:services:nas:samba">Samba</a> or the <a href="/docs/guide-user/services/ssh/sshfs.server" class="wikilink1" title="docs:guide-user:services:ssh:sshfs.server" data-wiki-id="docs:guide-user:services:ssh:sshfs.server">SSH Filesystem</a> additionally or instead.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Network File System (NFS)&quot;,&quot;hid&quot;:&quot;network_file_system_nfs&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-338&quot;} -->
+<h2 class="sectionedit2" id="preparations">Preparations</h2>
+<div class="level2">
+
+<p>
+Normally an OpenWrt host acting as an NFS server will have external storage attached (e.g. USB).  Assuming clients access the NFS server from the <abbr title="Local Area Network">LAN</abbr> zone, OpenWrt&#039;s default configuration should not need any changes to the firewall to allow client access.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Preparations&quot;,&quot;hid&quot;:&quot;preparations&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;339-619&quot;} -->
+<h3 class="sectionedit3" id="prerequisites">Prerequisites</h3>
+<div class="level3">
+<ol>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/storage/usb-installing" class="wikilink1" title="docs:guide-user:storage:usb-installing" data-wiki-id="docs:guide-user:storage:usb-installing">usb-installing</a>  obtain basic support for USB.</div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/storage/usb-drives" class="wikilink1" title="docs:guide-user:storage:usb-drives" data-wiki-id="docs:guide-user:storage:usb-drives">usb-drives</a>  obtain support for USB storage and mount local filesystem</div>
+</li>
+<li class="level1"><div class="li"> In case you have a restrictive firewall policy applied, allow incoming flows to port 111 <abbr title="Transmission Control Protocol">TCP</abbr> and <abbr title="User Datagram Protocol">UDP</abbr>, and 32777-32780 <abbr title="Transmission Control Protocol">TCP</abbr> and <abbr title="User Datagram Protocol">UDP</abbr> from your <abbr title="Local Area Network">LAN</abbr> zone. This should already be allowed with the default OpenWrt configuration/policy. If needed, an appropriate set of firewall rules allowing all NFS traffic and protocol versions in the <abbr title="Local Area Network">LAN</abbr> zone looks like the following:</div>
+</li>
+</ol>
+<pre class="code bash">uci add firewall rule
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>rule<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.name=<span class="st_h">'Allow-NFS-RPC'</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>rule<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.src=<span class="st_h">'lan'</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>rule<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.proto=<span class="st_h">'tcp udp'</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>rule<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.dest_port=<span class="st_h">'111'</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>rule<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.target=<span class="st_h">'ACCEPT'</span>
+&nbsp;
+uci add firewall rule
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>rule<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.name=<span class="st_h">'Allow-NFS'</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>rule<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.src=<span class="st_h">'lan'</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>rule<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.proto=<span class="st_h">'tcp udp'</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>rule<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.dest_port=<span class="st_h">'2049'</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>rule<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.target=<span class="st_h">'ACCEPT'</span>
+&nbsp;
+uci add firewall rule
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>rule<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.name=<span class="st_h">'Allow-NFS-Lock'</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>rule<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.src=<span class="st_h">'lan'</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>rule<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.proto=<span class="st_h">'tcp udp'</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>rule<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.dest_port=<span class="st_h">'32777:32780'</span>
+uci <span class="kw1">set</span> firewall.<span class="sy0">@</span>rule<span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.target=<span class="st_h">'ACCEPT'</span>
+&nbsp;
+uci commit firewall
+service firewall restart</pre>
+
+<p>
+The <em>rpcbind</em> service uses port 111 on both <abbr title="Transmission Control Protocol">TCP</abbr> and <abbr title="User Datagram Protocol">UDP</abbr>, while <em>nfsd</em> uses ports between 32777 and 32780 on both <abbr title="Transmission Control Protocol">TCP</abbr> and <abbr title="User Datagram Protocol">UDP</abbr>. NFSv4 uses port 2049 on <abbr title="Transmission Control Protocol">TCP</abbr> only.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Prerequisites&quot;,&quot;hid&quot;:&quot;prerequisites&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;620-2139&quot;} -->
+<h3 class="sectionedit4" id="nfs_service_setup">NFS Service Setup</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="server_openwrt">Server (OpenWrt)</h4>
+<div class="level4">
+
+<p>
+To be able to export a filesystem via NFS (v2, v3 and v4 protocol versions are all supported), make sure to install both the <code>nfs-kernel-server</code> and <code>nfs-kernel-server-utils</code> packages, along with all their dependencies. This will cause the <code>nfsd</code> and <code>rpcbind</code> services to be installed and started, both of which are required to provide NFS services.
+</p>
+
+<p>
+Shares are defined in <code>/etc/exports</code> in the usual manner. To verify your server is basically working for NFSv4, you can create a loopback setup, using an empty directory on <strong>tmpfs</strong>:
+</p>
+
+<p>
+<strong>NOTE:</strong> This <strong>destroys</strong> the contents of your existing <code>/etc/exports</code> file!
+</p>
+<pre class="code bash"><span class="co0"># Create a directory and set up exports(5) to share it with the world in read/write mode</span>
+<span class="kw2">mkdir</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>nfsdemo<span class="sy0">/</span>
+<span class="kw2">chmod</span> <span class="nu0">1777</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>nfsdemo<span class="sy0">/</span>
+<span class="kw3">echo</span> <span class="st_h">'/tmp/nfsdemo/ *(rw,all_squash,insecure,no_subtree_check,fsid=0)'</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>exports
+exportfs <span class="re5">-ra</span>
+&nbsp;
+<span class="co0"># Verify exporting worked</span>
+showmount <span class="re5">-e</span> localhost
+&nbsp;
+<span class="co0"># Mount the exported directory in another directory on the same host via NFSv4</span>
+<span class="kw2">mkdir</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>nfsclienttest<span class="sy0">/</span>
+<span class="kw2">mount</span> <span class="re5">-t</span> nfs <span class="re5">-o</span> <span class="re2">vers</span>=<span class="nu0">4</span> localhost:<span class="sy0">/</span> <span class="sy0">/</span>tmp<span class="sy0">/</span>nfsclienttest<span class="sy0">/</span></pre>
+
+<p>
+At this point, you should be able to play around with various filesystem-affecting commands (<code>touch</code>, <code>cp</code>, et al.) in both <code>/tmp/nfstest</code> (the server view) and <code>/tmp/nfsclienttest</code> (the client view) to observe how state in one reflects in the other, and how the consequences of UID squashing over NFS play out.
+</p>
+
+</div>
+
+<h4 id="client_your_pcs">Client (your PCs)</h4>
+<div class="level4">
+
+<p>
+Most GNU/Linux distributions come with pre-installed support for NFS - if yours does not, please refer to your distribution-specific documentation on how to install it via its package management. Most other UNIX variants like FreeBSD or macOS also come with NFS support out of the box.
+</p>
+
+<p>
+Microsoft Windows features an optionally installable NFS client that supports NFSv2 and NFSv3. For more information, please take a look at the <a href="https://docs.microsoft.com/en-us/windows-server/storage/nfs/nfs-overview" class="urlextern" title="https://docs.microsoft.com/en-us/windows-server/storage/nfs/nfs-overview" rel="ugc nofollow">official documentation</a> provided by Microsoft.
+</p>
+
+<p>
+You can also use the Java-based <a href="http://j-ftp.sourceforge.net" class="urlextern" title="http://j-ftp.sourceforge.net" rel="ugc nofollow">JFtp</a> as an alternative client that does not require any <abbr title="Operating System">OS</abbr>-level support for NFS.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;NFS Service Setup&quot;,&quot;hid&quot;:&quot;nfs_service_setup&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:4,&quot;range&quot;:&quot;2140-4336&quot;} -->
+<h2 class="sectionedit5" id="configuration">Configuration</h2>
+<div class="level2">
+
+<p>
+We have a typical client &lt;&lt;&gt;&gt; server configuration.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configuration&quot;,&quot;hid&quot;:&quot;configuration&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:5,&quot;range&quot;:&quot;4337-4415&quot;} -->
+<h3 class="sectionedit6" id="server_configuration">Server configuration</h3>
+<div class="level3">
+
+<p>
+Use the file <code>/etc/exports</code> to configure your shares. NFSv4 export paths don&#039;t work the way they did in NFSv3. NFSv4 has a global root directory (configured as <code>fsid=0</code>) and all exported directories are children to it. So what would have been <code>nfs-server:/export/users</code> on NFSv3 is <code>nfs-server:/users</code> on NFSv4, because <code>/export</code> is the root directory. 
+Example:
+</p>
+<pre class="code">/mnt        *(fsid=0,ro,sync,no_subtree_check)
+/mnt/sda1   192.168.1.0/24(rw,sync,no_subtree_check)
+/mnt/sda2   192.168.2.0/255.255.255.0(rw,sync,no_subtree_check)</pre>
+
+<p>
+See <a href="https://linux.die.net/man/5/exports" class="urlextern" title="https://linux.die.net/man/5/exports" rel="ugc nofollow">exports(5)</a> for configuration semantics.  A single asterisk matches all <abbr title="Internet Protocol">IP</abbr> addresses/hosts (allowing anonymous access).
+</p>
+
+<p>
+If you set up pivot-root or pivot-overlay, use the path on /overlay/ partition, else you cannot export mounted fs.
+</p>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:7,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_todo plugin_wrap">
+<p>
+NOTE that on OpenWrt 21.02+, it&#039;s required to explicitly specify a unique <code>fsid</code> (integer between 1–255) for <em>all</em> shares, not just the NFS root directory. See <a href="https://github.com/openwrt/packages/issues/17234" class="urlextern" title="https://github.com/openwrt/packages/issues/17234" rel="ugc nofollow">issue #17234</a> for further details.
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:8,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+Assuming the daemons are already running, use the command <code>exportfs -ar</code> to reload and apply changes on the fly.
+</p>
+
+</div>
+
+<h4 id="troubleshooting">Troubleshooting</h4>
+<div class="level4">
+
+<p>
+If you have trouble getting the NFS server on your OpenWrt host to work, use the <code>netstat -nlpu | grep rpcbind</code> command to see whether <em>rpcbind</em> is actually listening on port 111 for both tcp and udp. Check if the process table contains <code>[nfsd]</code> kernel threads and instances of <code>rpcbind</code>, <code>rpc.statd</code>, and <code>rpc.mountd</code>.
+</p>
+
+<p>
+With the <code>rpcbind</code> service running on your OpenWrt device, you can use <code>rpcinfo -p 192.168.1.254</code> (substituting its actual <abbr title="Internet Protocol">IP</abbr> address) on clients to see open/mapped ports.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Server configuration&quot;,&quot;hid&quot;:&quot;server_configuration&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:6,&quot;range&quot;:&quot;4416-6196&quot;} -->
+<h3 class="sectionedit9" id="client_configuration">Client configuration</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="linux-client">Linux-Client</h4>
+<div class="level4">
+
+<p>
+Mount manually:
+</p>
+<pre class="code bash"><span class="kw2">sudo</span> <span class="kw2">mount</span> 192.168.1.254:<span class="sy0">/</span>sda1 <span class="sy0">/</span>home<span class="sy0">/</span>sandra<span class="sy0">/</span>nfs_share</pre>
+
+<p>
+Or mount permanently with entries in the <code>/etc/fstab</code> on each client PC:
+</p>
+<pre class="code">192.168.1.254:/sda1 /media/openwrt       nfs  ro,async,auto,_netdev  0  0
+192.168.1.254:/sda2 /media/remote_stuff  nfs  rw,async,auto,_netdev  0  0</pre>
+
+<p>
+Check the manual for <a href="http://linux.die.net/man/8/mount" class="urlextern" title="http://linux.die.net/man/8/mount" rel="ugc nofollow">mount</a> and take a particular look at the options. Choose wisely.
+</p>
+
+<p>
+On distributions using systemd, <a href="https://www.freedesktop.org/software/systemd/man/systemd.mount.html" class="urlextern" title="https://www.freedesktop.org/software/systemd/man/systemd.mount.html" rel="ugc nofollow">systemd mount units</a> are an optional and potentially more robust alternative to fstab entries.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Client configuration&quot;,&quot;hid&quot;:&quot;client_configuration&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:9,&quot;range&quot;:&quot;6197-6888&quot;} -->
+<h2 class="sectionedit10" id="problems">Problems</h2>
+<div class="level2">
+
+<p>
+If the loopback device support is missing, an error like “<em>Cannot register service: RPC: Timed out</em>” may appear.
+Installing the kmod-loop package should solve this issue.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Problems&quot;,&quot;hid&quot;:&quot;problems&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:10,&quot;range&quot;:&quot;6889-7084&quot;} -->
+<h3 class="sectionedit11" id="throughput_issues">Throughput Issues</h3>
+<div class="level3">
+
+<p>
+Since <a href="/docs/guide-user/firewall/netfilter-iptables/netfilter" class="wikilink2" title="docs:guide-user:firewall:netfilter-iptables:netfilter" rel="nofollow" data-wiki-id="docs:guide-user:firewall:netfilter-iptables:netfilter">netfilter</a> will track every connection, if you use MASQUERADING for example, you could disable con-tracking for data connections:
+</p>
+<pre class="code sh">$IPT -t raw -A PREROUTING -i $IF_LAN -s $NET_LAN -p tcp --dport 32777:32780 -j CT --notrack #---------- don't track nfs
+$IPT -t raw -A PREROUTING -i $IF_LAN -s $NET_LAN -p udp --dport 32777:32780 -j CT --notrack #---------- don't track nfs
+$IPT -t raw -A OUTPUT -o $IF_LAN -d $NET_LAN -p tcp --sport 32777:32780 -j CT --notrack #---------- don't track nfs
+$IPT -t raw -A OUTPUT -o $IF_LAN -d $NET_LAN -p udp --sport 32777:32780 -j CT --notrack #---------- don't track nfs</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Throughput Issues&quot;,&quot;hid&quot;:&quot;throughput_issues&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:11,&quot;range&quot;:&quot;7085-&quot;} -->

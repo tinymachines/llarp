@@ -1,0 +1,746 @@
+
+<h1 class="sectionedit1" id="extroot_configuration">Extroot configuration</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_start&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="plugin_include_content plugin_include__meta:infobox:howto_links">
+<div class="level1">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_info plugin_wrap">
+<p>
+This article relies on the following:
+</p>
+<ul>
+<li class="level1"><div class="li"> Accessing <a href="/docs/guide-quick-start/walkthrough_login" class="wikilink1" title="docs:guide-quick-start:walkthrough_login" data-wiki-id="docs:guide-quick-start:walkthrough_login">web interface</a> / <a href="/docs/guide-quick-start/sshadministration" class="wikilink1" title="docs:guide-quick-start:sshadministration" data-wiki-id="docs:guide-quick-start:sshadministration">command-line interface</a></div>
+</li>
+<li class="level1"><div class="li"> Managing <a href="/docs/guide-user/base-system/uci" class="wikilink1" title="docs:guide-user:base-system:uci" data-wiki-id="docs:guide-user:base-system:uci">configs</a> / <a href="/docs/guide-user/additional-software/managing_packages" class="wikilink1" title="docs:guide-user:additional-software:managing_packages" data-wiki-id="docs:guide-user:additional-software:managing_packages">packages</a> / <a href="/docs/guide-user/base-system/managing_services" class="wikilink1" title="docs:guide-user:base-system:managing_services" data-wiki-id="docs:guide-user:base-system:managing_services">services</a> / <a href="/docs/guide-user/base-system/log.essentials" class="wikilink1" title="docs:guide-user:base-system:log.essentials" data-wiki-id="docs:guide-user:base-system:log.essentials">logs</a></div>
+</li>
+</ul>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_include_end&quot;,&quot;name&quot;:&quot;meta:infobox:howto_links&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --></div>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Extroot configuration&quot;,&quot;hid&quot;:&quot;extroot_configuration&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-118&quot;} -->
+<h2 class="sectionedit6" id="introduction">Introduction</h2>
+<div class="level2">
+
+<p>
+This guide describes how to configure OpenWrt to use a storage device (USB or SATA or SD card or whatever) to expand your root filesystem, to install freely all the packages you need.
+</p>
+
+<p>
+In most supported devices OpenWrt splits the internal storage into <code>rootfs</code> and <code>rootfs_data</code> or <code>ubifs</code> partitions which are merged together into a single writable <code><a href="https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/tree/Documentation/filesystems/overlayfs.rst" class="urlextern" title="https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/tree/Documentation/filesystems/overlayfs.rst" rel="ugc nofollow">overlay</a></code> filesystem.
+</p>
+<div class="table sectionedit7"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0"> Partition </th><th class="col1"> Mount point </th><th class="col2"> Compression </th><th class="col3"> Writable </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0"> <code>rootfs</code> </td><td class="col1"> <code>/rom</code> </td><td class="col2"> Yes </td><td class="col3"> No </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> <code>rootfs_data</code><br/>
+<code>ubifs</code> </td><td class="col1"> <code>/overlay</code><br/>
+<code>/rom/overlay</code> </td><td class="col2"> No </td><td class="col3"> Yes </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0"> <code>overlay</code> </td><td class="col1"> <code>/</code> </td><td class="col2"> Unmodified files </td><td class="col3"> Yes </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:7,&quot;range&quot;:&quot;638-853&quot;} -->
+<p>
+This way OpenWrt fits even in tiny amounts of internal storage (as low as 4 MiB), but still allows to write settings and install some packages in the writable partition without changing all Linux programs used.
+Extroot works by setting another overlay partition in the external storage device, and during boot this new overlay partition will be mounted over the internal storage&#039;s overlay partition.
+This approach also allows easy fallback in case the external storage device is removed, as your device will still have its own overlay partition and thus will load all configuration from there.
+Which means that it will behave exactly the same as just before you set up extroot.
+</p>
+
+<p>
+Note that OpenWrt is known to <a href="https://bugs.openwrt.org/index.php?do=details&amp;task_id=2231" class="interwiki iw_flyspray" title="https://bugs.openwrt.org/index.php?do=details&amp;task_id=2231">ignore</a> the fstab configuration on devices without overlay partition in <code>/proc/mtd</code>.
+You can work around the issue by using <code>/</code> for the mount point on ROMs without overlay partition at all.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Introduction&quot;,&quot;hid&quot;:&quot;introduction&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;119-1775&quot;} -->
+<h2 class="sectionedit8" id="instructions">Instructions</h2>
+<div class="level2">
+
+<p>
+The following instructions assume that you already have access to a shell on your OpenWRT device.
+Most if not all of these commands can be done via the web interface, however that is emphatically not recommended.
+Usually the shell is accessed via <a href="/docs/guide-quick-start/sshadministration" class="wikilink1" title="docs:guide-quick-start:sshadministration" data-wiki-id="docs:guide-quick-start:sshadministration">ssh</a> or <a href="/docs/techref/hardware/port.serial" class="wikilink1" title="docs:techref:hardware:port.serial" data-wiki-id="docs:techref:hardware:port.serial">serial console</a>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Instructions&quot;,&quot;hid&quot;:&quot;instructions&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:8,&quot;range&quot;:&quot;1776-2156&quot;} -->
+<h3 class="sectionedit9" id="preparation">1. Preparation</h3>
+<div class="level3">
+
+<p>
+Devices with 8 MiB flash or more should have enough space to install the required packages, otherwise create a <a href="/docs/guide-user/additional-software/extroot_configuration#custom_image" class="wikilink1" title="docs:guide-user:additional-software:extroot_configuration" data-wiki-id="docs:guide-user:additional-software:extroot_configuration">custom image</a>.
+Remove all packages you have installed to add secondary functionality, as they are only wasting space now.
+(If you do not have a record of what these are, try removing &#039;ntfs&#039; as that may free up enough space.)
+Leave only those needed to access the internet and needed to access the extroot filesystem.
+After you make the extroot you will have all the space you need to install secondary packages.
+</p>
+
+<p>
+You may not need to make a custom image: try the OEM image first (OpenWRT GL.inet for a GL.inet mango).
+</p>
+
+<p>
+The extroot can be anything that <code>block</code> can mount.
+Currently <code>block</code> creates some restrictions on what extroot can be.
+It must a <a href="https://git.openwrt.org/?p=project/fstools.git;a=blob;f=block.c;hb=HEAD#l1554" class="interwiki iw_commit" title="https://git.openwrt.org/?p=project/fstools.git;a=blob;f=block.c;hb=HEAD#l1554">filesystem of type</a>: ext2/3/4, f2fs, btrfs, ntfs, or ubifs (note that it can not be a FAT16/32 filesystem).
+For most, this filesystem will be a on USB storage device.
+However, it could also be on an SD-Card or a SATA drive connected via e-sata or even a network block device (assuming its set up early enough).
+If you&#039;re using a USB connected device follow the <a href="/docs/guide-user/storage/usb-installing" class="wikilink1" title="docs:guide-user:storage:usb-installing" data-wiki-id="docs:guide-user:storage:usb-installing"> USB installation guide</a> to set up USB storage in OpenWrt.
+</p>
+
+<p>
+The following assumes that you will be creating your extroot as an EXT4 filesystem on your OpenWRT device with a connected USB flash drive.
+The process is similar for other kinds of devices.
+</p>
+
+<p>
+Installing these packages requires a sensible amount of extra filespace. If you completely fill the filesystem by installing these, 
+you will probably have to re-flash the entire system. So if you think you may already be close to filling the filesystem,
+remove some installed packages first. Good candidates for removal are ntfs3 and ntfs3-utils: you can re-install them later after
+you have extroot installed.
+</p>
+
+<p>
+Install the required packages.
+</p>
+<pre class="code bash">opkg update
+opkg <span class="kw2">install</span> block-mount kmod-fs-ext4 e2fsprogs parted kmod-usb-storage</pre>
+
+<p>
+If you are using an ssd in a usb enclosure, you will probably need to add the kmod-usb-storage-uas package as well.
+</p>
+
+<p>
+Identify the name of the USB disk.
+</p>
+<pre class="code bash"><span class="kw2">ls</span> <span class="re5">-l</span> <span class="sy0">/</span>sys<span class="sy0">/</span>block</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;1. Preparation&quot;,&quot;hid&quot;:&quot;preparation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:9,&quot;range&quot;:&quot;2157-4478&quot;} -->
+<h3 class="sectionedit10" id="partitioning_and_formatting">2. Partitioning and formatting</h3>
+<div class="level3">
+
+<p>
+Partition and format the USB disk.
+</p>
+<pre class="code bash"><span class="re2">DISK</span>=<span class="st0">&quot;/dev/sda&quot;</span>
+parted <span class="re5">-s</span> <span class="co1">${DISK}</span> <span class="re5">--</span> mklabel gpt mkpart extroot 2048s <span class="re5">-2048s</span>
+<span class="re2">DEVICE</span>=<span class="st0">&quot;<span class="es3">${DISK}</span>1&quot;</span>
+mkfs.ext4 <span class="re5">-L</span> extroot <span class="co1">${DEVICE}</span></pre>
+
+<p>
+This will wipe all data on the disk, so do not run these commands blindly.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;2. Partitioning and formatting&quot;,&quot;hid&quot;:&quot;partitioning_and_formatting&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:10,&quot;range&quot;:&quot;4479-4778&quot;} -->
+<h3 class="sectionedit11" id="configuring_extroot">3. Configuring extroot</h3>
+<div class="level3">
+
+<p>
+Configure the extroot mount entry.
+</p>
+<pre class="code bash"><span class="kw3">eval</span> $<span class="br0">&#40;</span>block info <span class="co1">${DEVICE}</span> <span class="sy0">|</span> <span class="kw2">grep</span> <span class="re5">-o</span> <span class="re5">-e</span> <span class="st_h">'UUID=&quot;\S*&quot;'</span><span class="br0">&#41;</span>
+<span class="kw3">eval</span> $<span class="br0">&#40;</span>block info <span class="sy0">|</span> <span class="kw2">grep</span> <span class="re5">-o</span> <span class="re5">-e</span> <span class="st_h">'MOUNT=&quot;\S*/overlay&quot;'</span><span class="br0">&#41;</span>
+uci <span class="re5">-q</span> delete fstab.extroot
+uci <span class="kw1">set</span> fstab.extroot=<span class="st0">&quot;mount&quot;</span>
+uci <span class="kw1">set</span> fstab.extroot.uuid=<span class="st0">&quot;<span class="es3">${UUID}</span>&quot;</span>
+uci <span class="kw1">set</span> fstab.extroot.target=<span class="st0">&quot;<span class="es3">${MOUNT}</span>&quot;</span>
+uci commit fstab</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;3. Configuring extroot&quot;,&quot;hid&quot;:&quot;configuring_extroot&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:11,&quot;range&quot;:&quot;4779-5129&quot;} -->
+<h3 class="sectionedit12" id="configuring_rootfs_dataubifs">4. Configuring rootfs_data / ubifs</h3>
+<div class="level3">
+
+<p>
+Configure a mount entry for the the original overlay.
+</p>
+<pre class="code bash"><span class="re2">ORIG</span>=<span class="st0">&quot;<span class="es4">$(block info | sed -n -e '/MOUNT=&quot;\S*\/overlay&quot;/s/:\s.*$//p')</span>&quot;</span>
+uci <span class="re5">-q</span> delete fstab.rwm
+uci <span class="kw1">set</span> fstab.rwm=<span class="st0">&quot;mount&quot;</span>
+uci <span class="kw1">set</span> fstab.rwm.device=<span class="st0">&quot;<span class="es3">${ORIG}</span>&quot;</span>
+uci <span class="kw1">set</span> fstab.rwm.target=<span class="st0">&quot;/rwm&quot;</span>
+uci commit fstab</pre>
+
+<p>
+This will allow you to access the <code>rootfs_data</code> / <code>ubifs</code> partition and customize the extroot configuration <code>/rwm/upper/etc/config/fstab</code>.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;4. Configuring rootfs_data \/ ubifs&quot;,&quot;hid&quot;:&quot;configuring_rootfs_dataubifs&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:12,&quot;range&quot;:&quot;5130-5599&quot;} -->
+<h3 class="sectionedit13" id="transferring_data">5. Transferring data</h3>
+<div class="level3">
+
+<p>
+Transfer the content of the current overlay to the external drive.
+</p>
+<pre class="code bash"><span class="kw2">mount</span> <span class="co1">${DEVICE}</span> <span class="sy0">/</span>mnt
+<span class="kw2">tar</span> <span class="re5">-C</span> <span class="co1">${MOUNT}</span> <span class="re5">-cvf</span> - . <span class="sy0">|</span> <span class="kw2">tar</span> <span class="re5">-C</span> <span class="sy0">/</span>mnt <span class="re5">-xf</span> -</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;5. Transferring data&quot;,&quot;hid&quot;:&quot;transferring_data&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:13,&quot;range&quot;:&quot;5600-5785&quot;} -->
+<h3 class="sectionedit14" id="apply_changes">6. Apply changes</h3>
+<div class="level3">
+
+<p>
+Reboot the device to apply the changes.
+</p>
+<pre class="code bash">reboot</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;6. Apply changes&quot;,&quot;hid&quot;:&quot;apply_changes&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:14,&quot;range&quot;:&quot;5786-5881&quot;} -->
+<h2 class="sectionedit15" id="testing">Testing</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Testing&quot;,&quot;hid&quot;:&quot;testing&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:15,&quot;range&quot;:&quot;5882-5901&quot;} -->
+<h3 class="sectionedit16" id="web_interface_instructions">Web interface instructions</h3>
+<div class="level3">
+<ol>
+<li class="level1"><div class="li"> <strong>LuCI → System → Mount Points</strong> should show USB partition mounted as <code>overlay</code>.</div>
+</li>
+<li class="level1"><div class="li"> <strong>LuCI → System → Software</strong> should show free space of overlay partition.</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Web interface instructions&quot;,&quot;hid&quot;:&quot;web_interface_instructions&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:16,&quot;range&quot;:&quot;5902-6108&quot;} -->
+<h3 class="sectionedit17" id="command-line_instructions">Command-line instructions</h3>
+<div class="level3">
+
+<p>
+The USB partition should be mounted to <code>/overlay</code>.
+Free space for <code>/</code> should be the same as <code>/overlay</code>.
+</p>
+<pre class="code bash"><span class="co0"># grep -e /overlay /etc/mtab</span>
+<span class="sy0">/</span>dev<span class="sy0">/</span>sda1 <span class="sy0">/</span>overlay ext4 rw,relatime,<span class="re2">data</span>=ordered
+overlayfs:<span class="sy0">/</span>overlay <span class="sy0">/</span> overlay rw,noatime,<span class="re2">lowerdir</span>=<span class="sy0">/</span>,<span class="re2">upperdir</span>=<span class="sy0">/</span>overlay<span class="sy0">/</span>upper,<span class="re2">workdir</span>=<span class="sy0">/</span>overlay<span class="sy0">/</span>work
+&nbsp;
+<span class="co0"># df /overlay /</span>
+Filesystem           1K-blocks      Used Available Use<span class="sy0">%</span> Mounted on
+<span class="sy0">/</span>dev<span class="sy0">/</span>sda1              <span class="nu0">7759872</span>    <span class="nu0">477328</span>   <span class="nu0">7221104</span>   <span class="nu0">6</span><span class="sy0">%</span> <span class="sy0">/</span>overlay
+overlayfs:<span class="sy0">/</span>overlay     <span class="nu0">7759872</span>    <span class="nu0">477328</span>   <span class="nu0">7221104</span>   <span class="nu0">6</span><span class="sy0">%</span> <span class="sy0">/</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Command-line instructions&quot;,&quot;hid&quot;:&quot;command-line_instructions&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:17,&quot;range&quot;:&quot;6109-6658&quot;} -->
+<h2 class="sectionedit18" id="troubleshooting">Troubleshooting</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> Analyze the <code>preinit</code> stage of the boot log:</div>
+</li>
+</ul>
+<pre class="code bash">block info; uci show fstab; logread <span class="sy0">|</span> <span class="kw2">sed</span> <span class="re5">-n</span> <span class="re5">-e</span> <span class="st0">&quot;/- preinit -/,/- init -/p&quot;</span></pre>
+<ul>
+<li class="level1"><div class="li"> If you receive a “block: extroot: UUID mismatch” error in your logs after upgrading, remove <code>.extroot-uuid</code> from the volume:</div>
+</li>
+</ul>
+<pre class="code bash"><span class="kw2">mount</span> <span class="sy0">/</span>dev<span class="sy0">/</span>sda1 <span class="sy0">/</span>mnt
+<span class="kw2">rm</span> <span class="re5">-f</span> <span class="sy0">/</span>mnt<span class="sy0">/</span>.extroot-uuid <span class="sy0">/</span>mnt<span class="sy0">/</span>etc<span class="sy0">/</span>.extroot-uuid
+<span class="kw2">umount</span> <span class="sy0">/</span>mnt</pre>
+<ul>
+<li class="level1"><div class="li"> Do not use vfat (FAT/FAT32); it does not work. If you have a FAT preformatted USB drive, you cannot use it for extroot without reformatting. Use e.g. ext4 (install e2fsprogs, then format your FAT formatted USB drive using <code>mkfs.ext4 /dev/sda1</code> as per the example).</div>
+</li>
+<li class="level1"><div class="li"> If the partition containing your extroot isn&#039;t mounted during boot, but you can mount it without problems from a shell, you should try to increase <code>config global / option delay_root</code>. On my system I had to set it to 15 seconds to get extroot working. Another hint to this being the culprit is having a working swap or other partitions mounted after booting, but not your extroot.</div>
+</li>
+</ul>
+<pre class="code bash">uci <span class="kw1">set</span> fstab.<span class="sy0">@</span>global<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>.delay_root=<span class="st0">&quot;15&quot;</span>
+uci commit fstab</pre>
+<ul>
+<li class="level1"><div class="li"> <img src="/lib/images/smileys/fixme.svg" class="icon smiley" alt="FIXME" />: <strong>might be outdated</strong> Add option <code>force_space</code> in <code>/etc/opkg.conf</code> to allow installation of packets bigger than your <code>/rom</code> partitions free space:</div>
+</li>
+</ul>
+<pre class="code bash"><span class="kw3">echo</span> option force_space <span class="sy0">&gt;&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>opkg.conf</pre>
+<ul>
+<li class="level1"><div class="li"> Another possibility to consider and try is to modify <code>/etc/rc.local</code> as described in <a href="https://dev.openwrt.org/ticket/14946" class="urlextern" title="https://dev.openwrt.org/ticket/14946" rel="ugc nofollow">14946</a> ticket, which in the case of running Chaos Calmer r44266 in the Comtrend AR-5387un, has been the only thing that allowed me to achieve extroot:</div>
+</li>
+</ul>
+<pre class="code bash"><span class="kw3">export</span> <span class="re2">PREINIT</span>=<span class="nu0">1</span>
+mount_root</pre>
+<ul>
+<li class="level1"><div class="li"> If you are putting the extroot on a non-USB device such as a mmc card all modules needed acccess the device should be in appropriate file in <code>/etc/modules-boot.d</code>. For example using a sdhci card on a mt7688/mt7628 device <code>/etc/modules-boot.d/mmc</code> needs have two lines added:</div>
+</li>
+</ul>
+<pre class="code bash">mmc_core
+mmc_block
+sdhci
+mtk_sd</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Troubleshooting&quot;,&quot;hid&quot;:&quot;troubleshooting&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:18,&quot;range&quot;:&quot;6659-8703&quot;} -->
+<h2 class="sectionedit19" id="extras">Extras</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Extras&quot;,&quot;hid&quot;:&quot;extras&quot;,&quot;codeblockOffset&quot;:14,&quot;secid&quot;:19,&quot;range&quot;:&quot;8704-8722&quot;} -->
+<h3 class="sectionedit20" id="preserving_opkg_lists">Preserving opkg lists</h3>
+<div class="level3">
+
+<p>
+Save opkg lists to <code>/usr/lib/opkg/lists</code> stored on the extroot, instead of in RAM.
+This makes package lists survive reboot and saves some RAM.
+</p>
+
+</div>
+
+<h4 id="web_interface_instructions1">Web interface instructions</h4>
+<div class="level4">
+<ol>
+<li class="level1"><div class="li"> Navigate to <strong>LuCI → System → Software → Configuration</strong> to change <code>/var/opkg-lists</code> to <code>/usr/lib/opkg/lists</code>.</div>
+</li>
+<li class="level1"><div class="li"> Navigate to <strong>LuCI → System → Software → Actions → Update lists</strong> to do an initial build of the package list onto extroot.</div>
+</li>
+</ol>
+
+</div>
+
+<h4 id="command-line_instructions1">Command-line instructions</h4>
+<div class="level4">
+<pre class="code bash"><span class="kw2">sed</span> <span class="re5">-i</span> <span class="re5">-e</span> <span class="st0">&quot;/^lists_dir\s/s:/var/opkg-lists$:/usr/lib/opkg/lists:&quot;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>opkg.conf
+opkg update</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Preserving opkg lists&quot;,&quot;hid&quot;:&quot;preserving_opkg_lists&quot;,&quot;codeblockOffset&quot;:14,&quot;secid&quot;:20,&quot;range&quot;:&quot;8723-9337&quot;} -->
+<h3 class="sectionedit21" id="swap">Swap</h3>
+<div class="level3">
+
+<p>
+If your device fails to read the lists due to small RAM such as 32MB, enable swap.
+</p>
+<pre class="code bash"><span class="co0"># Create swap file</span>
+<span class="re2">DIR</span>=<span class="st0">&quot;<span class="es4">$(uci -q get fstab.extroot.target)</span>&quot;</span>
+<span class="kw2">dd</span> <span class="re2">if</span>=<span class="sy0">/</span>dev<span class="sy0">/</span>zero <span class="re2">of</span>=<span class="co1">${DIR}</span><span class="sy0">/</span>swap <span class="re2">bs</span>=1M <span class="re2">count</span>=<span class="nu0">100</span>
+mkswap <span class="co1">${DIR}</span><span class="sy0">/</span>swap
+&nbsp;
+<span class="co0"># Enable swap file</span>
+uci <span class="re5">-q</span> delete fstab.swap
+uci <span class="kw1">set</span> fstab.swap=<span class="st0">&quot;swap&quot;</span>
+uci <span class="kw1">set</span> fstab.swap.device=<span class="st0">&quot;<span class="es3">${DIR}</span>/swap&quot;</span>
+uci commit fstab
+service fstab boot
+&nbsp;
+<span class="co0"># Verify swap status</span>
+<span class="kw2">cat</span> <span class="sy0">/</span>proc<span class="sy0">/</span>swaps</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Swap&quot;,&quot;hid&quot;:&quot;swap&quot;,&quot;codeblockOffset&quot;:15,&quot;secid&quot;:21,&quot;range&quot;:&quot;9338-9768&quot;} -->
+<h3 class="sectionedit22" id="usb_dongle">USB dongle</h3>
+<div class="level3">
+
+<p>
+It&#039;s a good idea to include the <code>usb-modeswitch</code> tool in the image.
+There is a caveat: if the <code>/overlay</code> points to a memory card sitting in a slot of the dongle - the otherwise working <code>pivot overlay</code> set-up will break in the later stages of <abbr title="Operating System">OS</abbr> boot.
+This is because the <code>usb-modeswitch</code> (while disabling the CDROM and enabling the modem) would also intermittently affect the card-reader in the dongle thus hurting the file system.
+To avoid this you need a dongle that can be pre-configured to enable its modem or network adapter (and the card-reader as well) on the power-up, without the need to do it with the <code>usb-modeswitch</code> on the router.
+</p>
+
+<p>
+Insert your dongle in a desktop and use a terminal to send the necessary AT-commands.
+Check your dongle&#039;s initial configuration:
+</p>
+<pre class="code bash">at^setport?
+^SETPORT:A1,A2;<span class="nu0">1</span>,<span class="nu0">3</span>,<span class="nu0">2</span>,A1,A2
+OK</pre>
+
+<p>
+The meaning of the above report can be understood with the following command:
+</p>
+<pre class="code bash">at^<span class="re2">setport</span>=?
+^SETPORT:A1: CDROM
+^SETPORT:A2: SD
+^SETPORT:A: BLUE TOOTH
+^SETPORT:B: FINGER PRINT
+^SETPORT:D: MMS
+^SETPORT:E: PC VOICE
+^SETPORT:<span class="nu0">1</span>: MODEM
+^SETPORT:<span class="nu0">2</span>: PCUI
+^SETPORT:<span class="nu0">3</span>: DIAG
+^SETPORT:<span class="nu0">4</span>: PCSC
+^SETPORT:<span class="nu0">5</span>: GPS
+^SETPORT:<span class="nu0">6</span>: GPS CONTROL
+^SETPORT:<span class="nu0">16</span>: NCM
+OK</pre>
+
+<p>
+So, in the example above we have a dongle with CDROM and card-reader available in the first configuration (to the left of the <code>;</code> character), and with modem, control and diagnostic interfaces, and card-reader available in the other configuration.
+It is between these configurations the <code>usb-modeswitch</code> switches the dongle on the router.
+</p>
+
+<p>
+Your goal is to disable the CDROM and enable the modem (the <code>1</code> above) or the network adapter (the <code>16</code> above) while leaving the card-reader enabled (the <code>A2</code> above).
+<strong>NOTE: Never disable the PCUI</strong> (the <code>2</code> above) - this will lock you out from your dongle!
+</p>
+
+<p>
+Some dongles accept a &#039;disable all&#039; operand (the <code>FF</code> below).
+Place the list of all the functions you need on your dongle by default to the right of the <code>;</code> character according to their codes from the dongle&#039;s answer above:
+</p>
+<pre class="code bash">at^<span class="re2">setport</span>=<span class="st0">&quot;ff;1,2,3,a2&quot;</span>
+OK
+&nbsp;
+at^reset
+OK
+&nbsp;
+at^setport?
+^SETPORT:;<span class="nu0">1</span>,<span class="nu0">2</span>,<span class="nu0">3</span>,A2
+OK</pre>
+
+<p>
+This sequence has disabled the CDROM and made the modem, control and diagnostic interfaces and the card-reader available by default - without any <code>usb-modeswitch</code> interaction.
+Thus only one configuration exists now in the dongle - see the <code>;</code> character, there is nothing to the left of it now.
+</p>
+
+<p>
+Pre-configuration support: Huawei E3131s-2 f/w v21.158.47.00.1094
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;USB dongle&quot;,&quot;hid&quot;:&quot;usb_dongle&quot;,&quot;codeblockOffset&quot;:16,&quot;secid&quot;:22,&quot;range&quot;:&quot;9769-12302&quot;} -->
+<h3 class="sectionedit23" id="remote_file_system">Remote file system</h3>
+<div class="level3">
+
+<p>
+Follow: <a href="https://forum.openwrt.org/viewtopic.php?id=32812" class="urlextern" title="https://forum.openwrt.org/viewtopic.php?id=32812" rel="ugc nofollow">Fstab not mounting cifs at boot or through CLI</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Remote file system&quot;,&quot;hid&quot;:&quot;remote_file_system&quot;,&quot;codeblockOffset&quot;:19,&quot;secid&quot;:23,&quot;range&quot;:&quot;12303-12440&quot;} -->
+<h3 class="sectionedit24" id="luks_encrypted_extroot">LUKS encrypted extroot</h3>
+<div class="level3">
+
+<p>
+You may wish to have your extroot filesystem in a LUKS encrypted container.
+As of OpenWrt 22.03.2, this <a href="https://forum.openwrt.org/t/extroot-encryption/133230/6" class="urlextern" title="https://forum.openwrt.org/t/extroot-encryption/133230/6" rel="ugc nofollow">isn&#039;t well supported</a>.
+OpenWrt does not have an official way to open encrypted LUKS volumes before the extroot check happens during the normal boot path.
+So at the time of extroot check time, the extroot filesystem will not be visible and the boot process will continue as if there is not extroot.
+Below are two different methods for getting the system to run on an encrypted extroot.
+The first method is preferable because there are less side-effects and is a cleaner approach.
+</p>
+
+<p>
+Before doing any of the below, you&#039;ll need to create the LUKS container in which to put your extroot filesystem.
+Follow the <a href="/docs/guide-user/storage/disk.encryption" class="wikilink1" title="docs:guide-user:storage:disk.encryption" data-wiki-id="docs:guide-user:storage:disk.encryption">disk encryption</a> documentation to get a LUKS container setup on your device.
+You will need enough space on your <code>rootfs_data</code> to install <code>cryptsetup</code> and its dependencies.
+Once, you have your LUKS container follow the <a href="#instructions" title="docs:guide-user:additional-software:extroot_configuration ↵" class="wikilink1">instructions</a> above for creating the extroot filesystem on the unlocked LUKS device, including copying the <code>rootfs_data</code> files from <code>/overlay</code> to the newly created extroot.
+</p>
+
+</div>
+
+<h4 id="preinit">PREINIT</h4>
+<div class="level4">
+
+<p>
+In the PREINIT phase of boot, <code>mount_root</code> will be run, which will check for an extroot config on first the ROM device and then on the <a href="https://github.com/openwrt/fstools/blob/master/libfstools/overlay.c#L439" class="urlextern" title="https://github.com/openwrt/fstools/blob/master/libfstools/overlay.c#L439" rel="ugc nofollow">&#039;&#039;rootfs_data&#039;&#039; device</a> (see <a href="/docs/techref/flash.layout" class="wikilink1" title="docs:techref:flash.layout" data-wiki-id="docs:techref:flash.layout">The OpenWrt Flash Layout</a> for more on the flash layout).
+Using a stock OpenWRT firmware, there will be no extroot config on the ROM device.
+To check the <code>rootfs_data</code> filesystem, <code>mount_root</code> will <a href="https://github.com/openwrt/fstools/blob/master/libfstools/overlay.c#L431" class="urlextern" title="https://github.com/openwrt/fstools/blob/master/libfstools/overlay.c#L431" rel="ugc nofollow">mount the filesystem to a temporary location</a> (<code>/tmp/overlay</code>), check the file <code>/tmp/overlay/etc/config/fstab</code>, which is the same fstab configured above, for a configured extroot.
+If found, it will search in order <code>/tmp/overlay/upper/sbin/block</code>, <code>/tmp/overlay/sbin/block</code>, and <code>/sbin/block</code> for the presence of the block binary, and if it finds one will <a href="https://github.com/openwrt/fstools/blob/master/libfstools/extroot.c#L69" class="urlextern" title="https://github.com/openwrt/fstools/blob/master/libfstools/extroot.c#L69" rel="ugc nofollow">run that binary</a> with the <code>extroot</code> argument.
+This is why the <code>block-mount</code> package must be installed for extroot to work.
+</p>
+
+<p>
+Because <code>mount_root</code> which is running from the ROM in the PREINIT phase attempts to run <code>block</code> from the overlay filesystem, we can use this as a way to inject commands/code into the PREINIT phase before the extroot check takes place.
+This is done by creating a script to replace the <code>block</code> binary which will be in charge of setting up the encrypted device, getting the extroot filesystem visible to the system, and then running the real <code>block</code>.
+The script below does this while relying on the <code>decrypt.sh</code> script from the <a href="/docs/guide-user/storage/disk.encryption" class="wikilink1" title="docs:guide-user:storage:disk.encryption" data-wiki-id="docs:guide-user:storage:disk.encryption">disk encryption tutorial</a>.
+So run <code>install-decrypt.sh</code> from there first.
+To install the block script, move the binary at <code>/sbin/block</code> to <code>/sbin/block.bin</code>, and move the <code>block</code> script to <code>/sbin/block</code> and make sure it has the executable permission bit set.
+</p>
+
+<p>
+The <code>block</code> script checks for the existence of a special path, <code>/.use_crypt_extroot</code> on the mounted overlayfs or <code>/upper/.use_crypt_extroot</code> on the <code>/overlay</code> filesystem, to determine if it should use do its magic.
+So if this file does not exist, the extroot will not be configured.
+This allows one to easily disable setting up the crypto disk early on, thus effectively disabling extroot.
+Once on the extroot, to access this file you&#039;ll need to mount the <code>rootfs_data</code>, or you could turn off the device, remove the extroot block device, and boot without it.
+</p>
+
+<p>
+Once the <code>block</code> script has been properly installed, <code>decrypt.sh</code> has been installed, <code>/etc/crypttab</code> has been setup, the extroot has been configured, and <code>/.use_crypt_extroot</code> exists, then you are ready to reboot and enter your encrypted extroot.
+</p>
+<dl class="code">
+<dt><a href="/_export/code/docs/guide-user/additional-software/extroot_configuration?codeblock=19" title="Download Snippet" class="mediafile mf_">block</a></dt>
+<dd><pre class="code bash"><span class="co0">#!/bin/sh</span>
+&nbsp;
+<span class="co0"># Prereqs:</span>
+<span class="co0">#  * packages:</span>
+<span class="co0">#    * block-mount</span>
+<span class="co0">#    * cryptsetup</span>
+<span class="co0">#  * move /sbin/block to /sbin/block.bin</span>
+<span class="co0">#  * install decrypt script to /sbin/decrypt.sh with execute permission</span>
+<span class="co0">#</span>
+<span class="co0"># This script should be placed at /upper/sbin/block of the UBIFS overlay,</span>
+<span class="co0"># or /sbin/block if already on the overlayfs and be set with execute</span>
+<span class="co0"># permission.</span>
+<span class="co0"># It is expected that the extroot is on a device that the kernel names as</span>
+<span class="co0"># sd* or mmcblk*, otherwise modify appropriately.</span>
+&nbsp;
+<span class="co0"># Set to 1 to enable debug logs</span>
+<span class="kw3">export</span> <span class="re2">DEBUG</span>=
+&nbsp;
+<span class="re2">SDIR</span>=<span class="co1">${0%/*}</span>
+<span class="re2">BLOCK</span>=<span class="st0">&quot;<span class="es3">${SDIR}</span>/block.bin&quot;</span>
+<span class="re2">LD_LIBRARY_PATH</span>=<span class="co1">${LD_LIBRARY_PATH:-.}</span>
+<span class="re2">LD_LIBRARY_PATH</span>=<span class="st0">&quot;<span class="es3">${SDIR}</span>/../usr/lib:<span class="es3">${LD_LIBRARY_PATH}</span>&quot;</span>
+<span class="re2">PATH</span>=<span class="re1">$PATH</span>:<span class="co1">${SDIR}</span>:<span class="co1">${SDIR}</span><span class="sy0">/</span>..<span class="sy0">/</span>usr<span class="sy0">/</span>sbin:<span class="co1">${SDIR}</span><span class="sy0">/</span>..<span class="sy0">/</span>usr<span class="sy0">/</span>bin
+&nbsp;
+block<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  <span class="br0">&#40;</span> <span class="kw3">exec</span> <span class="re5">-a</span> <span class="co1">${0}</span> <span class="co1">${BLOCK}</span> <span class="st0">&quot;$@&quot;</span> <span class="br0">&#41;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es2">$PREINIT</span>&quot;</span> <span class="sy0">!</span>= <span class="st0">&quot;1&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+  <span class="kw3">exec</span> block <span class="st0">&quot;$@&quot;</span>
+<span class="kw1">fi</span>
+&nbsp;
+get_jiffies<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+  <span class="kw2">head</span> <span class="re5">-n3</span> <span class="sy0">/</span>proc<span class="sy0">/</span>timer_list <span class="sy0">|</span> <span class="kw2">tail</span> <span class="re5">-n1</span> <span class="sy0">|</span> <span class="kw2">cut</span> <span class="re5">-d</span><span class="st_h">' '</span> <span class="re5">-f</span> <span class="nu0">3</span>
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-z</span> <span class="st0">&quot;<span class="es2">$BLOCK_LOG</span>&quot;</span> <span class="br0">&#93;</span> <span class="sy0">&amp;&amp;</span> <span class="br0">&#91;</span> <span class="re5">-n</span> <span class="st0">&quot;<span class="es2">$DEBUG</span>&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+  <span class="re2">TIME</span>=$<span class="br0">&#40;</span>get_jiffies<span class="br0">&#41;</span>
+  <span class="kw3">export</span> <span class="re2">BLOCK_LOG</span>=<span class="st0">&quot;/tmp/block.<span class="es4">$(printf '%016d' ${TIME:-9999999999})</span>.log&quot;</span>
+  <span class="kw3">exec</span> <span class="nu0">2</span><span class="sy0">&gt;</span><span class="st0">&quot;<span class="es2">$BLOCK_LOG</span>&quot;</span>
+  <span class="kw1">set</span> <span class="re5">-x</span>
+<span class="kw1">fi</span>
+&nbsp;
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="sy0">!</span> <span class="re5">-x</span> <span class="st0">&quot;<span class="es2">$BLOCK</span>&quot;</span> <span class="br0">&#93;</span>; <span class="kw1">then</span>
+  <span class="kw3">echo</span> <span class="st0">&quot;Error: <span class="es3">${BLOCK}</span> is not an executable&quot;</span> <span class="sy0">&gt;&amp;</span><span class="nu0">2</span>
+  <span class="kw3">return</span> <span class="nu0">1</span>
+<span class="kw1">fi</span>
+&nbsp;
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="st0">&quot;$1&quot;</span> = <span class="st0">&quot;extroot&quot;</span> <span class="br0">&#93;</span> <span class="sy0">&amp;&amp;</span> <span class="br0">&#91;</span> <span class="re5">-e</span> <span class="co1">${SDIR}</span><span class="sy0">/</span>..<span class="sy0">/</span>.use_crypt_extroot <span class="br0">&#93;</span>; <span class="kw1">then</span>
+  <span class="co0"># We are being called to setup the extroot, so make sure crypto block</span>
+  <span class="co0"># devices are all setup.</span>
+&nbsp;
+  <span class="co0"># Hotplug runs too late, create device nodes for /dev/sd*, if there are any</span>
+  <span class="kw1">for</span> SYSDEVPATH <span class="kw1">in</span> <span class="sy0">/</span>sys<span class="sy0">/</span>class<span class="sy0">/</span>block<span class="sy0">/</span>sd<span class="sy0">*</span>; <span class="kw1">do</span>
+    <span class="br0">&#91;</span> <span class="sy0">!</span> <span class="re5">-f</span> <span class="st0">&quot;<span class="es2">$SYSDEVPATH</span>&quot;</span><span class="sy0">/</span>dev <span class="br0">&#93;</span> <span class="sy0">&amp;&amp;</span> <span class="kw3">continue</span>
+    <span class="br0">&#91;</span> <span class="re5">-e</span> <span class="st0">&quot;/dev/<span class="es3">${SYSDEVPATH##*/}</span>&quot;</span> <span class="br0">&#93;</span> <span class="sy0">&amp;&amp;</span> <span class="kw3">continue</span>
+    <span class="re2">MAJMIN</span>=$<span class="br0">&#40;</span><span class="kw2">cat</span> <span class="st0">&quot;<span class="es2">$SYSDEVPATH</span>&quot;</span><span class="sy0">/</span>dev <span class="sy0">|</span> <span class="kw2">tr</span> <span class="st_h">':'</span> <span class="st_h">' '</span><span class="br0">&#41;</span>
+    <span class="kw2">mknod</span> <span class="sy0">/</span>dev<span class="sy0">/</span><span class="co1">${SYSDEVPATH##*/}</span> b <span class="re1">$MAJMIN</span>
+  <span class="kw1">done</span>
+&nbsp;
+  <span class="co0"># Load modules needed for cryptsetup</span>
+  <span class="re2">KVER</span>=$<span class="br0">&#40;</span><span class="kw2">uname</span> -r<span class="br0">&#41;</span>
+  insmod <span class="co1">${SDIR}</span><span class="sy0">/</span>..<span class="sy0">/</span>lib<span class="sy0">/</span>modules<span class="sy0">/</span><span class="co1">${KVER}</span><span class="sy0">/</span>af_alg.ko
+  insmod <span class="co1">${SDIR}</span><span class="sy0">/</span>..<span class="sy0">/</span>lib<span class="sy0">/</span>modules<span class="sy0">/</span><span class="co1">${KVER}</span><span class="sy0">/</span>algif_rng.ko
+  insmod <span class="co1">${SDIR}</span><span class="sy0">/</span>..<span class="sy0">/</span>lib<span class="sy0">/</span>modules<span class="sy0">/</span><span class="co1">${KVER}</span><span class="sy0">/</span>algif_hash.ko
+  insmod <span class="co1">${SDIR}</span><span class="sy0">/</span>..<span class="sy0">/</span>lib<span class="sy0">/</span>modules<span class="sy0">/</span><span class="co1">${KVER}</span><span class="sy0">/</span>algif_skcipher.ko
+&nbsp;
+  <span class="co0"># FIXME: Why does block info only show ubi devices?</span>
+<span class="co0">#  block info | cut -d: -f1 |</span>
+  <span class="co0"># Do this hack instead, only check scsi and mmc devices</span>
+  <span class="kw2">find</span> <span class="sy0">/</span>dev <span class="re5">-type</span> b <span class="sy0">|</span> <span class="kw2">grep</span> <span class="re5">-E</span> <span class="st0">&quot;/(sd|mmcblk).*&quot;</span> <span class="sy0">|</span>
+  <span class="kw1">while</span> <span class="kw3">read</span> DEVPATH; <span class="kw1">do</span>
+    cryptsetup <span class="re5">--disable-locks</span> isLuks <span class="re1">$DEVPATH</span> <span class="sy0">||</span> <span class="kw3">continue</span>
+    <span class="kw3">export</span> <span class="re2">ACTION</span>=add <span class="re2">DEVNAME</span>=<span class="st0">&quot;<span class="es3">${DEVPATH##*/}</span>&quot;</span> 
+    <span class="co0"># Assume this script is located in $OVERLAY/sbin when called</span>
+    <span class="re2">ALTROOT</span>=<span class="st0">&quot;<span class="es3">${SDIR}</span>/..&quot;</span> <span class="st0">&quot;<span class="es2">$SDIR</span>&quot;</span><span class="sy0">/</span>decrypt.sh <span class="sy0">||</span> <span class="st0">&quot;<span class="es2">$SDIR</span>&quot;</span><span class="sy0">/</span>decrypt.sh
+  <span class="kw1">done</span>
+<span class="kw1">fi</span>
+&nbsp;
+block <span class="st0">&quot;$@&quot;</span></pre>
+</dd></dl>
+
+</div>
+
+<h4 id="etcrclocal">/etc/rc.local</h4>
+<div class="level4">
+
+<p>
+There is another way to work around the current limitations.
+<strong>However, it should only be used if the above method does not work for your setup, it is more prone to breaking or having strange side effects</strong>.
+The basic idea is that extroot will be setup as in the <a href="#instructions" title="docs:guide-user:additional-software:extroot_configuration ↵" class="wikilink1">instructions</a> section above, which will fail to load during the normal boot path because the extroot filesystem will not be found.
+This will be expected.
+Modifications to <code>/etc/rc.local</code> will unlock the LUKS volume at the end of the boot process when we have more control of the system and then we&#039;ll run <code>mount_root</code> again and this time it will find the extroot filesystem and switch root into it.
+</p>
+
+<p>
+So at this point your uci fstab configuration should have a mount section with target <code>/overlay</code>.
+I use the <code>uuid</code> option instead of the <code>device</code> option so I don&#039;t need to keep the <code>/etc/rc.local</code> synchronized with <code>/etc/config/fstab</code>.
+Here&#039;s a relevant snippet of script that illustrates what needs to be put into <code>/etc/rc.local</code>.
+Currently this script will not work for LUKS volumes being opened with a password.
+The volume must be opened with a keyfile (stdin is not properly setup in <code>/etc/rc.local</code> so cryptsetup will fail when trying to get a password).
+In the script below, the key is stored at <code>/root/extroot.key</code>.
+Check your threat model to see if this works for you.
+</p>
+<pre class="code bash"><span class="co0"># Only setup the encrypted extroot if /.use_crypt_extroot exists on rootfs_data.</span>
+<span class="co0"># This makes it easier disable the encrypted extroot from failsafe mode.</span>
+<span class="kw2">mkdir</span> <span class="re5">-p</span> <span class="sy0">/</span>mnt<span class="sy0">/</span>tmp
+<span class="kw1">if</span> <span class="br0">&#91;</span> <span class="re5">-e</span> <span class="sy0">/</span>.use_crypt_extroot <span class="br0">&#93;</span>; <span class="kw1">then</span> 
+  <span class="co0"># Setup crypt device which contains the extroot</span>
+  cryptsetup open <span class="re5">-d</span> <span class="sy0">/</span>root<span class="sy0">/</span>extroot.key <span class="sy0">/</span>dev<span class="sy0">/</span>sda1 cextroot
+  <span class="kw2">umount</span> <span class="sy0">/</span>overlay
+&nbsp;
+  <span class="co0"># /tmp will get overridden by another tmpfs by mount_root, but we need the</span>
+  <span class="co0"># initial one because it contains the ubus named socket.</span>
+  <span class="kw2">mount</span> <span class="re5">--bind</span> <span class="sy0">/</span>tmp <span class="sy0">/</span>mnt<span class="sy0">/</span>tmp
+&nbsp;
+  <span class="co0"># Re-run mount_root now that we have a block device that it will recognize</span>
+  <span class="co0"># as an extroot. This sleep is needed, otherwise procd seems to freak out</span>
+  <span class="co0"># and the watchdog timer doesn't get reset. Not sure exactly why.</span>
+  <span class="kw2">sleep</span> <span class="nu0">5</span>
+  <span class="re2">PREINIT</span>=<span class="nu0">1</span> mount_root
+&nbsp;
+  <span class="co0"># Free the new tmpfs just created by mount_root. Since it will never be used,</span>
+  <span class="co0"># its just wasting memory.</span>
+  <span class="kw2">umount</span> <span class="re5">-l</span> <span class="sy0">/</span>tmp
+&nbsp;
+  <span class="co0"># Put the original tmpfs back to where it was in the VFS, primarily so that</span>
+  <span class="co0"># programs can find the ubus socket.</span>
+  <span class="kw2">mount</span> <span class="re5">--bind</span> <span class="sy0">/</span>rom<span class="sy0">/</span>mnt<span class="sy0">/</span>tmp <span class="sy0">/</span>tmp
+&nbsp;
+  <span class="co0"># Need to re-run this too for some reason, otherwise some other mounts are not</span>
+  <span class="co0"># mounted after mount_root, eg. /rwm.</span>
+  block <span class="kw2">mount</span>
+&nbsp;
+  <span class="co0"># Reload rpcd to register rpc objects on the extroot</span>
+  service rpcd reload
+<span class="kw1">fi</span></pre>
+
+<p>
+<strong>NOTE:</strong> Since this method is essentially redoing some of the boot process, it does take longer.
+On my device, its about 20-30 seconds longer for the web interface to be available.
+Logging in via <abbr title="Secure Shell">SSH</abbr> is not delayed though.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;LUKS encrypted extroot&quot;,&quot;hid&quot;:&quot;luks_encrypted_extroot&quot;,&quot;codeblockOffset&quot;:19,&quot;secid&quot;:24,&quot;range&quot;:&quot;12441-21793&quot;} -->
+<h3 class="sectionedit25" id="system_upgrade">System upgrade</h3>
+<div class="level3">
+
+<p>
+This section applies to OpenWrt snapshot, but not to OpenWrt releases, as the kernel-related packages (and the packages requiring them) in releases will only receive fixes and security patches.
+</p>
+
+<p>
+DO NOT try to do upgrades using <code>opkg upgrade</code>.
+You will likely end up with an inconsistent state and soft-bricked router that way:
+</p>
+<ul>
+<li class="level1"><div class="li"> The main reason is that the uClibc ABI (Application Binary Interface) is unstable and changes from revision to revision, so binaries for one version of uClibc may be incompatible with versions from another.</div>
+</li>
+<li class="level1"><div class="li"> When upgrading, your `/rom` or `/rwm` partition may change UUIDs, so the extroot mounting can fail. Check the troubleshooting section for how to correct it.</div>
+</li>
+<li class="level1"><div class="li"> Another problem that can arise is if you try to upgrade the kernel packages, then flash and reboot, but your operation is interrupted in any way, then you will have a kernel and module mismatch and likely a brick. If you decide to upgrade anyway, be sure to have the correct kernel modules on extroot `/upper/lib/modules` before attempting a version upgrade.</div>
+</li>
+<li class="level1"><div class="li"> Finally, if you upgrade all packages but the kernel and the kernel modules, some packages like <code>iptables</code> will be broken.</div>
+</li>
+</ul>
+
+<p>
+Additionally, you may have to repeat steps 3 and 4 of the instructions if the ROM partition changes UUID.
+</p>
+
+<p>
+It&#039;s recommended to update/reinstall all your packages, especially kernel modules, after a system upgrade.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;System upgrade&quot;,&quot;hid&quot;:&quot;system_upgrade&quot;,&quot;codeblockOffset&quot;:21,&quot;secid&quot;:25,&quot;range&quot;:&quot;21794-23225&quot;} -->
+<h3 class="sectionedit26" id="custom_image">Custom image</h3>
+<div class="level3">
+
+<p>
+This method is useful for devices with 4 MiB flash or less.
+In the default OpenWrt firmware images there are no tools to make extroot, as the build system currently makes only barebone images.
+The only way to go for these devices is to rebuild a firmware image with the right packages using the Image Builder.
+The Image Builder can run only in a 64bit Linux operating system, so if you don&#039;t have a linux system on hand, look up a tutorial to install Ubuntu 64bit in VirtualBox.
+Then go in the same download page where you can download the firmware for your device and scroll down until you find a file starting with “<strong>OpenWrt-imagebuilder</strong>”.
+Download it and extract it in a folder in the Linux system.
+</p>
+
+<p>
+Open a terminal in that folder, and write:
+</p>
+<pre class="code bash"><span class="kw2">make</span> info</pre>
+
+<p>
+This will write on screen all the possible profile names for the devices supported by that Image Builder, so we can build the image for the right device.
+Each entry will look like this:
+</p>
+<pre class="code bash">tl-wr1043nd-v1:
+    TP-LINK TL-WR1043N<span class="sy0">/</span>ND v1
+    Packages: kmod-usb-core kmod-usb2 kmod-ledtrig-usbdev</pre>
+
+<p>
+First line is the profile name, the second line is a full descriptive name of your device, third line is a list of default packages for that device, and should list some packages about USB or Sata or whatever other storage device.
+</p>
+
+<p>
+In my case I have a TP-LINK TL-WR1043N/ND v1, so the profile name for my device is <strong>tl-wr1043nd-v1</strong>
+Now you need to write the command to start building the image (note how the name after the <strong>PROFILE=</strong> is my device&#039;s profile name, please use the profile name for yours):
+</p>
+<pre class="code bash"><span class="kw2">make</span> image <span class="re2">PROFILE</span>=tl-wr1043nd-v1 <span class="re2">PACKAGES</span>=<span class="st0">&quot;block-mount kmod-fs-ext4 kmod-usb-storage kmod-usb-ohci kmod-usb-uhci&quot;</span></pre>
+
+<p>
+This will build a firmware image that is able to read a partition formatted with ext4 filesystem.
+Sadly the package <strong>e2fsprogs</strong> with the tools for ext4 filesystem is too large to fit in 4 MiB devices.
+</p>
+
+<p>
+Afterwards, open the folder <strong>bin</strong> inside the Image Builder folder, then open the <strong>target</strong> folder, then the folder you find in it (it has a device-type-specific name), and then inside a folder called <strong>generic</strong> and you should reach the flashable images.
+Choose the right image (factory or sysupgrade) and install it.
+</p>
+
+<p>
+Then you will have to format the USB drive with ext4 filesystem, and to do that you will need to use a Linux LiveCD or <a href="https://gparted.org/livecd.php" class="urlextern" title="https://gparted.org/livecd.php" rel="ugc nofollow">gparted</a> disk.
+Sadly this is inconvenient but as said above we cannot fit formatting tools in devices with 4MB of flash.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Custom image&quot;,&quot;hid&quot;:&quot;custom_image&quot;,&quot;codeblockOffset&quot;:21,&quot;secid&quot;:26,&quot;range&quot;:&quot;23226-25785&quot;} -->
+<h3 class="sectionedit27" id="automated_setup">Automated setup</h3>
+<div class="level3">
+
+<p>
+You can use the <a href="/docs/guide-developer/imagebuilder_frontends#openwrt-auto-extroot" class="wikilink1" title="docs:guide-developer:imagebuilder_frontends" data-wiki-id="docs:guide-developer:imagebuilder_frontends">openwrt-auto-extroot</a> ImageBuilder frontend to build a custom firmware image that will automatically format and set up extroot on <strong>any</strong> plugged-in, but not yet setup storage device.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Automated setup&quot;,&quot;hid&quot;:&quot;automated_setup&quot;,&quot;codeblockOffset&quot;:24,&quot;secid&quot;:27,&quot;range&quot;:&quot;25786-26080&quot;} -->
+<h3 class="sectionedit28" id="automated_upgrade">Automated upgrade</h3>
+<div class="level3">
+
+<p>
+Set up <a href="/docs/guide-user/advanced/hotplug_extras" class="wikilink1" title="docs:guide-user:advanced:hotplug_extras" data-wiki-id="docs:guide-user:advanced:hotplug_extras">Hotplug extras</a> and <a href="/docs/guide-user/advanced/opkg_extras" class="wikilink1" title="docs:guide-user:advanced:opkg_extras" data-wiki-id="docs:guide-user:advanced:opkg_extras">Opkg extras</a>.
+Packages required by Extroot should be saved in the <code>init</code> Opkg profile and restored automatically after upgrade following by the script to reconfigure Extroot.
+</p>
+<pre class="code bash"><span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>uci-defaults<span class="sy0">/</span><span class="nu0">90</span>-extroot-restore
+<span class="kw1">if</span> uci <span class="re5">-q</span> get fstab.extroot <span class="sy0">&gt;</span> <span class="sy0">/</span>dev<span class="sy0">/</span>null \
+<span class="sy0">&amp;&amp;</span> <span class="br0">&#91;</span> <span class="sy0">!</span> <span class="re5">-e</span> <span class="sy0">/</span>etc<span class="sy0">/</span>extroot-restore <span class="br0">&#93;</span> \
+<span class="sy0">&amp;&amp;</span> <span class="br0">&#91;</span> <span class="re5">-e</span> <span class="sy0">/</span>etc<span class="sy0">/</span>opkg-restore-init <span class="br0">&#93;</span> \
+<span class="sy0">&amp;&amp;</span> lock <span class="re5">-n</span> <span class="sy0">/</span>var<span class="sy0">/</span>lock<span class="sy0">/</span>extroot-restore
+<span class="kw1">then</span>
+<span class="re2">UUID</span>=<span class="st0">&quot;<span class="es4">$(uci -q get fstab.extroot.uuid)</span>&quot;</span>
+<span class="re2">DIR</span>=<span class="st0">&quot;<span class="es4">$(uci -q get fstab.extroot.target)</span>&quot;</span>
+<span class="re2">DEV</span>=<span class="st0">&quot;<span class="es4">$(block info | sed -n -e &quot;/${UUID}/s/:.*$//p&quot;)</span>&quot;</span>
+<span class="kw1">if</span> <span class="kw2">touch</span> <span class="sy0">/</span>etc<span class="sy0">/</span>extroot-restore \
+<span class="sy0">&amp;&amp;</span> <span class="kw2">grep</span> <span class="re5">-q</span> <span class="re5">-e</span> <span class="st0">&quot;\s<span class="es3">${DIR}</span>\s&quot;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>mtab \
+<span class="sy0">&amp;&amp;</span> <span class="kw2">mount</span> <span class="st0">&quot;<span class="es3">${DEV}</span>&quot;</span> <span class="sy0">/</span>mnt
+<span class="kw1">then</span>
+<span class="re2">BAK</span>=<span class="st0">&quot;<span class="es4">$(mktemp -d -p /mnt -t bak.XXXXXX)</span>&quot;</span>
+<span class="kw2">mv</span> <span class="re5">-f</span> <span class="sy0">/</span>mnt<span class="sy0">/</span>etc <span class="sy0">/</span>mnt<span class="sy0">/</span>upper <span class="st0">&quot;<span class="es3">${BAK}</span>&quot;</span>
+<span class="kw2">cp</span> <span class="re5">-f</span> <span class="re5">-a</span> <span class="st0">&quot;<span class="es3">${DIR}</span>&quot;</span><span class="sy0">/</span>. <span class="sy0">/</span>mnt
+<span class="kw2">umount</span> <span class="st0">&quot;<span class="es3">${DEV}</span>&quot;</span>
+<span class="kw1">fi</span>
+lock <span class="re5">-u</span> <span class="sy0">/</span>var<span class="sy0">/</span>lock<span class="sy0">/</span>extroot-restore
+reboot
+<span class="kw1">fi</span>
+<span class="kw3">exit</span> <span class="nu0">1</span>
+EOF
+<span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span> <span class="st0">&quot;EOF&quot;</span> <span class="sy0">&gt;&gt;</span> <span class="sy0">/</span>etc<span class="sy0">/</span>sysupgrade.conf
+<span class="sy0">/</span>etc<span class="sy0">/</span>uci-defaults
+EOF</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Automated upgrade&quot;,&quot;hid&quot;:&quot;automated_upgrade&quot;,&quot;codeblockOffset&quot;:24,&quot;secid&quot;:28,&quot;range&quot;:&quot;26081-&quot;} -->

@@ -1,0 +1,700 @@
+
+<h1 class="sectionedit1" id="wireguard_multi-client_server_automated">WireGuard multi-client server automated</h1>
+<div class="level1">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;WireGuard multi-client server automated&quot;,&quot;hid&quot;:&quot;wireguard_multi-client_server_automated&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-55&quot;} -->
+<h2 class="sectionedit2" id="introduction">Introduction</h2>
+<div class="level2">
+
+<p>
+This guide details how to write an automated script that automatically creates a WireGuard Server and peers. There two methods to which peers can be made. The first script creates named peers with IDs and is especially useful for creating trusted users you want to be able to easily distinguish between. The second script just creates peers with unique IDs and can be set to create any number of peers.
+</p>
+
+<p>
+Both scripts have been tested with the Ash Unix shell that is built into all vanilla firmware builds compiled by OpenWrt. This conforms with POSIX so will be guaranteed to work on any build of OpenWrt. Throughout the scripts there are many varibles used and have been put in place so that you can define your own variable values to suit your individual needs without having to touch the main script itself.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Introduction&quot;,&quot;hid&quot;:&quot;introduction&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;56-892&quot;} -->
+<h2 class="sectionedit3" id="prerequisites">1. Prerequisites</h2>
+<div class="level2">
+<ol>
+<li class="level1"><div class="li"> Set up a Dynamic <abbr title="Domain Name System">DNS</abbr> client &gt;&gt; <a href="/docs/guide-user/services/ddns/client" class="wikilink1" title="docs:guide-user:services:ddns:client" data-wiki-id="docs:guide-user:services:ddns:client">DDNS client</a></div>
+</li>
+<li class="level1"><div class="li"> Install Wireguard &gt;&gt; <a href="/docs/guide-user/services/vpn/wireguard/basics#installing_packages" class="wikilink1" title="docs:guide-user:services:vpn:wireguard:basics" data-wiki-id="docs:guide-user:services:vpn:wireguard:basics">Installing packages</a></div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;1. Prerequisites&quot;,&quot;hid&quot;:&quot;prerequisites&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;893-1125&quot;} -->
+<h2 class="sectionedit4" id="scripts">2. Scripts</h2>
+<div class="level2">
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;2. Scripts&quot;,&quot;hid&quot;:&quot;scripts&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;1126-1148&quot;} -->
+<h3 class="sectionedit5" id="a_named_peers_with_ids">a) Named Peers with IDs</h3>
+<div class="level3">
+
+<p>
+This example creates 4 peers with usernames &#039;Alpha&#039;, &#039;Bravo&#039;, &#039;Charlie&#039; and &#039;Delta&#039; on a private <abbr title="Local Area Network">LAN</abbr> called &#039;lan&#039;. The only changes you should need to make are in the &#039;Defining Variables&#039; section below.
+</p>
+
+<p>
+Copy the script below to the CLI and then call the script with 
+</p>
+<pre class="code">/root/auto_wg_username-id.sh</pre>
+<pre class="code bash"><span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span>-<span class="st0">&quot;SCRIPT_EOF&quot;</span> <span class="sy0">&gt;</span> <span class="st0">&quot;/root/auto_wg_username-id.sh&quot;</span>
+<span class="co0">#!/bin/ash</span>
+<span class="kw2">clear</span>
+<span class="kw3">echo</span> <span class="st0">&quot;======================================&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;|     Automated WireGuard Script     |&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;|        Named Peers with IDs        |&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;======================================&quot;</span>
+<span class="co0"># Define Variables</span>
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Defining variables... &quot;</span>
+<span class="kw3">export</span> <span class="re2">LAN</span>=<span class="st0">&quot;lan&quot;</span>
+<span class="kw3">export</span> <span class="re2">interface</span>=<span class="st0">&quot;10.0.5&quot;</span>
+<span class="kw3">export</span> <span class="re2">DDNS</span>=<span class="st0">&quot;my-ddns.no-ip.com&quot;</span>
+<span class="kw3">export</span> <span class="re2">peer_ID</span>=<span class="st0">&quot;1&quot;</span> <span class="co0"># The ID number to start from</span>
+<span class="kw3">export</span> <span class="re2">peer_IP</span>=<span class="st0">&quot;2&quot;</span> <span class="co0"># The IP address to start from</span>
+<span class="kw3">export</span> WG_<span class="co1">${LAN}</span><span class="re2">_server_port</span>=<span class="st0">&quot;51820&quot;</span>
+<span class="kw3">export</span> WG_<span class="co1">${LAN}</span><span class="re2">_server_IP</span>=<span class="st0">&quot;<span class="es3">${interface}</span>.1&quot;</span>
+<span class="kw3">export</span> WG_<span class="co1">${LAN}</span><span class="re2">_server_firewall_zone</span>=<span class="st0">&quot;<span class="es3">${LAN}</span>&quot;</span>
+<span class="kw3">export</span> <span class="re2">quantity</span>=<span class="st0">&quot;4&quot;</span> <span class="co0"># Change the number '4' to any number of peers you would like to create</span>
+<span class="kw3">export</span> <span class="re2">user_1</span>=<span class="st0">&quot;Alpha&quot;</span>
+<span class="kw3">export</span> <span class="re2">user_2</span>=<span class="st0">&quot;Bravo&quot;</span>
+<span class="kw3">export</span> <span class="re2">user_3</span>=<span class="st0">&quot;Charlie&quot;</span>
+<span class="kw3">export</span> <span class="re2">user_4</span>=<span class="st0">&quot;Delta&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Create directories</span>
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Creating directories and pre-defining permissions on those directories... &quot;</span>
+<span class="kw2">mkdir</span> <span class="re5">-p</span> <span class="sy0">/</span>etc<span class="sy0">/</span>wireguard<span class="sy0">/</span>networks<span class="sy0">/</span><span class="co1">${LAN}</span><span class="sy0">/</span>peers
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Remove pre-existing WireGuard interface</span>
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Removing pre-existing WireGuard interface... &quot;</span>
+uci del network.wg_<span class="co1">${LAN}</span> <span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Generate WireGuard server keys</span>
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Generating WireGuard server keys for '<span class="es3">${LAN}</span>' network... &quot;</span>
+wg genkey <span class="sy0">|</span> <span class="kw2">tee</span> <span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${LAN}</span>/<span class="es3">${LAN}</span>_server_private.key&quot;</span> <span class="sy0">|</span> wg pubkey <span class="sy0">|</span> <span class="kw2">tee</span> <span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${LAN}</span>/<span class="es3">${LAN}</span>_server_public.key&quot;</span> <span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Rename firewall.@zone[0] to lan and firewall.@zone[1] to wan... &quot;</span>
+uci rename firewall.<span class="sy0">@</span>zone<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>=<span class="st0">&quot;lan&quot;</span>
+uci rename firewall.<span class="sy0">@</span>zone<span class="br0">&#91;</span><span class="nu0">1</span><span class="br0">&#93;</span>=<span class="st0">&quot;wan&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Create WireGuard interface for 'LAN' network</span>
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Creating WireGuard interface for '<span class="es3">${LAN}</span>' network... &quot;</span>
+<span class="kw3">eval</span> <span class="st0">&quot;server_port=<span class="es1">\$</span>{WG_<span class="es3">${LAN}</span>_server_port}&quot;</span>
+<span class="kw3">eval</span> <span class="st0">&quot;server_IP=<span class="es1">\$</span>{WG_<span class="es3">${LAN}</span>_server_IP}&quot;</span>
+<span class="kw3">eval</span> <span class="st0">&quot;firewall_zone=<span class="es1">\$</span>{WG_<span class="es3">${LAN}</span>_server_firewall_zone}&quot;</span>
+uci <span class="kw1">set</span> network.wg_<span class="co1">${LAN}</span>=interface
+uci <span class="kw1">set</span> network.wg_<span class="co1">${LAN}</span>.proto=<span class="st_h">'wireguard'</span>
+uci <span class="kw1">set</span> network.wg_<span class="co1">${LAN}</span>.private_key=<span class="st0">&quot;<span class="es4">$(cat /etc/wireguard/networks/${LAN}/${LAN}_server_private.key)</span>&quot;</span>
+uci <span class="kw1">set</span> network.wg_<span class="co1">${LAN}</span>.listen_port=<span class="st0">&quot;<span class="es3">${server_port}</span>&quot;</span>
+uci add_list network.wg_<span class="co1">${LAN}</span>.addresses=<span class="st0">&quot;<span class="es3">${server_IP}</span>/24&quot;</span>
+uci <span class="kw1">set</span> firewall.<span class="co1">${LAN}</span>.network=<span class="st0">&quot;<span class="es3">${firewall_zone}</span> wg_<span class="es3">${firewall_zone}</span>&quot;</span>
+uci <span class="kw1">set</span> network.wg_<span class="co1">${LAN}</span>.mtu=<span class="st_h">'1420'</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Add firewall rule</span>
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Adding firewall rule for '<span class="es3">${LAN}</span>' network... &quot;</span>
+uci <span class="kw1">set</span> firewall.wg=<span class="st0">&quot;rule&quot;</span>
+uci <span class="kw1">set</span> firewall.wg.name=<span class="st0">&quot;Allow-WireGuard-<span class="es3">${LAN}</span>&quot;</span>
+uci <span class="kw1">set</span> firewall.wg.src=<span class="st0">&quot;wan&quot;</span>
+uci <span class="kw1">set</span> firewall.wg.dest_port=<span class="st0">&quot;<span class="es3">${server_port}</span>&quot;</span>
+uci <span class="kw1">set</span> firewall.wg.proto=<span class="st0">&quot;udp&quot;</span>
+uci <span class="kw1">set</span> firewall.wg.target=<span class="st0">&quot;ACCEPT&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Remove existing peers</span>
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Removing pre-existing peers... &quot;</span>
+<span class="kw1">while</span> uci <span class="re5">-q</span> delete network.<span class="sy0">@</span>wireguard_wg_<span class="co1">${LAN}</span><span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>; <span class="kw1">do</span> :; <span class="kw1">done</span>
+<span class="kw2">rm</span> <span class="re5">-R</span> <span class="sy0">/</span>etc<span class="sy0">/</span>wireguard<span class="sy0">/</span>networks<span class="sy0">/</span><span class="co1">${LAN}</span><span class="sy0">/</span>peers<span class="sy0">/*</span> <span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Loop</span>
+<span class="re2">n</span>=<span class="st0">&quot;0&quot;</span>
+<span class="kw1">while</span> <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es2">$n</span>&quot;</span> <span class="re5">-lt</span> <span class="co1">${quantity}</span> <span class="br0">&#93;</span> ; 
+<span class="kw1">do</span>
+&nbsp;
+	<span class="kw1">for</span> username <span class="kw1">in</span> <span class="co1">${user_1}</span> <span class="co1">${user_2}</span> <span class="co1">${user_3}</span> <span class="co1">${user_4}</span>
+	<span class="kw1">do</span>
+&nbsp;
+		<span class="co0"># Configure variables</span>
+		<span class="kw3">eval</span> <span class="st0">&quot;peer_ID_<span class="es3">${username}</span>=<span class="es3">${peer_ID}</span>&quot;</span>
+		<span class="kw3">eval</span> <span class="st0">&quot;peer_IP_<span class="es3">${username}</span>=<span class="es3">${peer_IP}</span>&quot;</span>
+&nbsp;
+		<span class="kw3">eval</span> <span class="st0">&quot;peer_ID=<span class="es1">\$</span>{peer_ID_<span class="es3">${username}</span>}&quot;</span>
+		<span class="kw3">eval</span> <span class="st0">&quot;peer_IP=<span class="es1">\$</span>{peer_IP_<span class="es3">${username}</span>}&quot;</span>
+&nbsp;
+		<span class="kw3">eval</span> <span class="st0">&quot;server_port=<span class="es1">\$</span>{WG_<span class="es3">${LAN}</span>_server_port}&quot;</span>
+		<span class="kw3">eval</span> <span class="st0">&quot;server_IP=<span class="es1">\$</span>{WG_<span class="es3">${LAN}</span>_server_IP}&quot;</span>
+&nbsp;
+		<span class="kw3">echo</span> <span class="st0">&quot;&quot;</span>
+		<span class="co0"># Create directory for storing peers</span>
+		<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Creating directory for peer '<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>_<span class="es3">${username}</span>'... &quot;</span> 
+		<span class="kw2">mkdir</span> <span class="re5">-p</span> <span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${LAN}</span>/peers/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>_<span class="es3">${username}</span>&quot;</span>
+		<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+		<span class="co0"># Generate peer keys</span>
+		<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Generating peer keys for '<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>_<span class="es3">${username}</span>'... &quot;</span> 
+		wg genkey <span class="sy0">|</span> <span class="kw2">tee</span> <span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${LAN}</span>/peers/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>_<span class="es3">${username}</span>/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>_<span class="es3">${username}</span>_private.key&quot;</span> <span class="sy0">|</span> wg pubkey <span class="sy0">|</span> <span class="kw2">tee</span> <span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${LAN}</span>/peers/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>_<span class="es3">${username}</span>/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>_<span class="es3">${username}</span>_public.key&quot;</span> <span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span>
+		<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+		<span class="co0"># Generate Pre-shared key</span>
+		<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Generating peer PSK for '<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>_<span class="es3">${username}</span>'... &quot;</span> 
+		wg genpsk <span class="sy0">|</span> <span class="kw2">tee</span> <span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${LAN}</span>/peers/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>_<span class="es3">${username}</span>/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>_<span class="es3">${username}</span>.psk&quot;</span> <span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span>
+		<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+		<span class="co0"># Add peer to server </span>
+		<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Adding '<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>_<span class="es3">${username}</span>' to WireGuard server... &quot;</span> 
+		uci add network wireguard_wg_<span class="co1">${LAN}</span> <span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span>
+		uci <span class="kw1">set</span> network.<span class="sy0">@</span>wireguard_wg_<span class="co1">${LAN}</span><span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.public_key=<span class="st0">&quot;<span class="es4">$(cat /etc/wireguard/networks/${LAN}/peers/${peer_ID}_${LAN}_${username}/${peer_ID}_${LAN}_${username}_public.key)</span>&quot;</span>
+		uci <span class="kw1">set</span> network.<span class="sy0">@</span>wireguard_wg_<span class="co1">${LAN}</span><span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.preshared_key=<span class="st0">&quot;<span class="es4">$(cat /etc/wireguard/networks/${LAN}/peers/${peer_ID}_${LAN}_${username}/${peer_ID}_${LAN}_${username}.psk)</span>&quot;</span>
+		uci <span class="kw1">set</span> network.<span class="sy0">@</span>wireguard_wg_<span class="co1">${LAN}</span><span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.description=<span class="st0">&quot;<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>_<span class="es3">${username}</span>&quot;</span>
+		uci add_list network.<span class="sy0">@</span>wireguard_wg_<span class="co1">${LAN}</span><span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.allowed_ips=<span class="st0">&quot;<span class="es3">${interface}</span>.<span class="es3">${peer_IP}</span>/32&quot;</span>
+		uci <span class="kw1">set</span> network.<span class="sy0">@</span>wireguard_wg_<span class="co1">${LAN}</span><span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.route_allowed_ips=<span class="st_h">'1'</span>
+		uci <span class="kw1">set</span> network.<span class="sy0">@</span>wireguard_wg_<span class="co1">${LAN}</span><span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.persistent_keepalive=<span class="st_h">'25'</span>
+		<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+		<span class="co0"># Create peer configuration</span>
+		<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Creating config for '<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>_<span class="es3">${username}</span>'... &quot;</span>
+		<span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span>-EOF <span class="sy0">&gt;</span> <span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${LAN}</span>/peers/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>_<span class="es3">${username}</span>/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>_<span class="es3">${username}</span>.conf&quot;</span>
+		<span class="br0">&#91;</span>Interface<span class="br0">&#93;</span>
+		Address = <span class="co1">${interface}</span>.<span class="co1">${peer_IP}</span><span class="sy0">/</span><span class="nu0">32</span>
+		PrivateKey = $<span class="br0">&#40;</span><span class="kw2">cat</span> <span class="sy0">/</span>etc<span class="sy0">/</span>wireguard<span class="sy0">/</span>networks<span class="sy0">/</span><span class="co1">${LAN}</span><span class="sy0">/</span>peers<span class="sy0">/</span><span class="co1">${peer_ID}</span>_<span class="co1">${LAN}</span>_<span class="co1">${username}</span><span class="sy0">/</span><span class="co1">${peer_ID}</span>_<span class="co1">${LAN}</span>_<span class="co1">${username}</span>_private.key<span class="br0">&#41;</span> <span class="co0"># Peer's private key</span>
+		DNS = <span class="co1">${server_IP}</span>
+&nbsp;
+		<span class="br0">&#91;</span>Peer<span class="br0">&#93;</span>
+		PublicKey = $<span class="br0">&#40;</span><span class="kw2">cat</span> <span class="sy0">/</span>etc<span class="sy0">/</span>wireguard<span class="sy0">/</span>networks<span class="sy0">/</span><span class="co1">${LAN}</span><span class="sy0">/</span><span class="co1">${LAN}</span>_server_public.key<span class="br0">&#41;</span> <span class="co0"># Server's public key</span>
+		PresharedKey = $<span class="br0">&#40;</span><span class="kw2">cat</span> <span class="sy0">/</span>etc<span class="sy0">/</span>wireguard<span class="sy0">/</span>networks<span class="sy0">/</span><span class="co1">${LAN}</span><span class="sy0">/</span>peers<span class="sy0">/</span><span class="co1">${peer_ID}</span>_<span class="co1">${LAN}</span>_<span class="co1">${username}</span><span class="sy0">/</span><span class="co1">${peer_ID}</span>_<span class="co1">${LAN}</span>_<span class="co1">${username}</span>.psk<span class="br0">&#41;</span> <span class="co0"># Peer's pre-shared key</span>
+		PersistentKeepalive = <span class="nu0">25</span>
+		AllowedIPs = 0.0.0.0<span class="sy0">/</span><span class="nu0">0</span>, ::<span class="sy0">/</span><span class="nu0">0</span>
+		Endpoint = <span class="co1">${DDNS}</span>:<span class="co1">${server_port}</span>
+		EOF
+		<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+		<span class="co0"># Increment variables by '1'</span>
+		<span class="re2">peer_ID</span>=$<span class="br0">&#40;</span><span class="br0">&#40;</span>peer_ID+<span class="nu0">1</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+		<span class="re2">peer_IP</span>=$<span class="br0">&#40;</span><span class="br0">&#40;</span>peer_IP+<span class="nu0">1</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+		<span class="re2">n</span>=$<span class="br0">&#40;</span><span class="br0">&#40;</span>n+<span class="nu0">1</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+	<span class="kw1">done</span>
+<span class="kw1">done</span>
+&nbsp;
+<span class="co0"># Commit UCI changes</span>
+<span class="kw3">echo</span> <span class="re5">-en</span> <span class="st0">&quot;<span class="es1">\n</span>Commiting changes... &quot;</span>
+uci commit
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Restart WireGuard interface</span>
+<span class="kw3">echo</span> <span class="re5">-en</span> <span class="st0">&quot;<span class="es1">\n</span>Restarting WireGuard interface... &quot;</span>
+<span class="kw2">ifup</span> wg_<span class="co1">${LAN}</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Restart firewall</span>
+<span class="kw3">echo</span> <span class="re5">-en</span> <span class="st0">&quot;<span class="es1">\n</span>Restarting firewall... &quot;</span>
+service firewall restart <span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+SCRIPT_EOF
+<span class="kw2">chmod</span> +x <span class="st0">&quot;/root/auto_wg_username-id.sh&quot;</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;a) Named Peers with IDs&quot;,&quot;hid&quot;:&quot;a_named_peers_with_ids&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;1149-7599&quot;} -->
+<h3 class="sectionedit6" id="b_set_number_of_peers_with_ids">b) Set Number of Peers with IDs</h3>
+<div class="level3">
+
+<p>
+This example creates 4 peers on the guest <abbr title="Local Area Network">LAN</abbr>. The only changes you should need to make are in the &#039;Defining Variables&#039; section below.
+</p>
+
+<p>
+Copy the script below to the CLI and then call the script with 
+</p>
+<pre class="code">/root/auto_wg_id.sh</pre>
+<pre class="code bash"><span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span>-<span class="st0">&quot;SCRIPT_EOF&quot;</span> <span class="sy0">&gt;</span> <span class="st0">&quot;/root/auto_wg_id.sh&quot;</span>
+<span class="co0">#!/bin/ash</span>
+<span class="kw2">clear</span>
+<span class="kw3">echo</span> <span class="st0">&quot;======================================&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;|     Automated WireGuard Script     |&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;|    Set Number of Peers with IDs    |&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;======================================&quot;</span>
+<span class="co0"># Define Variables</span>
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Defining variables... &quot;</span>
+<span class="kw3">export</span> <span class="re2">LAN</span>=<span class="st0">&quot;guest&quot;</span>
+<span class="kw3">export</span> <span class="re2">interface</span>=<span class="st0">&quot;10.0.6&quot;</span>
+<span class="kw3">export</span> <span class="re2">DDNS</span>=<span class="st0">&quot;my-ddns.no-ip.com&quot;</span>
+<span class="kw3">export</span> <span class="re2">peer_ID</span>=<span class="st0">&quot;1&quot;</span> <span class="co0"># The ID number to start from</span>
+<span class="kw3">export</span> <span class="re2">peer_IP</span>=<span class="st0">&quot;2&quot;</span> <span class="co0"># The IP address to start from</span>
+<span class="kw3">export</span> WG_<span class="co1">${LAN}</span><span class="re2">_server_port</span>=<span class="st0">&quot;51821&quot;</span>
+<span class="kw3">export</span> WG_<span class="co1">${LAN}</span><span class="re2">_server_IP</span>=<span class="st0">&quot;<span class="es3">${interface}</span>.1&quot;</span>
+<span class="kw3">export</span> WG_<span class="co1">${LAN}</span><span class="re2">_server_firewall_zone</span>=<span class="st0">&quot;<span class="es3">${LAN}</span>&quot;</span>
+<span class="kw3">export</span> <span class="re2">quantity</span>=<span class="st0">&quot;4&quot;</span> <span class="co0"># Change the number '4' to any number of peers you would like to create</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Create directories</span>
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Creating directories and pre-defining permissions on those directories... &quot;</span>
+<span class="kw2">mkdir</span> <span class="re5">-p</span> <span class="sy0">/</span>etc<span class="sy0">/</span>wireguard<span class="sy0">/</span>networks<span class="sy0">/</span><span class="co1">${LAN}</span><span class="sy0">/</span>peers
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Remove pre-existing WireGuard interface</span>
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Removing pre-existing WireGuard interface... &quot;</span>
+uci del network.wg_<span class="co1">${LAN}</span> <span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Generate WireGuard server keys</span>
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Generating WireGuard server keys for '<span class="es3">${LAN}</span>' network... &quot;</span>
+wg genkey <span class="sy0">|</span> <span class="kw2">tee</span> <span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${LAN}</span>/<span class="es3">${LAN}</span>_server_private.key&quot;</span> <span class="sy0">|</span> wg pubkey <span class="sy0">|</span> <span class="kw2">tee</span> <span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${LAN}</span>/<span class="es3">${LAN}</span>_server_public.key&quot;</span> <span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Rename firewall.@zone[0] to lan and firewall.@zone[1] to wan... &quot;</span>
+uci rename firewall.<span class="sy0">@</span>zone<span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>=<span class="st0">&quot;lan&quot;</span>
+uci rename firewall.<span class="sy0">@</span>zone<span class="br0">&#91;</span><span class="nu0">1</span><span class="br0">&#93;</span>=<span class="st0">&quot;wan&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Create WireGuard interface for 'LAN' network</span>
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Creating WireGuard interface for '<span class="es3">${LAN}</span>' network... &quot;</span>
+<span class="kw3">eval</span> <span class="st0">&quot;server_port=<span class="es1">\$</span>{WG_<span class="es3">${LAN}</span>_server_port}&quot;</span>
+<span class="kw3">eval</span> <span class="st0">&quot;server_IP=<span class="es1">\$</span>{WG_<span class="es3">${LAN}</span>_server_IP}&quot;</span>
+<span class="kw3">eval</span> <span class="st0">&quot;firewall_zone=<span class="es1">\$</span>{WG_<span class="es3">${LAN}</span>_server_firewall_zone}&quot;</span>
+uci <span class="kw1">set</span> network.wg_<span class="co1">${LAN}</span>=interface
+uci <span class="kw1">set</span> network.wg_<span class="co1">${LAN}</span>.proto=<span class="st_h">'wireguard'</span>
+uci <span class="kw1">set</span> network.wg_<span class="co1">${LAN}</span>.private_key=<span class="st0">&quot;<span class="es4">$(cat /etc/wireguard/networks/${LAN}/${LAN}_server_private.key)</span>&quot;</span>
+uci <span class="kw1">set</span> network.wg_<span class="co1">${LAN}</span>.listen_port=<span class="st0">&quot;<span class="es3">${server_port}</span>&quot;</span>
+uci add_list network.wg_<span class="co1">${LAN}</span>.addresses=<span class="st0">&quot;<span class="es3">${server_IP}</span>/24&quot;</span>
+uci <span class="kw1">set</span> firewall.<span class="co1">${LAN}</span>.network=<span class="st0">&quot;<span class="es3">${firewall_zone}</span> wg_<span class="es3">${firewall_zone}</span>&quot;</span>
+uci <span class="kw1">set</span> network.wg_<span class="co1">${LAN}</span>.mtu=<span class="st_h">'1420'</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Add firewall rule</span>
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Adding firewall rule for '<span class="es3">${LAN}</span>' network... &quot;</span>
+uci <span class="kw1">set</span> firewall.wg=<span class="st0">&quot;rule&quot;</span>
+uci <span class="kw1">set</span> firewall.wg.name=<span class="st0">&quot;Allow-WireGuard-<span class="es3">${LAN}</span>&quot;</span>
+uci <span class="kw1">set</span> firewall.wg.src=<span class="st0">&quot;wan&quot;</span>
+uci <span class="kw1">set</span> firewall.wg.dest_port=<span class="st0">&quot;<span class="es3">${server_port}</span>&quot;</span>
+uci <span class="kw1">set</span> firewall.wg.proto=<span class="st0">&quot;udp&quot;</span>
+uci <span class="kw1">set</span> firewall.wg.target=<span class="st0">&quot;ACCEPT&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Remove existing peers</span>
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Removing pre-existing peers... &quot;</span>
+<span class="kw1">while</span> uci <span class="re5">-q</span> delete network.<span class="sy0">@</span>wireguard_wg_<span class="co1">${LAN}</span><span class="br0">&#91;</span><span class="nu0">0</span><span class="br0">&#93;</span>; <span class="kw1">do</span> :; <span class="kw1">done</span>
+<span class="kw2">rm</span> <span class="re5">-R</span> <span class="sy0">/</span>etc<span class="sy0">/</span>wireguard<span class="sy0">/</span>networks<span class="sy0">/</span><span class="co1">${LAN}</span><span class="sy0">/</span>peers<span class="sy0">/*</span> <span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Loop</span>
+<span class="re2">n</span>=<span class="st0">&quot;0&quot;</span>
+<span class="kw1">while</span> <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es2">$n</span>&quot;</span> <span class="re5">-lt</span> <span class="co1">${quantity}</span> <span class="br0">&#93;</span> ;
+<span class="kw1">do</span>
+&nbsp;
+	<span class="co0"># Configure variables</span>
+	<span class="kw3">eval</span> <span class="st0">&quot;server_port=<span class="es1">\$</span>{WG_<span class="es3">${LAN}</span>_server_port}&quot;</span>
+	<span class="kw3">eval</span> <span class="st0">&quot;server_IP=<span class="es1">\$</span>{WG_<span class="es3">${LAN}</span>_server_IP}&quot;</span>
+&nbsp;
+	<span class="kw3">echo</span> <span class="st0">&quot;&quot;</span>
+	<span class="co0"># Create directory for storing peers</span>
+	<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Creating directory for peer '<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>'... &quot;</span> 
+	<span class="kw2">mkdir</span> <span class="re5">-p</span> <span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${LAN}</span>/peers/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>&quot;</span>
+	<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+	<span class="co0"># Generate peer keys</span>
+	<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Generating peer keys for '<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>'... &quot;</span> 
+	wg genkey <span class="sy0">|</span> <span class="kw2">tee</span> <span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${LAN}</span>/peers/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>_private.key&quot;</span> <span class="sy0">|</span> wg pubkey <span class="sy0">|</span> <span class="kw2">tee</span> <span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${LAN}</span>/peers/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>_public.key&quot;</span> <span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span>
+	<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+	<span class="co0"># Generate Pre-shared key</span>
+	<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Generating peer PSK for '<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>'... &quot;</span> 
+	wg genpsk <span class="sy0">|</span> <span class="kw2">tee</span> <span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${LAN}</span>/peers/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>.psk&quot;</span> <span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span>
+	<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+	<span class="co0"># Add peer to server </span>
+	<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Adding '<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>' to WireGuard server... &quot;</span> 
+	uci add network wireguard_wg_<span class="co1">${LAN}</span> <span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span>
+	uci <span class="kw1">set</span> network.<span class="sy0">@</span>wireguard_wg_<span class="co1">${LAN}</span><span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.public_key=<span class="st0">&quot;<span class="es4">$(cat /etc/wireguard/networks/${LAN}/peers/${peer_ID}_${LAN}/${peer_ID}_${LAN}_public.key)</span>&quot;</span>
+	uci <span class="kw1">set</span> network.<span class="sy0">@</span>wireguard_wg_<span class="co1">${LAN}</span><span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.preshared_key=<span class="st0">&quot;<span class="es4">$(cat /etc/wireguard/networks/${LAN}/peers/${peer_ID}_${LAN}/${peer_ID}_${LAN}.psk)</span>&quot;</span>
+	uci <span class="kw1">set</span> network.<span class="sy0">@</span>wireguard_wg_<span class="co1">${LAN}</span><span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.description=<span class="st0">&quot;<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>&quot;</span>
+	uci add_list network.<span class="sy0">@</span>wireguard_wg_<span class="co1">${LAN}</span><span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.allowed_ips=<span class="st0">&quot;<span class="es3">${interface}</span>.<span class="es3">${peer_IP}</span>/32&quot;</span>
+	uci <span class="kw1">set</span> network.<span class="sy0">@</span>wireguard_wg_<span class="co1">${LAN}</span><span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.route_allowed_ips=<span class="st_h">'1'</span>
+	uci <span class="kw1">set</span> network.<span class="sy0">@</span>wireguard_wg_<span class="co1">${LAN}</span><span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.persistent_keepalive=<span class="st_h">'25'</span>
+	<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+	<span class="co0"># Create peer configuration</span>
+	<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Creating config for '<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>'... &quot;</span>
+	<span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span>-EOF <span class="sy0">&gt;</span> <span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${LAN}</span>/peers/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>.conf&quot;</span>
+	<span class="br0">&#91;</span>Interface<span class="br0">&#93;</span>
+	Address = <span class="co1">${interface}</span>.<span class="co1">${peer_IP}</span><span class="sy0">/</span><span class="nu0">32</span>
+	PrivateKey = $<span class="br0">&#40;</span><span class="kw2">cat</span> <span class="sy0">/</span>etc<span class="sy0">/</span>wireguard<span class="sy0">/</span>networks<span class="sy0">/</span><span class="co1">${LAN}</span><span class="sy0">/</span>peers<span class="sy0">/</span><span class="co1">${peer_ID}</span>_<span class="co1">${LAN}</span><span class="sy0">/</span><span class="co1">${peer_ID}</span>_<span class="co1">${LAN}</span>_private.key<span class="br0">&#41;</span> <span class="co0"># Peer's private key</span>
+	DNS = <span class="co1">${server_IP}</span>
+&nbsp;
+	<span class="br0">&#91;</span>Peer<span class="br0">&#93;</span>
+	PublicKey = $<span class="br0">&#40;</span><span class="kw2">cat</span> <span class="sy0">/</span>etc<span class="sy0">/</span>wireguard<span class="sy0">/</span>networks<span class="sy0">/</span><span class="co1">${LAN}</span><span class="sy0">/</span><span class="co1">${LAN}</span>_server_public.key<span class="br0">&#41;</span> <span class="co0"># Server's public key</span>
+	PresharedKey = $<span class="br0">&#40;</span><span class="kw2">cat</span> <span class="sy0">/</span>etc<span class="sy0">/</span>wireguard<span class="sy0">/</span>networks<span class="sy0">/</span><span class="co1">${LAN}</span><span class="sy0">/</span>peers<span class="sy0">/</span><span class="co1">${peer_ID}</span>_<span class="co1">${LAN}</span><span class="sy0">/</span><span class="co1">${peer_ID}</span>_<span class="co1">${LAN}</span>.psk<span class="br0">&#41;</span> <span class="co0"># Peer's pre-shared key</span>
+	PersistentKeepalive = <span class="nu0">25</span>
+	AllowedIPs = 0.0.0.0<span class="sy0">/</span><span class="nu0">0</span>, ::<span class="sy0">/</span><span class="nu0">0</span>
+	Endpoint = <span class="co1">${DDNS}</span>:<span class="co1">${server_port}</span>
+	EOF
+	<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+	<span class="co0"># Increment variables by '1'</span>
+	<span class="re2">peer_ID</span>=$<span class="br0">&#40;</span><span class="br0">&#40;</span>peer_ID+<span class="nu0">1</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+	<span class="re2">peer_IP</span>=$<span class="br0">&#40;</span><span class="br0">&#40;</span>peer_IP+<span class="nu0">1</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+	<span class="re2">n</span>=$<span class="br0">&#40;</span><span class="br0">&#40;</span>n+<span class="nu0">1</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+<span class="kw1">done</span>
+&nbsp;
+<span class="co0"># Commit UCI changes</span>
+<span class="kw3">echo</span> <span class="re5">-en</span> <span class="st0">&quot;<span class="es1">\n</span>Commiting changes... &quot;</span>
+uci commit
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Restart WireGuard interface</span>
+<span class="kw3">echo</span> <span class="re5">-en</span> <span class="st0">&quot;<span class="es1">\n</span>Restarting WireGuard interface... &quot;</span>
+<span class="kw2">ifup</span> wg_<span class="co1">${LAN}</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Restart firewall</span>
+<span class="kw3">echo</span> <span class="re5">-en</span> <span class="st0">&quot;<span class="es1">\n</span>Restarting firewall... &quot;</span>
+service firewall restart <span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+SCRIPT_EOF
+<span class="kw2">chmod</span> +x <span class="st0">&quot;/root/auto_wg_id.sh&quot;</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;b) Set Number of Peers with IDs&quot;,&quot;hid&quot;:&quot;b_set_number_of_peers_with_ids&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:6,&quot;range&quot;:&quot;7600-13319&quot;} -->
+<h3 class="sectionedit7" id="c_add_additional_set_number_of_peers_with_names_and_ids">c) Add Additional Set Number of Peers with Names and IDs</h3>
+<div class="level3">
+
+<p>
+This script allows you to add a set number of extra peers with names and unique IDs alongside any pre-existing peers already on the system.
+</p>
+
+<p>
+Copy the script below to the CLI and then call the script with 
+</p>
+<pre class="code">/etc/wireguard/scripts/add_named-id_peers.sh</pre>
+<pre class="code bash"><span class="kw2">mkdir</span> <span class="st0">&quot;/etc/wireguard/scripts&quot;</span>
+<span class="kw2">cat</span> <span class="sy0">&gt;</span> <span class="st0">&quot;/etc/wireguard/scripts/add_named-id_peers.sh&quot;</span> <span class="sy0">&lt;&lt;</span>-<span class="st_h">'SCRIPT_EOF'</span>
+<span class="co0">#!/bin/ash</span>
+<span class="kw2">clear</span>
+<span class="kw3">echo</span> <span class="st0">&quot;=========================================================&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;|               Automated WireGuard Script              |&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;| Add Additional Set Number of Peers with Names and IDs |&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;=========================================================&quot;</span>
+<span class="co0"># Define Variables</span>
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Defining variables... &quot;</span> 
+<span class="kw3">export</span> <span class="re2">LAN</span>=<span class="st0">&quot;lan&quot;</span>
+<span class="kw3">export</span> <span class="re2">interface</span>=<span class="st0">&quot;10.0.5&quot;</span>
+<span class="kw3">export</span> <span class="re2">DDNS</span>=<span class="st0">&quot;my-ddns.no-ip.com&quot;</span>
+<span class="kw3">export</span> WG_<span class="co1">${LAN}</span><span class="re2">_server_port</span>=<span class="st0">&quot;51820&quot;</span>
+<span class="kw3">export</span> WG_<span class="co1">${LAN}</span><span class="re2">_server_IP</span>=<span class="st0">&quot;<span class="es3">${interface}</span>.1&quot;</span>
+<span class="kw3">export</span> WG_<span class="co1">${LAN}</span><span class="re2">_server_firewall_zone</span>=<span class="st0">&quot;<span class="es3">${LAN}</span>&quot;</span>
+<span class="kw3">export</span> <span class="re2">quantity</span>=<span class="st0">&quot;4&quot;</span> <span class="co0"># Change the number '4' to any number of peers you would like to create</span>
+<span class="kw3">export</span> <span class="re2">user_1</span>=<span class="st0">&quot;Alpha&quot;</span>
+<span class="kw3">export</span> <span class="re2">user_2</span>=<span class="st0">&quot;Bravo&quot;</span>
+<span class="kw3">export</span> <span class="re2">user_3</span>=<span class="st0">&quot;Charlie&quot;</span>
+<span class="kw3">export</span> <span class="re2">user_4</span>=<span class="st0">&quot;Delta&quot;</span>
+<span class="kw1">function</span> last_peer_ID <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+	<span class="kw3">cd</span> <span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${LAN}</span>/peers&quot;</span>
+	<span class="kw2">ls</span> <span class="sy0">|</span> <span class="kw2">sort</span> <span class="re5">-V</span> <span class="sy0">|</span> <span class="kw2">tail</span> <span class="re5">-1</span> <span class="sy0">|</span> <span class="kw2">cut</span> <span class="re5">-d</span> <span class="st_h">'_'</span> <span class="re5">-f</span> <span class="nu0">1</span>
+<span class="br0">&#125;</span>
+<span class="kw3">export</span> <span class="re2">peer_ID</span>=$<span class="br0">&#40;</span>last_peer_ID<span class="br0">&#41;</span> ; <span class="kw3">export</span> <span class="re2">peer_ID</span>=$<span class="br0">&#40;</span><span class="br0">&#40;</span>peer_ID+<span class="nu0">1</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+<span class="kw1">function</span> last_peer_IP <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+	<span class="kw3">cd</span> <span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${LAN}</span>/peers&quot;</span>
+	<span class="re2">peer</span>=$<span class="br0">&#40;</span><span class="kw2">ls</span> <span class="sy0">|</span> <span class="kw2">sort</span> <span class="re5">-V</span> <span class="sy0">|</span> <span class="kw2">tail</span> -<span class="nu0">1</span><span class="br0">&#41;</span>
+	<span class="kw2">awk</span> <span class="st_h">'/Address/'</span> <span class="re1">$peer</span><span class="sy0">/*</span>.conf <span class="sy0">|</span> <span class="kw2">cut</span> <span class="re5">-d</span> <span class="st_h">'.'</span> <span class="re5">-f</span> <span class="nu0">3</span> <span class="sy0">|</span> <span class="kw2">tr</span> <span class="re5">-d</span> <span class="sy0">/</span><span class="nu0">24</span>
+	<span class="kw3">cd</span>
+<span class="br0">&#125;</span>
+<span class="kw3">export</span> <span class="re2">peer_IP</span>=$<span class="br0">&#40;</span>last_peer_IP<span class="br0">&#41;</span> ; <span class="kw3">export</span> <span class="re2">peer_IP</span>=$<span class="br0">&#40;</span><span class="br0">&#40;</span>peer_IP+<span class="nu0">1</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="re2">n</span>=<span class="nu0">0</span>
+<span class="kw1">while</span> <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es2">$n</span>&quot;</span> <span class="re5">-lt</span> <span class="co1">${quantity}</span> <span class="br0">&#93;</span> ; 
+<span class="kw1">do</span>
+	<span class="kw1">for</span> username <span class="kw1">in</span> <span class="co1">${user_1}</span> <span class="co1">${user_2}</span> <span class="co1">${user_3}</span> <span class="co1">${user_4}</span>
+	<span class="kw1">do</span>
+		<span class="co0"># Configure Variables</span>
+		<span class="kw3">echo</span> <span class="st0">&quot;&quot;</span> 
+		<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Defining variables for '<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>_<span class="es3">${username}</span>'... &quot;</span> 
+		<span class="kw3">eval</span> <span class="st0">&quot;peer_ID_<span class="es3">${username}</span>=<span class="es3">${peer_ID}</span>&quot;</span>
+		<span class="kw3">eval</span> <span class="st0">&quot;peer_IP_<span class="es3">${username}</span>=<span class="es3">${peer_IP}</span>&quot;</span>
+&nbsp;
+		<span class="kw3">eval</span> <span class="st0">&quot;peer_ID=<span class="es1">\$</span>{peer_ID_<span class="es3">${username}</span>}&quot;</span>
+		<span class="kw3">eval</span> <span class="st0">&quot;peer_IP=<span class="es1">\$</span>{peer_IP_<span class="es3">${username}</span>}&quot;</span>
+&nbsp;
+		<span class="kw3">eval</span> <span class="st0">&quot;server_port=<span class="es1">\$</span>{WG_<span class="es3">${LAN}</span>_server_port}&quot;</span>
+		<span class="kw3">eval</span> <span class="st0">&quot;server_IP=<span class="es1">\$</span>{WG_<span class="es3">${LAN}</span>_server_IP}&quot;</span>
+		<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+		<span class="co0"># Create directory for storing peers</span>
+		<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Creating directory for peer '<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>_<span class="es3">${username}</span>'... &quot;</span> 
+		<span class="kw2">mkdir</span> <span class="re5">-p</span> <span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${LAN}</span>/peers/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>_<span class="es3">${username}</span>&quot;</span>
+		<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+		<span class="co0"># Generate peer keys</span>
+		<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Generating peer keys for '<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>_<span class="es3">${username}</span>'... &quot;</span> 
+		wg genkey <span class="sy0">|</span> <span class="kw2">tee</span> <span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${LAN}</span>/peers/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>_<span class="es3">${username}</span>/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>_<span class="es3">${username}</span>_private.key&quot;</span> <span class="sy0">|</span> wg pubkey <span class="sy0">|</span> <span class="kw2">tee</span> <span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${LAN}</span>/peers/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>_<span class="es3">${username}</span>/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>_<span class="es3">${username}</span>_public.key&quot;</span> <span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span>
+		<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+		<span class="co0"># Generate Pre-shared key</span>
+		<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Generating peer PSK for '<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>_<span class="es3">${username}</span>'... &quot;</span> 
+		wg genpsk <span class="sy0">|</span> <span class="kw2">tee</span> <span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${LAN}</span>/peers/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>_<span class="es3">${username}</span>/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>_<span class="es3">${username}</span>.psk&quot;</span> <span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span>
+		<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+		<span class="co0"># Add peer to server </span>
+		<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Adding '<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>_<span class="es3">${username}</span>' to WireGuard server... &quot;</span> 
+		uci add network wireguard_wg_<span class="co1">${LAN}</span> <span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span>
+		uci <span class="kw1">set</span> network.<span class="sy0">@</span>wireguard_wg_<span class="co1">${LAN}</span><span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.public_key=<span class="st0">&quot;<span class="es4">$(cat /etc/wireguard/networks/${LAN}/peers/${peer_ID}_${LAN}_${username}/${peer_ID}_${LAN}_${username}_public.key)</span>&quot;</span>
+		uci <span class="kw1">set</span> network.<span class="sy0">@</span>wireguard_wg_<span class="co1">${LAN}</span><span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.preshared_key=<span class="st0">&quot;<span class="es4">$(cat /etc/wireguard/networks/${LAN}/peers/${peer_ID}_${LAN}_${username}/${peer_ID}_${LAN}_${username}.psk)</span>&quot;</span>
+		uci <span class="kw1">set</span> network.<span class="sy0">@</span>wireguard_wg_<span class="co1">${LAN}</span><span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.description=<span class="st0">&quot;<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>_<span class="es3">${username}</span>&quot;</span>
+		uci add_list network.<span class="sy0">@</span>wireguard_wg_<span class="co1">${LAN}</span><span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.allowed_ips=<span class="st0">&quot;<span class="es3">${interface}</span>.<span class="es3">${peer_IP}</span>/32&quot;</span>
+		uci <span class="kw1">set</span> network.<span class="sy0">@</span>wireguard_wg_<span class="co1">${LAN}</span><span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.route_allowed_ips=<span class="st_h">'1'</span>
+		uci <span class="kw1">set</span> network.<span class="sy0">@</span>wireguard_wg_<span class="co1">${LAN}</span><span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.persistent_keepalive=<span class="st_h">'25'</span>
+		<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+		<span class="co0"># Create peer configuration</span>
+		<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Creating config for '<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>_<span class="es3">${username}</span>'... &quot;</span> 
+		<span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span>-EOF <span class="sy0">&gt;</span> <span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${LAN}</span>/peers/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>_<span class="es3">${username}</span>/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>_<span class="es3">${username}</span>.conf&quot;</span>
+		<span class="br0">&#91;</span>Interface<span class="br0">&#93;</span>
+		Address = <span class="co1">${interface}</span>.<span class="co1">${peer_IP}</span><span class="sy0">/</span><span class="nu0">32</span>
+		PrivateKey = $<span class="br0">&#40;</span><span class="kw2">cat</span> <span class="sy0">/</span>etc<span class="sy0">/</span>wireguard<span class="sy0">/</span>networks<span class="sy0">/</span><span class="co1">${LAN}</span><span class="sy0">/</span>peers<span class="sy0">/</span><span class="co1">${peer_ID}</span>_<span class="co1">${LAN}</span>_<span class="co1">${username}</span><span class="sy0">/</span><span class="co1">${peer_ID}</span>_<span class="co1">${LAN}</span>_<span class="co1">${username}</span>_private.key<span class="br0">&#41;</span> <span class="co0"># Peer's private key</span>
+		DNS = <span class="co1">${server_IP}</span>
+&nbsp;
+		<span class="br0">&#91;</span>Peer<span class="br0">&#93;</span>
+		PublicKey = $<span class="br0">&#40;</span><span class="kw2">cat</span> <span class="sy0">/</span>etc<span class="sy0">/</span>wireguard<span class="sy0">/</span>networks<span class="sy0">/</span><span class="co1">${LAN}</span><span class="sy0">/</span><span class="co1">${LAN}</span>_server_public.key<span class="br0">&#41;</span> <span class="co0"># Server's public key</span>
+		PresharedKey = $<span class="br0">&#40;</span><span class="kw2">cat</span> <span class="sy0">/</span>etc<span class="sy0">/</span>wireguard<span class="sy0">/</span>networks<span class="sy0">/</span><span class="co1">${LAN}</span><span class="sy0">/</span>peers<span class="sy0">/</span><span class="co1">${peer_ID}</span>_<span class="co1">${LAN}</span>_<span class="co1">${username}</span><span class="sy0">/</span><span class="co1">${peer_ID}</span>_<span class="co1">${LAN}</span>_<span class="co1">${username}</span>.psk<span class="br0">&#41;</span> <span class="co0"># Peer's pre-shared key</span>
+		PersistentKeepalive = <span class="nu0">25</span>
+		AllowedIPs = 0.0.0.0<span class="sy0">/</span><span class="nu0">0</span>, ::<span class="sy0">/</span><span class="nu0">0</span>
+		Endpoint = <span class="co1">${DDNS}</span>:<span class="co1">${server_port}</span>
+		EOF
+		<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+		<span class="co0"># Increment variables by '1'	</span>
+		<span class="re2">peer_ID</span>=$<span class="br0">&#40;</span><span class="br0">&#40;</span>peer_ID+<span class="nu0">1</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+		<span class="re2">peer_IP</span>=$<span class="br0">&#40;</span><span class="br0">&#40;</span>peer_IP+<span class="nu0">1</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+		<span class="re2">n</span>=$<span class="br0">&#40;</span><span class="br0">&#40;</span>n+<span class="nu0">1</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+	<span class="kw1">done</span>
+<span class="kw1">done</span>
+&nbsp;
+<span class="co0"># Commit UCI changes</span>
+<span class="kw3">echo</span> <span class="re5">-en</span> <span class="st0">&quot;<span class="es1">\n</span>Commiting changes... &quot;</span>
+uci commit
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Restart WireGuard interface</span>
+<span class="kw3">echo</span> <span class="re5">-en</span> <span class="st0">&quot;<span class="es1">\n</span>Restarting WireGuard interface... &quot;</span>
+<span class="kw2">ifup</span> wg_<span class="co1">${LAN}</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Restart firewall</span>
+<span class="kw3">echo</span> <span class="re5">-en</span> <span class="st0">&quot;<span class="es1">\n</span>Restarting firewall... &quot;</span>
+service firewall restart <span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+SCRIPT_EOF
+<span class="kw2">chmod</span> +x <span class="st0">&quot;/etc/wireguard/scripts/add_named-id_peers.sh&quot;</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;c) Add Additional Set Number of Peers with Names and IDs&quot;,&quot;hid&quot;:&quot;c_add_additional_set_number_of_peers_with_names_and_ids&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:7,&quot;range&quot;:&quot;13320-18336&quot;} -->
+<h3 class="sectionedit8" id="d_add_additional_set_number_of_peers_with_ids">d) Add Additional Set Number of Peers with IDs</h3>
+<div class="level3">
+
+<p>
+This script allows you to add a set number of extra peers with unique IDs alongside any pre-existing peers already on the system.
+</p>
+
+<p>
+Copy the script below to the CLI and then call the script with 
+</p>
+<pre class="code">/etc/wireguard/scripts/add_id_peers.sh</pre>
+<pre class="code bash"><span class="kw2">mkdir</span> <span class="st0">&quot;/etc/wireguard/scripts&quot;</span>
+<span class="kw2">cat</span> <span class="sy0">&gt;</span> <span class="st0">&quot;/etc/wireguard/scripts/add_id_peers.sh&quot;</span> <span class="sy0">&lt;&lt;</span>-<span class="st_h">'SCRIPT_EOF'</span>
+<span class="co0">#!/bin/ash</span>
+<span class="kw2">clear</span>
+<span class="kw3">echo</span> <span class="st0">&quot;===============================================&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;|         Automated WireGuard Script          |&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;| Add Additional Set Number of Peers with IDs |&quot;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;===============================================&quot;</span>
+<span class="co0"># Define Variables</span>
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Defining variables... &quot;</span>
+<span class="kw3">export</span> <span class="re2">LAN</span>=<span class="st0">&quot;guest&quot;</span>
+<span class="kw3">export</span> <span class="re2">interface</span>=<span class="st0">&quot;10.0.6&quot;</span>
+<span class="kw3">export</span> <span class="re2">DDNS</span>=<span class="st0">&quot;my-ddns.no-ip.com&quot;</span>
+<span class="kw3">export</span> WG_<span class="co1">${LAN}</span><span class="re2">_server_port</span>=<span class="st0">&quot;51821&quot;</span>
+<span class="kw3">export</span> WG_<span class="co1">${LAN}</span><span class="re2">_server_IP</span>=<span class="st0">&quot;<span class="es3">${interface}</span>.1&quot;</span>
+<span class="kw3">export</span> WG_<span class="co1">${LAN}</span><span class="re2">_server_firewall_zone</span>=<span class="st0">&quot;<span class="es3">${LAN}</span>&quot;</span>
+<span class="kw3">export</span> <span class="re2">quantity</span>=<span class="st0">&quot;4&quot;</span> <span class="co0"># Change the number '4' to any number of peers you would like to create</span>
+<span class="kw1">function</span> last_peer_ID <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+	<span class="kw3">cd</span> <span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${LAN}</span>/peers&quot;</span>
+	<span class="kw2">ls</span> <span class="sy0">|</span> <span class="kw2">sort</span> <span class="re5">-V</span> <span class="sy0">|</span> <span class="kw2">tail</span> <span class="re5">-1</span> <span class="sy0">|</span> <span class="kw2">cut</span> <span class="re5">-d</span> <span class="st_h">'_'</span> <span class="re5">-f</span> <span class="nu0">1</span>
+<span class="br0">&#125;</span>
+<span class="kw3">export</span> <span class="re2">peer_ID</span>=$<span class="br0">&#40;</span>last_peer_ID<span class="br0">&#41;</span> ; <span class="kw3">export</span> <span class="re2">peer_ID</span>=$<span class="br0">&#40;</span><span class="br0">&#40;</span>peer_ID+<span class="nu0">1</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+<span class="kw1">function</span> last_peer_IP <span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+	<span class="kw3">cd</span> <span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${LAN}</span>/peers&quot;</span>
+	<span class="re2">peer</span>=$<span class="br0">&#40;</span><span class="kw2">ls</span> <span class="sy0">|</span> <span class="kw2">sort</span> <span class="re5">-V</span> <span class="sy0">|</span> <span class="kw2">tail</span> -<span class="nu0">1</span><span class="br0">&#41;</span>
+	<span class="kw2">awk</span> <span class="st_h">'/Address/'</span> <span class="re1">$peer</span><span class="sy0">/*</span>.conf <span class="sy0">|</span> <span class="kw2">cut</span> <span class="re5">-d</span> <span class="st_h">'.'</span> <span class="re5">-f</span> <span class="nu0">3</span> <span class="sy0">|</span> <span class="kw2">tr</span> <span class="re5">-d</span> <span class="sy0">/</span><span class="nu0">24</span>
+	<span class="kw3">cd</span>
+<span class="br0">&#125;</span>
+<span class="kw3">export</span> <span class="re2">peer_IP</span>=$<span class="br0">&#40;</span>last_peer_IP<span class="br0">&#41;</span> ; <span class="kw3">export</span> <span class="re2">peer_IP</span>=$<span class="br0">&#40;</span><span class="br0">&#40;</span>peer_IP+<span class="nu0">1</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Generate WireGuard server keys</span>
+<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Generating WireGuard server keys for '<span class="es3">${LAN}</span>' network... &quot;</span>
+wg genkey <span class="sy0">|</span> <span class="kw2">tee</span> <span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${LAN}</span>/<span class="es3">${LAN}</span>_server_private.key&quot;</span> <span class="sy0">|</span> wg pubkey <span class="sy0">|</span> <span class="kw2">tee</span> <span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${LAN}</span>/<span class="es3">${LAN}</span>_server_public.key&quot;</span> <span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Loop</span>
+<span class="re2">n</span>=<span class="st0">&quot;0&quot;</span>
+<span class="kw1">while</span> <span class="br0">&#91;</span> <span class="st0">&quot;<span class="es2">$n</span>&quot;</span> <span class="re5">-lt</span> <span class="co1">${quantity}</span> <span class="br0">&#93;</span> ;
+<span class="kw1">do</span>
+&nbsp;
+	<span class="co0"># Configure variables</span>
+	<span class="kw3">eval</span> <span class="st0">&quot;server_port=<span class="es1">\$</span>{WG_<span class="es3">${LAN}</span>_server_port}&quot;</span>
+	<span class="kw3">eval</span> <span class="st0">&quot;server_IP=<span class="es1">\$</span>{WG_<span class="es3">${LAN}</span>_server_IP}&quot;</span>
+&nbsp;
+	<span class="kw3">echo</span> <span class="st0">&quot;&quot;</span>
+	<span class="co0"># Create directory for storing peers</span>
+	<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Creating directory for peer '<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>'... &quot;</span> 
+	<span class="kw2">mkdir</span> <span class="re5">-p</span> <span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${LAN}</span>/peers/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>&quot;</span>
+	<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+	<span class="co0"># Generate peer keys</span>
+	<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Generating peer keys for '<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>'... &quot;</span> 
+	wg genkey <span class="sy0">|</span> <span class="kw2">tee</span> <span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${LAN}</span>/peers/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>_private.key&quot;</span> <span class="sy0">|</span> wg pubkey <span class="sy0">|</span> <span class="kw2">tee</span> <span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${LAN}</span>/peers/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>_public.key&quot;</span> <span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span>
+	<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+	<span class="co0"># Generate Pre-shared key</span>
+	<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Generating peer PSK for '<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>'... &quot;</span> 
+	wg genpsk <span class="sy0">|</span> <span class="kw2">tee</span> <span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${LAN}</span>/peers/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>.psk&quot;</span> <span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span>
+	<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+	<span class="co0"># Add peer to server </span>
+	<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Adding '<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>' to WireGuard server... &quot;</span> 
+	uci add network wireguard_wg_<span class="co1">${LAN}</span> <span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span>
+	uci <span class="kw1">set</span> network.<span class="sy0">@</span>wireguard_wg_<span class="co1">${LAN}</span><span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.public_key=<span class="st0">&quot;<span class="es4">$(cat /etc/wireguard/networks/${LAN}/peers/${peer_ID}_${LAN}/${peer_ID}_${LAN}_public.key)</span>&quot;</span>
+	uci <span class="kw1">set</span> network.<span class="sy0">@</span>wireguard_wg_<span class="co1">${LAN}</span><span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.preshared_key=<span class="st0">&quot;<span class="es4">$(cat /etc/wireguard/networks/${LAN}/peers/${peer_ID}_${LAN}/${peer_ID}_${LAN}.psk)</span>&quot;</span>
+	uci <span class="kw1">set</span> network.<span class="sy0">@</span>wireguard_wg_<span class="co1">${LAN}</span><span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.description=<span class="st0">&quot;<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>&quot;</span>
+	uci add_list network.<span class="sy0">@</span>wireguard_wg_<span class="co1">${LAN}</span><span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.allowed_ips=<span class="st0">&quot;<span class="es3">${interface}</span>.<span class="es3">${peer_IP}</span>/32&quot;</span>
+	uci <span class="kw1">set</span> network.<span class="sy0">@</span>wireguard_wg_<span class="co1">${LAN}</span><span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.route_allowed_ips=<span class="st_h">'1'</span>
+	uci <span class="kw1">set</span> network.<span class="sy0">@</span>wireguard_wg_<span class="co1">${LAN}</span><span class="br0">&#91;</span>-<span class="nu0">1</span><span class="br0">&#93;</span>.persistent_keepalive=<span class="st_h">'25'</span>
+	<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+	<span class="co0"># Create peer configuration</span>
+	<span class="kw3">echo</span> <span class="re5">-n</span> <span class="st0">&quot;Creating config for '<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>'... &quot;</span>
+	<span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span>-EOF <span class="sy0">&gt;</span> <span class="st0">&quot;/etc/wireguard/networks/<span class="es3">${LAN}</span>/peers/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>/<span class="es3">${peer_ID}</span>_<span class="es3">${LAN}</span>.conf&quot;</span>
+	<span class="br0">&#91;</span>Interface<span class="br0">&#93;</span>
+	Address = <span class="co1">${interface}</span>.<span class="co1">${peer_IP}</span><span class="sy0">/</span><span class="nu0">32</span>
+	PrivateKey = $<span class="br0">&#40;</span><span class="kw2">cat</span> <span class="sy0">/</span>etc<span class="sy0">/</span>wireguard<span class="sy0">/</span>networks<span class="sy0">/</span><span class="co1">${LAN}</span><span class="sy0">/</span>peers<span class="sy0">/</span><span class="co1">${peer_ID}</span>_<span class="co1">${LAN}</span><span class="sy0">/</span><span class="co1">${peer_ID}</span>_<span class="co1">${LAN}</span>_private.key<span class="br0">&#41;</span> <span class="co0"># Peer's private key</span>
+	DNS = <span class="co1">${server_IP}</span>
+&nbsp;
+	<span class="br0">&#91;</span>Peer<span class="br0">&#93;</span>
+	PublicKey = $<span class="br0">&#40;</span><span class="kw2">cat</span> <span class="sy0">/</span>etc<span class="sy0">/</span>wireguard<span class="sy0">/</span>networks<span class="sy0">/</span><span class="co1">${LAN}</span><span class="sy0">/</span><span class="co1">${LAN}</span>_server_public.key<span class="br0">&#41;</span> <span class="co0"># Server's public key</span>
+	PresharedKey = $<span class="br0">&#40;</span><span class="kw2">cat</span> <span class="sy0">/</span>etc<span class="sy0">/</span>wireguard<span class="sy0">/</span>networks<span class="sy0">/</span><span class="co1">${LAN}</span><span class="sy0">/</span>peers<span class="sy0">/</span><span class="co1">${peer_ID}</span>_<span class="co1">${LAN}</span><span class="sy0">/</span><span class="co1">${peer_ID}</span>_<span class="co1">${LAN}</span>.psk<span class="br0">&#41;</span> <span class="co0"># Peer's pre-shared key</span>
+	PersistentKeepalive = <span class="nu0">25</span>
+	AllowedIPs = 0.0.0.0<span class="sy0">/</span><span class="nu0">0</span>, ::<span class="sy0">/</span><span class="nu0">0</span>
+	Endpoint = <span class="co1">${DDNS}</span>:<span class="co1">${server_port}</span>
+	EOF
+	<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+	<span class="co0"># Increment variables by '1'</span>
+	<span class="re2">peer_ID</span>=$<span class="br0">&#40;</span><span class="br0">&#40;</span>peer_ID+<span class="nu0">1</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+	<span class="re2">peer_IP</span>=$<span class="br0">&#40;</span><span class="br0">&#40;</span>peer_IP+<span class="nu0">1</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+	<span class="re2">n</span>=$<span class="br0">&#40;</span><span class="br0">&#40;</span>n+<span class="nu0">1</span><span class="br0">&#41;</span><span class="br0">&#41;</span>
+<span class="kw1">done</span>
+&nbsp;
+<span class="co0"># Commit UCI changes</span>
+<span class="kw3">echo</span> <span class="re5">-en</span> <span class="st0">&quot;<span class="es1">\n</span>Commiting changes... &quot;</span>
+uci commit
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Restart WireGuard interface</span>
+<span class="kw3">echo</span> <span class="re5">-en</span> <span class="st0">&quot;<span class="es1">\n</span>Restarting WireGuard interface... &quot;</span>
+<span class="kw2">ifup</span> wg_<span class="co1">${LAN}</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Restart firewall</span>
+<span class="kw3">echo</span> <span class="re5">-en</span> <span class="st0">&quot;<span class="es1">\n</span>Restarting firewall... &quot;</span>
+service firewall restart <span class="sy0">&gt;/</span>dev<span class="sy0">/</span>null <span class="nu0">2</span><span class="sy0">&gt;&amp;</span><span class="nu0">1</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+SCRIPT_EOF
+<span class="kw2">chmod</span> +x <span class="st0">&quot;/etc/wireguard/scripts/add_id_peers.sh&quot;</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;d) Add Additional Set Number of Peers with IDs&quot;,&quot;hid&quot;:&quot;d_add_additional_set_number_of_peers_with_ids&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:8,&quot;range&quot;:&quot;18337-22835&quot;} -->
+<h2 class="sectionedit9" id="share_peer_config_files_over_samba_4_network_share">3. Share Peer Config Files Over SAMBA 4 Network Share</h2>
+<div class="level2">
+
+<p>
+Consider creating a Samba share on the OpenWrt router listening on a trusted network such as the private <abbr title="Local Area Network">LAN</abbr> so that the configuration files can be easily accessed over the network. From here they can be emailed as an attachment, uploaded to a private cloud storage and shared or sent via an <abbr title="Instant Messaging">IM</abbr> (instant messaging) app such WhatsApp, Telegram, Discord etc. This makes it very easy to distribute the various config files whether they are for the private <abbr title="Local Area Network">LAN</abbr>, guest <abbr title="Local Area Network">LAN</abbr> or any others you may have setup.
+</p>
+
+<p>
+Copy the script below to the CLI and then call the script with 
+</p>
+<pre class="code">/root/create_wg_smb_share.sh</pre>
+<pre class="code bash"><span class="kw2">cat</span> <span class="sy0">&lt;&lt;</span>-<span class="st0">&quot;SCRIPT_EOF&quot;</span> <span class="sy0">&gt;</span> <span class="st0">&quot;/root/create_wg_smb_share.sh&quot;</span>
+<span class="co0"># Define LAN network</span>
+<span class="kw3">export</span> <span class="re2">LAN</span>=<span class="st0">&quot;lan&quot;</span>
+&nbsp;
+<span class="co0"># Create SMB network share to access configuration files</span>
+<span class="kw3">echo</span> <span class="re5">-en</span> <span class="st0">&quot;<span class="es1">\n</span>Creating SAMBA share for peer config files... &quot;</span>
+uci batch <span class="co2">&lt;&lt;EOF
+set samba4.wireguard_${LAN}=sambashare
+set samba4.wireguard_${LAN}.path=&quot;/etc/wireguard/networks/${LAN}/peers&quot;
+set samba4.wireguard_${LAN}.name='WG_${LAN}'
+set samba4.wireguard_${LAN}.create_mask='0700'
+set samba4.wireguard_${LAN}.dir_mask='0744'
+set samba4.wireguard_${LAN}.read_only='yes'
+set samba4.wireguard_${LAN}.guest_ok='yes'
+EOF</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Set permissions on peer directories</span>
+<span class="kw3">echo</span> <span class="re5">-en</span> <span class="st0">&quot;<span class="es1">\n</span>Setting permissions on peer directories... &quot;</span>
+<span class="kw2">chmod</span> <span class="re5">-R</span> <span class="nu0">755</span> <span class="sy0">/</span>etc<span class="sy0">/</span>wireguard<span class="sy0">/</span>networks<span class="sy0">/</span><span class="co1">${LAN}</span><span class="sy0">/</span>peers<span class="sy0">/</span>
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Commit UCI changes</span>
+<span class="co0"># Commit UCI changes</span>
+<span class="kw3">echo</span> <span class="re5">-en</span> <span class="st0">&quot;<span class="es1">\n</span>Commiting changes... &quot;</span>
+uci commit samba4
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+&nbsp;
+<span class="co0"># Restart SAMBA 4 services</span>
+<span class="kw3">echo</span> <span class="re5">-en</span> <span class="st0">&quot;<span class="es1">\n</span>Restarting SAMBA 4... &quot;</span>
+service samba4 restart
+<span class="kw3">echo</span> <span class="st0">&quot;Done&quot;</span>
+SCRIPT_EOF
+<span class="kw2">chmod</span> +x <span class="st0">&quot;/root/create_wg_smb_share.sh&quot;</span></pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;3. Share Peer Config Files Over SAMBA 4 Network Share&quot;,&quot;hid&quot;:&quot;share_peer_config_files_over_samba_4_network_share&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:9,&quot;range&quot;:&quot;22836-24523&quot;} -->
+<h2 class="sectionedit10" id="testing">4. Testing</h2>
+<div class="level2">
+
+<p>
+Establish the <abbr title="Virtual Private Network">VPN</abbr> connection on the client device and verify the traffic is routed through the <abbr title="Virtual Private Network">VPN</abbr>.
+</p>
+<pre class="code bash">traceroute openwrt.org
+traceroute6 openwrt.org</pre>
+
+<p>
+Check your client public <abbr title="Internet Protocol">IP</abbr> addresses.
+</p>
+
+<p>
+<a href="https://whatismyipaddress.com/" class="urlextern" title="https://whatismyipaddress.com/" rel="ugc nofollow">whatismyipaddress.com</a>
+</p>
+
+<p>
+Check there are no <abbr title="Domain Name System">DNS</abbr> leaks
+</p>
+
+<p>
+<a href="https://www.dnsleaktest.com/" class="urlextern" title="https://www.dnsleaktest.com/" rel="ugc nofollow">dnsleaktest.com</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;4. Testing&quot;,&quot;hid&quot;:&quot;testing&quot;,&quot;codeblockOffset&quot;:10,&quot;secid&quot;:10,&quot;range&quot;:&quot;24524-&quot;} -->

@@ -1,0 +1,163 @@
+
+<h1 class="sectionedit1" id="sqm_smart_queue_management">SQM (Smart Queue Management)</h1>
+<div class="level1">
+
+<p>
+OpenWrt supports SQM for mitigating <a href="https://en.wikipedia.org/wiki/bufferbloat" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/bufferbloat">bufferbloat</a>, the undesirable latency that arises when your router buffers too much data.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;SQM (Smart Queue Management)&quot;,&quot;hid&quot;:&quot;sqm_smart_queue_management&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-177&quot;} -->
+<h2 class="sectionedit2" id="overview">Overview</h2>
+<div class="level2">
+
+<p>
+Bufferbloat is most evident when a connection is heavily loaded with downloads or uploads. It causes increased latency (ping), resulting in poor performance for realtime tasks like <abbr title="Voice over Internet Protocol">VoIP</abbr>, video chat, lag in online gaming, and generally makes the internet less responsive. This latency can be mitigated with SQM.
+</p>
+
+<p>
+SQM is an integrated system that performs per-packet/per-flow network scheduling, active queue management (AQM), traffic shaping, rate limiting, and <abbr title="Quality of Service">QoS</abbr> prioritization. In comparison, “classic” AQM only manages queue length, and “classic” <abbr title="Quality of Service">QoS</abbr> only does prioritization.
+</p>
+
+<p>
+SQM is performed on the CPU, as such slower devices may be unable to <a href="https://forum.openwrt.org/t/so-you-have-500mbps-1gbps-fiber-and-need-a-router-read-this-first/90305" class="urlextern" title="https://forum.openwrt.org/t/so-you-have-500mbps-1gbps-fiber-and-need-a-router-read-this-first/90305" rel="ugc nofollow">keep up</a> with your peak internet speed.
+</p>
+
+<p>
+SQM is incompatible with hardware flow offloading which bypasses part of the kernel as discussed in <a href="https://forum.openwrt.org/t/sqm-and-non-sqm-queue-issues-lan-vs-wlan/15433/10" class="urlextern" title="https://forum.openwrt.org/t/sqm-and-non-sqm-queue-issues-lan-vs-wlan/15433/10" rel="ugc nofollow">this thread</a>. Be sure that is disabled on the LuCI → Network → Firewall dropdown box. Note that SQM works with software flow offloading enabled.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Overview&quot;,&quot;hid&quot;:&quot;overview&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;178-1331&quot;} -->
+<h2 class="sectionedit3" id="preparationmeasure_your_current_speed_and_latency">Preparation: Measure Your Current Speed and Latency</h2>
+<div class="level2">
+
+<p>
+Before you can optimize your network, you need to test its current state.
+</p>
+<ul>
+<li class="level1"><div class="li"> When your internet is quiet run a speed test from <a href="https://www.waveform.com/tools/bufferbloat" class="urlextern" title="https://www.waveform.com/tools/bufferbloat" rel="ugc nofollow">Waveform</a> or <a href="https://speedtest.net" class="urlextern" title="https://speedtest.net" rel="ugc nofollow">Speedtest</a>. This is to determine your peak download/upload speeds, latency, and grade your bufferbloat.</div>
+</li>
+<li class="level1"><div class="li"> To maximize performance most devices will benefit from enabling Packet Steering under LuCI → Network → Interfaces → Global network options.</div>
+</li>
+<li class="level1"><div class="li"> If you are using this OpenWrt device as an <a href="/docs/guide-user/network/wifi/relay_configuration" class="wikilink1" title="docs:guide-user:network:wifi:relay_configuration" data-wiki-id="docs:guide-user:network:wifi:relay_configuration">Extender, Repeater, or Bridge</a>, test your upstream router (OpenWrt or otherwise) and determine if an issue is present there first.</div>
+</li>
+<li class="level1"><div class="li"> If you are on a <a href="/docs/guide-user/network/wifi/wifiextenders/bridgedap" class="wikilink1" title="docs:guide-user:network:wifi:wifiextenders:bridgedap" data-wiki-id="docs:guide-user:network:wifi:wifiextenders:bridgedap">wireless AP</a>, test your upstream router separately. If your <abbr title="Access Point">AP</abbr> wifi driver supports AQL limits (e.g. <a href="/docs/techref/driver.wlan/mt76" class="wikilink1" title="docs:techref:driver.wlan:mt76" data-wiki-id="docs:techref:driver.wlan:mt76">mt76</a> does) adjust/reduce those seperately to improve wifi latency.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Preparation: Measure Your Current Speed and Latency&quot;,&quot;hid&quot;:&quot;preparationmeasure_your_current_speed_and_latency&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;1332-2368&quot;} -->
+<h2 class="sectionedit4" id="installation">Installation</h2>
+<div class="level2">
+
+<p>
+Install <code><a href="/packages/pkgdata/luci-app-sqm" class="wikilink1" title="packages:pkgdata:luci-app-sqm" data-wiki-id="packages:pkgdata:luci-app-sqm">luci-app-sqm</a></code> (or <code><a href="/packages/pkgdata/sqm-scripts" class="wikilink1" title="packages:pkgdata:sqm-scripts" data-wiki-id="packages:pkgdata:sqm-scripts">sqm-scripts</a></code> if you don&#039;t want LuCI) and follow below.
+</p>
+
+<p>
+In LuCI go to <strong>Network → SQM <abbr title="Quality of Service">QoS</abbr></strong>:
+</p>
+<ol>
+<li class="level1 node"><div class="li"> In the <strong>Basic Settings</strong> tab:</div>
+<ul>
+<li class="level2"><div class="li"> Check the <strong>Enable</strong> box</div>
+</li>
+<li class="level2"><div class="li"> Set the <strong>Interface</strong> to your internet (<abbr title="Wide Area Network">WAN</abbr>) link in the dropdown. Check Network → Interfaces if you need to determine your <abbr title="Wide Area Network">WAN</abbr> port.</div>
+</li>
+<li class="level2"><div class="li"> Enter your <strong>Download</strong> and <strong>Upload</strong> speeds to 90% of the results you tested during Preparation.</div>
+</li>
+</ul>
+</li>
+<li class="level1 node"><div class="li"> In the <strong>Queue Discipline</strong> tab:</div>
+<ul>
+<li class="level2"><div class="li"> Choose <em>cake</em> as the Queueing Discipline (or <em>fq_codel</em>, consider <a href="/docs/guide-user/network/traffic-shaping/sqm#a_little_more_tuning" class="wikilink1" title="docs:guide-user:network:traffic-shaping:sqm" data-wiki-id="docs:guide-user:network:traffic-shaping:sqm">note 3</a>)</div>
+</li>
+<li class="level2"><div class="li"> Choose <em>piece_of_cake.qos</em> as the Queue Setup Script</div>
+</li>
+<li class="level2"><div class="li"> Advanced Configuration may be left unchecked (see notes for advanced settings)</div>
+</li>
+</ul>
+</li>
+<li class="level1 node"><div class="li"> In the <strong>Link Layer Adaptation</strong> tab, select your link type and overhead (setting mpu is optional see <a href="/docs/guide-user/network/traffic-shaping/sqm#a_little_more_tuning" class="wikilink1" title="docs:guide-user:network:traffic-shaping:sqm" data-wiki-id="docs:guide-user:network:traffic-shaping:sqm">note 1</a>):</div>
+<ul>
+<li class="level2"><div class="li"> <em>VDSL</em> - choose <strong>Ethernet</strong>, and set overhead 34 (or 26 if you&#039;re not using PPPoE) (mpu 68). If the link is 100 Mbps Ethernet set overhead 42 (mpu 84).</div>
+</li>
+<li class="level2"><div class="li"> <em>DSL of any other type</em> - choose <strong>ATM</strong>, and set overhead 44 (mpu 96).</div>
+</li>
+<li class="level2"><div class="li"> <em>DOCSIS Cable</em> - choose <strong>Ethernet</strong>, and for rates &lt; 760 Mbps set overhead 22 (mpu 64), for rates &gt;= 760 Mbps set overhead 42 (mpu 84).</div>
+</li>
+<li class="level2"><div class="li"> <em>Fiber</em> - choose <strong>Ethernet</strong>, and set overhead 44 (mpu 84).</div>
+</li>
+<li class="level2"><div class="li"> <em>Ethernet</em> - choose <strong>Ethernet</strong>, and set overhead 44 (mpu 84).</div>
+</li>
+<li class="level2"><div class="li"> If you are unsure, it&#039;s better to overestimate, choose <strong>Ethernet</strong>, and set overhead 44 (mpu 96).</div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> Click <strong>Save &amp; Apply</strong>.</div>
+</li>
+</ol>
+
+<p>
+Done! You can confirm results by re-running the speedtest. Any increased ping during download/uploads will now be minimal.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Installation&quot;,&quot;hid&quot;:&quot;installation&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;2369-4209&quot;} -->
+<h2 class="sectionedit5" id="results">Results</h2>
+<div class="level2">
+
+<p>
+As an example, the user below is running OpenWrt on a <a href="/toh/linksys/wrt_ac_series" class="wikilink1" title="toh:linksys:wrt_ac_series" data-wiki-id="toh:linksys:wrt_ac_series">WRT32X</a> router. The internet connection is a DOCSIS cable modem with 500/35 Mbit service and this <abbr title="Internet Service Provider">ISP</abbr> includes over-provisioning. SQM cake was selected with 90% dl/ul limits on baseline speedtest values. Packet Steering (all CPUs) is also enabled. Latency increase under load dropped to zero, lower ping with no packet loss is observed during <abbr title="Voice over Internet Protocol">VoIP</abbr> and online gaming during heavy internet usage. The user&#039;s <a href="https://www.waveform.com/tools/bufferbloat?test-id=e101a8fc-f017-4eef-8f90-b27bcb783d62" class="urlextern" title="https://www.waveform.com/tools/bufferbloat?test-id=e101a8fc-f017-4eef-8f90-b27bcb783d62" rel="ugc nofollow">speedtest results with SQM</a> and summary of tests below:
+</p>
+<div class="table sectionedit6"><table class="inline">
+	<thead>
+	<tr class="row0">
+		<th class="col0 centeralign" colspan="8">   Speedtest Results   </th>
+	</tr>
+	</thead>
+	<tr class="row1">
+		<td class="col0 leftalign"> <abbr title="Quality of Service">QoS</abbr>  </td><td class="col1 leftalign"> Download  </td><td class="col2 leftalign"> Upload   </td><td class="col3"> Unloaded Ping </td><td class="col4"> DL Latency </td><td class="col5"> UL Latency </td><td class="col6"> Quality grade </td><td class="col7"> Bufferbloat grade </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0"> None </td><td class="col1"> 532 Mbits </td><td class="col2"> 37 Mbits </td><td class="col3 centeralign">  12 ms        </td><td class="col4 leftalign"> +18 ms     </td><td class="col5 leftalign"> +38 ms     </td><td class="col6 leftalign"> B             </td><td class="col7 leftalign"> B                 </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> SQM  </td><td class="col1"> 495 Mbits </td><td class="col2"> 28 Mbits </td><td class="col3 centeralign">  12 ms        </td><td class="col4 leftalign"> +0 ms      </td><td class="col5 leftalign"> +0 ms      </td><td class="col6 leftalign"> A+            </td><td class="col7 leftalign"> A +               </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:6,&quot;range&quot;:&quot;4868-5230&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Results&quot;,&quot;hid&quot;:&quot;results&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;4210-5231&quot;} -->
+<h2 class="sectionedit7" id="a_little_more_tuning">A Little More Tuning</h2>
+<div class="level2">
+
+<p>
+1. Set your <strong>mpu</strong> to ensure rate shaping is correct for small packets in LuCI under SQM <abbr title="Quality of Service">QoS</abbr> → Link Layer Adaptation → Advanced Linklayer Options. See <a href="/docs/guide-user/network/traffic-shaping/sqm-details" class="wikilink1" title="docs:guide-user:network:traffic-shaping:sqm-details" data-wiki-id="docs:guide-user:network:traffic-shaping:sqm-details">SQM Details</a> and <a href="https://forum.openwrt.org/t/sqm-setting-question-link-layer-adaptation/2514/9" class="urlextern" title="https://forum.openwrt.org/t/sqm-setting-question-link-layer-adaptation/2514/9" rel="ugc nofollow">SQM setting question</a> for more details.
+</p>
+
+<p>
+2. The steps above will handle latency well but you may improve it further with these steps:
+</p>
+<ul>
+<li class="level1"><div class="li"> Increase your Download and Upload speed settings and retest until bufferbloat latency occurs, then go back to a slightly lower value. Note that the settings are gross rates which include overhead, so measured speedtests will be a bit lower.</div>
+</li>
+<li class="level1"><div class="li"> Test using <a href="https://www.waveform.com/tools/bufferbloat" class="urlextern" title="https://www.waveform.com/tools/bufferbloat" rel="ugc nofollow">Waveform</a> speedtest to achieve A+ quality and A+ bufferbloat grades when optimal settings are found.</div>
+</li>
+<li class="level1"><div class="li"> For DSL, this may produce download/upload values that are actually <em>higher</em> than the original speed test. This is ok, ATM framing bytes of a DSL link add an average of 9% overhead, and these settings tell SQM how to make up for that overhead.</div>
+</li>
+<li class="level1"><div class="li"> For DOCSIS cable, some providers trick speed tests by adding 10% over-provisioning for the first 10 seconds (so speed tests look better!).</div>
+</li>
+</ul>
+
+<p>
+3. While <a href="https://www.bufferbloat.net/projects/codel/wiki/Cake/" class="urlextern" title="https://www.bufferbloat.net/projects/codel/wiki/Cake/" rel="ugc nofollow">Cake</a> is the preferred discipline as it is excellent at mitigating bufferbloat, fq_codel is a faster, albeit less comprehensive option. One user found fq_codel gave <a href="https://forum.openwrt.org/t/netgear-r6220-sqm-results-downstream-cut-in-half-and-my-optimal-settings/114301" class="urlextern" title="https://forum.openwrt.org/t/netgear-r6220-sqm-results-downstream-cut-in-half-and-my-optimal-settings/114301" rel="ugc nofollow">about 15% higher throughput when CPU limited</a> and this <a href="https://lists.bufferbloat.net/pipermail/cake/2018-April/003384.html" class="urlextern" title="https://lists.bufferbloat.net/pipermail/cake/2018-April/003384.html" rel="ugc nofollow">email thread</a> showed similar results. See discussion of these algorithms on this <a href="https://forum.openwrt.org/t/sqm-codel-and-sfq/219100/4" class="urlextern" title="https://forum.openwrt.org/t/sqm-codel-and-sfq/219100/4" rel="ugc nofollow">forum post</a>.
+</p>
+
+<p>
+4. See <a href="/docs/guide-user/network/traffic-shaping/sqm_configuration" class="wikilink1" title="docs:guide-user:network:traffic-shaping:sqm_configuration" data-wiki-id="docs:guide-user:network:traffic-shaping:sqm_configuration">SQM configuration</a> for advanced settings.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;A Little More Tuning&quot;,&quot;hid&quot;:&quot;a_little_more_tuning&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;5232-&quot;} -->

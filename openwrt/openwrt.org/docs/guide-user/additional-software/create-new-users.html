@@ -1,0 +1,120 @@
+
+<h1 class="sectionedit1" id="create_new_users_and_groups_for_applications_or_system_services">Create new users and groups for applications or system services</h1>
+<div class="level1">
+
+<p>
+Running applications as root is not a good security practice, any vulnerability in the application will allow to have access to root privileges in the OpenWrt system.
+</p>
+
+<p>
+For this reason, many applications are set to use a dedicated user, that has no root privileges and no access to shell (command line), and also limited access to some folders only (usually for the service configuration and data).
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Create new users and groups for applications or system services&quot;,&quot;hid&quot;:&quot;create_new_users_and_groups_for_applications_or_system_services&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-477&quot;} -->
+<h2 class="sectionedit2" id="add_a_new_user">Add a new user</h2>
+<div class="level2">
+<pre class="code"># opkg update
+# opkg install shadow-useradd
+# useradd -r -s /bin/false service-name</pre>
+
+<p>
+The file where all the users are registered is /etc/passwd, so you can see what UID and GID your new user has (and change them if you want). See the following example
+</p>
+<pre class="code"># cat /etc/passwd
+root:x:0:0:root:/root:/bin/ash
+daemon:*:1:1:daemon:/var:/bin/false
+ftp:*:55:55:ftp:/home/ftp:/bin/false
+network:*:101:101:network:/var:/bin/false
+nobody:*:65534:65534:nobody:/var:/bin/false
+dnsmasq:x:453:453:dnsmasq:/var/run/dnsmasq:/bin/false
+docker:x:65536:65536:docker:/var/run/docker:/bin/false
+ubus:x:81:81:ubus:/var/run/ubus:/bin/false</pre>
+
+<p>
+We can see that there are multiple users, the first is “root” (the administrator user) and many others for other services in the system. Depending on what you have installed you may have more or less users here.
+</p>
+
+<p>
+Each line is an entry for one user, and fields on each line are separated by a colon.  The fields are:
+</p>
+<ol>
+<li class="level1"><div class="li">     User name</div>
+</li>
+<li class="level1"><div class="li">     Encrypted password</div>
+</li>
+<li class="level1"><div class="li">     User ID number (UID)</div>
+</li>
+<li class="level1"><div class="li">     User’s group ID number (GID)</div>
+</li>
+<li class="level1"><div class="li">     Full name of the user (GECOS)</div>
+</li>
+<li class="level1"><div class="li">     User home directory</div>
+</li>
+<li class="level1"><div class="li">     Login shell ( <strong>/bin/ash</strong> is the valid shell on OpenWrt, write <strong>/bin/false</strong> instead to disable the shell for this user)</div>
+</li>
+</ol>
+
+<p>
+To add a new user by hand, add a new line at the end of the file, filling in the appropriate information. The information you add needs to meet some requirements, make sure that both the user name and user ID is unique. Assign the user a group, either 100 (the “users” group in OpenWRT) or your default group (use its number, not its name). Give the user a valid home directory (which you’ll create later) and shell (set shell to /bin/false if you want to disable shell access and also login).
+</p>
+
+<p>
+So, open the file for editing and add an entry of user details in /etc/passwd file.
+</p>
+<pre class="code"># vi /etc/passwd</pre>
+
+<p>
+Example new entry:
+</p>
+<pre class="code">testuser:x:501:501:testuser:/home/user:/bin/ash</pre>
+
+<p>
+Assign a password to the user you just created.
+</p>
+<pre class="code"># passwd testuser</pre>
+
+<p>
+passwd will prompt you for a password. You will see output like this
+</p>
+<pre class="code">Changing password for user testuser.
+New password:
+Retype new password:
+passwd: all authentication tokens updated successfully.</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Add a new user&quot;,&quot;hid&quot;:&quot;add_a_new_user&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;478-2766&quot;} -->
+<h2 class="sectionedit3" id="adding_groups">Adding groups</h2>
+<div class="level2">
+
+<p>
+All normal users are members of the “users” group on a typical Linux system. However, if you want to create a new group, or add the new user to additional groups, you’ll need to modify the /etc/group file. Here is a typical entry:
+</p>
+<pre class="code">cvs::102:chris,logan,david,root</pre>
+
+<p>
+The fields are group name, group password, group ID, and group members, separated by commas. Creating a new group is a simple matter of adding a new line with a unique group ID, and listing all the users you want to be in the group. Any users that are in this new group and are logged in will have to log out and log back in for those changes to take effect.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Adding groups&quot;,&quot;hid&quot;:&quot;adding_groups&quot;,&quot;codeblockOffset&quot;:6,&quot;secid&quot;:3,&quot;range&quot;:&quot;2767-3440&quot;} -->
+<h2 class="sectionedit4" id="adding_user_s_home_directory">Adding user&#039;s home directory</h2>
+<div class="level2">
+
+<p>
+Use mkdir to create the new user’s home directory in the location you entered into the /etc/passwd file, and use chown to change the owner of the new directory to the new user.
+</p>
+<pre class="code"># mkdir /home/testuser
+# chown testuser /home/testuser</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Adding user&#039;s home directory&quot;,&quot;hid&quot;:&quot;adding_user_s_home_directory&quot;,&quot;codeblockOffset&quot;:7,&quot;secid&quot;:4,&quot;range&quot;:&quot;3441-3732&quot;} -->
+<h2 class="sectionedit5" id="remove_users">Remove users</h2>
+<div class="level2">
+
+<p>
+Removing a user is a simple matter of deleting all of the entries that exist for that user. Remove the user’s entry from /etc/passwd and remove the login name from any groups in the /etc/group file. If you wish, delete the user’s home directory, too.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Remove users&quot;,&quot;hid&quot;:&quot;remove_users&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:5,&quot;range&quot;:&quot;3733-&quot;} -->

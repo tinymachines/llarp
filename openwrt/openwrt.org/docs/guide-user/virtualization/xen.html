@@ -1,0 +1,134 @@
+
+<h1 class="sectionedit1" id="openwrt_as_a_xen_domu_guest">OpenWrt as a Xen DomU guest</h1>
+<div class="level1">
+
+<p>
+This documents describes how to run the OpenWrt x86 port as a Xen domU guest.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;OpenWrt as a Xen DomU guest&quot;,&quot;hid&quot;:&quot;openwrt_as_a_xen_domu_guest&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-121&quot;} -->
+<h2 class="sectionedit2" id="prerequisites">Prerequisites</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> A Xen dom0 host</div>
+</li>
+<li class="level1"><div class="li"> An OpenWrt/LEDE image with Xen domU support</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Prerequisites&quot;,&quot;hid&quot;:&quot;prerequisites&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;122-217&quot;} -->
+<h2 class="sectionedit3" id="get_pre-built_openwrtlede_images">Get pre-built OpenWrt/LEDE images</h2>
+<div class="level2">
+
+<p>
+For OpenWrt Chaos Calmer, there is a specific subtarget: <a href="https://archive.openwrt.org/chaos_calmer/15.05.1/x86/xen_domu/" class="urlextern" title="https://archive.openwrt.org/chaos_calmer/15.05.1/x86/xen_domu/" rel="ugc nofollow">https://archive.openwrt.org/chaos_calmer/15.05.1/x86/xen_domu/</a>
+</p>
+
+<p>
+For LEDE 17.01, Xen domU support is directly included in the generic x86 image: <a href="http://downloads.lede-project.org/releases/17.01.1/targets/x86/generic/" class="urlextern" title="http://downloads.lede-project.org/releases/17.01.1/targets/x86/generic/" rel="ugc nofollow">http://downloads.lede-project.org/releases/17.01.1/targets/x86/generic/</a>
+</p>
+
+<p>
+In both cases, you need either the <code>“combined-ext4.img.gz”</code> image, or the <code>“vmlinuz”</code> file containing the kernel + the <code>“rootfs-ext4.img.gz”</code> image.
+</p>
+
+<p>
+Then extract the image:
+</p>
+<pre class="code">gunzip *-ext4.img.gz</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Get pre-built OpenWrt\/LEDE images&quot;,&quot;hid&quot;:&quot;get_pre-built_openwrtlede_images&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;218-764&quot;} -->
+<h2 class="sectionedit4" id="configure_xen">Configure Xen</h2>
+<div class="level2">
+
+<p>
+On the dom0 guest, create a domain configuration file, <code>Xen-OpenWrt.conf</code>,
+with the following contents:
+</p>
+<pre class="code">name = &quot;owrt&quot;
+vcpus = 2
+memory = 256
+
+bootloader = &quot;/usr/lib/xen-4.4/bin/pygrub&quot;
+disk = [&#039;file:/etc/xen/openwrt-15.05.1-x86-xen_domu-combined-ext4.img,xvda,w&#039;]
+
+on_reboot = &#039;restart&#039;
+on_crash = &#039;destroy&#039;</pre>
+
+<p>
+This method uses <code>pygrub</code> to find the grub config on the ext4 image. If for some reason you cannot use <code>pygrub</code>, use an external kernel:
+</p>
+<pre class="code"># Alternative that uses a separate kernel + rootfs (no need for pygrub)
+
+name = &quot;owrt&quot;
+vcpus = 2
+memory = 256
+
+disk = [&#039;file:/etc/xen/openwrt-15.05.1-x86-xen_domu-rootfs-ext4.img,xvda,w&#039;]
+kernel = &quot;openwrt-15.05.1-x86-xen_domu-vmlinuz&quot;
+root = &quot;/dev/xvda rw&quot;
+
+on_reboot = &#039;restart&#039;
+on_crash = &#039;destroy&#039;</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configure Xen&quot;,&quot;hid&quot;:&quot;configure_xen&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:4,&quot;range&quot;:&quot;765-1578&quot;} -->
+<h2 class="sectionedit5" id="configure_networking">Configure networking</h2>
+<div class="level2">
+
+<p>
+There exist many ways to configure networking within Xen. The technique that this document describes bridges between the dom0 guest&#039;s physical interface and a virtual interface that connects to the domU guest. This results in the domU guest receiving a connection on the same network as the dom0 guest.
+</p>
+
+<p>
+We will create two bridges, one for <abbr title="Local Area Network">LAN</abbr> and one for <abbr title="Wide Area Network">WAN</abbr>. The <abbr title="Wide Area Network">WAN</abbr> of the OpenWrt domU will be bridged to the physical interface of the dom0 (to get access to the internet), while the <abbr title="Local Area Network">LAN</abbr> will only be accessible from the dom0 itself.
+</p>
+<pre class="code">brctl addbr owrt-lan
+ip link set owrt-lan up
+ip addr add 192.168.1.42/24 dev owrt-lan
+
+brctl addbr owrt-wan
+ip link set dev eth0 up
+brctl addif owrt-wan eth0
+ip link set owrt-wan up</pre>
+
+<p>
+Ensure the device eth0 does not have an <abbr title="Internet Protocol">IP</abbr> address because it is bridged to <code>owrt-wan</code>. If you need access to the Internet from the dom0, obtain an <abbr title="Internet Protocol">IP</abbr> address using <code>dhclient owrt-wan</code> or assign a static <abbr title="Internet Protocol">IP</abbr> address.
+</p>
+
+<p>
+Finally, add the following configuration to the Xen domain configuration file:
+</p>
+<pre class="code">vif = [ &quot;mac=00:16:3e:12:34:56,bridge=owrt-lan&quot;,
+        &quot;mac=00:16:3e:78:9a:bc,bridge=owrt-wan&quot; ]</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Configure networking&quot;,&quot;hid&quot;:&quot;configure_networking&quot;,&quot;codeblockOffset&quot;:3,&quot;secid&quot;:5,&quot;range&quot;:&quot;1579-2763&quot;} -->
+<h2 class="sectionedit6" id="run_the_domu">Run the domU</h2>
+<div class="level2">
+
+<p>
+To run the domU with a serial console:
+</p>
+<pre class="code">xl create -c Xen-OpenWrt.conf</pre>
+
+<p>
+or, depending on your toolstack:
+</p>
+<pre class="code">xm create -c Xen-OpenWrt.conf</pre>
+
+<p>
+The OpenWrt domU should automatically use the first (virtual) interface as <abbr title="Local Area Network">LAN</abbr> and the second one as <abbr title="Wide Area Network">WAN</abbr>.
+</p>
+
+<p>
+You should be able to reach your virtual router through <abbr title="Secure Shell">SSH</abbr> at <code>192.168.1.1</code>, or using <abbr title="Internet Protocol version 6">IPv6</abbr>:
+</p>
+<pre class="code">ping6 -L -I owrt-lan ff02::1
+ssh root@fe80::XX%owrt-lan    # replace fe80::XX by the address given by the ping</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Run the domU&quot;,&quot;hid&quot;:&quot;run_the_domu&quot;,&quot;codeblockOffset&quot;:5,&quot;secid&quot;:6,&quot;range&quot;:&quot;2764-&quot;} -->

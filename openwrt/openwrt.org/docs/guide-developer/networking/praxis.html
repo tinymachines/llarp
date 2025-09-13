@@ -1,0 +1,165 @@
+
+<h1 class="sectionedit1" id="networking_in_the_linux_kernel">Networking in the Linux Kernel</h1>
+<div class="level1">
+
+<p>
+Above we read merely about the theory of networking, about the basic ideas, about communication protocols and standards. Now, let us see, how all of this is being handled by the Linux Kernel 2.6:
+</p>
+
+<p>
+Everything related is found under <code><a href="http://lxr.free-electrons.com/source/net/" class="urlextern" title="http://lxr.free-electrons.com/source/net/" rel="ugc nofollow">/net/</a></code>. But drivers, for the network devices, are of course found <code><a href="http://lxr.free-electrons.com/source/drivers" class="urlextern" title="http://lxr.free-electrons.com/source/drivers" rel="ugc nofollow">/drivers/</a></code>.
+</p>
+
+<p>
+<strong><em>NOTE</em></strong>:
+</p>
+<ol>
+<li class="level1 node"><div class="li"> The Linux kernel is only one component of the operating system</div>
+<ol>
+<li class="level2"><div class="li"> it does require libraries itself (we at OpenWrt use the µCLibC, see →<a href="/docs/guide-developer/links.software.libraries" class="wikilink1" title="docs:guide-developer:links.software.libraries" data-wiki-id="docs:guide-developer:links.software.libraries">links.software.libraries</a>) <a href="http://man.cat-v.org/unix_8th/3/" class="urlextern" title="http://man.cat-v.org/unix_8th/3/" rel="ugc nofollow">Section: 3 - C library functions</a></div>
+</li>
+<li class="level2"><div class="li"> it is very modular and there are many modules</div>
+</li>
+<li class="level2"><div class="li"> it does require applications to provide features to end users (these run in userspace)</div>
+</li>
+</ol>
+</li>
+</ol>
+
+<p>
+The main interface between the kernel and userspace is the set of <code>system calls</code>. There are about <img src="/lib/images/smileys/fixme.svg" class="icon smiley" alt="FIXME" /> <code>system calls</code>. Network related <code>system calls</code> include: writes to socket, ...
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Networking in the Linux Kernel&quot;,&quot;hid&quot;:&quot;networking_in_the_linux_kernel&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1070&quot;} -->
+<h2 class="sectionedit2" id="network_data_flow_through_the_linux_kernel">Network Data Flow through the Linux Kernel</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <a href="http://www.linuxfoundation.org/collaborate/workgroups/networking/kernel_flow" class="urlextern" title="http://www.linuxfoundation.org/collaborate/workgroups/networking/kernel_flow" rel="ugc nofollow">Kernel Flow</a></div>
+</li>
+</ul>
+
+<p>
+<a href="/lib/exe/fetch.php?tok=c7421e&amp;media=http%3A%2F%2Fweb.archive.org%2Fweb%2F20170905131225if_%2Fhttps%3A%2F%2Fwiki.linuxfoundation.org%2Fimages%2F1%2F1c%2FNetwork_data_flow_through_kernel.png" class="media" title="http://web.archive.org/web/20170905131225if_/https://wiki.linuxfoundation.org/images/1/1c/Network_data_flow_through_kernel.png"><img src="/lib/exe/fetch.php?tok=c7421e&amp;media=http%3A%2F%2Fweb.archive.org%2Fweb%2F20170905131225if_%2Fhttps%3A%2F%2Fwiki.linuxfoundation.org%2Fimages%2F1%2F1c%2FNetwork_data_flow_through_kernel.png" class="media" loading="lazy" alt="" /></a>
+<a href="http://web.archive.org/web/20170905131225/https://wiki.linuxfoundation.org/images/1/1c/Network_data_flow_through_kernel.png" class="urlextern" title="http://web.archive.org/web/20170905131225/https://wiki.linuxfoundation.org/images/1/1c/Network_data_flow_through_kernel.png" rel="ugc nofollow">Internet archive - Sep. 5th, 2017</a>
+</p>
+<ul>
+<li class="level1"><div class="li"> <a href="http://www.jsevy.com/network/Linux_network_stack_walkthrough.html" class="urlextern" title="http://www.jsevy.com/network/Linux_network_stack_walkthrough.html" rel="ugc nofollow">Linux Network Stack Walkthrough (Linux Kernel 2.4.20)</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="http://www.google.com/search?q=Network+Data+Flow+through+the+Linux+Kernel&amp;btnG=Search&amp;hl=en&amp;gbv=1&amp;sei=Bv1dT4XfA_Da4QSM5ZG6Dw" class="urlextern" title="http://www.google.com/search?q=Network+Data+Flow+through+the+Linux+Kernel&amp;btnG=Search&amp;hl=en&amp;gbv=1&amp;sei=Bv1dT4XfA_Da4QSM5ZG6Dw" rel="ugc nofollow">google.com: &quot;Network Data Flow through the Linux Kernel&quot;</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Network Data Flow through the Linux Kernel&quot;,&quot;hid&quot;:&quot;network_data_flow_through_the_linux_kernel&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;1071-1837&quot;} -->
+<h3 class="sectionedit3" id="packet_handling">Packet Handling</h3>
+<div class="level3">
+
+</div>
+
+<h4 id="tx_transmission">TX Transmission</h4>
+<div class="level4">
+<ol>
+<li class="level1"><div class="li"> Queue No.1: The application process does a <code>write()</code> on a <em>socket</em> and all the data is copied from the process space into the <em>send socket buffer</em></div>
+</li>
+<li class="level1"><div class="li"> Queue No.2: The data goes through the <em><abbr title="Transmission Control Protocol">TCP</abbr>/<abbr title="Internet Protocol">IP</abbr> stack</em> and the packets are put (<a href="https://en.wikipedia.org/wiki/Evaluation strategy#Call_by_reference" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Evaluation strategy#Call_by_reference">Evaluation strategy#Call_by_reference</a>) into the NIC&#039;s <em>egress buffer</em> (here works the packet scheduler)</div>
+</li>
+<li class="level1"><div class="li"> Queue No.3: After a packet gets dequeued, the transmission procedure of the driver is called, and it is copied into the <em>tx_ring</em>, a ring buffer the driver shares with the NIC</div>
+</li>
+</ol>
+
+</div>
+
+<h4 id="rx_reception">RX Reception</h4>
+<div class="level4">
+<ol>
+<li class="level1"><div class="li"> Queue No.1: The hardware (NIC) puts all incoming network packets into the <em>rx_ring</em>, a ring buffer the driver shares with the NIC</div>
+</li>
+<li class="level1"><div class="li"> Queue No.2: The <em>IRQ handler</em> of the driver takes the packet from the <em>rx_ring</em>, puts it (by (<a href="https://en.wikipedia.org/wiki/Evaluation strategy#Call_by_reference" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Evaluation strategy#Call_by_reference">Evaluation strategy#Call_by_reference</a>)) in the <em>ingress buffer</em> (aka <em>backlog queue</em>) and schedules a SoftIRQ (in kernels up to 2.4, every incoming packet triggered an IRQ, since Kernels 2.6 and the introduction of <a href="https://en.wikipedia.org/wiki/New_API" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/New_API">NAPI</a> this is solved by polling instead: <a href="https://lwn.net/Articles/30107/" class="urlextern" title="https://lwn.net/Articles/30107/" rel="ugc nofollow">https://lwn.net/Articles/30107/</a>)</div>
+</li>
+<li class="level1"><div class="li"> Queue No.3: is the the <em>receive socket buffer</em></div>
+</li>
+</ol>
+
+</div>
+
+<h4 id="typical_queue_lengths">Typical queue lengths</h4>
+<div class="level4">
+<ul>
+<li class="level1 node"><div class="li"> The <em>socket buffers</em> can be set by the application (<code>set_sockopt()</code>)</div>
+<ul>
+<li class="level2"><div class="li"> <code>cat /proc/sys/net/core/rmem_default</code> or <code>cat /proc/sys/net/core/wmem_default</code></div>
+</li>
+</ul>
+</li>
+<li class="level1"><div class="li"> The default queuing discipline is a FIFO queue. Default length is 1000 packets (ether_setup(): dev→queue_len, net/ethernet/eth.c)</div>
+</li>
+<li class="level1"><div class="li"> The <em>tx_ring</em> and <em>rx_ring</em> are driver dependent (e.g. the e1000 driver set these lengths to 80 packets)</div>
+</li>
+<li class="level1"><div class="li"> The <em>backlog queue</em> is 1,000 packets in size (<code>/proc/sys/net/core/netdev_max_backlog</code>). Once it is full, it waits for being totally empty to allow again an enqueue() (netif_rx(), net/core/dev.c).</div>
+</li>
+</ul>
+
+</div>
+
+<h5 id="proc">/proc</h5>
+<div class="level5">
+
+<p>
+<code>/proc</code> is the POSIX complient mount point for the <em>Virtual Filesystem</em> for the processes.
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>/proc/cpuinfo</code>: processor information</div>
+</li>
+<li class="level1"><div class="li"> <code>/proc/meminfo</code>: memory status</div>
+</li>
+<li class="level1"><div class="li"> <code>/proc/version</code>: kernel version and build information</div>
+</li>
+<li class="level1"><div class="li"> <code>/proc/cmdline</code>: kernel command line</div>
+</li>
+<li class="level1"><div class="li"> <code>/proc/&lt;pid&gt;/environ</code>: calling environment</div>
+</li>
+<li class="level1"><div class="li"> <code>/proc/&lt;pid&gt;/cmdline</code>: process command line</div>
+</li>
+</ul>
+
+<p>
+See <a href="https://en.wikipedia.org/wiki/Procfs" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Procfs">Procfs</a> or <a href="http://www.comptechdoc.org/os/linux/howlinuxworks/linux_hlproc.html" class="urlextern" title="http://www.comptechdoc.org/os/linux/howlinuxworks/linux_hlproc.html" rel="ugc nofollow">http://www.comptechdoc.org/os/linux/howlinuxworks/linux_hlproc.html</a> or <a href="http://www.mjmwired.net/kernel/Documentation/filesystems/proc.txt" class="urlextern" title="http://www.mjmwired.net/kernel/Documentation/filesystems/proc.txt" rel="ugc nofollow">proc.txt</a>
+</p>
+
+<p>
+See → <a href="http://gettys.wordpress.com/2010/11/29/home-router-puzzle-piece-one-fun-with-your-switch/" class="urlextern" title="http://gettys.wordpress.com/2010/11/29/home-router-puzzle-piece-one-fun-with-your-switch/" rel="ugc nofollow">http://gettys.wordpress.com/2010/11/29/home-router-puzzle-piece-one-fun-with-your-switch/</a> for some “fun” with all the queues.
+</p>
+
+</div>
+
+<h5 id="transmitting">Transmitting</h5>
+<div class="level5">
+
+<p>
+So you can install hardware capable of Ethernet (usually a network card or more precisely an Ethernet card) on two <em>hosts</em>, connect them with a standardized cable, like a <a href="https://en.wikipedia.org/wiki/Category 5 cable" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Category 5 cable">Category 5 cable</a> and communicate with one another over Ethernet as far as your software supports Ethernet <img src="/lib/images/smileys/wink.svg" class="icon smiley" alt=";-)" /> Sooner or later the sausage will get to the Ethernet thingy of the network stack, this will prepare the data conforming to the Ethernet standard, then will deliver the frames to the network card drivers and this will make the hardware, the network card, transmit the data.
+</p>
+
+</div>
+
+<h5 id="receiving">Receiving</h5>
+<div class="level5">
+
+<p>
+The NIC on the other side will receive the signal, relay it to the <em>Ethernet thingy</em> of the <em>network stack</em>, this will create one huge data out of the Ethernet frames and relay it to the software.
+</p>
+
+<p>
+When a packet is enqueued on an interface with <code>dev queue xmit</code> (in <code>net/core/dev.c</code>), the <code>enqueue</code> operation of the packet scheduler is triggered and <code>qdisc wakeup</code> is being called (in <code>net/pkt_sched.h</code>) to send the packet on that device.
+</p>
+
+<p>
+A transmit queue is associated with each device. When a network packet is ready for transmission, the “networking code” will call the driver&#039;s <code>hard_start_xmit()</code>-function to let it know, a packet is waiting. The driver will then put that packet into the <code>transmit queue</code> of the hardware.
+</p>
+
+<p>
+You find the sources for the whole <em><abbr title="Transmission Control Protocol">TCP</abbr>/<abbr title="Internet Protocol">IP</abbr> protocol suite</em> implementation 
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Packet Handling&quot;,&quot;hid&quot;:&quot;packet_handling&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;1838-&quot;} -->

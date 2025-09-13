@@ -1,0 +1,367 @@
+
+<h1 class="sectionedit1" id="the_boot_process">The Boot Process</h1>
+<div class="level1">
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:2,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_center wrap_round wrap_alert plugin_wrap" style="width: 60%;">
+<p>
+As noted below, this page is woefully out of date
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:3,&quot;range&quot;:&quot;0-&quot;} --><div class="table sectionedit4"><table class="inline">
+	<tr class="row0">
+		<td class="col0"> Please also see <a href="/docs/techref/requirements.boot.process" class="wikilink1" title="docs:techref:requirements.boot.process" data-wiki-id="docs:techref:requirements.boot.process">requirements.boot.process</a><br/>
+This guide it not up-to-date! It does not mention <a href="/docs/techref/procd" class="wikilink1" title="docs:techref:procd" data-wiki-id="docs:techref:procd">procd</a> </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:4,&quot;range&quot;:&quot;123-260&quot;} -->
+<p>
+This guide shall help you understand, e.g.
+</p>
+<ul>
+<li class="level1"><div class="li"> When is it time for <a href="/docs/guide-user/advanced/kexec" class="wikilink1" title="docs:guide-user:advanced:kexec" data-wiki-id="docs:guide-user:advanced:kexec">kexec</a> and when for <a href="/docs/guide-user/additional-software/extroot_configuration" class="wikilink1" title="docs:guide-user:additional-software:extroot_configuration" data-wiki-id="docs:guide-user:additional-software:extroot_configuration">extroot_configuration</a> (see particularly <a href="/docs/guide-user/additional-software/extroot_configuration/extroot.theory" class="wikilink2" title="docs:guide-user:additional-software:extroot_configuration:extroot.theory" rel="nofollow" data-wiki-id="docs:guide-user:additional-software:extroot_configuration:extroot.theory">extroot.theory</a>)?</div>
+</li>
+<li class="level1"><div class="li"> How does the <a href="/docs/guide-user/troubleshooting/failsafe_and_factory_reset" class="wikilink1" title="docs:guide-user:troubleshooting:failsafe_and_factory_reset" data-wiki-id="docs:guide-user:troubleshooting:failsafe_and_factory_reset">OpenWrt FailSafe</a> work?</div>
+</li>
+<li class="level1"><div class="li"> the <a href="/docs/techref/flash.layout" class="wikilink1" title="docs:techref:flash.layout" data-wiki-id="docs:techref:flash.layout">flash.layout</a> and the combination of <a href="/docs/techref/filesystems#implementation_in_openwrt" class="wikilink1" title="docs:techref:filesystems" data-wiki-id="docs:techref:filesystems">Utilization of file systems in OpenWrt</a></div>
+</li>
+<li class="level1"><div class="li"> When does the tmpfs get mounted and <code>/tmp</code> symlinked to it and <code>/var</code> symlinked to <code>/tmp</code>?</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> <a href="/docs/techref/preinit_mount" class="wikilink1" title="docs:techref:preinit_mount" data-wiki-id="docs:techref:preinit_mount">Preinit mount</a>  Preinit, Mount Root, and First Boot Scripts</div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/techref/initscripts" class="wikilink1" title="docs:techref:initscripts" data-wiki-id="docs:techref:initscripts">Init Scripts</a>     Init script implementation reference</div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/techref/block_mount" class="wikilink1" title="docs:techref:block_mount" data-wiki-id="docs:techref:block_mount">Block Mount</a>      Block Device Mounting</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;The Boot Process&quot;,&quot;hid&quot;:&quot;the_boot_process&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-1150&quot;} -->
+<h2 class="sectionedit5" id="process_trinity">Process Trinity</h2>
+<div class="level2">
+
+<p>
+The Machine gets powered on and some very very basic very low level hardware stuff gets done. You could connect to it over the <a href="/docs/techref/hardware/port.jtag" class="wikilink1" title="docs:techref:hardware:port.jtag" data-wiki-id="docs:techref:hardware:port.jtag">JTAG Port</a> and issue commands.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Process Trinity&quot;,&quot;hid&quot;:&quot;process_trinity&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;1151-1372&quot;} -->
+<h3 class="sectionedit6" id="bootloader">Bootloader</h3>
+<div class="level3">
+<ol>
+<li class="level1"><div class="li"> the <a href="/docs/techref/bootloader" class="wikilink1" title="docs:techref:bootloader" data-wiki-id="docs:techref:bootloader">bootloader</a> on the flash gets executed</div>
+</li>
+<li class="level1"><div class="li"> the bootloader performs the <a href="https://en.wikipedia.org/wiki/Power-on self-test" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Power-on self-test">POST</a>, which is a low-level hardware initialization</div>
+</li>
+<li class="level1"><div class="li"> the bootloader decompresses the Kernel image from its (known!) location on the flash storage into main memory (=RAM)</div>
+</li>
+<li class="level1"><div class="li"> the bootloader executes the Kernel with <code>init=...</code> option (default is <del><code><a href="/docs/guide-user/base-system/notuci.config#etcpreinit" class="wikilink1" title="docs:guide-user:base-system:notuci.config" data-wiki-id="docs:guide-user:base-system:notuci.config">/etc/preinit</a></code></del> <code>/sbin/init</code>)</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Bootloader&quot;,&quot;hid&quot;:&quot;bootloader&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:6,&quot;range&quot;:&quot;1373-1851&quot;} -->
+<h3 class="sectionedit7" id="kernel">Kernel</h3>
+<div class="level3">
+<ol>
+<li class="level1"><div class="li"> the Kernel further bootstraps itself (sic!)</div>
+</li>
+<li class="level1"><div class="li"> issues the command/op-code <code>start_kernel</code></div>
+</li>
+<li class="level1"><div class="li"> kernel scans the mtd partition <em>rootfs</em> for a valid superblock and mounts the SquashFS partition (which contains <code>/etc</code>) once found. (More info at <a href="/docs/techref/filesystems#technical_details" class="wikilink1" title="docs:techref:filesystems" data-wiki-id="docs:techref:filesystems">technical_details</a>)</div>
+</li>
+<li class="level1"><div class="li"> <code><a href="/docs/guide-user/base-system/notuci.config#etcpreinit" class="wikilink1" title="docs:guide-user:base-system:notuci.config" data-wiki-id="docs:guide-user:base-system:notuci.config">/etc/preinit</a></code> does pre-initialization setups (create directories, mount fs, /proc, /sys, ... )</div>
+</li>
+<li class="level1"><div class="li"> the Kernel <code>mounts</code> any other partition (e.g. jffs2 partition) under <em>rootfs (root file system)</em>. see <a href="/docs/techref/flash.layout" class="wikilink1" title="docs:techref:flash.layout" data-wiki-id="docs:techref:flash.layout">flash.layout</a>, <a href="/docs/techref/preinit_mount#mountrootfilesystem" class="wikilink1" title="docs:techref:preinit_mount" data-wiki-id="docs:techref:preinit_mount">preinit and root mount</a>, and also <a href="https://en.wikipedia.org/wiki/udev" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/udev">udev</a> <img src="/lib/images/smileys/fixme.svg" class="icon smiley" alt="FIXME" /> <strong>make sure</strong></div>
+</li>
+<li class="level1"><div class="li"> if “INITRAMFS” is not defined, calls <code>/sbin/init</code> (the mother of all processes)</div>
+</li>
+<li class="level1"><div class="li"> finally some <em>kernel thread</em> becomes the userspace <code><a href="http://linux.die.net/man/8/init" class="urlextern" title="http://linux.die.net/man/8/init" rel="ugc nofollow">init</a></code> process</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Kernel&quot;,&quot;hid&quot;:&quot;kernel&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:7,&quot;range&quot;:&quot;1852-2782&quot;} -->
+<h3 class="sectionedit8" id="init">Init</h3>
+<div class="level3">
+
+<p>
+The user space starts when kernel mounts <em>rootfs</em> and the very first program to run is (by default) <code>/sbin/init</code>. Please remember, that the interface between application and kernel is the <code><a href="/docs/guide-developer/links.software.libraries#cstandardlibrary" class="wikilink1" title="docs:guide-developer:links.software.libraries" data-wiki-id="docs:guide-developer:links.software.libraries">clib</a></code> and the syscalls it offers.
+</p>
+<ol>
+<li class="level1"><div class="li"> init reads <code><a href="/docs/guide-user/base-system/notuci.config#etcinittab" class="wikilink1" title="docs:guide-user:base-system:notuci.config" data-wiki-id="docs:guide-user:base-system:notuci.config">/etc/inittab</a></code> for the “sysinit” entry (default is “::sysinit:/etc/init.d/rcS S boot”)</div>
+</li>
+<li class="level1"><div class="li"> init calls <code><a href="/docs/guide-user/base-system/notuci.config#etcinitdrcs" class="wikilink1" title="docs:guide-user:base-system:notuci.config" data-wiki-id="docs:guide-user:base-system:notuci.config">/etc/init.d/rcS</a> S boot</code></div>
+</li>
+<li class="level1"><div class="li"> <code>rcS</code> executes the symlinks to the actual startup scripts located in <code>/etc/rc.d/S##xxxxxx</code> with option <code>“start”</code>:</div>
+</li>
+<li class="level1"><div class="li"> after rcS finishes, system should be up and running</div>
+</li>
+</ol>
+
+</div>
+
+<h4 id="vanilla_startup_scripts">Vanilla Startup Scripts</h4>
+<div class="level4">
+
+<p>
+<strong><em>NOTE:</em></strong> <a href="/packages/start" class="wikilink1" title="packages:start" data-wiki-id="packages:start">Packages</a> you install with <code><a href="/docs/guide-user/additional-software/opkg" class="wikilink1" title="docs:guide-user:additional-software:opkg" data-wiki-id="docs:guide-user:additional-software:opkg">opkg</a></code> will likely add additional scripts!
+</p>
+<div class="table sectionedit9"><table class="inline">
+	<tr class="row0">
+		<td class="col0 leftalign"> S05defconfig  </td><td class="col1"> create config files with default values for platform (if config file is not exist), really does this on first start after OpenWrt installed (copy unexisted files from /etc/defconfig/$board/ to /etc/config/) </td>
+	</tr>
+	<tr class="row1">
+		<td class="col0 leftalign"> S10boot       </td><td class="col1"> starts hotplug-script, mounts filesystesm, starts .., starts syslogd, ... </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> S39usb        </td><td class="col1 leftalign"> <code>mount -t usbfs none /proc/bus/usb</code>  </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> S40network    </td><td class="col1"> start a network subsystem (run /sbin/netifd, up interfaces and wifi </td>
+	</tr>
+	<tr class="row4">
+		<td class="col0 leftalign"> S45firewall   </td><td class="col1"> create and implement firewall rules from /etc/config/firewall </td>
+	</tr>
+	<tr class="row5">
+		<td class="col0 leftalign"> S50cron       </td><td class="col1 leftalign"> starts <code>crond</code>, see → <code><a href="/docs/guide-user/base-system/notuci.config#etccrontabsroot" class="wikilink1" title="docs:guide-user:base-system:notuci.config" data-wiki-id="docs:guide-user:base-system:notuci.config">/etc/crontabs/root</a></code> for configuration  </td>
+	</tr>
+	<tr class="row6">
+		<td class="col0 leftalign"> S50dropbear   </td><td class="col1 leftalign"> starts <code>dropbear</code>, see → <code><a href="/docs/guide-user/base-system/dropbear" class="wikilink1" title="docs:guide-user:base-system:dropbear" data-wiki-id="docs:guide-user:base-system:dropbear">/etc/config/dropbear</a></code> for configuration  </td>
+	</tr>
+	<tr class="row7">
+		<td class="col0 leftalign"> S50telnet     </td><td class="col1 leftalign"> checks for root password, if non is set, <code>/usr/sbin/telnetd</code> gets started  </td>
+	</tr>
+	<tr class="row8">
+		<td class="col0 leftalign"> S60dnsmasq    </td><td class="col1 leftalign"> starts <code>dnsmasq</code>, see → <code><a href="/docs/guide-user/base-system/dhcp" class="wikilink1" title="docs:guide-user:base-system:dhcp" data-wiki-id="docs:guide-user:base-system:dhcp">/etc/config/dhcp</a></code> for configuration  </td>
+	</tr>
+	<tr class="row9">
+		<td class="col0 leftalign"> S95done       </td><td class="col1 leftalign"> executes <code><a href="/docs/guide-user/base-system/notuci.config#etcrclocal" class="wikilink1" title="docs:guide-user:base-system:notuci.config" data-wiki-id="docs:guide-user:base-system:notuci.config">/etc/rc.local</a></code>  </td>
+	</tr>
+	<tr class="row10">
+		<td class="col0 leftalign"> S96led        </td><td class="col1"> load a LED configuration from /etc/config/system and set up LEDs (write values to /sys/class/leds/*/*) </td>
+	</tr>
+	<tr class="row11">
+		<td class="col0 leftalign"> S97watchdog   </td><td class="col1"> start the watchdog daemon (/sbin/watchdog) </td>
+	</tr>
+	<tr class="row12">
+		<td class="col0 leftalign"> S99sysctl     </td><td class="col1 leftalign"> interprets <code><a href="/docs/guide-user/base-system/notuci.config#etcsysctlconf" class="wikilink1" title="docs:guide-user:base-system:notuci.config" data-wiki-id="docs:guide-user:base-system:notuci.config">/etc/sysctl.conf</a></code>  </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table1&quot;,&quot;secid&quot;:9,&quot;range&quot;:&quot;3702-5160&quot;} -->
+<p>
+The <code>init</code> daemon will run all the time. On a shutdown command, <code>init</code>
+</p>
+<ol>
+<li class="level1"><div class="li"> reads <code>/etc/inittab</code> for shutdown (default is “::shutdodwn:/etc/init.d/rcS K stop”)</div>
+</li>
+<li class="level1"><div class="li"> <code>init</code> calls <code>/etc/init.d/rcS K stop</code></div>
+</li>
+<li class="level1"><div class="li"> rcS executes the shutdown scripts located in /etc/rc.d/K##xxxxxx with option “stop”</div>
+</li>
+<li class="level1"><div class="li"> system halts/reboots</div>
+</li>
+</ol>
+<div class="table sectionedit10"><table class="inline">
+	<tr class="row0">
+		<td class="col0"> K50dropbear </td><td class="col1"> kill all instances of dropbear </td>
+	</tr>
+	<tr class="row1">
+		<td class="col0 leftalign"> K90network  </td><td class="col1"> down all interfaces and stop netifd </td>
+	</tr>
+	<tr class="row2">
+		<td class="col0 leftalign"> K98boot     </td><td class="col1"> stop logger daemons: /sbin/syslogd and /sbin/klogd </td>
+	</tr>
+	<tr class="row3">
+		<td class="col0 leftalign"> K99umount   </td><td class="col1 leftalign"> writes caches to disk, unmounts all filesystems  </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table2&quot;,&quot;secid&quot;:10,&quot;range&quot;:&quot;5488-5726&quot;} -->
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Init&quot;,&quot;hid&quot;:&quot;init&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:8,&quot;range&quot;:&quot;2783-5730&quot;} -->
+<h2 class="sectionedit11" id="detailed_boot_sequence">Detailed boot sequence</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <a href="http://docs.blackfin.uclinux.org/doku.php?id=bootloaders" class="urlextern" title="http://docs.blackfin.uclinux.org/doku.php?id=bootloaders" rel="ugc nofollow">boot process example for blackfin devices</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Detailed boot sequence&quot;,&quot;hid&quot;:&quot;detailed_boot_sequence&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:11,&quot;range&quot;:&quot;5731-5874&quot;} -->
+<h3 class="sectionedit12" id="boot_loader">Boot loader</h3>
+<div class="level3">
+
+<p>
+After the bootloader (grub, in this example) initializes and parses any options that are presented at the boot menu, the bootloader loads the kernel.
+</p>
+
+<p>
+Example from the openwrt-x86-ext2-image.kernel file entry for normal boot:
+</p>
+<ul>
+<li class="level1"><div class="li"> “kernel  /boot/vmlinuz root=/dev/hda2 init=/etc/preinit [rest of options]”</div>
+</li>
+</ul>
+
+<p>
+This entry in the boot/grub/menu.lst file tells grub that the kernel is located under the /boot directory and the filename is vmlinuz. The rest of the lines are the options that are passed to the kernel. To see how the kernel was started, you can view the options by reading the /proc/cmdline file. You can see what options were passed from grub by logging into the device and typing “cat /proc/cmdline”.
+</p>
+
+<p>
+For my test system, the options that were passed to the kernel at load time was:
+</p>
+<ul>
+<li class="level1"><div class="li"> “root=/dev/hda2 rootfstype=ext2 init=/etc/preinit  noinitrd console=ttyS0,38400,n,8,1 reboot=bios”</div>
+</li>
+</ul>
+
+<p>
+The options are:
+</p>
+<ol>
+<li class="level1"><div class="li"> <strong>root</strong>: root device/partition where the rest of the OpenWrt system is located</div>
+</li>
+<li class="level1"><div class="li"> <strong>rootfstype</strong>: Format for the root partition - ext2 in this example</div>
+</li>
+<li class="level1"><div class="li"> <strong>init</strong>: The first program to call after the kernel is loaded and initialized</div>
+</li>
+<li class="level1"><div class="li"> <strong>noinitrd</strong>: All drivers for access to the rest of the system are built into the kernel, so no need to load an initial ramdisk with extra drivers</div>
+</li>
+<li class="level1"><div class="li"> <strong>console</strong>: Which device to accept console login commands from - talk to ttyS0 (first serial port) at 38400 speed using no flow control, eight data bits and one stop bit. See the kernel documentation for other options</div>
+</li>
+<li class="level1"><div class="li"> <strong>reboot</strong>: Not sure, but I believe that this option tells the kernel how to perform a reboot</div>
+</li>
+</ol>
+
+<p>
+The first program called after the kernel loads is located at the kernel options entry of the boot loader. For grub, the entry is located in the openwrt--.image.kernel.image file in the /boot/grub/menu.lst file.
+</p>
+
+<p>
+[ NOTE: See the man page on grub for all of the grub parameters ] In this example, the entry “init=/etc/preinit” tells the kernel that the first program to run after initializing is  “preinit” found in the “/etc” directory located on the disk “/dev/hda” and partition “hda2”.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Boot loader&quot;,&quot;hid&quot;:&quot;boot_loader&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:12,&quot;range&quot;:&quot;5875-8013&quot;} -->
+<h3 class="sectionedit13" id="etcpreinit_script">/etc/preinit script</h3>
+<div class="level3">
+
+<p>
+The preinit script&#039;s primary purpose is initial checks and setups for the rest of the startup scripts. One primary job is to mount the /proc and /sys pseudo filesystems so access to status information and some control functions are made available. Another primary function is to prepare the /dev directory for access to things like console, tty, and media access devices. The final job of preinit is to start the init daemon process itself.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;\/etc\/preinit script&quot;,&quot;hid&quot;:&quot;etcpreinit_script&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:13,&quot;range&quot;:&quot;8014-8485&quot;} -->
+<h3 class="sectionedit14" id="busybox_init">Busybox init</h3>
+<div class="level3">
+
+<p>
+Init is considered the “Mother Of All Processes” since it controls things like starting daemons, changing runlevels, setting up the console/pseudo-consoles/tty access daemons, as well as some other housekeeping chores.
+</p>
+
+<p>
+Once init is started, it reads the /etc/inittab configuration file to tell it what process to start, monitor for certain activities, and when an activity is triggered to call the relevant program.
+</p>
+
+<p>
+The init program used by busybox is a minimalistic daemon. It does not have the knowledge of runlevels and such, so the config file is somewhat abbreviated from the normal init config file. If you are running a full linux desktop, you can “man inittab” and read about the normal init process and entries. Fields are separated by a colon and are defined as:
+</p>
+<ul>
+<li class="level1"><div class="li"> [ID] : [Runlevel(s)] : [Action] : [Process to execute ]</div>
+</li>
+</ul>
+
+<p>
+For busybox init, the only fields needed are the “ID” (1st), “Action” (3rd) and “Process” (4th) entries. Busybox init has several caveats from a normal init: the ID field is used for controlling TTY/Console, and there are no defined runlevels. A minimalistic /etc/inittab would look like:
+</p>
+<ol>
+<li class="level1"><div class="li"> ::sysinit:/etc/init.d/rcS S boot</div>
+</li>
+<li class="level1"><div class="li"> ::shutdown:/etc/init.d/rcS K stop</div>
+</li>
+<li class="level1"><div class="li"> tts/0::askfirst:/bin/ash --login</div>
+</li>
+<li class="level1"><div class="li"> ttyS0::askfirst:/bin/ash --login</div>
+</li>
+<li class="level1"><div class="li"> tty1::askfirst:/bin/ash --login</div>
+</li>
+</ol>
+
+<p>
+Lines 1 and 2 with a blank ID field indicate they are not specific to any terminal or console. The other lines are directed to specific terminals/consoles.
+</p>
+
+<p>
+Notice that both the “sysinit” and “shutdown” actions are calling the same program (the “/etc/init.d/rcS” script). The only difference is the options that are passed to the rcS script. This will become clearer later on.
+</p>
+
+<p>
+At this point, init has parsed the configuration file and is looking for what to do next. So, now we get to the “sysinit” entry: call /etc/init.d/rcS with the options “S” and “boot”
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Busybox init&quot;,&quot;hid&quot;:&quot;busybox_init&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:14,&quot;range&quot;:&quot;8486-10380&quot;} -->
+<h2 class="sectionedit15" id="etcinitdrcs_script_at_startup">/etc/init.d/rcS Script At Startup</h2>
+<div class="level2">
+
+<p>
+At this point, all basic setup has been done, all programs and system/configuration files are accessible, and we are now ready to start the rest of the processes.
+</p>
+
+<p>
+The rcS script is pretty simplistic in it&#039;s function - it&#039;s sole purpose is to execute all of the scripts in the /etc/rc.d directory with the appropriate options. if you paid attention to the sysinit entry, the rcS script was called with the “S” and “boot” options. Since we called rcS with 2 options (“S” and “boot”), the rcS script will substitute $1 with “S” and $2 with “boot”. The relevant lines in rcS are:
+</p>
+<pre class="code">   -  for i in /etc/rc.d/$1* ; do
+  2.      [ -x $i ] &amp;&amp; $i $2
+  3.  done</pre>
+
+<p>
+The basic breakdown is:
+</p>
+<ol>
+<li class="level1"><div class="li"> Execute the following line once for every entry (file/link) in the /etc/rc.d directory that begins with “S”</div>
+</li>
+<li class="level1"><div class="li"> If the file is executable, execute the file with the option “boot”</div>
+</li>
+<li class="level1"><div class="li"> Repeat at step 1, replacing $i with the next filename until there are no more files to check</div>
+</li>
+</ol>
+
+<p>
+Unlike Microsoft programs, Linux uses file permissions rather than filename extensions to tell it if this entry is executable or not. For an explanation of file permissions, see “man chmod” on a Linux/Unix machine on explanations for permissions and executable files.
+</p>
+
+<p>
+If you look at the /etc/rc.d directory, you may notice that some scripts have relevant links for startup, but no shutdown (i.e., /etc/init.d/httpd), while some others have no startup script, but do have a shutdown script (i.e., /etc/init.d/umount).
+</p>
+
+<p>
+In the case of httpd (the webserver), it doesn&#039;t matter if it dies or not, there&#039;s nothing to clean up before quitting.
+</p>
+
+<p>
+On the other hand, the umount script MUST be executed before shutdown to ensure that all data is flushed to the media before unmounting of any relevant storage media, otherwise data corruption could occur. There&#039;s no need to call unmount at startup, since storage media mounting is handled somewhere else (like /etc/preinit), so there&#039;s no startup script for this one.
+</p>
+
+<p>
+After the last startup script is executed, you should have a fully operational OpenWrt system.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;\/etc\/init.d\/rcS Script At Startup&quot;,&quot;hid&quot;:&quot;etcinitdrcs_script_at_startup&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:15,&quot;range&quot;:&quot;10381-12507&quot;} -->
+<h2 class="sectionedit16" id="notes">Notes</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> See also <a href="https://en.wikipedia.org/wiki/Booting" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/Booting">Booting</a> on the boot process in general.</div>
+</li>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/base-system/log.essentials" class="wikilink1" title="docs:guide-user:base-system:log.essentials" data-wiki-id="docs:guide-user:base-system:log.essentials">log.essentials</a> busybox-klogd and busybox-syslogd</div>
+</li>
+<li class="level1"><div class="li"> watchdog: <a href="http://www.google.com/search?sclient=psy&amp;hl=en&amp;source=hp&amp;q=openwrt+watchdog&amp;btnG=Search" class="urlextern" title="http://www.google.com/search?sclient=psy&amp;hl=en&amp;source=hp&amp;q=openwrt+watchdog&amp;btnG=Search" rel="ugc nofollow">http://www.google.com/search?sclient=psy&amp;hl=en&amp;source=hp&amp;q=openwrt+watchdog&amp;btnG=Search</a></div>
+</li>
+<li class="level1"><div class="li"> <code>pppd</code> is configured only in <a href="/doc/uci/network" class="wikilink2" title="doc:uci:network" rel="nofollow" data-wiki-id="doc:uci:network">network</a>, need this for you <a href="/docs/guide-user/network/wan/internet.connection" class="wikilink1" title="docs:guide-user:network:wan:internet.connection" data-wiki-id="docs:guide-user:network:wan:internet.connection">internet.connection</a></div>
+</li>
+<li class="level1"><div class="li"> see <a href="https://en.wikipedia.org/wiki/init" class="interwiki iw_wp" title="https://en.wikipedia.org/wiki/init">init</a>, <a href="http://linux.die.net/man/8/init" class="urlextern" title="http://linux.die.net/man/8/init" rel="ugc nofollow">init manpage</a>, <a href="http://linux.die.net/sag/init-intro.html" class="urlextern" title="http://linux.die.net/sag/init-intro.html" rel="ugc nofollow">http://linux.die.net/sag/init-intro.html</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Notes&quot;,&quot;hid&quot;:&quot;notes&quot;,&quot;codeblockOffset&quot;:1,&quot;secid&quot;:16,&quot;range&quot;:&quot;12508-&quot;} -->

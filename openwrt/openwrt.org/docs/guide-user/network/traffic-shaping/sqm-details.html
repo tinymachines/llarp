@@ -1,0 +1,928 @@
+
+<h1 class="sectionedit1" id="sqm_details">SQM Details</h1>
+<div class="level1">
+
+<p>
+If you want to set up SQM to minimize bufferbloat, you should start at the <a href="/docs/guide-user/network/traffic-shaping/sqm" class="wikilink1" title="docs:guide-user:network:traffic-shaping:sqm" data-wiki-id="docs:guide-user:network:traffic-shaping:sqm">SQM Howto</a> page.  
+</p>
+
+<p>
+The remainder of this page gives some of the theory behind SQM, should you be curious about it.
+You should also check the <a href="http://bufferbloat.net" class="urlextern" title="http://bufferbloat.net" rel="ugc nofollow">Bufferbloat site</a> for considerably more detail.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;SQM Details&quot;,&quot;hid&quot;:&quot;sqm_details&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-366&quot;} -->
+<h2 class="sectionedit2" id="sqmthe_longer_description">SQM: The Longer Description</h2>
+<div class="level2">
+
+<p>
+Smart Queue Management (SQM) is our name for an intelligent combination of better packet scheduling (flow queueing) techniques along with with active queue length management (AQM).
+</p>
+
+<p>
+OpenWrt/LEDE has full capability of tuning the network traffic control parameters. If you want to do the work, you can read the full description at the <a href="/docs/guide-user/network/traffic-shaping/packet.scheduler" class="wikilink1" title="docs:guide-user:network:traffic-shaping:packet.scheduler" data-wiki-id="docs:guide-user:network:traffic-shaping:packet.scheduler">QoS HOWTO</a>. You may still find it useful to get into all the details of classifying and prioritizing certain kinds of traffic, but the SQM algorithms and scripts (fq_codel, cake, and sqm-scripts) require a few minutes to set up, and work as well or better than most hand-tuned classification schemes.
+</p>
+
+<p>
+Current versions of OpenWrt/LEDE have SQM, fq_codel, and cake built in. These algorithms were developed as part of the <a href="http://www.bufferbloat.net/projects/cerowrt/wiki" class="urlextern" title="http://www.bufferbloat.net/projects/cerowrt/wiki" rel="ugc nofollow">CeroWrt</a> project. They have been tested and refined over the last four years, and have been accepted back into OpenWrt, the Linux Kernel, and in dozens of commercial offerings. 
+</p>
+
+<p>
+To use SQM in your router, use the <strong>SQM <abbr title="Quality of Service">QoS</abbr></strong> tab in the web interface. This will optimize the performance of the <abbr title="Wide Area Network">WAN</abbr> interface (generally eth0) that connects your router to the <abbr title="Internet Service Provider">ISP</abbr>/the Internet. There are three sub-tabs in the <strong>SQM <abbr title="Quality of Service">QoS</abbr></strong> page that you may configure:
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong>Basic Settings</strong> sets the download and upload speeds of the uplink. Be sure to read about the adjustment you should make when entering speeds.</div>
+</li>
+<li class="level1"><div class="li"> <strong>Queue Discipline</strong> selects which queueing discipline to use on the <abbr title="Wide Area Network">WAN</abbr> link. The default settings are good in almost every case.</div>
+</li>
+<li class="level1"><div class="li"> <strong>Link Layer Adaptation</strong> calculates the proper overheads for <abbr title="Wide Area Network">WAN</abbr> links such as DSL and ADSL. If you use any kind of DSL link, you should review this section.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;SQM: The Longer Description&quot;,&quot;hid&quot;:&quot;sqmthe_longer_description&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;367-2174&quot;} -->
+<h3 class="sectionedit3" id="sqmbasic_settings_tab">SQM: Basic Settings Tab</h3>
+<div class="level3">
+
+<p>
+Set the <strong>Download</strong> and <strong>Upload</strong> speeds in the web <abbr title="Graphical User Interface">GUI</abbr> for the speed of your Internet connection. To do this
+</p>
+<ol>
+<li class="level1"><div class="li"> Get a speed measurement. See <a href="#preparationmeasure_your_current_speed_and_latency" title="docs:guide-user:network:traffic-shaping:sqm-details ↵" class="wikilink1">Preparations</a> above.</div>
+</li>
+<li class="level1"><div class="li"> Set Download and Upload according to those link speeds. See examples below.</div>
+</li>
+<li class="level1"><div class="li"> Be sure to check the <strong>Enable</strong> box and set the Interface for your <abbr title="Wide Area Network">WAN</abbr> interface.</div>
+</li>
+<li class="level1"><div class="li"> (Optional) Read <a href="#a_little_bit_about_tuning_sqm" title="docs:guide-user:network:traffic-shaping:sqm-details ↵" class="wikilink1">A little bit about tuning SQM</a> above.</div>
+</li>
+</ol>
+
+<p>
+<strong>Example 1:</strong> If your your provider boasts “7 megabit download/768 kbps upload”, set <strong>Download</strong> to 5950 kbit/s and <strong>Upload</strong> to 653 kbit/s. Those numbers are 85% of the advertised speeds.
+</p>
+
+<p>
+<strong>Example 2:</strong> If you have measured your bandwidth with a speed test (be sure to disable SQM first), set the <strong>Download</strong> and <strong>Upload</strong> speeds to 95% of those numbers. For example, if you have measured 6.2 megabits down and 0.67 megabits up (6200 kbps and 670 kbps, respectively), set your <strong>Download</strong> and <strong>Upload</strong> speeds to 95% of those numbers (5890 and 637 kbps, respectively)
+</p>
+
+<p>
+<strong>Basic Settings - the details...</strong>
+</p>
+
+<p>
+SQM is designed to manage the queues of packets waiting to be sent across the slowest (bottleneck) link, which is usually your connection to the Internet. 
+The algorithm cannot automatically adapt to network conditions on DSL, cable modems or GPON without any settings. 
+Since the majority of <abbr title="Internet Service Provider">ISP</abbr> provided configurations for buffering are broken today, 
+you need take control of the bottleneck link away from the <abbr title="Internet Service Provider">ISP</abbr> and move it into the router so it can be fixed. 
+You do this by entering link speeds that are a few percent below the actual speeds.
+</p>
+
+<p>
+Use a speed test program or web site like the <a href="https://www.dslreports.com/speedtest" class="urlextern" title="https://www.dslreports.com/speedtest" rel="ugc nofollow">DSL Reports Speed Test</a> to get an estimate of the actual download and upload values. 
+After setting the initial Download and Upload entries, you should feel free to try the suggestions at <a href="#a_little_about_tuning_sqm" title="docs:guide-user:network:traffic-shaping:sqm-details ↵" class="wikilink1">A little about tuning SQM</a> above to see if you can further increase the speeds.
+</p>
+
+<p>
+<em>Note:</em> sqm-scripts shaper interprets the bandwidth values as gross bandwidth, while speedtests typically report <abbr title="Transmission Control Protocol">TCP</abbr>/<abbr title="Internet Protocol version 4">IPv4</abbr> good-put. So how to estimate what speedtest result is a good match for a given shaper bandwidth? Just use the following formula and plug in the correct values:  
+</p>
+
+<p>
+<code>${ShaperBandwidth} * (${pMTU} - ${IPv4Header} - ${TCPHeader}) / (${pMTU} + ${Overhead})</code>
+</p>
+
+<p>
+with: pMTU typically around 1500, IPv4Header = 20 bytes, TCPHeader = 20 bytes, Overhead the value you specified in the shaper (or typically 14 bytes if you did not explicitly configured this)
+</p>
+
+<p>
+E.g.: for a DOCSIS link with 18 bytes overhead you at best get a 100-100*(1500-20-20)/(1500+18) = 3.82% lower good-put than gross bandwidth.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;SQM: Basic Settings Tab&quot;,&quot;hid&quot;:&quot;sqmbasic_settings_tab&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;2175-4956&quot;} -->
+<h3 class="sectionedit4" id="sqmqueue_discipline_tab">SQM: Queue Discipline Tab</h3>
+<div class="level3">
+
+<p>
+The <strong>Queue Discipline</strong> tab controls how packets are prioritized for sending and receipt. The default settings shown here work very well for nearly all circumstances. Those defaults are:
+</p>
+<ul>
+<li class="level1"><div class="li"> <em>cake</em> queueing discipline</div>
+</li>
+<li class="level1"><div class="li"> <em>piece_of_cake.qos</em> queue setup script</div>
+</li>
+<li class="level1"><div class="li"> <em>ECN</em> for inbound packets</div>
+</li>
+<li class="level1"><div class="li"> <em>NOECN</em> for outbound packets</div>
+</li>
+<li class="level1"><div class="li"> The default values of the <strong>Advanced Configuration</strong> work fine</div>
+</li>
+</ul>
+
+<p>
+<strong>Queueing Discipline - the details...</strong>
+</p>
+
+<p>
+The default <em>cake</em> queueing discipline works well in virtually all situations. Feel free to try out other algorithms to see if they work better in your environment.
+</p>
+
+<p>
+The default <em>piece_of_cake.qos</em> script has a traffic shaper (the Queueing Discipline you select) and three classes with different priorities for traffic. This provides good defaults.
+</p>
+
+<p>
+Explicit Congestion Notification (ECN) is a mechanism for notifying a sender that its packets are encountering congestion and that the sender should slow its packet delivery rate. Instead of dropping a packet, fq_codel marks the packet with a congestion notification and passes it along to the receiver. That receiver sends the congestion notification back to the sender, which can adjust its rate. This provides faster feedback than having the router drop the received packet. <em>Note:</em> this technique requires that the <abbr title="Transmission Control Protocol">TCP</abbr> stack on both sides enable ECN.
+</p>
+
+<p>
+At low bandwidth, we recommend that you turn ECN off for the Upload (outbound, egress) direction, because fq_codel handles and drops packets before they reach the bottleneck, leaving room for more important packets to get out. For the Download (inbound, ingress) link, we recommend you turn ECN on so that fq_codel can inform the local receiver (that will in turn notify the remote sender) that it has detected congestion without loss of a packet.
+</p>
+
+<p>
+The “Dangerous Configuration” options allow you to change other parameters. They are not heavily error checked, so be careful that they are exactly as shown when you enter them. As with other options in this tab, it is safe to leave them at their default. They include:
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong>Hard limit on ingress queues:</strong> This is a limit the ingress (inbound) queues, measured in packets. Leave it empty for default.</div>
+</li>
+<li class="level1"><div class="li"> <strong>Hard limit on egress queues:</strong> This is a limit on the egress (outbound) queues. Similar to the ingress hard limit.</div>
+</li>
+<li class="level1"><div class="li"> <strong>Latency target for ingress:</strong> The codel algorithm specifies a target, expressed in msec. Leave empty or use “auto” for a calculated compensation for slow links (less than 4 mbps). Use “default” for the qdisc&#039;s default.</div>
+</li>
+<li class="level1"><div class="li"> <strong>Latency target for egress:</strong> The target setting for the egress queues. Similar to the ingress latency target.</div>
+</li>
+<li class="level1"><div class="li"> <strong>Advanced option string for ingress:</strong> This string passes additional parameters to the ingress queueing discipline. There is no error checking, so enter carefully. Empty is the default.</div>
+</li>
+<li class="level1"><div class="li"> <strong>Advanced option string for egress:</strong> Similar to the ingress advanced option string.</div>
+</li>
+</ul>
+
+<p>
+Please note that if any of the “Advanced option strings” contain values that are not interpreted by the selected qdisc, sqm will _silently_ fail to instantiate, so make sure to always check these two field on changing the qdisc. Also run “tc -d qdisc ; tc -s qdisc” on the router&#039;s command line to check whether the expected shapers (ingress/egress) were instantiated, “not heavily error checked” for these two fields is emphatic for “not at all” and the placement under “Dangerous Configuration” quite fitting.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;SQM: Queue Discipline Tab&quot;,&quot;hid&quot;:&quot;sqmqueue_discipline_tab&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;4957-8457&quot;} -->
+<h3 class="sectionedit5" id="sqmlink_layer_adaptation_tab">SQM: Link Layer Adaptation Tab</h3>
+<div class="level3">
+
+<p>
+The purpose of Link Layer Adaptation is to give the shaper more knowledge about the actual size of the packets so it can calculate how long packets will take to send. When the upstream <abbr title="Internet Service Provider">ISP</abbr> technology adds overhead to the packet, we should try to account for it. This primarily makes a big difference for traffic using small packets, like VOIP or gaming traffic. If a packet is only 150 bytes and say 44 bytes are added to it, then the packet is 29% larger than expected and so the shaper will be under-estimating the bandwidth used if it doesn&#039;t know about this overhead.
+</p>
+
+<p>
+Getting this value exactly right is less important than getting it close, and over-estimating by a few bytes is generally better at keeping bufferbloat down than underestimating. With this in mind, to get started, set the Link Layer Adaptation options based on your connection to the Internet. The general rule for selecting the Link Layer Adaption is:
+</p>
+<ul>
+<li class="level1"><div class="li"> Choose <strong>ATM: select for e.g. ADSL1, ADSL2, ADSL2+</strong> and set the Per-packet Overhead to 44 bytes if you use any kind of DSL/ADSL connection to the Internet other than a modern VDSL high speed connection (20+Mbps). In other words if you have your internet service through a copper telephone line at around 1 or 2Mbps.</div>
+</li>
+<li class="level1"><div class="li"> Choose <strong>Ethernet with overhead: select for e.g. VDSL2</strong> and set the Per-packet Overhead to 34 if you know you have a VDSL2 connection (this is sometimes called Fiber to the Cabinet, for example in the UK). VDSL connections operate at 20-100Mbps over higher quality copper lines. If you are sure that PPPoE is not in use, you can reduce this to 26.</div>
+</li>
+<li class="level1"><div class="li"> If you have a cable modem, with a coaxial cable connector, you can try 22 bytes, or see the <strong>Ethernet with Overhead</strong> details below. If your shaper rate is set greater than 760 Mbps set overhead 42 (mpu 84) as the ethernet link to the modem now affects worst case per-packet-overhead.</div>
+</li>
+<li class="level1"><div class="li"> Choose <strong>Ethernet with overhead</strong> if you have an actual Fiber to the Premises or metro-Ethernet connection and set the Per-Packet Overhead to 44 bytes. This can be reduced somewhat for example if you know you are not using <abbr title="Virtual Local Area Network">VLAN</abbr> tags, but will usually work well.</div>
+</li>
+<li class="level1"><div class="li"> Choose <strong>none (default)</strong> if you have some reason to not include overhead. All the other parameters will be ignored.</div>
+</li>
+</ul>
+
+<p>
+If you are not sure what kind of link you have, first try using Ethernet with Overhead and set 44 bytes. Then run the Quick Test for Bufferbloat. If the results are good, you’re done. If you get your internet through an old-style copper wired phone line and your speeds are less than a couple of megabits, you have ATM so see above for the ATM entry. If you have a slow connection such as less than 2Mbps in either direction and/or you regularly use several VOIP calls at once while gaming etc (so that more than 10 to 20% of your bandwidth is small packets) then it can be worth it to tune the overhead more carefully, see below for extra details. 
+</p>
+
+<p>
+An important exception to the above rules is when the bandwidth limit is set by the <abbr title="Internet Service Provider">ISP</abbr>&#039;s traffic shaper, not by the equipment that talks to the physical line. Let&#039;s consider an example. The <abbr title="Internet Service Provider">ISP</abbr> sells a 15 Mbit/s package and enforces this limit, but lets the ADSL modem connect at whatever speed is appropriate for the line. And the modem “thinks” (as confirmed in its web interface) that 18 Mbps is appropriate. In this case, the ATM Link Layer Adaptation is likely inappropriate, because the <abbr title="Internet Service Provider">ISP</abbr>&#039;s shaper is the only relevant speed limiter, and it does not work at the ATM level. In fact, it is more likely to work at the <abbr title="Internet Protocol">IP</abbr> level, which means that <strong>none</strong> is the appropriate setting.
+EDIT: This section is confused and none is ALMOST NEVER the correct overhead (however there are situations where the overhead setting is not all that important). As a rule of thumb to be on the save side set the shaper overhead to &gt;= max(overhead along the path) and the shaper rate to ⇐ min(rate along the path). TO stich with the above example, even if @15Mbps with full sizes packets (<abbr title="Maximum Transmission Unit">MTU</abbr> ~1500) the <abbr title="Internet Service Provider">ISP</abbr> shaper might be the relevant bottleneck defining the relevant overhead, once the link is saturated with smaller packets this likely reverses and the ATM link becomes relevant for the per-packet overhead. But to repeat, underestimating the overhead can easily result in increased latency under load, while overestimating it (within reason) only costs a little potential throughput, so if in doubt over estimate the per packet overhead; hence the recommendation to set it to 44 or 48 and forget about it.
+</p>
+
+<p>
+<strong>Link Layer Adaptation - the details…</strong>
+</p>
+
+<p>
+Various link-layer transmission methods affect the rate that data is transmitted/received. Setting the Link Layer properly helps SQM make accurate predictions, and improves performance. There are several components of overhead, the first comes from the basic transport technology itself:
+</p>
+<ul>
+<li class="level1"><div class="li"> <strong>ATM:</strong> It is especially important to set the Link Layer Adaptation on links that use ATM framing (almost all DSL/ADSL links do), because ATM adds five additional bytes of overhead to a 48-byte frame. Unless the SQM algorithm knows to account for the ATM framing bytes, short packets will appear to take longer to send than expected, and will be penalized. For true ATM links, one often can measure the real per-packet overhead empirically, see <a href="https://github.com/moeller0/ATM_overhead_detector" class="urlextern" title="https://github.com/moeller0/ATM_overhead_detector" rel="ugc nofollow">https://github.com/moeller0/ATM_overhead_detector</a> for further information how to do that. Getting the mpu right is tricky since ATM/AAL5 can either include the FCS or not, but setting mu to 96 should be save (that results in 2 ATM cells).</div>
+</li>
+<li class="level1"><div class="li"> <strong>Ethernet with Overhead:</strong> SQM can also account for the overhead imposed by <em>VDSL2</em> links - add 22 bytes of overhead (mpu 68). Cable Modems (<em>DOCSIS</em>) set both up- and downstream overhead to 18 bytes (6 bytes source MAC, 6 bytes destination MAC, 2 bytes ether-type, 4 bytes FCS), to allow for a possible 4 byte <abbr title="Virtual Local Area Network">VLAN</abbr> tag it is recommended to set the overhead to 18 + 4 = 22 (mpu 64); if you want to set shaper rates greater than 760 Mbps set overhead 42 (mpu 84) as now the worst case per-packet-overhead is on the ethernet link to the modem. For <em>FTTH</em> the answer is less clear cut, since different underlaying technologies have different relevant per-packet-overheads; however underestimating the per-packet-overhead is considerably worse for responsiveness than (gently) overestimating it, so for <em>FTTH</em> set the overhead to 44 (mpu 84) unless there is more detailed information about the true overhead on a link available.</div>
+</li>
+<li class="level1"><div class="li"> <strong>None:</strong> All shaping below the physical gross-rate of a link requires correct per-packet overhead accounting to be precise, so <strong>None</strong> is only useful if approximate shaping is sufficient, say if you want to clamp a guest network to at best ~50% of the available capacity or similar tasks, but even then configuring an approximate correct per-packet-overhead is recommended (overhead 44 (mpu 84) is a decent default to pick).</div>
+</li>
+</ul>
+
+<p>
+In addition to those overheads it is common to have <abbr title="Virtual Local Area Network">VLAN</abbr> tags (4 extra bytes) or PPPoE encapsulation (8 bytes) or even more exotic issues such as ipv4 provided over ipv6 in the DS-Lite scheme (where ipv4 packets experience a 40 byte ipv6 header overhead). Because of these variables and the fact that overestimation is generally better, we offer the default suggested sizes in the first table).
+</p>
+
+<p>
+The “Advanced Link Layer” choices are relevant if you are sending packets larger than 1500 bytes. This would be unusual for most home setups, since ISPs generally limit traffic to 1500 byte packets. UPDATE 2017, most recent link technologies will transfer complete L2 ethernet frames including the FCS; that in turn means that they will effectively all inherit the ethernet minimal packet size of 64 bytes. It is hence recommended to set tcMPU to 64 (the actual values depends on the link technology and ranges from 0-96bytes). Note that most (but not all) ATM based links will exclude the FCS and hence probably do not require that setting. As of March 2017 sqm-scripts does not evaluate tcMPU if cake is selected as “link layer adaptation mechanism”. In that case add “mpu 64” to the advanced option strings for ingress and egress. As of middle of 2018 sqm-scripts will try to evaluate tcMPU for cake also. 
+Getting the mpu right seems not overly important at first since it only affects the accounting of the smallest of packets and will only be relevant if a link is saturated. But often especially DOCSIS/cable links are close to an 1/40 asymmetry between up- and downstream, and that is the same 1/40 ratio between data and reverse ACK traffic rates/volumes for <abbr title="Transmission Control Protocol">TCP</abbr> (think <abbr title="Transmission Control Protocol">TCP</abbr> Reno), and that in turn means that when saturating the Downstream-direction with a big <abbr title="Transmission Control Protocol">TCP</abbr>-download the upstream direction will als be close to saturated with ACK packets, and pure ACK packets can actually fall under the mpu limit resulting in both a saturated link and mostly small packets that need to be accounted with a size of &gt;= mpu. In short getting the mpu right is not a purely theoretical exercise.
+</p>
+
+<p>
+Please note that as of middle 2018 cake, and cake only, will try to interpret any given overhead to be applied on top of <abbr title="Internet Protocol">IP</abbr> packets, all other qdiscs (and cake if configured with the “raw” keyword) will add the specified overhead on top of the overhead the kernel already accounted for. This seems confusing, because it is ;) so if in doubt stick to cake.
+</p>
+
+<p>
+Unless you are experimenting, you should use the default choice for the link layer adaptation mechanism. This will select cake if cake is used as qdisc other wise tc_stab.
+</p>
+
+<p>
+Now, the real challenge with the shaper gross rate and the per-packet-overhead is that they are not independent; say a link has a true gross rate of 100 rate-units and a true per-packet-overhead of 100 bytes (numbers are unrealistic, but allow for easier math) and an payload size of 1000 bytes, the expected throughput at the ethernet payload level is:
+</p>
+<pre class="code">gross-rate * ((payload-size) / (pay_load-size + per-packet-overhead))
+100 * ((1000) / (1000+100)) = 90.91</pre>
+
+<p>
+now, any combination of gross-shaper rate and per-packet-overhead, that results in a throughput ⇐ 90.91 will effectively remove bufferbloat (that is not fully correct for downstream shaping, but the logic also holds if we aim for say, 90% of 90.91 instead).
+so in the extreme we can set the per-packet-overhead to 0 as long as we also set the shaper gross speed to 90.91:
+</p>
+<pre class="code">90.91 * (1000+0) / (1000) = 90.91
+90.91 * ((1000) / (1000+0)) = 90.91</pre>
+
+<p>
+or the other way around, if we set the per-packet-overhead to an absurd 1000 bytes, we still will see the expected throughput if we also configure the shaper gross rate at 182:
+</p>
+<pre class="code">90.91 * (1000+1000) / (1000) = 181.82
+181.82 * ((1000) / (1000+ 1000)) = 90.91</pre>
+
+<p>
+To sanity check whether a given combination of gross rate and per-packet-overhead seems sane (say, there is too little information about the true link properties available to make an educated guess) ione needs to repeat speedtests at different packet sizes. The following stanza added to /etc/firewall.user will use OpenWrt&#039;s MSS clamping to bidirectionally force the <abbr title="Maximum Transmission Unit">MTU</abbr> to 216 (as e.g. Macosx will not accept smaller MSS values by default)
+</p>
+<pre class="code"># special rules to allow MSS clamping for in and outbound traffic                                                                   
+# use ip6tables -t mangle -S ; iptables -t mangle -S to check                                                                       
+forced_MSS=216                                                                                                                      
+                                                                                                                                    
+# affects both down- and upstream, egress seems to require at least 216                                                             
+iptables -t mangle -A FORWARD -p tcp -m tcp --tcp-flags SYN,RST SYN -m comment --comment &quot;custom: Zone wan MTU fixing&quot; -j TCPMSS --set-mss ${forced_MSS}                                                                                                               
+ip6tables -t mangle -A FORWARD -p tcp -m tcp --tcp-flags SYN,RST SYN -m comment --comment &quot;custom6: Zone wan MTU fixing&quot; -j TCPMSS  --set-mss ${forced_MSS}     </pre>
+
+<p>
+Now, if we plug this into the numbers from above we get (note, MSS is the <abbr title="Transmission Control Protocol">TCP</abbr>/<abbr title="Internet Protocol">IP</abbr> payload size, which in the <abbr title="Internet Protocol version 4">IPv4</abbr> case is 40 bytes smaller than the ethernet payload):
+</p>
+<pre class="code">100 * ((216+40) / (216+40+100)) = 68.3544303797 # as expected the throughput is smaller, since the fraction of overhead is simply larger</pre>
+
+<p>
+now, if we underestimated the per-packet-overhead we get:
+</p>
+<pre class="code">90.91 * ((216) / (216 +0)) = 90.91</pre>
+
+<p>
+since 90 &gt;&gt; 68 we will admit too much data into the link and will encounter bufferbloat.
+</p>
+
+<p>
+And the reverse error:
+</p>
+<pre class="code">181.82 * ((216) / (216 + 1000)) = 32.2969736842</pre>
+
+<p>
+here we do not get bufferbloat (since 32 &lt;&lt; 68) but we sacrifice way to much throughput.
+</p>
+
+<p>
+So the proposal is to “optimize” shaper gross-rate and per-packet-overhead at the normal MSS value and then measure at a considerable smaller MSS to confirm whether both bufferbloat and throughput are still acceptable.
+</p>
+
+<p>
+Please note one additional challenge here: testing a saturating load with small(er) packets will result in a considerably higher rate of packets the router needs to process (e.g. if you switch from MSS 1460 to MSS 146 you can expect ~10 times as many packets) and not all routers are capable of saturating a link with small packets, so for this test it is essential to confirm that the router does not run out of CPU cycles to process the data and as a consequence that the measured throughput is close to the theoretically expected one.
+</p>
+
+<p>
+Please note to compare throughput measured with on-line speedtests with the theoretical prediction the following approximate formula can be used:
+</p>
+<pre class="code">gross-rate * ((IP-packet-size - IP-header-size - TCP-header-size) / (IP-packet-size + per-packet-overhead))
+e.g. for an ethernet link (effectively 38B overhead) with a VLAN tag (4B) and PPPoE (6+2=8B), IPv4 (without options: 20B), TCP (with rfc 1323 timestamps: 20+12=32B) 
+one can expect ~93% throughput
+100 * ((1500 - 8 - 20 - 20 - 12) / (1500 + 38 + 4)) = 93.39</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;SQM: Link Layer Adaptation Tab&quot;,&quot;hid&quot;:&quot;sqmlink_layer_adaptation_tab&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:5,&quot;range&quot;:&quot;8458-22780&quot;} -->
+<h2 class="sectionedit6" id="selecting_the_optimal_queue_setup_script">Selecting the optimal queue setup script</h2>
+<div class="level2">
+
+<p>
+<strong><abbr title="Too long; didn&#039;t read">TL;DR</abbr>:</strong> Use cake, not fq_codel.
+</p>
+
+<p>
+<em>Note:</em> As of early 2017, cake is an improvement both in speed and capabilities over the original fq_codel algorithm first deployed in May 2012. cake is in every way better than fq_codel. The following description is preserved for historical information.
+</p>
+
+<p>
+The right queue setup script (simple, hfsc_lite, ...) for you depends on the combination of several factors like the <abbr title="Internet Service Provider">ISP</abbr> connection&#039;s speed and latency, router&#039;s CPU power, wifi/wired connection from <abbr title="Local Area Network">LAN</abbr> clients etc.. You will need likely to experiment with several scripts to see which performs best for you. Below is a summary of real-life testing with three different setup scripts. 
+</p>
+
+<p>
+This was tested with WNDR3700 running trunk with kernel 4.1.16 and SQM 1.0.7 with simple, hfsc_lite and hfsc_litest scripts with SQM speed setting 85000/10000 (intentionally lower than <abbr title="Internet Service Provider">ISP</abbr> connection speed), 110000/15000 (that should exceed the <abbr title="Internet Service Provider">ISP</abbr> connection speed and also totally burden the router&#039;s CPU), as well as 110000/15000 using Wifi.
+</p>
+<pre class="code">           wired 85/10             wired 110/15         Wifi 110/15
+         Download/Up/Latency     Download/Up/Latency    Download/Up/Latency
+Simple       19.5/2.1/18.5           21.2/2.7/19          11.0/3.0/21
+hfsc_lite    20.7/2.2/19.5           25.0/2.7/50          19.0/2.9/35
+hfsc_litest  20.7/2.2/18.7           25.0/2.7/52          18.0/2.8/35</pre>
+
+<p>
+(“flent” network measurement tool reports the overview as average of the 4 different traffic classes, so the total bandwidth was 4x the figures shown in the above table that shows “per-class” speed. The maximum observed combined download+upload speed was ~110 Mbit/s.)
+</p>
+
+<p>
+With wired 85/10 the experience was almost identical with all four qdisc strategies in SQM. Approx. 20 Mbit/s download / 2.1 Mbit/s upload and 19 ms latency shown in the flent summary graph.
+</p>
+
+<p>
+With wired 110/15 there was more difference. Interestingly “simple” kept latency at 20 ms, while with the other 3 strategies latency jumped to 50 ms after ~20 seconds. (Might be a flent peculiarity, but still mentioning it.) “simple” kept low latency at 19 ms and 21 Mbit/s download, while the other 3 strategies had 50 ms latency while having 24-25 Mbit/s download per class.
+</p>
+
+<p>
+But when the <abbr title="Local Area Network">LAN</abbr> client connected with Wifi to the router with 110/15 limits, “simple” lost its download speed. Latency was still low, but download speed was really low, just half of the normal. Likely the CPU power required for wifi limited the CPU available for other processing and the router choked. 
+</p>
+
+<p>
+At least on the tested setup, the download speed using wifi and SQM “simple” was half of that what could achieved with hfsc_lite+wifi, or simple+wired.
+</p>
+
+<p>
+The key message of this note is that the right setup script for you will depend on your connection, your router and your <abbr title="Local Area Network">LAN</abbr> clients. It pays off to test the various setup scripts.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Selecting the optimal queue setup script&quot;,&quot;hid&quot;:&quot;selecting_the_optimal_queue_setup_script&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:6,&quot;range&quot;:&quot;22781-25707&quot;} -->
+<h2 class="sectionedit7" id="making_cake_sing_and_dance_on_a_tight_rope_without_a_safety_net_aka_advanced_features">Making cake sing and dance, on a tight rope without a safety net (aka advanced features)</h2>
+<div class="level2">
+
+<p>
+<strong>By now, we hope the SQM message has been clear: stick to the defaults and use cake.</strong>
+</p>
+
+<p>
+But cake offers new options that make it the nicest and most complete shaper for a typical home network: Per-Host Isolation in the presence of network address translation (<abbr title="Network Address Translation">NAT</abbr>), so that all hosts&#039; traffic shares are equal. (You can choose to isolate per-internal or per-external host <abbr title="Internet Protocol">IP</abbr> addresses, but typically fairness by internal host IPs seems in bigger demand.)
+</p>
+
+<p>
+A quick aside about Network Address Translation (<abbr title="Network Address Translation">NAT</abbr>): ISPs usually assign only one external <abbr title="Internet Protocol">IP</abbr> address to each customer. 
+The home router assigns unique internal addresses for each computer in the home, and uses a technique called <abbr title="Network Address Translation">NAT</abbr> (or “masquerading”) to rewrite those internal <abbr title="Internet Protocol">IP</abbr> addresses and ports to work across the single external address. 
+</p>
+
+<p>
+<abbr title="Network Address Translation">NAT</abbr> works pretty well, too, but causes problems when shaping traffic. 
+Since all the traffic going to/from the <abbr title="Internet Service Provider">ISP</abbr> has the same external <abbr title="Internet Protocol">IP</abbr> address, cake treats every traffic <em>flow</em> (or <em>stream</em> or <em>connection</em>) identically: a single Netflix stream to one internal computer gets the same bandwidth as a single BitTorrent stream to another. 
+But since a BitTorrent client can start many BitTorrent streams, the second machine can get “more than its share” of the capacity.
+</p>
+
+<p>
+Recent versions of cake (in OpenWrt/LEDE 17.01.0 and newer) have two options that avoid this problem: 
+</p>
+<ol>
+<li class="level1"><div class="li"> Cake can now access the kernel&#039;s internal translation tables and get access to the true source and destination addresses of incoming and outgoing packets;</div>
+</li>
+<li class="level1"><div class="li"> Cake can use the information about true source and destination addresses to control traffic from/to internal external hosts by true <abbr title="Internet Protocol">IP</abbr> address, not per-stream.</div>
+</li>
+</ol>
+
+<p>
+Cake&#039;s original isolation mode was based on <em>flows</em>: each stream was isolated from all the others, and the link capacity was divided evenly between all active streams independent of <abbr title="Internet Protocol">IP</abbr> addresses. <strong>More recently Cake switched</strong> to <code>triple-isolate</code>, which will first make sure that no internal <em class="u">or</em> external host will hog too much bandwidth and then will still guarantee for fairness for each host.
+In that mode, Cake mostly does the right thing.
+It would ensure that no single stream and no single host could hog all the capacity of the <abbr title="Wide Area Network">WAN</abbr> link. 
+However, it can&#039;t prevent a BitTorrent client - with multiple connections - from monopolizing most of the capacity. And running speedtests from multiple internal hosts to the same speedtest server can give unpredictable results.
+</p>
+
+<p>
+Cake now uses the true source/destination address information to create Per-Host Isolation, and dynamically distributes the available bandwidth fairly between the currently-active <abbr title="Internet Protocol">IP</abbr> addresses. So a single Netflix stream to one host ideally gets just as much capacity as all the BitTorrent traffic destined to another. 
+</p>
+
+<p>
+<strong>To enable Per-Host Isolation</strong> Add the following to the “Advanced option strings” (in the <em>Interfaces → SQM-<abbr title="Quality of Service">QoS</abbr></em> page; <em>Queue Discipline</em> tab, look for the <em>Dangerous Configuration</em> options):
+</p>
+
+<p>
+For queueing disciplines handling incoming packets from the internet (internet-<strong>ingress</strong>): <code>nat dual-dsthost</code>
+</p>
+
+<p>
+For queueing disciplines handling outgoing packets to the internet (internet-<strong>egress</strong>): <code>nat dual-srchost</code>
+</p>
+
+<p>
+Please note the addition of the ingress keyword to the “Advanced option strings”
+</p>
+
+<p>
+Regarding cake&#039;s “ingress” keyword:
+Conceptually a traffic shaper will drop and/or delay packets in a way that the rate of packets leaving the shaper is smaller or equal to the configured shaper-rate. This works well on egress, but for post-bottleneck shaping as is typical for the internet ingress (the download direction) this is not ideal. For this kind of shaping we actually want to make sure that there is as little as possible packet-backspill into the upstream devices buffers (if those buffers where sized and managed properly we would not need to shape on ingress in the first place). And to avoid backspill we need to make sure that the combined rate of packets coming into the upstream device (rarely) exceeds the bottleneck-link&#039;s true capacity. The “ingress” keyword instructs cake to basically try to keep the incoming packet rate ⇐ the configured shaper rate. This leads to slightly more aggressive dropping, but this also ameliorates one issue we have with post-bottleneck shaping, namely the inherent dependency of the required bandwidth “sacrifice” with the expected number of concurrent bulk flows. As far as I can tell the more aggressive dropping in ingress-mode automatically scales with the load and hence it should make it possible to get away with configuring an ingress-mode rate closer to the true bottleneck-rate, and actually also get higher throughput if only few bulk flows are active. For further reference I recommend to have a look at cake&#039;s source at <a href="https://github.com/dtaht/sch_cake?files=1" class="urlextern" title="https://github.com/dtaht/sch_cake?files=1" rel="ugc nofollow">https://github.com/dtaht/sch_cake?files=1</a>
+</p>
+
+<p>
+With the &#039;ingress&#039; keyword, the above example for incoming packets from the internet would be <code>nat dual-dsthost ingress</code>
+</p>
+
+<p>
+<strong>Notes:</strong>
+</p>
+<ul>
+<li class="level1"><div class="li"> “Internet-Ingress” is the shaper instance handling traffic coming from the internet, “into” the router.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> “Internet-Egress” is the shaper instance handling traffic towards the internet, “from” the router.</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> Enter these strings carefully and exactly. If things do not seem to work, your first troubleshooting step should be to clear these advanced option strings!</div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> At some point in time, these advanced cake options may become better integrated into luci-app-sqm, but for the time being this is the way to make cake sing and dance… </div>
+</li>
+</ul>
+<ul>
+<li class="level1"><div class="li"> This discussion assumes SQM is instantiated on an interface that directly faces the internet/<abbr title="Wide Area Network">WAN</abbr>. If it is not (e.g., on a <strong><abbr title="Local Area Network">LAN</abbr> port</strong>) the meaning of ingress/egress <strong>flips</strong> and now your <strong>Download</strong> has to put it in <strong>Upload speed (kbit/s) (egress)</strong> and your <strong>Upload</strong> has to put it in <strong>Download speed (kbit/s) (ingress)</strong>, also <strong>don&#039;t have to add the</strong> <code>nat</code> <strong>option</strong>  on <strong><abbr title="Local Area Network">LAN</abbr> interfaces</strong> (this option should only be used in the <strong><abbr title="Wide Area Network">WAN</abbr> interface</strong>) or <strong>Per-Host Isolation</strong> stops working. In that case, just add in <strong>egress queueing disciplines</strong> <code>dual-dsthost ingress</code> and in <strong>ingress queueing disciplines</strong> <code>dual-srchost</code> (remember that ingress/egress <strong>flips</strong> on <strong><abbr title="Local Area Network">LAN</abbr> interfaces</strong>).</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Making cake sing and dance, on a tight rope without a safety net (aka advanced features)&quot;,&quot;hid&quot;:&quot;making_cake_sing_and_dance_on_a_tight_rope_without_a_safety_net_aka_advanced_features&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:7,&quot;range&quot;:&quot;25708-32081&quot;} -->
+<h2 class="sectionedit8" id="faq">FAQ</h2>
+<div class="level2">
+
+<p>
+<strong>SQM seems to be confused, my measured download speed is actually close to my configured upload speed:</strong>
+</p>
+
+<p>
+Depending on the directionality of the interface with the directionality towards the internet that is not unexpected; try to flip the values in the <abbr title="Graphical User Interface">GUI</abbr> and see whether measured values better match your expectation.
+</p>
+
+<p>
+<strong>SQM seems confused, both download and upload bandwidth in speedtests measure around the lower value of the configured download and upload bandwidth:</strong>
+</p>
+
+<p>
+This situation can arise when using a router that uses one of its switch ports as the <abbr title="Wide Area Network">WAN</abbr> port and only has one CPU to switch port; assuming the cpu port to the switch is eth0 and <abbr title="Virtual Local Area Network">VLAN</abbr> 2 is used for <abbr title="Wide Area Network">WAN</abbr>, <abbr title="Virtual Local Area Network">VLAN</abbr> 1 for <abbr title="Local Area Network">LAN</abbr>;in that case the appropriate <abbr title="Wide Area Network">WAN</abbr> interface from sqms perspective is eth0.2. Instantiating sqm on eth0 (note the lack of the <abbr title="Virtual Local Area Network">VLAN</abbr> tags) will make sure that eth0.2 is effectively throttled to min(download_bandwidth, upload_bandwidth), as eth0 egress shaping will affect both internet egress (via eth0.2 egress) as well as internet ingress (via eth0.1 egress). In short make sure to instantiate sqm on the real wan interface if internet shaping is intended...
+</p>
+
+<p>
+<strong>How to figure out which interface is actually connected to the internet:</strong>
+</p>
+<div class="table sectionedit9"><table class="inline">
+	<tr class="row0">
+		<td class="col0"> From the <strong>Network→Interfaces</strong> <abbr title="Graphical User Interface">GUI</abbr> </td><td class="col1 leftalign"> From the Command Line  </td>
+	</tr>
+	<tr class="row1">
+		<td class="col0 centeralign">  The <abbr title="Wide Area Network">WAN</abbr> port box shows the <br/>
+name of the <abbr title="Wide Area Network">WAN</abbr> interface:<br/>
+<a href="/_detail/media/docs/lede-wan-port-small.png?id=docs%3Aguide-user%3Anetwork%3Atraffic-shaping%3Asqm-details" class="media" title="media:docs:lede-wan-port-small.png"><img src="/_media/media/docs/lede-wan-port-small.png" class="media" loading="lazy" alt="" /></a>        </td><td class="col1 leftalign"> <span> Run the following from the router&#039;s command line:<br/>
+
+<br/>
+
+    <code> ifstatus wan | grep -e l3_device</code><br/>
+
+<br/>
+
+The command above might display:<br/>
+
+  <br/>
+
+    <code> 	“l3_device”: “eth0”, </code><br/>
+
+<br/>
+
+which means <code>eth0</code> is the <abbr title="Wide Area Network">WAN</abbr> interface. Select it in <strong>Network→SQM <abbr title="Quality of Service">QoS</abbr></strong> <abbr title="Graphical User Interface">GUI</abbr>, <br/>
+
+if you want the typical “shape my internet access” configuration. </span>         </td>
+	</tr>
+</table></div>
+<!-- EDIT{&quot;target&quot;:&quot;table&quot;,&quot;name&quot;:&quot;&quot;,&quot;hid&quot;:&quot;table&quot;,&quot;secid&quot;:9,&quot;range&quot;:&quot;33331-33862&quot;} -->
+<p>
+<strong>Measured goodput in speed tests with SQM is considerably lower than without</strong>
+</p>
+
+<p>
+Traffic shaping is relative CPU intensive, not necessarily as sustained load. To be able to keep buffering in the device driver low SQM only releases small amounts of packets into the next layer (often the device driver). To keep throughput up, the qdisc now only has the small time window from handing the last packets up to the diver and the point these packets will be transmitted at the desired shaper rate to hand more packets to the driver. If SQM does not get access to the CPU inside that time window, it will effectively not use some nominal transmit opportunities, and hence throughput will stay below the configured rate.
+</p>
+
+<p>
+One sign of such under-throughput by CPU-overload is that the CPU rarely falls idle. Aquick an dirty test for that is to run `top -d 1` and watch the %idle column in one of the upper rows, if that gets too close to 0% (you need to generate a load, like a speedtest and while this test runs observe the %idle column and try to get a feel what the minimum %idle is that shows up) sqm is likely CPU bound. Since that test will only show aggregate usage over full second intervals, but SQM operates on smaller time windows, often an observed min %idle of 10% already indicates CPU limitations to sqm. Please note that for multicore routers reading %idle gets more complicated, as 50% idle on a dual core, might mean one core is fully loaded and one is idle (bad if sqm runs on the overloaded core) or that both cores are loaded only 50%. Please note that htop (`opkg update ; opkg install htop`) has a per CPU stats display that can be toggled by pressing t and includes the traditional mode as well:
+</p>
+<pre class="code">top - 11:29:29 up 12 days, 14:42,  0 users,  load average: 0.06, 0.02, 0.00
+Tasks: 158 total,   1 running, 157 sleeping,   0 stopped,   0 zombie
+%Cpu0  :  2.0 us,  0.0 sy,  0.0 ni, 97.0 id,  0.0 wa,  0.0 hi,  1.0 si,  0.0 st
+%Cpu1  :  3.0 us,  1.0 sy,  0.0 ni, 93.1 id,  0.0 wa,  0.0 hi,  3.0 si,  0.0 st</pre>
+
+<p>
+This should allow to eye-ball whether a single core might be pegged. In this example without load, both CPUs idle &gt; 90% of the time, no sign of any overload ;)
+Pressing F1 in htop, shows the color legend for the CPU bars, and F2 Setup → Display options →  Detailed CPU time (System/IO-Wait/Hard-IRQ/Soft-IRQ/Steal/Guest), allows to enable the display of the important (for network loads) Soft-IRQ category.
+</p>
+
+<p>
+Also to make things even more complicated, CPU power/frequency scaling (to save power) can interfere negatively with SQM. Probably due to SQM&#039;s bursty nature it might not be recognised by the power governor and the CPU (that at 100% is capable of shaping to the desired sqm rate) gets too slow to service SQM in time and throughput suffers, and due to the burstyness the governor might never realise it should scale frequency back up. This can be remedied by trying to optimise the transition rules for up-scaling frequency/power or by switching to a non-scaling governor. The former requires a bit of trial and error but maintains power saving, while the latter probably is easier to achieve and hence might be a good way to figure out whether power saving might be an issue in the first place. @experts, please feel free to elaborate on which power save settings are worth exploring.
+</p>
+
+<p>
+<strong> How do I get cake to consider <abbr title="Internet Protocol version 6">IPv6</abbr> traffic in a 6in4 tunnel as separate flows?</strong>
+</p>
+
+<p>
+See <a href="/docs/guide-user/network/ipv6/ipv6_henet#in4_with_cake_sqm" class="wikilink1" title="docs:guide-user:network:ipv6:ipv6_henet" data-wiki-id="docs:guide-user:network:ipv6:ipv6_henet">6in4 with cake config</a>
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;FAQ&quot;,&quot;hid&quot;:&quot;faq&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:8,&quot;range&quot;:&quot;32082-37365&quot;} -->
+<h2 class="sectionedit10" id="troubleshooting_sqm">Troubleshooting SQM</h2>
+<div class="level2">
+
+<p>
+The commands below help to collect the information required to debug problems with SQM. 
+To use them, <a href="/docs/guide-quick-start/sshadministration" class="wikilink1" title="docs:guide-quick-start:sshadministration" data-wiki-id="docs:guide-quick-start:sshadministration">SSH into the router,</a> and enter
+each line, one at a time.
+Then copy/paste the entire terminal session in your report.
+</p>
+
+<p>
+Display all currently defined sqm instances (enabled and disabled):
+</p>
+<pre class="code">  cat /etc/config/sqm</pre>
+
+<p>
+Display all information about the <abbr title="Wide Area Network">WAN</abbr> interface:
+</p>
+<pre class="code">  ifstatus wan</pre>
+
+<p>
+Display relatively detailed output of the process of stopping and starting SQM:
+</p>
+<pre class="code">  SQM_DEBUG=1 SQM_VERBOSITY_MAX=8 /etc/init.d/sqm stop ; SQM_DEBUG=1 SQM_VERBOSITY_MAX=8 /etc/init.d/sqm start</pre>
+
+<p>
+Display the log file created by the commands above:
+</p>
+<pre class="code">  cat /var/run/sqm/*debug.log</pre>
+
+<p>
+Display the logread output of the sqm start and stop:
+</p>
+<pre class="code">  logread | grep SQM</pre>
+
+<p>
+Display the <em>detailed</em> output of linix&#039;s <code>tc</code> (traffic control) system:
+</p>
+<pre class="code">  tc -d qdisc</pre>
+
+<p>
+Display the <em>statistics</em> output of <code>tc</code> system:
+</p>
+<pre class="code">  tc -s qdisc</pre>
+
+<p>
+Now generate some traffic through the router (and the SQM instance). The easiest way to do this used to be to run the DSLReports Speedtest (<a href="http://www.dslreports.com/speedtest" class="urlextern" title="http://www.dslreports.com/speedtest" rel="ugc nofollow">http://www.dslreports.com/speedtest</a>) but nowadays the waveform bufferbloat test (<a href="https://www.waveform.com/tools/bufferbloat" class="urlextern" title="https://www.waveform.com/tools/bufferbloat" rel="ugc nofollow">https://www.waveform.com/tools/bufferbloat</a>) or cloudflare&#039;s capacity test (<a href="https://speed.cloudflare.com" class="urlextern" title="https://speed.cloudflare.com" rel="ugc nofollow">https://speed.cloudflare.com</a>) are preferable.
+</p>
+
+<p>
+Now display the <code>tc</code> statistics again: this shows the increased traffic the SQM instance should have seen.
+</p>
+<pre class="code">  tc -s qdisc</pre>
+
+<p>
+Finally, copy/paste the entire session into your report.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Troubleshooting SQM&quot;,&quot;hid&quot;:&quot;troubleshooting_sqm&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:10,&quot;range&quot;:&quot;37366-38891&quot;} -->
+<h3 class="sectionedit11" id="how-tosetting_up_sqm_on_a_wan_link">How-To: setting up SQM on a WAN link</h3>
+<div class="level3">
+
+<p>
+Now, this is quite a lot of information to ponder, but most of it is rather for additional education and not strictly necessary for getting things going. So here is a quick recipe for iteratively getting SQM configured reasonably. I will take my rather boring (VDSL2/PTM/PPPoE) link as example here (this assumes that luci-app-sqm and sqm-scripts are installed already):
+</p>
+
+<p>
+<strong>Define sane starting values</strong>
+</p>
+<ol>
+<li class="level1"><div class="li"> WiFi drags in its own set of challenges for throughput and latency under load, to avoid conflating these issues with <abbr title="Wide Area Network">WAN</abbr> bufferbloat, connect a computer/laptop/tablet to the OpenWrt/SQM router via ethernet; make sure that the ethernet link-rate is not (much) slower than the maximum of the two <abbr title="Wide Area Network">WAN</abbr> rates. </div>
+</li>
+<li class="level1"><div class="li"> With sqm disabled (`/etc/init.d/sqm stop`) run a few of your preferred capacity tests to get an idea about the achievable throughout without sqm&#039;s quite expensive traffic shaping. I like both waveform&#039;s bufferbloat test (<a href="https://www.waveform.com/tools/bufferbloat?test-id=226d9b8a-180b-4fb7-bb92-9f0294575369" class="urlextern" title="https://www.waveform.com/tools/bufferbloat?test-id=226d9b8a-180b-4fb7-bb92-9f0294575369" rel="ugc nofollow">https://www.waveform.com/tools/bufferbloat?test-id=226d9b8a-180b-4fb7-bb92-9f0294575369</a>) as well as cloudflare&#039;s tests (<a href="https://speed.cloudflare.com" class="urlextern" title="https://speed.cloudflare.com" rel="ugc nofollow">https://speed.cloudflare.com</a>) as both not only report the achieved throughput, but also offer estimates for the latency under load or bufferbloat. </div>
+</li>
+<li class="level1"><div class="li"> Figure out your contracted maximum rates your <abbr title="Internet Service Provider">ISP</abbr> promised for the download and the upload direction. In my case these rates are 100/40 Mbps (in a small twist my <abbr title="Internet Service Provider">ISP</abbr> contractually is obligated to specify net throughput rates, not gross rates, but we really do not care much for our purpose 100/40 is just fine we only take these as starting points anyway).</div>
+</li>
+<li class="level1"><div class="li"> Figure out a reasonable estimate of the per-packet-overhead, or simply follow the recommendations and set this to 44 bytes (and MPU to 84 bytes)</div>
+</li>
+<li class="level1"><div class="li"> Figure out the linux interface to use. The following command <code>ifstatus wan | grep -e l3_device</code> should return the name of the interface to instantiate sqm on, in my case this returns <code>“l3_device”: “pppoe-wan”</code></div>
+</li>
+</ol>
+
+<p>
+Armed with that information we can create the starting sqm-scripts config file (or rather edit the existing one at <code>/etc/config/sqm</code>, I prefer to use the nano editor for that but use what ever tickles your fancy). The goal is to start out with a setting that should in all likelihood be on the save side, so for both ingress and egress capacity/rate we are going to select 50% of the maximum of the rates from the capacity tests and the contractual rates, in my case that is 50/20 Mbps or 50000/20000 Kbps (sqm&#039;s config requires rates in Kbps) and we are going to remember maximum of the rates from the capacity tests and the contractual rates as 100% for download and upload.
+</p>
+<pre class="code">config queue &#039;eth1&#039;
+	option enabled &#039;1&#039;
+	option interface &#039;pppoe-wan&#039;
+	option download &#039;50000&#039;
+	option upload &#039;20000&#039;
+	option debug_logging &#039;1&#039;
+	option verbosity &#039;5&#039;
+	option qdisc &#039;cake&#039;
+	option script &#039;piece_of_cake.qos&#039;
+	option qdisc_advanced &#039;1&#039;
+	option squash_dscp &#039;0&#039;
+	option squash_ingress &#039;0&#039;
+	option ingress_ecn &#039;ECN&#039;
+	option egress_ecn &#039;ECN&#039;
+	option qdisc_really_really_advanced &#039;1&#039;
+	option itarget &#039;auto&#039;
+	option etarget &#039;auto&#039;
+	option iqdisc_opts &#039;ingress nat dual-dsthost&#039;
+	option eqdisc_opts &#039;nat dual-srchost&#039;
+	option linklayer &#039;ethernet&#039;
+	option overhead &#039;42&#039;
+	option linklayer_advanced &#039;1&#039;
+	option tcMTU &#039;2047&#039;
+	option tcTSIZE &#039;128&#039;
+	option linklayer_adaptation_mechanism &#039;default&#039;
+	option tcMPU &#039;84&#039;</pre>
+
+<p>
+Based on that configuration we can now iteratively increase the shaper rates until we notice an increase in latency under load. To make things simpler we start by keeping the download rate at 50% and first try to find the highest upload rate that avoids noticeable bufferbloat. Once we found that rate we will set the upload rate to that value and repeat the procedure for the download rate. To measure bufferbloat we will simply use the waveform or cloudflare tests and notice when the latency under loads starts to differ noticeably from the idle latency (at which point the rate is set too high). To expedite the search we will do a binary search in the range from our 50% to 100% of the rate we deduced as sane starting values.
+</p>
+
+</div>
+
+<h4 id="sqm_disabled_capacity_test">SQM disabled capacity test</h4>
+<div class="level4">
+
+<p>
+Waveform results (firefox): A: 13 ms: +27 ms: +12 ms
+Capacity:
+</p>
+<pre class="code">Download: 104.4 Mbps
+Upload: 42.5 Mbps</pre>
+
+<p>
+Latency [min; mean; 95%ile; jitter ]:
+</p>
+<pre class="code">Unloaded: 10,1; 12.9; 15.1; 1.2
+Download: 9.9; 40.2; 53.3; 9.5
+Upload: 18.8; 25.4; 31.1; 1.5</pre>
+
+<p>
+This is not completely terrible to begin with, but during download things could be tighter... for bufferbloat the 95%ile is the best indicator. This gives us 100% capacity at 105 and 43 Mbps (I just round this up here), but I note these are net throughput rates not actual gross shaper rates. We could try to better estimate the corresponding true gross rate, but especially for the download direction we need to keep some distance from the true bottleneck rate anyway so operating on net throughput here is a reasonable shortcut.
+Download 100%: 105000 Kbps
+Upload 100%: 43000 Kbps
+</p>
+
+<p>
+So our first shaper settings will be:
+0.5 * 105000 = 52500
+0.5 * 43000 = 21500
+</p>
+
+<p>
+Waveform results:  A+: 14 ms: +0 ms: + 0 ms
+Capacity:
+</p>
+<pre class="code">Download: 43.9 Mbps
+Upload: 19.6 Mbps</pre>
+
+<p>
+Latency [min; mean; 95%ile; jitter ]:
+</p>
+<pre class="code">Unloaded: 10.9; 13.6; 15.6; 1.1
+Download: 9.6; 11.8; 13.4; 0.9
+Upload: 9.5; 11.9; 13.4; 0.9</pre>
+
+<p>
+This is a bit better... and both down and upload working latency is virtually indistinguishable from idle latency, so we have head room to increase the shaper rates.
+Since we first focus on the upload direction we change rates to:
+0.5 * 105000 = 52500
+1.0 * 43000 = 43000
+</p>
+
+<p>
+Waveform results:  A+: 14 ms: +0 ms: +0 ms
+Capacity:
+</p>
+<pre class="code">Download: 38.8 Mbps
+Upload: 39.4 Mbps</pre>
+
+<p>
+Latency [min; mean; 95%ile; jitter ]:
+</p>
+<pre class="code">Unloaded: 11.7; 14;.2 18.4; 1.1
+Download: 9.9; 12.2; 14.0; 0.8
+Upload: 9.9; 12.4; 14.9; 1.0</pre>
+
+<p>
+This looks like we get decent low latency under load increase if we go to 100% of the net rate we can get on this link. So we are done with the upload shaper setting.
+Next we focus on the download shaper:
+1.0 * 105000 = 105000
+1.0 * 43000 = 43000 % since this rare worked well, we simply keep this...
+</p>
+
+<p>
+Waveform results:  A+: 13 ms: +0 ms: +0 ms
+Capacity:
+</p>
+<pre class="code">Download: 86.6 Mbps
+Upload: 40.0 Mbps</pre>
+
+<p>
+Latency [min; mean; 95%ile; jitter ]:
+</p>
+<pre class="code">Unloaded: 10.0; 13.1; 15.3; 1.2
+Download: 9.6; 12.3; 16.4; 1.4
+Upload: 9.7; 11.8; 13.4; 0.8</pre>
+
+<p>
+Here both download and upload shaper seem to work well, without an unduly latency under load increase. We could call it a day. And normally I would, but since we did not run into any bufferbloat this does not really illustrate what happens if the shaper is set a bit too high.
+</p>
+
+<p>
+So we simply remember that for this VDSL2 link we have the gross sync rates available download sync-rate: 116.790 Mb/s, upload sync-rate: 46.719 Mb/s, so for educational purposes we are going to set our shaper to match the sync rates:
+1.0 * 116790 = 116790
+1.0 * 46719 = 46719 % since this rare worked well, we simply keep this...
+</p>
+
+<p>
+Waveform results:  A: 14 ms: +16 ms: +11 ms
+Capacity:
+</p>
+<pre class="code">Download: 105.3 Mbps
+Upload: 41.8 Mbps</pre>
+
+<p>
+Latency [min; mean; 95%ile; jitter ]:
+</p>
+<pre class="code">Unloaded: 11.4; 13.8; 15.1; 0.8
+Download: 11.0; 29.4; 37.6; 4.7
+Upload: 17.8; 33.4; 28.9; 1.7</pre>
+
+<p>
+Again the latency increase under load is not terrible, it certainly is noticeable, and now we need to reduce the shaper rates again:
+105000/43000 worked well, 116790/46719 showed bufferbloat in both directions, so want to reduce both closer to the last working rates:
+105000 + (116790 - 105000)/2 = 110895 → 110000 (let&#039;s operate with somewhat rounder numbers for convenience)
+43000 + (46719 - 43000)/2 = 44859.5 → 45000
+</p>
+
+<p>
+Waveform results:  A+: 13 ms: +1 ms: +0 ms
+Capacity:
+</p>
+<pre class="code">Download: 97.0 Mbps
+Upload: 41.3 Mbps</pre>
+
+<p>
+Latency [min; mean; 95%ile; jitter ]:
+</p>
+<pre class="code">Unloaded: 9.9; 12.9; 17.5; 1.5
+Download: 8.7; 14.3; 23.4; 3.3
+Upload: 9.7; 12.3; 15.9; 1.2</pre>
+
+<p>
+Now the upload looks decent (so we can keep it at 45 Mbps if we want), but the download 95%ile and jitter indicate that we are cutting is close already, so for the download we still want to reduce it further:
+105000 + (110000 - 105000)/2 = 107500 (let&#039;s operate with somewhat rounder numbers for convenience)
+43000 + (46719 - 43000)/2 = 44859.5 → 45000
+</p>
+
+<p>
+Waveform results:  A+: 14 ms: +1 ms: +0 ms
+Capacity:
+</p>
+<pre class="code">Download: 91.5 Mbps
+Upload: 41.8 Mbps</pre>
+
+<p>
+Latency [min; mean; 95%ile; jitter ]:
+</p>
+<pre class="code">Unloaded: 11.8; 14.0; 15.5; 0.8
+Download: 9.5; 12.9; 18.1; 1.8
+Upload: 9.8; 12.5; 14.3; 1.0</pre>
+
+<p>
+Now, both upload and download seem reasonably bufferbloat free... And at that point we could call it a day ands declare success. 
+However, there is one thing to keep in mind, for the upload direction our traffic shaper sits before the true bottleneck buffer (in my case the VDSL2 modem) and hence we have full control over what gets send to to the modem and over the DSL link to the DSLAM, in the download direction we have much less control and if data arrives too fast fore the link, there will be some (hopefully transient) back-spill into the <abbr title="Internet Service Provider">ISP</abbr>&#039;s badly managed buffers. We already try to remedy this partly by adding the &#039;ingress&#039; keyword to iqdisc_opts which results in a more aggressive shaping of ingress traffic, but to be on the safe side we probably should increase the difference between the true bottleneck rate and our shaper rate by reducing our ingress shaper rate a bit more, so I opted for setting the ingress shaper to 100000 and call it a day.
+</p>
+
+</div>
+
+<h5 id="bits_and_pieces">bits and pieces</h5>
+<div class="level5">
+<ol>
+<li class="level1"><div class="li"> After each change of the shaper settings I typically run &#039;tc -s qdisc&#039; on the router via <abbr title="Secure Shell">SSH</abbr> to confirm that the settings I want to see in the shaper arte actually set there.</div>
+</li>
+<li class="level1"><div class="li"> The waveform test is a great help, and modern browsers are marvels of utility, but they are not a great science-grade measurement environment so one needs to use common sense to interpret the waveform data... Somme browsers, especially Safari, tend to show bands of higher latency probes (often very similarly in all three testing conditions) that correlate not with actual network events, but with browser internal processes (I suspect garbage collection timers here). That is why we only look at the 95%ile and not the maximum, and even fore the 95%ile one needs to look carefully whether that is reasonable (a simple test is to simply run this test with all major browsers and compare the results).</div>
+</li>
+<li class="level1"><div class="li"> Cake, while <abbr title="In my humble opinion">IMHO</abbr> the preferable AQM for home internet access links, is quite CPU hungry, and if cake runs out of CPU we see increased queueing latency; this how-to will teach you to detect that increased bufferbloat but can result in shaper settings that might feel to far of the contracted rates (but try it out, often proper working SQM beats higher throughput without SQM), in such cases try to use simplest.qos with fq_codel or even simplest_tbf.qos with fq_codel, make sure to clear both &#039;iqdisc_opts&#039; and &#039;eqdisc_opts&#039;...</div>
+</li>
+</ol>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;How-To: setting up SQM on a WAN link&quot;,&quot;hid&quot;:&quot;how-tosetting_up_sqm_on_a_wan_link&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:11,&quot;range&quot;:&quot;38892-49718&quot;} -->
+<h2 class="sectionedit12" id="more_hints_tips_info">MORE HINTS &amp; TIPS &amp; INFO</h2>
+<div class="level2">
+
+<p>
+How I use CAKE to control bufferbloat and fair share my Internet connection on Openwrt.
+</p>
+
+<p>
+CAKE has been my go to solution to bufferbloat for years, not just because of solving bufferbloat but also for fairer sharing of my link.  Whilst CAKE has some sensible defaults there are a few extra options &amp; tweaks that can improve things further.
+</p>
+
+<p>
+This note assumes that you have an Internet facing interface, usually eth0 and will call traffic leaving that interface TO the <abbr title="Internet Service Provider">ISP</abbr> egress traffic.  Traffic received on that interface FROM the <abbr title="Internet Service Provider">ISP</abbr> is called ingress traffic.  This interface is usually connected to an <abbr title="Internet Service Provider">ISP</abbr>&#039;s modem.
+</p>
+
+<p>
+Controlling egress bufferbloat to the <abbr title="Internet Service Provider">ISP</abbr>&#039;s modem is relatively straightforward.  If you ensure that traffic doesn&#039;t arrive at the modem faster than it can pass to the <abbr title="Internet Service Provider">ISP</abbr> then bufferbloat within the <abbr title="Internet Service Provider">ISP</abbr>&#039;s modem is eliminated.  This involves using something called a shaper to control how quickly data leaves eth0.  CAKE has a built in packet shaper that times the release of packets out of the interface so as to not overload the upstream modem.  Packets also tend to accumulate extra data or overhead the closer they get to the <abbr title="Internet Service Provider">ISP</abbr>&#039;s link.  For example VDSL modem links will have some framing overhead and may also acquire a 4 byte <abbr title="Virtual Local Area Network">VLAN</abbr> tag.  CAKE&#039;s shaper is also able to take into account a wide variety of overheads adjusting its timed release mechanism to cope.
+</p>
+
+<p>
+For my <abbr title="Internet Service Provider">ISP</abbr> (Sky UK) things are straightforward.  They basically run ethernet over PTM over VDSL2 and I have an 80mbit ingress / 20mbit egress link.  Looking at my modem&#039;s status page I can see that the egress of 20mbit is achieved but the ingress is slightly lower than 80mbit.  BT are the incumbent VDSL2 infrastructure provider and require a <abbr title="Virtual Local Area Network">VLAN</abbr> ID 101 tag on packets across the link so we have to account for that.  Similarly there&#039;s a minimum packet size limit, which empirically I&#039;ll set to 72 bytes, based on the smallest packets we ever see on the ingress side.  so we&#039;re already at a stage where we can start specifying things to cake:
+</p>
+
+<p>
+egress: 19950 bridged-ptm ether-vlan mpu 72
+ingress: 78000 bridged-ptm ether-vlan mpu 72 ingress
+</p>
+
+<p>
+We&#039;ll come back to the &#039;ingress&#039; option a little later.
+</p>
+
+<p>
+CAKE also has a means of fair sharing bandwidth amongst hosts.  A simple example/question:  If I have two hosts one which starts 2 data streams and the other starts 8, then one host would get 80% of the bandwidth allocated to it and the other 20%.  From a fairness point of view it would be better if the available bandwidth was split evenly across the active hosts irrespective of the number of flows each host starts, such that one host cannot obtain all of the bandwidth just because it starts all of the transfers.
+</p>
+
+<p>
+By default CAKE does &#039;triple-isolate&#039; fair sharing which fair shares across both source machine addresses (internal lan) and destination addresses (external wan). In other words (and a bit simplistically) google&#039;s hosts cannot monopolise all the bandwidth from Apple&#039;s hosts (or Microsoft, Facebook, github etc) in the same way that one internal host cannot monopolise all the bandwidth.
+</p>
+
+<p>
+There is a small fly in this ointment in the form of <abbr title="Internet Protocol version 4">IPv4</abbr> Network Address Translation (<abbr title="Network Address Translation">NAT</abbr>) where typically the <abbr title="Internet Service Provider">ISP</abbr> subscriber is given one Internet facing <abbr title="Internet Protocol version 4">IPv4</abbr> address in which all the internal <abbr title="Local Area Network">LAN</abbr> traffic (usually in 192.168.x.x) is masqueraded behind.  Since all the internal addresses have been hidden behind this one external Internet address, how can CAKE fair share across the internal hosts?  If CAKE is running on the device performing <abbr title="Internet Protocol version 4">IPv4</abbr> <abbr title="Network Address Translation">NAT</abbr> then it can look into the device&#039;s <abbr title="Network Address Translation">NAT</abbr> tables to determine the internal addresses and then base the fairness on that.  Unfortunately it&#039;s not the default, so we have to specify it:
+</p>
+
+<p>
+egress: 19950 bridged-ptm ether-vlan nat mpu 72
+ingress: 78000 bridged-ptm ether-vlan nat ingress
+</p>
+
+<p>
+In fact what I do is force cake to only worry about internal fairness.  In other words I care that my internal machines get a fair share of the traffic irrespective of number of flows each machine has, but I don&#039;t care if external machines are unbalanced (eg. google vs netflix)
+</p>
+
+<p>
+egress: 19950 dual-srchost bridged-ptm ether-vlan nat mpu 72
+ingress 78000 dual-dsthost bridged-ptm ether-vlan nat ingress
+</p>
+
+<p>
+Having dealt with host fairness we now need to deal with flow fairness &amp; control.  A full link isn&#039;t a bad thing, in fact it&#039;s the best thing since we&#039;re using all the bandwidth that we&#039;re paying for.  What is bad is when access to that link cannot be achieved in a timely manner because an excessive queue has built up in front of our packet.  CAKE prevents the queue building up and ensures fair access by using a variation of codel to control delay (latency) on individual flows.
+</p>
+
+<p>
+Simplistically, codel works by looking at how long a packet has been in a queue at the time it is scheduled to be sent and if it is too old the packet gets dropped.  This may seem like madness after all &#039;isn&#039;t packet loss bad?&#039;, well packet loss is a mechanism that <abbr title="Transmission Control Protocol">TCP</abbr> uses to determine whether it is sending too much data and overflowing a link capacity.  So shooting the right packets at the right time is actually a fundamental signalling mechanism to avoid excessive queueing.  Some <abbr title="Transmission Control Protocol">TCP</abbr> stacks/connections support another signalling mechanism called ECN, whereby packets are marked or flagged instead of being dropped.  CAKE supports ECN marking too.
+</p>
+
+<p>
+CAKE looks at each data flow in turn and either releases or drops a packet from each flow to match the shapers&#039; schedule and by dropping packets from a flow before it has built up a significant queue is able to keep each flow under control.
+</p>
+
+<p>
+ingress mode modifies how CAKE&#039;s shaper accounts for dropped packets, in essence they still count to the bandwidth used calculation even though they&#039;re dropped - this makes sense, since they arrived with us but we decided that the particular flow was occupying too much bandwidth so we dropped a packet to signal the other end to slow down.  The shaper on egress doesn&#039;t count dropped packets, instead it looks in the queues to find a more worthy packet to occupy the space.  The bottom line, if you&#039;re trying to control ingress packet flow use ingress mode, else don&#039;t.
+</p>
+
+<p>
+Traffic classification.
+</p>
+
+<p>
+At this point we have a reasonably fair system.  Flow fairness has been handled by a variation codel and we deliberately make that unfair if required by ensuring per-host fairness.  But what if I have some types of traffic that are less or more important than others?  CAKE deals with traffic classification by dividing it up into priority tins based on packet DSCP (diffserv) values.  By default CAKE uses a 3 tin classification mode called &#039;diffserv3&#039;.  Other modes of possible interest are &#039;besteffort&#039;, &#039;diffserv4&#039; and &#039;diffserv8&#039;.  Besteffort effectively ignores DSCP values, every packet is as important as the other and so just flow &amp; host fairness come into play.  The diffserv modes split DSCP into an increasing number of tins.  I prefer diffserv4 as I then have 4 traffic categories in increasing order of importance: &#039;Bulk&#039;, &#039;Best Effort&#039;, &#039;Video&#039;, &#039;Voice&#039;.  CAKE enforces minimum bandwidth limits for each category, Voice gets a minimum of 1/4 bandwidth, Video 1/2, Bulk 1/16th and Best Effort has a minimum of all of it(!?) Note these are minimums so if &#039;Video&#039; needed all the bandwidth and there was no other competing traffic in any other category it can by all means take it.  Similarly, the lowest priority tin &#039;Bulk&#039; can have all the capacity if there&#039;s no other traffic, though it is guaranteed 1/16th of the bandwidth in order to prevent it from being completely starved.  Best effort having the full bandwidth as a minimum appears mad but what it is in essence saying is it can have whatever is left from full - (1/2 + 1/4 + 1/16)
+</p>
+
+<p>
+I use diffserv4 over diffserv3 because of the &#039;Bulk&#039; category - in other words I have somewhere to de-prioritise traffic to, eg. a long term download or upload (think network backup) probably isn&#039;t important in &#039;wall clock time&#039; but I don&#039;t want it disturbing general web browsing or worse video streaming or worse voip/facetime calls.  I&#039;ve had backups running for days at Bulk, vacuuming up all the spare upload capacity and it&#039;s completely unnoticeable (my network monitoring tells me there&#039;s an average 2mS increase in latency with peaks up to 4mS)
+</p>
+
+<p>
+egress: 19950 diffserv4 dual-srchost bridged-ptm ether-vlan nat mpu 72
+ingress 78000 diffserv4 dual-dsthost bridged-ptm ether-vlan nat ingress
+</p>
+
+<p>
+The cherry on top.
+</p>
+
+<p>
+This is only really relevant for egress traffic and for asymmetric links.  In essence <abbr title="Transmission Control Protocol">TCP</abbr> acknowledgements can be sitting in a queue waiting to be sent.  We only really need the newest ack to be sent, since it acknowledges everything the &#039;old&#039; acks acknowledge - so let&#039;s not send too many of the old acks - it saves a little egress bandwidth.
+</p>
+
+<p>
+egress: 19950 diffserv4 dual-srchost bridged-ptm ether-vlan nat mpu 72 ack-filter
+ingress 78000 diffserv4 dual-dsthost bridged-ptm ether-vlan nat ingress
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;MORE HINTS &amp; TIPS &amp; INFO&quot;,&quot;hid&quot;:&quot;more_hints_tips_info&quot;,&quot;codeblockOffset&quot;:8,&quot;secid&quot;:12,&quot;range&quot;:&quot;49719-&quot;} -->

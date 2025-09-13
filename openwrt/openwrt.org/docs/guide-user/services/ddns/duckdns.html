@@ -1,0 +1,120 @@
+
+<h1 class="sectionedit1" id="ddns_client_duckdns">DDNS Client DuckDNS</h1>
+<div class="level1">
+
+<p>
+This article describes a <em>custom</em> configuration that uses a user-defined update <abbr title="Uniform Resource Locator">URL</abbr>.
+</p>
+
+<p>
+<img src="/lib/images/smileys/exclaim.svg" class="icon smiley" alt=":!:" /> In most cases you can follow a much simpler setup process by selecting “duckdns.org” as your Service provider in <a href="/docs/guide-user/services/ddns/client#duckdnsorg" class="wikilink1" title="docs:guide-user:services:ddns:client" data-wiki-id="docs:guide-user:services:ddns:client">DDNS client</a>.
+</p>
+
+<p>
+Use of the instructions below assumes you have <a href="/packages/pkgdata/ddns-scripts" class="wikilink1" title="packages:pkgdata:ddns-scripts" data-wiki-id="packages:pkgdata:ddns-scripts">ddns-scripts</a> installed.
+</p>
+<ul>
+<li class="level1"><div class="li"> Following the link under the “Hints” header can show you if there are any changes that might be helpful, including features that aren&#039;t always present in busybox.</div>
+</li>
+<li class="level1"><div class="li"> Installing the <code>ca-certificates</code> package will automatically add a general collection of certificates to the directory <code>/etc/ssl/certs/</code> and enables verification of <abbr title="Secure Socket Layer">SSL</abbr> certificates by any program that uses this as a default, including ddns-scripts.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;DDNS Client DuckDNS&quot;,&quot;hid&quot;:&quot;ddns_client_duckdns&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-824&quot;} -->
+<h2 class="sectionedit2" id="ipv4">IPv4</h2>
+<div class="level2">
+
+<p>
+In <code>/etc/config/ddns</code>, replace <code>&lt;subdomain&gt;</code> and <code>&lt;duckdns-token&gt;</code> with the proper values.
+</p>
+<pre class="code file ucietcconfigddns">config service 'DuckDNS_ipv4'
+	option enabled		'1'
+	option interface	'wan'
+	option username		'&lt;subdomain&gt;'
+	option domain		'&lt;subdomain&gt;.duckdns.org'
+	option password		'&lt;duckdns-token&gt;'
+	option ip_source	'network'
+	option ip_network	'wan'
+	option check_interval	'1'
+	option check_unit	'hours'
+	option update_url	'https://www.duckdns.org/update?domains=[USERNAME]&amp;token=[PASSWORD]&amp;ip=[IP]'
+	option use_https	'1'</pre>
+
+<p>
+Notes
+</p>
+<ul>
+<li class="level1"><div class="li"> This will update anytime the <code>wan</code> network goes up, or the check (every hour) notices an inconsistency, and will force the ip to the value detected on the <code>wan</code> network (remove the <code>&amp;ip=[<abbr title="Internet Protocol">IP</abbr>]</code> and duckdns will auto-detect).  </div>
+</li>
+<li class="level1"><div class="li"> The <code>interface</code> option tells ddns to update when this network changes status, namely when it goes up.</div>
+</li>
+<li class="level1"><div class="li"> The <code>domain</code> option is the domain held by the client, and <code>&#039;nslookup $DOMAIN&#039;</code> should succeed and point to the client (or router it&#039;s behind) when everything is up to date; this is used as the check to see if <code>$DOMAIN</code> points to the clients public <abbr title="Internet Protocol">IP</abbr>.</div>
+</li>
+<li class="level1"><div class="li"> The <code>username</code> option is used where the <code>domain</code> option was used before, this is also reflected in the change to <code>update_url</code></div>
+</li>
+<li class="level1"><div class="li"> Turning on https for improved security, using <code>/etc/ssl/certs/</code> (populated by “ca-certificates”), or “option cacert”</div>
+</li>
+<li class="level1"><div class="li"> The <code>force_interval</code> and <code>force_unit</code> options are unnecessary as duckdns does not expire listings if they aren&#039;t refreshed periodically.</div>
+</li>
+</ul>
+
+<p>
+If you want to view or edit the service in LuCI (via <a href="/packages/pkgdata/luci-app-ddns" class="wikilink1" title="packages:pkgdata:luci-app-ddns" data-wiki-id="packages:pkgdata:luci-app-ddns">luci-app-ddns</a>), it is also necessary to add these options to the config:
+</p>
+<pre class="code file ucietcconfigddns">    option lookup_host	'&lt;subdomain&gt;.duckdns.org'
+    option use_ipv6		'0'
+    option cacert		'/etc/ssl/certs'</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;IPv4&quot;,&quot;hid&quot;:&quot;ipv4&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;825-2700&quot;} -->
+<h2 class="sectionedit3" id="ipv6">IPv6</h2>
+<div class="level2">
+
+<p>
+ddns-scripts supports updating your duckdns.org subdomain with your <abbr title="Internet Protocol version 6">IPv6</abbr> address, which is still needed for home users with dynamic <abbr title="Internet Protocol version 6">IPv6</abbr> address. Even though your <abbr title="Internet Protocol version 6">IPv6</abbr> address is globally addressable, as of 2024, some residential <abbr title="Internet Service Provider">ISP</abbr> still assign dynamic <abbr title="Internet Protocol version 6">IPv6</abbr> address that may periodically change. 
+</p>
+
+<p>
+In <code>/etc/config/ddns</code>, replace <code>&lt;subdomain&gt;</code> and <code>&lt;duckdns-token&gt;</code> below with the proper values.
+</p>
+<pre class="code file ucietcconfigddns">config service 'DuckDNS_ipv6'
+	option enabled		'1'
+	option lookup_host	'&lt;subdomain&gt;.duckdns.org'
+	option username		'&lt;subdomain&gt;'
+	option domain		'&lt;subdomain&gt;.duckdns.org'
+	option password		'&lt;duckdns-token&gt;'
+	option use_ipv6		'1'
+	option ip_source	'network'
+	option ip_network	'wan6'
+	option interface	'wan6'
+	option check_interval	'1'
+	option check_unit	'hours'
+	option update_url	'https://www.duckdns.org/update?domains=[USERNAME]&amp;token=[PASSWORD]&amp;ipv6=[IP]'
+	option use_https	'1'	</pre>
+<ul>
+<li class="level1"><div class="li"> Enable “Use cURL” in DDNS Global Settings to avoid <code>GNU Wget Error: 4</code> <a href="https://forum.openwrt.org/t/gnu-wget-error-4-failed-address-family-not-supported-by-protocol-when-using-ddns-scripts-for-ipv6/175640" class="urlextern" title="https://forum.openwrt.org/t/gnu-wget-error-4-failed-address-family-not-supported-by-protocol-when-using-ddns-scripts-for-ipv6/175640" rel="ugc nofollow">error</a></div>
+</li>
+</ul>
+<pre class="code file ucietcconfigddns">config ddns 'global'
+    option use_curl '1'</pre>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;IPv6&quot;,&quot;hid&quot;:&quot;ipv6&quot;,&quot;codeblockOffset&quot;:2,&quot;secid&quot;:3,&quot;range&quot;:&quot;2701-3944&quot;} -->
+<h2 class="sectionedit4" id="further_reading">Further Reading</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <a href="/docs/guide-user/base-system/ddns" class="wikilink1" title="docs:guide-user:base-system:ddns" data-wiki-id="docs:guide-user:base-system:ddns">Dynamic DNS Client Configuration</a> - All the settable options for ddns-scripts. Includes information on <abbr title="Internet Protocol version 6">IPv6</abbr> (not supported by duckdns), proxies, and more.</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://www.duckdns.org/" class="urlextern" title="https://www.duckdns.org/" rel="ugc nofollow">Duck DNS</a> - Duck <abbr title="Domain Name System">DNS</abbr> itself, this page also lists your domains and your token.</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://www.duckdns.org/install.jsp" class="urlextern" title="https://www.duckdns.org/install.jsp" rel="ugc nofollow">Duck DNS - Install</a> - the install page of Duck <abbr title="Domain Name System">DNS</abbr> for various devices.</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/openwrt/packages/tree/master/net/ddns-scripts" class="urlextern" title="https://github.com/openwrt/packages/tree/master/net/ddns-scripts" rel="ugc nofollow">ddns-scripts package</a> - package listing on Github.</div>
+</li>
+<li class="level1"><div class="li"> <a href="http://www.reddit.com/r/raspberry_pi/comments/1mqb9f/duckdns_a_free_ddns_just_got_better_bring_on_the/" class="urlextern" title="http://www.reddit.com/r/raspberry_pi/comments/1mqb9f/duckdns_a_free_ddns_just_got_better_bring_on_the/" rel="ugc nofollow">Reddit thread</a> - the reddit launch thread (archived, but viewable), with plenty of interesting information.</div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Further Reading&quot;,&quot;hid&quot;:&quot;further_reading&quot;,&quot;codeblockOffset&quot;:4,&quot;secid&quot;:4,&quot;range&quot;:&quot;3945-&quot;} -->

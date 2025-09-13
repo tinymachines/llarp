@@ -1,0 +1,167 @@
+
+<h1 class="sectionedit1" id="device_tree_usage_in_openwrt_dts">Device Tree Usage in OpenWrt (DTS)</h1>
+<div class="level1">
+
+<p>
+Current development (2019) uses kernel based on Device Tree (DT) files (.dts, .dtsi, .dtb) rather than the older “mach” files.
+</p>
+
+<p>
+This page tries to pull together some of the knowledge about DT usage and conventions used by the OpenWrt project.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Device Tree Usage in OpenWrt (DTS)&quot;,&quot;hid&quot;:&quot;device_tree_usage_in_openwrt_dts&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:1,&quot;range&quot;:&quot;1-294&quot;} -->
+<h2 class="sectionedit2" id="references">References</h2>
+<div class="level2">
+<ul>
+<li class="level1"><div class="li"> <a href="https://elinux.org/Device_Tree_Reference" class="urlextern" title="https://elinux.org/Device_Tree_Reference" rel="ugc nofollow">https://elinux.org/Device_Tree_Reference</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://elinux.org/Device_Tree_Mysteries" class="urlextern" title="https://elinux.org/Device_Tree_Mysteries" rel="ugc nofollow">https://elinux.org/Device_Tree_Mysteries</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://elinux.org/Device_Tree_Source_Undocumented" class="urlextern" title="https://elinux.org/Device_Tree_Source_Undocumented" rel="ugc nofollow">https://elinux.org/Device_Tree_Source_Undocumented</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://developer.toradex.com/device-tree-customization" class="urlextern" title="https://developer.toradex.com/device-tree-customization" rel="ugc nofollow">https://developer.toradex.com/device-tree-customization</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://events.static.linuxfound.org/sites/events/files/slides/petazzoni-device-tree-dummies.pdf" class="urlextern" title="https://events.static.linuxfound.org/sites/events/files/slides/petazzoni-device-tree-dummies.pdf" rel="ugc nofollow">https://events.static.linuxfound.org/sites/events/files/slides/petazzoni-device-tree-dummies.pdf</a></div>
+</li>
+<li class="level1"><div class="li"> Linux binding defintions, in source or online at <a href="https://www.kernel.org/doc/Documentation/devicetree/bindings/" class="urlextern" title="https://www.kernel.org/doc/Documentation/devicetree/bindings/" rel="ugc nofollow">https://www.kernel.org/doc/Documentation/devicetree/bindings/</a></div>
+</li>
+<li class="level1"><div class="li"> OpenWrt wiki on Defining software partitions in all DTS targets</div>
+</li>
+<li class="level1"><div class="li"> <a href="https://devicetree-specification.readthedocs.io/en/latest/source-language.html" class="urlextern" title="https://devicetree-specification.readthedocs.io/en/latest/source-language.html" rel="ugc nofollow">https://devicetree-specification.readthedocs.io/en/latest/source-language.html</a></div>
+</li>
+<li class="level1"><div class="li"> <a href="https://github.com/devicetree-org/devicetree-specification/blob/master/source/source-language.rst" class="urlextern" title="https://github.com/devicetree-org/devicetree-specification/blob/master/source/source-language.rst" rel="ugc nofollow">https://github.com/devicetree-org/devicetree-specification/blob/master/source/source-language.rst</a></div>
+</li>
+</ul>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;References&quot;,&quot;hid&quot;:&quot;references&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:2,&quot;range&quot;:&quot;295-993&quot;} -->
+<h2 class="sectionedit3" id="general">General</h2>
+<div class="level2">
+
+<p>
+Use c-style <code>#include</code> instead of DT-specific <code>/include/</code>
+</p>
+
+<p>
+If possible, license the content as <code>// SPDX-License-Identifier: GPL-2.0-or-later OR MIT</code>
+</p>
+
+<p>
+Use tab indentation -- see also <a href="https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/Documentation/process/coding-style.rst" class="urlextern" title="https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/Documentation/process/coding-style.rst" rel="ugc nofollow">https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/Documentation/process/coding-style.rst</a>
+</p>
+
+<p>
+While upstream, architecture-specific .dtsi files <em>may</em> remain stable (such as <code>qcom-ipq4019.dtsi</code>), board-specific files (such as <code>qcom-ipq4019-ap.dk07.1.dtsi</code>) may change, causing breakage to specific devices, perhaps just one, that may go unnoticed. At least if, for example, the generic IPQ4019 .dtsi changes, there is a chance that it would be seen quickly by or more of the boards that use that SoC.
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;General&quot;,&quot;hid&quot;:&quot;general&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:3,&quot;range&quot;:&quot;994-1732&quot;} -->
+<h2 class="sectionedit4" id="defining_software_partitions_in_all_dts_targets">Defining software partitions in all DTS targets</h2>
+<div class="level2">
+
+<p>
+Partition nodes should be named <code>partition@&lt;start address&gt;</code>
+</p>
+
+<p>
+Boot loader binaries, firmware, and configuration partitions (such as “ART”) should be marked as read-only. This helps reduce the risk of users following outdated or questionable advice in using low-level writes. Users advanced enough to need to write these partitions should be sophisticated enough to be able to compile their own kernel to do so. 
+</p>
+
+<p>
+The MTD labels of “firmware” and “ubi” have special meaning to the OpenWrt kernel.
+</p>
+
+<p>
+See below on supplying the proper “compatible” label so that the OpenWrt kernel can properly “split” the partition and <code>CONFIG_MTD_SPLIT_FIRMWARE</code> is not needed. (note that <code>CONFIG_MTD_SPLIT_UIMAGE_FW</code> is still required!)
+</p>
+<!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_start&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:5,&quot;range&quot;:&quot;0-&quot;} --><div class="wrap_center wrap_round wrap_info plugin_wrap" style="width: 80%;">
+<p>
+this article was an email sent to the OpenWrt-devel mailing list by OpenWrt dev Rafał Miłecki<br/>
+
+<strong>Subject:</strong> [OpenWrt-Devel] Specifying “firmware” partition format on all DTS targets<br/>
+
+<strong>Date:</strong> Sat, 24 Nov 2018 11:32:25 +0100
+</p>
+</div><!-- EDIT{&quot;target&quot;:&quot;plugin_wrap_end&quot;,&quot;hid&quot;:&quot;&quot;,&quot;secid&quot;:6,&quot;range&quot;:&quot;0-&quot;} -->
+<p>
+Parsing “firmware” partition (to create kernel + rootfs) was implemented using OpenWrt downstream code enabled by CONFIG_MTD_SPLIT_FIRMWARE.<br/>
+
+With recent upstream mtd changes we can do it in a more clean way for DTS targets. It just requires adding a proper “compatible” string to the “firmware” partition node.
+</p>
+
+<p>
+I&#039;d like all DTS supported devices to use that “compatible” and disable CONFIG_MTD_SPLIT_FIRMWARE eventually.
+</p>
+
+<p>
+<em>Wiki note: This objective may be a challenge for dual-firmware units as the partition to be split will be different depending on which was selected by the boot loader.</em>
+</p>
+
+<p>
+1) Default uimage<br/>
+
+If you see:<br/>
+
+2 uimage-fw partitions found on MTD device firmware<br/>
+
+please use “denx,uimage”; e.g.<br/>
+
+</p>
+<pre class="code">partition@70000 {
+        label = &quot;firmware&quot;;
+        reg = &lt;0x070000 0x790000&gt;;
+        compatible = &quot;denx,uimage&quot;;
+};</pre>
+
+<p>
+2) Netgear&#039;s uimage<br/>
+
+If you see:<br/>
+
+2 netgear-fw partitions found on MTD device firmware<br/>
+
+please use “netgear,uimage”; e.g.<br/>
+
+</p>
+<pre class="code">partition@70000 {
+        label = &quot;firmware&quot;;
+        reg = &lt;0x070000 0xf80000&gt;;
+        compatible = &quot;netgear,uimage&quot;;
+};</pre>
+
+<p>
+3) TP-LINK&#039;s firmware<br/>
+
+If you see:<br/>
+
+2 tplink-fw partitions found on MTD device firmware<br/>
+
+please use “tplink,firmware”; e.g.<br/>
+
+</p>
+<pre class="code">firmware@20000 {
+        label = &quot;firmware&quot;;
+        reg = &lt;0x020000 0xfd0000&gt;;
+        compatible = &quot;tplink,firmware&quot;;
+};</pre>
+
+<p>
+Please kindly:<br/>
+
+1) Use that for all newly added devices<br/>
+
+2) Port already supported devices you can test<br/>
+
+</p>
+
+<p>
+-- <br/>
+
+Rafał<br/>
+
+</p>
+
+</div>
+<!-- EDIT{&quot;target&quot;:&quot;section&quot;,&quot;name&quot;:&quot;Defining software partitions in all DTS targets&quot;,&quot;hid&quot;:&quot;defining_software_partitions_in_all_dts_targets&quot;,&quot;codeblockOffset&quot;:0,&quot;secid&quot;:4,&quot;range&quot;:&quot;1733-&quot;} -->
