@@ -12,8 +12,23 @@ A comprehensive toolkit for managing OpenWRT routers, including configuration sc
 
 ## 📋 Prerequisites
 
+### Python Environment
+LLARP uses a pyenv virtual environment. Activate it before use:
+
+```bash
+# Activate the environment
+source ./activate_env.sh
+
+# Or manually:
+source ~/.pyenv/versions/tinymachines/bin/activate
+```
+
+### System Requirements
+- Python 3.11+ with pyenv virtual environment 'tinymachines'
 - OpenWRT routers with SSH access configured
 - SSH key authentication set up for root@<router_ip>
+- Ollama installed and running locally (for AI features)
+- Node.js (for documentation web server)
 - Bash shell on the management system
 - Standard Unix tools (ssh, scp, tar, diff)
 

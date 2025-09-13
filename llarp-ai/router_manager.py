@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 OpenWRT Router State Management System
 Handles SSH connections, command execution, and state tracking for OpenWRT routers

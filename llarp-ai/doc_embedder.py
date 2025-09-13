@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 OpenWRT Documentation Embedder
 Processes markdown files and creates vector embeddings using Ollama
@@ -14,14 +15,25 @@ from datetime import datetime
 import hashlib
 
 # Add vectl to path
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../repos/vectl/build"))
-import vector_cluster_store_py
+vectl_build_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../repos/vectl/build")
+sys.path.append(vectl_build_path)
+
+try:
+    import vector_cluster_store_py
+    VECTOR_STORE_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️  Could not import vector_cluster_store_py from {vectl_build_path}")
+    print(f"   Error: {e}")
+    print(f"   Running in fallback mode without vector storage.")
+    print(f"   To enable vector storage: cd repos/vectl && source ~/.pyenv/versions/tinymachines/bin/activate && ./build.sh")
+    VECTOR_STORE_AVAILABLE = False
+    vector_cluster_store_py = None
 
 # Configuration
 OLLAMA_API_URL = "http://127.0.0.1:11434/api/embed"
 EMBEDDING_MODEL = "nomic-embed-text:v1.5"  # or "embedding-gemma:300m"
 VECTOR_DIM = 768
-DOCS_PATH = "../openwrt/openwrt.org.md"
+DOCS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../openwrt/openwrt.org.md")
 VECTOR_STORE_PATH = "./openwrt_docs.bin"
 LOG_FILE = "./openwrt_embedder.log"
 METADATA_FILE = "./openwrt_docs_metadata.json"
@@ -34,6 +46,11 @@ class OpenWRTDocEmbedder:
         
     def init_vector_store(self):
         """Initialize the vector store"""
+        if not VECTOR_STORE_AVAILABLE:
+            print("⚠️  Vector store not available - running in fallback mode")
+            print("   Documents will be processed but not stored in vector database")
+            return True
+            
         try:
             self.logger = vector_cluster_store_py.Logger(LOG_FILE)
             self.vector_store = vector_cluster_store_py.VectorClusterStore(self.logger)
@@ -106,7 +123,16 @@ class OpenWRTDocEmbedder:
             
             # Calculate file hash for change detection
             file_hash = hashlib.md5(content.encode('utf-8')).hexdigest()
-            relative_path = str(file_path.relative_to(Path(DOCS_PATH).resolve()))
+            
+            # Get relative path - resolve both paths to absolute first
+            docs_path_resolved = Path(DOCS_PATH).resolve()
+            file_path_resolved = Path(file_path).resolve()
+            
+            try:
+                relative_path = str(file_path_resolved.relative_to(docs_path_resolved))
+            except ValueError:
+                # If relative_to fails, use a fallback approach
+                relative_path = str(file_path_resolved).replace(str(docs_path_resolved), "").lstrip("/")
             
             # Check if file has changed
             if relative_path in self.metadata["files_processed"]:
@@ -141,17 +167,24 @@ class OpenWRTDocEmbedder:
                     "file_hash": file_hash
                 }
                 
-                # Store in vector database
+                # Store in vector database (if available)
                 vector_id = self.metadata["next_id"]
                 metadata_json = json.dumps(metadata_entry)
                 
-                if self.vector_store.store_vector(vector_id, embedding, metadata_json):
+                if VECTOR_STORE_AVAILABLE and self.vector_store:
+                    if self.vector_store.store_vector(vector_id, embedding, metadata_json):
+                        self.metadata["entries"][str(vector_id)] = metadata_entry
+                        chunk_ids.append(vector_id)
+                        self.metadata["next_id"] += 1
+                        print(f"  ✅ Stored chunk {i+1}/{len(chunks)} as ID {vector_id}")
+                    else:
+                        print(f"  ❌ Failed to store chunk {i+1}")
+                else:
+                    # Fallback mode - just store metadata
                     self.metadata["entries"][str(vector_id)] = metadata_entry
                     chunk_ids.append(vector_id)
                     self.metadata["next_id"] += 1
-                    print(f"  ✅ Stored chunk {i+1}/{len(chunks)} as ID {vector_id}")
-                else:
-                    print(f"  ❌ Failed to store chunk {i+1}")
+                    print(f"  📝 Processed chunk {i+1}/{len(chunks)} as ID {vector_id} (fallback mode)")
             
             # Update file processing record
             self.metadata["files_processed"][relative_path] = {
@@ -206,12 +239,13 @@ class OpenWRTDocEmbedder:
     
     def process_all_docs(self):
         """Process all markdown files in the docs directory"""
-        docs_path = Path(DOCS_PATH)
+        docs_path = Path(DOCS_PATH).resolve()
         if not docs_path.exists():
             print(f"❌ Documentation path not found: {docs_path}")
             return False
         
         print(f"🔍 Scanning for markdown files in: {docs_path}")
+        print(f"📁 Resolved docs path: {docs_path}")
         
         # Find all .md files
         md_files = list(docs_path.rglob("*.md"))

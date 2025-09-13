@@ -83,13 +83,26 @@ echo -e "${GREEN}✅ Prerequisites checked${NC}"
 
 # Setup Python environment for llarp-ai
 echo -e "${YELLOW}🐍 Setting up Python environment...${NC}"
+
+# Activate pyenv virtual environment
+PYENV_ACTIVATE="$HOME/.pyenv/versions/tinymachines/bin/activate"
+if [[ -f "$PYENV_ACTIVATE" ]]; then
+    echo -e "${BLUE}🔧 Activating pyenv environment: tinymachines${NC}"
+    source "$PYENV_ACTIVATE"
+    echo -e "${GREEN}✅ Using Python: $(which python)${NC}"
+    echo -e "${GREEN}✅ Python version: $(python --version)${NC}"
+else
+    echo -e "${YELLOW}⚠️  pyenv environment not found at: $PYENV_ACTIVATE${NC}"
+    echo -e "${YELLOW}   Falling back to system Python${NC}"
+fi
+
 cd llarp-ai
 
 # Install Python dependencies if requirements.txt exists
 if [[ -f requirements.txt ]]; then
-    if ! pip3 show requests >/dev/null 2>&1; then
+    if ! python -c "import requests" >/dev/null 2>&1; then
         echo -e "${YELLOW}📦 Installing Python dependencies...${NC}"
-        pip3 install -r requirements.txt --user
+        pip install -r requirements.txt
     fi
 fi
 
@@ -123,6 +136,11 @@ embed_docs() {
     echo -e "${BLUE}📚 Processing OpenWRT documentation...${NC}"
     cd ../llarp-ai
     
+    # Ensure pyenv environment is active
+    if [[ -f "$PYENV_ACTIVATE" ]]; then
+        source "$PYENV_ACTIVATE"
+    fi
+    
     # Check if docs exist
     if [[ ! -d ../openwrt/openwrt.org.md ]]; then
         echo -e "${YELLOW}⚠️  OpenWRT documentation not found at ../openwrt/openwrt.org.md${NC}"
@@ -133,12 +151,12 @@ embed_docs() {
     # Check if embeddings already exist and are recent
     if [[ -f openwrt_docs_metadata.json ]]; then
         echo -e "${GREEN}✅ Found existing documentation embeddings${NC}"
-        echo -e "${CYAN}💡 To rebuild embeddings, run: python3 doc_embedder.py process${NC}"
+        echo -e "${CYAN}💡 To rebuild embeddings, run: python doc_embedder.py process${NC}"
         return 0
     fi
     
     echo -e "${YELLOW}🔄 Creating documentation embeddings (this may take a while)...${NC}"
-    python3 doc_embedder.py process
+    python doc_embedder.py process
     echo -e "${GREEN}✅ Documentation embeddings complete${NC}"
 }
 
@@ -157,8 +175,8 @@ show_completion() {
     echo -e "  ${YELLOW}./llarp-cli analyze${NC} - AI analysis of router config"
     echo ""
     echo -e "${CYAN}🔬 Development Commands:${NC}"
-    echo -e "  ${YELLOW}cd llarp-ai && python3 router_manager.py status${NC} - Router status"
-    echo -e "  ${YELLOW}cd llarp-ai && python3 doc_embedder.py search 'wifi config'${NC} - Search docs"
+    echo -e "  ${YELLOW}cd llarp-ai && python router_manager.py status${NC} - Router status"
+    echo -e "  ${YELLOW}cd llarp-ai && python doc_embedder.py search 'wifi config'${NC} - Search docs"
     echo ""
     echo -e "${CYAN}🌐 Web Interface:${NC}"
     echo -e "  ${YELLOW}http://localhost:8222${NC} - Documentation browser"
