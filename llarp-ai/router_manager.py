@@ -128,6 +128,274 @@ class RouterManager:
                 capture_output=True, 
                 text=True, 
                 timeout=timeout
-            )\n            \n            execution_time = time.time() - start_time\n            \n            # Prepare result\n            cmd_result = {\n                \"command\": command,\n                \"router_ip\": router_ip,\n                \"timestamp\": datetime.now().isoformat(),\n                \"execution_time\": execution_time,\n                \"returncode\": result.returncode,\n                \"stdout\": result.stdout,\n                \"stderr\": result.stderr,\n                \"success\": result.returncode == 0\n            }\n            \n            # Log command execution\n            self.log_command_execution(cmd_result)\n            \n            return cmd_result\n            \n        except subprocess.TimeoutExpired:\n            return {\n                \"command\": command,\n                \"router_ip\": router_ip,\n                \"timestamp\": datetime.now().isoformat(),\n                \"error\": \"Command timeout\",\n                \"success\": False\n            }\n        except Exception as e:\n            return {\n                \"command\": command,\n                \"router_ip\": router_ip,\n                \"timestamp\": datetime.now().isoformat(),\n                \"error\": str(e),\n                \"success\": False\n            }\n    \n    def log_command_execution(self, result: Dict[str, Any]):\n        \"\"\"Log command execution for session tracking\"\"\"\n        router_ip = result[\"router_ip\"]\n        \n        if router_ip not in self.sessions:\n            self.sessions[router_ip] = {\n                \"commands\": [],\n                \"session_start\": datetime.now().isoformat(),\n                \"last_activity\": datetime.now().isoformat()\n            }\n        \n        # Add command to session\n        self.sessions[router_ip][\"commands\"].append({\n            \"timestamp\": result[\"timestamp\"],\n            \"command\": result[\"command\"],\n            \"success\": result[\"success\"],\n            \"execution_time\": result.get(\"execution_time\", 0)\n        })\n        \n        # Update last activity\n        self.sessions[router_ip][\"last_activity\"] = datetime.now().isoformat()\n        \n        # Keep only last 100 commands per router\n        if len(self.sessions[router_ip][\"commands\"]) > 100:\n            self.sessions[router_ip][\"commands\"] = self.sessions[router_ip][\"commands\"][-100:]\n        \n        self.save_sessions()\n    \n    # OpenWRT-specific command wrappers\n    def uci_get(self, router_ip: str, config_path: str) -> Dict[str, Any]:\n        \"\"\"Get UCI configuration value\"\"\"\n        command = f\"uci get {config_path}\"\n        return self.execute_command(router_ip, command)\n    \n    def uci_set(self, router_ip: str, config_path: str, value: str) -> Dict[str, Any]:\n        \"\"\"Set UCI configuration value\"\"\"\n        command = f\"uci set {config_path}='{value}'\"\n        return self.execute_command(router_ip, command)\n    \n    def uci_commit(self, router_ip: str, config: str = \"\") -> Dict[str, Any]:\n        \"\"\"Commit UCI changes\"\"\"\n        command = f\"uci commit {config}\".strip()\n        return self.execute_command(router_ip, command)\n    \n    def uci_show(self, router_ip: str, config: str = \"\") -> Dict[str, Any]:\n        \"\"\"Show UCI configuration\"\"\"\n        command = f\"uci show {config}\".strip()\n        return self.execute_command(router_ip, command)\n    \n    def opkg_list(self, router_ip: str, pattern: str = \"\") -> Dict[str, Any]:\n        \"\"\"List installed packages\"\"\"\n        command = f\"opkg list-installed {pattern}\".strip()\n        return self.execute_command(router_ip, command)\n    \n    def opkg_install(self, router_ip: str, package: str) -> Dict[str, Any]:\n        \"\"\"Install package\"\"\"\n        command = f\"opkg install {package}\"\n        return self.execute_command(router_ip, command, timeout=120)  # Longer timeout for installs\n    \n    def opkg_remove(self, router_ip: str, package: str) -> Dict[str, Any]:\n        \"\"\"Remove package\"\"\"\n        command = f\"opkg remove {package}\"\n        return self.execute_command(router_ip, command)\n    \n    def opkg_update(self, router_ip: str) -> Dict[str, Any]:\n        \"\"\"Update package lists\"\"\"\n        command = \"opkg update\"\n        return self.execute_command(router_ip, command, timeout=120)\n    \n    def get_system_info(self, router_ip: str) -> Dict[str, Any]:\n        \"\"\"Get comprehensive system information\"\"\"\n        commands = {\n            \"hostname\": \"uci get system.@system[0].hostname\",\n            \"uptime\": \"uptime\",\n            \"memory\": \"cat /proc/meminfo\",\n            \"cpuinfo\": \"cat /proc/cpuinfo\",\n            \"version\": \"cat /etc/openwrt_release\",\n            \"kernel\": \"uname -a\",\n            \"load\": \"cat /proc/loadavg\",\n            \"disk_usage\": \"df -h\",\n            \"network_interfaces\": \"ip addr show\",\n            \"wireless_info\": \"iw dev\",\n            \"running_processes\": \"ps aux\",\n            \"routing_table\": \"ip route show\",\n            \"firewall_rules\": \"iptables -L -n\"\n        }\n        \n        results = {}\n        for key, command in commands.items():\n            try:\n                result = self.execute_command(router_ip, command)\n                results[key] = result\n                time.sleep(0.1)  # Small delay between commands\n            except Exception as e:\n                results[key] = {\"error\": str(e), \"success\": False}\n        \n        return results\n    \n    def get_log_data(self, router_ip: str, lines: int = 100) -> Dict[str, Any]:\n        \"\"\"Get system logs\"\"\"\n        commands = {\n            \"system_log\": f\"logread -l {lines}\",\n            \"kernel_log\": f\"dmesg | tail -n {lines}\",\n            \"wifi_log\": \"logread | grep -i wifi | tail -n 50\",\n            \"network_log\": \"logread | grep -i network | tail -n 50\"\n        }\n        \n        results = {}\n        for key, command in commands.items():\n            try:\n                result = self.execute_command(router_ip, command)\n                results[key] = result\n            except Exception as e:\n                results[key] = {\"error\": str(e), \"success\": False}\n        \n        return results\n    \n    def restart_service(self, router_ip: str, service: str) -> Dict[str, Any]:\n        \"\"\"Restart a service\"\"\"\n        command = f\"/etc/init.d/{service} restart\"\n        return self.execute_command(router_ip, command)\n    \n    def reboot_router(self, router_ip: str) -> Dict[str, Any]:\n        \"\"\"Reboot the router\"\"\"\n        command = \"reboot\"\n        return self.execute_command(router_ip, command)\n    \n    def get_router_status(self, router_ip: str) -> Dict[str, Any]:\n        \"\"\"Get quick router status\"\"\"\n        try:\n            result = self.execute_command(router_ip, \"echo 'Router is responsive'\", timeout=10)\n            \n            if result[\"success\"]:\n                hostname = self.get_hostname(router_ip)\n                uptime_result = self.execute_command(router_ip, \"uptime\")\n                \n                return {\n                    \"router_ip\": router_ip,\n                    \"hostname\": hostname,\n                    \"status\": \"online\",\n                    \"uptime\": uptime_result.get(\"stdout\", \"\").strip(),\n                    \"last_check\": datetime.now().isoformat(),\n                    \"response_time\": result.get(\"execution_time\", 0)\n                }\n            else:\n                return {\n                    \"router_ip\": router_ip,\n                    \"status\": \"offline\",\n                    \"error\": result.get(\"error\", \"Connection failed\"),\n                    \"last_check\": datetime.now().isoformat()\n                }\n        \n        except Exception as e:\n            return {\n                \"router_ip\": router_ip,\n                \"status\": \"error\",\n                \"error\": str(e),\n                \"last_check\": datetime.now().isoformat()\n            }\n    \n    def get_session_history(self, router_ip: str, limit: int = 20) -> List[Dict]:\n        \"\"\"Get command history for a router\"\"\"\n        if router_ip in self.sessions:\n            commands = self.sessions[router_ip].get(\"commands\", [])\n            return commands[-limit:] if limit else commands\n        return []\n    \n    def cleanup_old_sessions(self, days: int = 7):\n        \"\"\"Remove session data older than specified days\"\"\"\n        cutoff_date = datetime.now() - timedelta(days=days)\n        \n        for router_ip in list(self.sessions.keys()):\n            session = self.sessions[router_ip]\n            last_activity = datetime.fromisoformat(session.get(\"last_activity\", \"\"))\n            \n            if last_activity < cutoff_date:\n                del self.sessions[router_ip]\n                logger.info(f\"Cleaned up old session for {router_ip}\")\n        \n        self.save_sessions()
+            )
+            
+            execution_time = time.time() - start_time
+            
+            # Prepare result
+            cmd_result = {
+                "command": command,
+                "router_ip": router_ip,
+                "timestamp": datetime.now().isoformat(),
+                "execution_time": execution_time,
+                "returncode": result.returncode,
+                "stdout": result.stdout,
+                "stderr": result.stderr,
+                "success": result.returncode == 0
+            }
+            
+            # Log command execution
+            self.log_command_execution(cmd_result)
+            
+            return cmd_result
+            
+        except subprocess.TimeoutExpired:
+            return {
+                "command": command,
+                "router_ip": router_ip,
+                "timestamp": datetime.now().isoformat(),
+                "error": "Command timeout",
+                "success": False
+            }
+        except Exception as e:
+            return {
+                "command": command,
+                "router_ip": router_ip,
+                "timestamp": datetime.now().isoformat(),
+                "error": str(e),
+                "success": False
+            }
+    
+    def log_command_execution(self, result: Dict[str, Any]):
+        """Log command execution for session tracking"""
+        router_ip = result["router_ip"]
+        
+        if router_ip not in self.sessions:
+            self.sessions[router_ip] = {
+                "commands": [],
+                "session_start": datetime.now().isoformat(),
+                "last_activity": datetime.now().isoformat()
+            }
+        
+        # Add command to session
+        self.sessions[router_ip]["commands"].append({
+            "timestamp": result["timestamp"],
+            "command": result["command"],
+            "success": result["success"],
+            "execution_time": result.get("execution_time", 0)
+        })
+        
+        # Update last activity
+        self.sessions[router_ip]["last_activity"] = datetime.now().isoformat()
+        
+        # Keep only last 100 commands per router
+        if len(self.sessions[router_ip]["commands"]) > 100:
+            self.sessions[router_ip]["commands"] = self.sessions[router_ip]["commands"][-100:]
+        
+        self.save_sessions()
+    
+    # OpenWRT-specific command wrappers
+    def uci_get(self, router_ip: str, config_path: str) -> Dict[str, Any]:
+        \"\"\"Get UCI configuration value\"\"\"
+        command = f\"uci get {config_path}\"
+        return self.execute_command(router_ip, command)
+    
+    def uci_set(self, router_ip: str, config_path: str, value: str) -> Dict[str, Any]:
+        \"\"\"Set UCI configuration value\"\"\"
+        command = f\"uci set {config_path}='{value}'\"
+        return self.execute_command(router_ip, command)
+    
+    def uci_commit(self, router_ip: str, config: str = \"\") -> Dict[str, Any]:
+        \"\"\"Commit UCI changes\"\"\"
+        command = f\"uci commit {config}\".strip()
+        return self.execute_command(router_ip, command)
+    
+    def uci_show(self, router_ip: str, config: str = \"\") -> Dict[str, Any]:
+        \"\"\"Show UCI configuration\"\"\"
+        command = f\"uci show {config}\".strip()
+        return self.execute_command(router_ip, command)
+    
+    def opkg_list(self, router_ip: str, pattern: str = \"\") -> Dict[str, Any]:
+        \"\"\"List installed packages\"\"\"
+        command = f\"opkg list-installed {pattern}\".strip()
+        return self.execute_command(router_ip, command)
+    
+    def opkg_install(self, router_ip: str, package: str) -> Dict[str, Any]:
+        \"\"\"Install package\"\"\"
+        command = f\"opkg install {package}\"
+        return self.execute_command(router_ip, command, timeout=120)  # Longer timeout for installs
+    
+    def opkg_remove(self, router_ip: str, package: str) -> Dict[str, Any]:
+        \"\"\"Remove package\"\"\"
+        command = f\"opkg remove {package}\"
+        return self.execute_command(router_ip, command)
+    
+    def opkg_update(self, router_ip: str) -> Dict[str, Any]:
+        \"\"\"Update package lists\"\"\"
+        command = \"opkg update\"
+        return self.execute_command(router_ip, command, timeout=120)
+    
+    def get_system_info(self, router_ip: str) -> Dict[str, Any]:
+        \"\"\"Get comprehensive system information\"\"\"
+        commands = {
+            \"hostname\": \"uci get system.@system[0].hostname\",
+            \"uptime\": \"uptime\",
+            \"memory\": \"cat /proc/meminfo\",
+            \"cpuinfo\": \"cat /proc/cpuinfo\",
+            \"version\": \"cat /etc/openwrt_release\",
+            \"kernel\": \"uname -a\",
+            \"load\": \"cat /proc/loadavg\",
+            \"disk_usage\": \"df -h\",
+            \"network_interfaces\": \"ip addr show\",
+            \"wireless_info\": \"iw dev\",
+            \"running_processes\": \"ps aux\",
+            \"routing_table\": \"ip route show\",
+            \"firewall_rules\": \"iptables -L -n\"
+        }
+        
+        results = {}
+        for key, command in commands.items():
+            try:
+                result = self.execute_command(router_ip, command)
+                results[key] = result
+                time.sleep(0.1)  # Small delay between commands
+            except Exception as e:
+                results[key] = {\"error\": str(e), \"success\": False}
+        
+        return results
+    
+    def get_log_data(self, router_ip: str, lines: int = 100) -> Dict[str, Any]:
+        \"\"\"Get system logs\"\"\"
+        commands = {
+            \"system_log\": f\"logread -l {lines}\",
+            \"kernel_log\": f\"dmesg | tail -n {lines}\",
+            \"wifi_log\": \"logread | grep -i wifi | tail -n 50\",
+            \"network_log\": \"logread | grep -i network | tail -n 50\"
+        }
+        
+        results = {}
+        for key, command in commands.items():
+            try:
+                result = self.execute_command(router_ip, command)
+                results[key] = result
+            except Exception as e:
+                results[key] = {\"error\": str(e), \"success\": False}
+        
+        return results
+    
+    def restart_service(self, router_ip: str, service: str) -> Dict[str, Any]:
+        \"\"\"Restart a service\"\"\"
+        command = f\"/etc/init.d/{service} restart\"
+        return self.execute_command(router_ip, command)
+    
+    def reboot_router(self, router_ip: str) -> Dict[str, Any]:
+        \"\"\"Reboot the router\"\"\"
+        command = \"reboot\"
+        return self.execute_command(router_ip, command)
+    
+    def get_router_status(self, router_ip: str) -> Dict[str, Any]:
+        \"\"\"Get quick router status\"\"\"
+        try:
+            result = self.execute_command(router_ip, \"echo 'Router is responsive'\", timeout=10)
+            
+            if result[\"success\"]:
+                hostname = self.get_hostname(router_ip)
+                uptime_result = self.execute_command(router_ip, \"uptime\")
+                
+                return {
+                    \"router_ip\": router_ip,
+                    \"hostname\": hostname,
+                    \"status\": \"online\",
+                    \"uptime\": uptime_result.get(\"stdout\", \"\").strip(),
+                    \"last_check\": datetime.now().isoformat(),
+                    \"response_time\": result.get(\"execution_time\", 0)
+                }
+            else:
+                return {
+                    \"router_ip\": router_ip,
+                    \"status\": \"offline\",
+                    \"error\": result.get(\"error\", \"Connection failed\"),
+                    \"last_check\": datetime.now().isoformat()
+                }
+        
+        except Exception as e:
+            return {
+                \"router_ip\": router_ip,
+                \"status\": \"error\",
+                \"error\": str(e),
+                \"last_check\": datetime.now().isoformat()
+            }
+    
+    def get_session_history(self, router_ip: str, limit: int = 20) -> List[Dict]:
+        \"\"\"Get command history for a router\"\"\"
+        if router_ip in self.sessions:
+            commands = self.sessions[router_ip].get(\"commands\", [])
+            return commands[-limit:] if limit else commands
+        return []
+    
+    def cleanup_old_sessions(self, days: int = 7):
+        \"\"\"Remove session data older than specified days\"\"\"
+        cutoff_date = datetime.now() - timedelta(days=days)
+        
+        for router_ip in list(self.sessions.keys()):
+            session = self.sessions[router_ip]
+            last_activity = datetime.fromisoformat(session.get(\"last_activity\", \"\"))
+            
+            if last_activity < cutoff_date:
+                del self.sessions[router_ip]
+                logger.info(f\"Cleaned up old session for {router_ip}\")
+        
+        self.save_sessions()
 
-# Example usage and testing\nif __name__ == \"__main__\":\n    import sys\n    \n    rm = RouterManager()\n    \n    if len(sys.argv) < 2:\n        print(\"Usage: python router_manager.py <command> [args...]\")\n        print(\"Commands: status, info, uci-get, uci-set, logs, test\")\n        sys.exit(1)\n    \n    command = sys.argv[1]\n    router_ip = rm.get_target_router()\n    \n    if not router_ip and command != \"test\":\n        print(\"No target router set. Use llarp-cli to set one first.\")\n        sys.exit(1)\n    \n    if command == \"status\":\n        status = rm.get_router_status(router_ip)\n        print(json.dumps(status, indent=2))\n    \n    elif command == \"info\":\n        info = rm.get_system_info(router_ip)\n        print(json.dumps(info, indent=2))\n    \n    elif command == \"uci-get\" and len(sys.argv) > 2:\n        result = rm.uci_get(router_ip, sys.argv[2])\n        print(f\"Value: {result.get('stdout', 'Error').strip()}\")\n    \n    elif command == \"logs\":\n        logs = rm.get_log_data(router_ip)\n        for log_type, result in logs.items():\n            print(f\"\\n=== {log_type.upper()} ===\")\n            if result.get(\"success\"):\n                print(result[\"stdout\"])\n            else:\n                print(f\"Error: {result.get('error', 'Unknown error')}\")\n    \n    elif command == \"test\":\n        test_ip = sys.argv[2] if len(sys.argv) > 2 else \"192.168.1.1\"\n        print(f\"Testing connection to {test_ip}...\")\n        if rm.test_connection(test_ip):\n            print(\"✅ Connection successful\")\n            hostname = rm.get_hostname(test_ip)\n            print(f\"Hostname: {hostname}\")\n        else:\n            print(\"❌ Connection failed\")\n    \n    else:\n        print(f\"Unknown command: {command}\")
+# Example usage and testing
+if __name__ == \"__main__\":
+    import sys
+    
+    rm = RouterManager()
+    
+    if len(sys.argv) < 2:
+        print(\"Usage: python router_manager.py <command> [args...]\")
+        print(\"Commands: status, info, uci-get, uci-set, logs, test\")
+        sys.exit(1)
+    
+    command = sys.argv[1]
+    router_ip = rm.get_target_router()
+    
+    if not router_ip and command != \"test\":
+        print(\"No target router set. Use llarp-cli to set one first.\")
+        sys.exit(1)
+    
+    if command == \"status\":
+        status = rm.get_router_status(router_ip)
+        print(json.dumps(status, indent=2))
+    
+    elif command == \"info\":
+        info = rm.get_system_info(router_ip)
+        print(json.dumps(info, indent=2))
+    
+    elif command == \"uci-get\" and len(sys.argv) > 2:
+        result = rm.uci_get(router_ip, sys.argv[2])
+        print(f\"Value: {result.get('stdout', 'Error').strip()}\")
+    
+    elif command == \"logs\":
+        logs = rm.get_log_data(router_ip)
+        for log_type, result in logs.items():
+            print(f\"\
+=== {log_type.upper()} ===\")
+            if result.get(\"success\"):
+                print(result[\"stdout\"])
+            else:
+                print(f\"Error: {result.get('error', 'Unknown error')}\")
+    
+    elif command == \"test\":
+        test_ip = sys.argv[2] if len(sys.argv) > 2 else \"192.168.1.1\"
+        print(f\"Testing connection to {test_ip}...\")
+        if rm.test_connection(test_ip):
+            print(\"✅ Connection successful\")
+            hostname = rm.get_hostname(test_ip)
+            print(f\"Hostname: {hostname}\")
+        else:
+            print(\"❌ Connection failed\")
+    
+    else:
+        print(f\"Unknown command: {command}\")

@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLARP - OpenWRT AI Chat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .chat-container {
+            width: 90%;
+            max-width: 1200px;
+            height: 85vh;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            display: flex;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar h2 {
+            color: #3498db;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 1.5em;
+        }
+
+        .router-info {
+            background: rgba(52, 152, 219, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .router-status {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 10px;
+            background: #e74c3c;
+        }
+
+        .status-dot.connected {
+            background: #2ecc71;
+        }
+
+        .quick-commands {
+            flex-grow: 1;
+        }
+
+        .quick-commands h3 {
+            margin-bottom: 15px;
+            color: #ecf0f1;
+        }
+
+        .quick-btn {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 8px;
+            background: rgba(52, 152, 219, 0.2);
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .quick-btn:hover {
+            background: rgba(52, 152, 219, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .chat-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            background: white;
+            padding: 20px;
+            border-bottom: 1px solid #ecf0f1;
+            text-align: center;
+        }
+
+        .chat-header h1 {
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .chat-header p {
+            color: #7f8c8d;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 15px 20px;
+            border-radius: 20px;
+            position: relative;
+        }
+
+        .message.user .message-content {
+            background: #3498db;
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+
+        .message.assistant .message-content {
+            background: white;
+            color: #2c3e50;
+            border-bottom-left-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin: 0 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+        }
+
+        .message.user .message-avatar {
+            background: #3498db;
+        }
+
+        .message.assistant .message-avatar {
+            background: #e74c3c;
+        }
+
+        .typing-indicator {
+            display: none;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .typing-indicator .message-avatar {
+            background: #95a5a6;
+        }
+
+        .typing-dots {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            background: white;
+            border-radius: 20px;
+            border-bottom-left-radius: 5px;
+        }
+
+        .typing-dots span {
+            height: 8px;
+            width: 8px;
+            background: #95a5a6;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .chat-input {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #ecf0f1;
+            display: flex;
+            gap: 15px;
+        }
+
+        .input-field {
+            flex: 1;
+            padding: 15px 20px;
+            border: 2px solid #ecf0f1;
+            border-radius: 25px;
+            outline: none;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .input-field:focus {
+            border-color: #3498db;
+        }
+
+        .send-button {
+            padding: 15px 25px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .send-button:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        .send-button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .code-block {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+        }
+
+        .command-result {
+            background: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 0 10px 10px 0;
+        }
+
+        .error-result {
+            border-left-color: #e74c3c;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 250px;
+            }
+            
+            .chat-container {
+                width: 95%;
+                height: 90vh;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .sidebar {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="sidebar">
+            <h2>🤖 LLARP</h2>
+            
+            <div class="router-info">
+                <div class="router-status">
+                    <div class="status-dot" id="status-dot"></div>
+                    <span id="router-status">No router connected</span>
+                </div>
+                <div id="router-details"></div>
+            </div>
+
+            <div class="quick-commands">
+                <h3>Quick Commands</h3>
+                <button class="quick-btn" onclick="sendQuickMessage('router status')">📊 Router Status</button>
+                <button class="quick-btn" onclick="sendQuickMessage('show me the WiFi configuration')">📶 WiFi Config</button>
+                <button class="quick-btn" onclick="sendQuickMessage('check system logs')">📋 System Logs</button>
+                <button class="quick-btn" onclick="sendQuickMessage('show network interfaces')">🌐 Network Info</button>
+                <button class="quick-btn" onclick="sendQuickMessage('list installed packages')">📦 Packages</button>
+                <button class="quick-btn" onclick="sendQuickMessage('check firewall rules')">🛡️ Firewall</button>
+                <button class="quick-btn" onclick="sendQuickMessage('help')">❓ Help</button>
+            </div>
+        </div>
+
+        <div class="chat-main">
+            <div class="chat-header">
+                <h1>OpenWRT AI Assistant</h1>
+                <p>Ask questions, get help, and manage your router with AI</p>
+            </div>
+
+            <div class="chat-messages" id="chat-messages">
+                <div class="message assistant">
+                    <div class="message-avatar">🤖</div>
+                    <div class="message-content">
+                        <p>Hello! I'm your OpenWRT AI assistant. I can help you:</p>
+                        <ul style="margin-top: 10px; margin-left: 20px;">
+                            <li>Answer questions about OpenWRT configuration</li>
+                            <li>Execute commands on your router</li>
+                            <li>Troubleshoot networking issues</li>
+                            <li>Guide you through complex setups</li>
+                        </ul>
+                        <p style="margin-top: 10px;">Try asking me something like "How do I configure WiFi?" or click a quick command!</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="typing-indicator" id="typing-indicator">
+                <div class="message-avatar">🤖</div>
+                <div class="typing-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+
+            <div class="chat-input">
+                <input 
+                    type="text" 
+                    class="input-field" 
+                    id="message-input" 
+                    placeholder="Ask me anything about OpenWRT..."
+                    onkeypress="handleKeyPress(event)"
+                >
+                <button class="send-button" id="send-button" onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const chatMessages = document.getElementById('chat-messages');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        const typingIndicator = document.getElementById('typing-indicator');
+        
+        let isProcessing = false;
+
+        // Initialize the chat
+        function initChat() {
+            updateRouterStatus();
+            messageInput.focus();
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        function sendQuickMessage(message) {
+            messageInput.value = message;
+            sendMessage();
+        }
+
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message || isProcessing) return;
+
+            // Add user message to chat
+            addMessage('user', message);
+            messageInput.value = '';
+            
+            // Show typing indicator
+            showTyping();
+            
+            try {
+                // Send to backend
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: message })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+
+                const data = await response.json();
+                
+                // Hide typing indicator
+                hideTyping();
+                
+                // Add assistant response
+                addMessage('assistant', data.response);
+                
+                // Update router status if changed
+                if (data.router_status) {
+                    updateRouterStatusFromData(data.router_status);
+                }
+
+            } catch (error) {
+                hideTyping();
+                addMessage('assistant', '❌ Sorry, I encountered an error: ' + error.message);
+            }
+        }
+
+        function addMessage(sender, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+            
+            const avatar = document.createElement('div');
+            avatar.className = 'message-avatar';
+            avatar.textContent = sender === 'user' ? '👤' : '🤖';
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            
+            // Process content for code blocks and command results
+            contentDiv.innerHTML = formatMessage(content);
+            
+            if (sender === 'user') {
+                messageDiv.appendChild(contentDiv);
+                messageDiv.appendChild(avatar);
+            } else {
+                messageDiv.appendChild(avatar);
+                messageDiv.appendChild(contentDiv);
+            }
+            
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function formatMessage(content) {
+            // Convert markdown-style code blocks
+            content = content.replace(/```([^`]+)```/g, '<div class="code-block">$1</div>');
+            
+            // Convert **bold** to <strong>
+            content = content.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+            
+            // Convert newlines to <br>
+            content = content.replace(/\n/g, '<br>');
+            
+            return content;
+        }
+
+        function showTyping() {
+            isProcessing = true;
+            sendButton.disabled = true;
+            sendButton.textContent = 'Thinking...';
+            typingIndicator.style.display = 'flex';
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function hideTyping() {
+            isProcessing = false;
+            sendButton.disabled = false;
+            sendButton.textContent = 'Send';
+            typingIndicator.style.display = 'none';
+        }
+
+        async function updateRouterStatus() {
+            try {
+                const response = await fetch('/api/router-status');
+                if (response.ok) {
+                    const data = await response.json();
+                    updateRouterStatusFromData(data);
+                }
+            } catch (error) {
+                console.error('Failed to update router status:', error);
+            }
+        }
+
+        function updateRouterStatusFromData(data) {
+            const statusDot = document.getElementById('status-dot');
+            const statusText = document.getElementById('router-status');
+            const routerDetails = document.getElementById('router-details');
+            
+            if (data.status === 'connected') {
+                statusDot.classList.add('connected');
+                statusText.textContent = `Connected: ${data.router_ip}`;
+                routerDetails.innerHTML = `
+                    <div style="margin-top: 10px; font-size: 0.9em;">
+                        <div>Hostname: ${data.router_info?.hostname || 'Unknown'}</div>
+                        <div>Uptime: ${data.router_info?.uptime || 'Unknown'}</div>
+                    </div>
+                `;
+            } else {
+                statusDot.classList.remove('connected');
+                statusText.textContent = 'No router connected';
+                routerDetails.innerHTML = '<div style="margin-top: 10px; font-size: 0.9em;">Set a target router to begin</div>';
+            }
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', initChat);
+        
+        // Update router status periodically
+        setInterval(updateRouterStatus, 30000); // Every 30 seconds
+    </script>
+</body>
+</html>
