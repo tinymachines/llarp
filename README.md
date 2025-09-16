@@ -1,134 +1,213 @@
-# OpenWRT Configuration Management Toolkit
+# LLARP - LLM-Assisted Router Automation Platform
 
-A comprehensive toolkit for managing OpenWRT routers, including configuration scanning, backup, application, network routing setup, and USB storage management.
+LLARP is an AI-powered training and automation system for OpenWRT configuration management. It uses large language models to generate, execute, validate, and store network configuration scripts with automatic rollback capabilities.
 
-## 🚀 Features
+## Core Features
 
-- **Configuration Management**: Scan, backup, compare, and apply configurations across multiple OpenWRT routers
-- **Network Routing**: Configure inter-router communication and routing between multiple network segments
-- **USB Storage**: Set up USB drives for extended storage and package installation
-- **Batch Operations**: Manage multiple routers simultaneously
-- **Full System Backup**: Complete configuration and system state capture
+- **AI-Driven Configuration Generation**: Natural language to OpenWRT UCI commands via LLM inference
+- **Real Hardware Validation**: Execute and test configurations on production OpenWRT devices
+- **Automated Quality Assessment**: Ground truth validation with numerical scoring (0.0-1.0)
+- **State Management**: Snapshot-based rollback system for safe configuration changes
+- **Lego Library**: Automatic storage and categorization of proven configuration scripts
+- **Multi-Model Support**: Extensible architecture supporting various LLMs (Mistral, Claude, etc.)
 
-## 📋 Prerequisites
+## Architecture
 
-### Python Environment
-LLARP uses a pyenv virtual environment. Activate it before use:
+```
+User Query → LLM Analysis → Script Generation → Router Execution → Validation → Storage/Rollback
+```
 
+### Workflow States
+1. **INIT** - Request validation and initialization
+2. **DECOMPOSE** - Break complex requests into actionable tasks
+3. **SEARCH_KNOWLEDGE** - Query vector database for similar solutions
+4. **PLAN** - Create execution plan combining existing and new components
+5. **EXECUTE** - Deploy configuration changes to target router
+6. **REVIEW** - Validate results against expected outcomes
+7. **ARCHIVE** - Store successful configurations as reusable components
+8. **COMPLETE** - Return results with quality metrics
+
+## System Requirements
+
+### Software Dependencies
+- Python 3.8+
+- OpenWRT target device with SSH access
+- Ollama with supported language models
+- paramiko (SSH client library)
+- requests (HTTP client library)
+
+### Hardware Requirements
+- OpenWRT router with UCI configuration system
+- SSH key-based authentication configured
+- Network connectivity between host and router
+
+### Supported Models
+- mistral-small3.2:24b (primary)
+- mistral-small3.1:24b
+- llama3.2:latest (fallback)
+
+## Quick Start
+
+### Installation
 ```bash
-# Activate the environment
-source ./activate_env.sh
-
-# Or manually:
+git clone https://github.com/tinymachines/llarp.git
+cd llarp
 source ~/.pyenv/versions/tinymachines/bin/activate
+pip install paramiko requests
 ```
 
-### System Requirements
-- Python 3.11+ with pyenv virtual environment 'tinymachines'
-- OpenWRT routers with SSH access configured
-- SSH key authentication set up for root@<router_ip>
-- Ollama installed and running locally (for AI features)
-- Node.js (for documentation web server)
-- Bash shell on the management system
-- Standard Unix tools (ssh, scp, tar, diff)
-
-## 🛠️ Available Scripts
-
-### Configuration Management
-- `openwrt-config-scan.sh` - Scan and backup router configuration
-- `openwrt-config-apply.sh` - Apply configuration to a router
-- `openwrt-batch-scanner.sh` - Scan multiple routers
-
-### Network Routing
-- `configure-inter-router-communication.sh` - Set up routing between routers
-- `verify-inter-router-communication.sh` - Test network connectivity
-
-### USB Storage
-- `setup-usb-storage-zephyr.sh` - Configure USB drive mounting
-- `setup-usb-packages-zephyr.sh` - Enable package installation to USB
-
-## 📖 Quick Start
-
-### 1. Clone the Repository
+### Configuration
 ```bash
-git clone https://github.com/yourusername/openwrt-toolkit.git
-cd openwrt-toolkit
+# Test connectivity
+python3 test_router_connection.py
+
+# View available training scenarios
+./llarp-train list
+
+# Execute basic configuration tests
+./llarp-train basic
 ```
 
-### 2. Make Scripts Executable
+### Usage Examples
 ```bash
-chmod +x *.sh
+# Single configuration request
+./llarp-workflow process "Set router hostname to 'production-gw'"
+
+# Complete training suite
+./llarp-train full
+
+# Category-specific training
+./llarp-train category wireless
+
+# Interactive workflow mode
+./llarp-workflow interactive
 ```
 
-### 3. Scan a Router Configuration
+## Training System
+
+### Test Categories
+- **basic_system**: Hostname, timezone, logging configuration
+- **network_basic**: IP addressing, routing, VLAN management
+- **wireless**: WiFi networks, radio configuration, guest access
+- **firewall**: Rules, port forwarding, access control
+- **dhcp_dns**: DHCP ranges, static leases, DNS configuration
+- **ssh_security**: Authentication, port configuration, hardening
+- **package_management**: Software installation and configuration
+- **monitoring_diagnostics**: SNMP, logging, connectivity testing
+- **advanced_networking**: Bridging, QoS, complex topologies
+
+### Quality Metrics
+- **Success Rate**: Percentage of tests achieving expected outcomes
+- **Quality Score**: Numerical assessment of configuration correctness (0.0-1.0)
+- **Execution Time**: Duration from request to completion
+- **Validation Results**: Detailed comparison of expected vs. actual outcomes
+
+## Project Structure
+
+```
+llarp/
+├── llarp-ai/                    # Core AI training system
+│   ├── workflow_engine.py       # State machine implementation
+│   ├── llarp_trainer.py         # Training orchestration
+│   ├── knowledge_bridge.py      # Vector search integration
+│   └── training_queries.json    # Test scenario definitions
+├── llarp-scripts/               # Proven configuration scripts
+├── docs/                        # Documentation
+├── llarp-train                  # Training execution CLI
+├── llarp-workflow              # General workflow CLI
+└── test_*.py                   # Validation and testing tools
+```
+
+## Configuration Management
+
+### Router Connection
+Default configuration expects:
+- Router IP: 192.168.100.1
+- User: root
+- Authentication: SSH key-based
+- Port: 22
+
+### Training Parameters
+- Default timeout: 300 seconds per test
+- Quality threshold for lego storage: 0.8
+- Maximum retry attempts: 3
+- State snapshot retention: Full UCI configuration backup
+
+## Results and Metrics
+
+### Training Output
+Results are stored in JSON format with the following structure:
+```json
+{
+  "timestamp": "2025-09-15T20:43:37.162319",
+  "router_ip": "192.168.100.1",
+  "total_tests": 25,
+  "results": [
+    {
+      "test_id": "SYS001",
+      "query": "Change the router hostname to 'llarp-test'",
+      "status": "SUCCESS|FAILED|PARTIAL",
+      "execution_time": 167.71,
+      "ground_truth_score": 0.8,
+      "generated_script": "...",
+      "validation_result": {...}
+    }
+  ]
+}
+```
+
+### Performance Benchmarks
+Based on initial training run (25 tests, mistral-small3.2:24b):
+- Success rate: 48%
+- Average execution time: 221 seconds
+- Average quality score: 0.40/1.0
+- Lego generation rate: 12% (3 of 25 tests)
+
+## Legacy Tools
+
+LLARP also includes traditional OpenWRT management scripts:
+- `openwrt-config-scan.sh` - Configuration backup and analysis
+- `openwrt-config-apply.sh` - Configuration deployment
+- `openwrt-batch-scanner.sh` - Multi-router management
+- USB storage and network routing utilities
+
+See `docs/USAGE_GUIDE.md` for comprehensive documentation.
+
+## Development
+
+### Testing
 ```bash
-./openwrt-config-scan.sh 192.168.1.1
+# Component testing
+python3 test_tag_stripping.py
+python3 test_mistral_integration.py
+
+# End-to-end validation
+python3 test_single_scenario.py
+
+# Full system test
+./llarp-train test
 ```
 
-### 4. Set Up Network Routing
-```bash
-./configure-inter-router-communication.sh
+### Extending Training Scenarios
+Add new test cases to `llarp-ai/training_queries.json`:
+```json
+{
+  "id": "NEW001",
+  "query": "Configuration request in natural language",
+  "category": "system|network|wireless|firewall|etc",
+  "difficulty": "basic|intermediate|advanced|expert",
+  "expected_commands": ["uci command 1", "uci command 2"],
+  "validation": {
+    "check_command": "uci get system.@system[0].parameter",
+    "expected_output": "expected_value"
+  }
+}
 ```
 
-### 5. Configure USB Storage
-```bash
-./setup-usb-storage-zephyr.sh
-```
+## License
 
-## 📚 Documentation
+MIT License - see LICENSE file for details.
 
-- [Network Routing Setup](docs/network/README.md) - Configure inter-router communication
-- [USB Storage Setup](docs/usb-storage/README.md) - Set up USB drives for extended storage
-- [Configuration Management](docs/scripts/configuration-management.md) - Backup and restore router configs
-- [Troubleshooting Guide](docs/troubleshooting.md) - Common issues and solutions
+## Contributing
 
-## 🌐 Example Network Topology
-
-```
-[Zephyr Lab: 15.0.0.0/24] ←→ [ATT Gateway: 13.0.0.0/24] ←→ [Spydr: 192.168.1.0/24]
-                                        ↓
-                                   [Internet]
-```
-
-## 🔧 Configuration Files
-
-The toolkit uses standard OpenWRT configuration:
-- UCI configuration system
-- `/etc/config/*` files
-- fstab for USB mounting
-- opkg for package management
-
-## 📦 Directory Structure
-
-```
-openwrt-toolkit/
-├── README.md
-├── CLAUDE.md                           # AI assistant instructions
-├── docs/                               # Documentation
-│   ├── network/                        # Network setup guides
-│   ├── usb-storage/                    # USB storage guides
-│   └── scripts/                        # Script documentation
-├── router_configs/                     # Scanned configurations (generated)
-│   └── <hostname>_<ip>_<timestamp>/    # Individual router backups
-└── *.sh                               # Executable scripts
-```
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit issues and pull requests.
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🙏 Acknowledgments
-
-- OpenWRT Project for the excellent router firmware
-- Community contributors and testers
-
-## 📮 Support
-
-For issues and questions:
-- Open an issue on GitHub
-- Check the [Troubleshooting Guide](docs/troubleshooting.md)
-- Review the [CLAUDE.md](CLAUDE.md) file for AI-assisted help
+See CONTRIBUTING.md for development guidelines and submission process.
