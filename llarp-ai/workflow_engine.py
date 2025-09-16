@@ -273,23 +273,38 @@ class WorkflowEngine:
             except:
                 pass
 
-        # Default model assignments - prefer mistral if available
+        # Intelligent model selection based on training results
         available_models = self.model_tester.list_available_models()
 
-        # Check for preferred models
-        preferred_model = "llama3.2:latest"  # fallback
-        if "mistral-small3.2:24b" in available_models:
-            preferred_model = "mistral-small3.2:24b"
-        elif any("mistral" in m for m in available_models):
-            # Use any available mistral model
-            preferred_model = next(m for m in available_models if "mistral" in m)
+        # Model preference order based on analysis
+        model_preferences = [
+            "qwen3-coder:30b",      # Best for code generation
+            "mistral-small3.2:24b", # Proven performer
+            "qwen2.5-coder:32b",    # Alternative coder model
+            "devstral:24b",         # Mistral variant
+            "llama3.2:latest"       # Fallback
+        ]
 
-        return {
-            "decomposition": preferred_model,
-            "technical_understanding": preferred_model,
-            "execution_planning": preferred_model,
-            "solution_synthesis": preferred_model
+        # Category-specific model selection based on Mistral analysis
+        category_preferences = {
+            "decomposition": ["qwen3-coder:30b", "mistral-small3.2:24b"],
+            "technical_understanding": ["mistral-small3.2:24b", "qwen3-coder:30b"],
+            "execution_planning": ["qwen3-coder:30b", "devstral:24b"],
+            "solution_synthesis": ["qwen3-coder:30b", "qwen2.5-coder:32b"]
         }
+
+        # Find best available model for each capability
+        selected_models = {}
+        for capability, preferred_list in category_preferences.items():
+            selected_model = "llama3.2:latest"  # fallback
+            for preferred in preferred_list:
+                if preferred in available_models:
+                    selected_model = preferred
+                    break
+            selected_models[capability] = selected_model
+
+        print(f"Selected models: {selected_models}")
+        return selected_models
 
     def _save_model_performance(self):
         """Save model performance data"""
