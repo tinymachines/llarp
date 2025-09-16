@@ -1,0 +1,496 @@
+{
+  "llarp_training_scenarios": {
+    "basic_system": [
+      {
+        "id": "SYS001",
+        "query": "Change the router hostname to 'llarp-test'",
+        "category": "system",
+        "subcategory": "hostname",
+        "difficulty": "basic",
+        "expected_commands": ["uci set system.@system[0].hostname='llarp-test'", "uci commit system"],
+        "validation": {
+          "check_command": "uci get system.@system[0].hostname",
+          "expected_output": "llarp-test"
+        },
+        "rollback": {
+          "commands": ["uci set system.@system[0].hostname='OpenWrt'", "uci commit system"]
+        }
+      },
+      {
+        "id": "SYS002",
+        "query": "Set the system timezone to UTC",
+        "category": "system",
+        "subcategory": "timezone",
+        "difficulty": "basic",
+        "expected_commands": ["uci set system.@system[0].zonename='UTC'", "uci commit system"],
+        "validation": {
+          "check_command": "uci get system.@system[0].zonename",
+          "expected_output": "UTC"
+        }
+      },
+      {
+        "id": "SYS003",
+        "query": "Enable system logging and set log size to 64KB",
+        "category": "system",
+        "subcategory": "logging",
+        "difficulty": "intermediate",
+        "expected_commands": ["uci set system.@system[0].log_size='64'", "uci commit system"],
+        "validation": {
+          "check_command": "uci get system.@system[0].log_size",
+          "expected_output": "64"
+        }
+      }
+    ],
+
+    "network_basic": [
+      {
+        "id": "NET001",
+        "query": "Set the LAN IP address to 192.168.100.1 with netmask 255.255.255.0",
+        "category": "network",
+        "subcategory": "lan_ip",
+        "difficulty": "basic",
+        "expected_commands": [
+          "uci set network.lan.ipaddr='192.168.100.1'",
+          "uci set network.lan.netmask='255.255.255.0'",
+          "uci commit network",
+          "/etc/init.d/network restart"
+        ],
+        "validation": {
+          "check_command": "uci get network.lan.ipaddr",
+          "expected_output": "192.168.100.1"
+        },
+        "rollback": {
+          "commands": [
+            "uci set network.lan.ipaddr='192.168.1.1'",
+            "uci set network.lan.netmask='255.255.255.0'",
+            "uci commit network",
+            "/etc/init.d/network restart"
+          ]
+        }
+      },
+      {
+        "id": "NET002",
+        "query": "Configure a static route to 10.0.0.0/24 via 192.168.1.254",
+        "category": "network",
+        "subcategory": "routing",
+        "difficulty": "intermediate",
+        "expected_commands": [
+          "uci add network route",
+          "uci set network.@route[-1].interface='lan'",
+          "uci set network.@route[-1].target='10.0.0.0'",
+          "uci set network.@route[-1].netmask='255.255.255.0'",
+          "uci set network.@route[-1].gateway='192.168.1.254'",
+          "uci commit network"
+        ],
+        "validation": {
+          "check_command": "uci show network | grep route",
+          "expected_contains": "10.0.0.0"
+        }
+      },
+      {
+        "id": "NET003",
+        "query": "Create a VLAN interface on port 2 with ID 100",
+        "category": "network",
+        "subcategory": "vlan",
+        "difficulty": "advanced",
+        "expected_commands": [
+          "uci add network switch_vlan",
+          "uci set network.@switch_vlan[-1].device='switch0'",
+          "uci set network.@switch_vlan[-1].vlan='100'",
+          "uci set network.@switch_vlan[-1].ports='2 6t'",
+          "uci commit network"
+        ]
+      }
+    ],
+
+    "wireless": [
+      {
+        "id": "WIFI001",
+        "query": "Enable WiFi and create a network called 'LLARP-Test' with WPA2 password 'TestPassword123'",
+        "category": "wireless",
+        "subcategory": "basic_wifi",
+        "difficulty": "basic",
+        "expected_commands": [
+          "uci set wireless.@wifi-device[0].disabled='0'",
+          "uci set wireless.@wifi-iface[0].ssid='LLARP-Test'",
+          "uci set wireless.@wifi-iface[0].encryption='psk2'",
+          "uci set wireless.@wifi-iface[0].key='TestPassword123'",
+          "uci commit wireless",
+          "wifi"
+        ],
+        "validation": {
+          "check_command": "uci get wireless.@wifi-iface[0].ssid",
+          "expected_output": "LLARP-Test"
+        },
+        "rollback": {
+          "commands": [
+            "uci set wireless.@wifi-device[0].disabled='1'",
+            "uci commit wireless",
+            "wifi"
+          ]
+        }
+      },
+      {
+        "id": "WIFI002",
+        "query": "Set WiFi channel to 6 and enable 40MHz channel width",
+        "category": "wireless",
+        "subcategory": "radio_config",
+        "difficulty": "intermediate",
+        "expected_commands": [
+          "uci set wireless.@wifi-device[0].channel='6'",
+          "uci set wireless.@wifi-device[0].htmode='HT40'",
+          "uci commit wireless",
+          "wifi"
+        ],
+        "validation": {
+          "check_command": "uci get wireless.@wifi-device[0].channel",
+          "expected_output": "6"
+        }
+      },
+      {
+        "id": "WIFI003",
+        "query": "Create a guest WiFi network 'Guest-Network' with isolation enabled",
+        "category": "wireless",
+        "subcategory": "guest_network",
+        "difficulty": "advanced",
+        "expected_commands": [
+          "uci add wireless wifi-iface",
+          "uci set wireless.@wifi-iface[-1].device='radio0'",
+          "uci set wireless.@wifi-iface[-1].network='guest'",
+          "uci set wireless.@wifi-iface[-1].mode='ap'",
+          "uci set wireless.@wifi-iface[-1].ssid='Guest-Network'",
+          "uci set wireless.@wifi-iface[-1].encryption='none'",
+          "uci set wireless.@wifi-iface[-1].isolate='1'",
+          "uci commit wireless"
+        ]
+      }
+    ],
+
+    "firewall": [
+      {
+        "id": "FW001",
+        "query": "Enable SSH access from WAN interface",
+        "category": "firewall",
+        "subcategory": "service_access",
+        "difficulty": "basic",
+        "expected_commands": [
+          "uci add firewall rule",
+          "uci set firewall.@rule[-1].name='Allow-SSH-WAN'",
+          "uci set firewall.@rule[-1].src='wan'",
+          "uci set firewall.@rule[-1].proto='tcp'",
+          "uci set firewall.@rule[-1].dest_port='22'",
+          "uci set firewall.@rule[-1].target='ACCEPT'",
+          "uci commit firewall",
+          "/etc/init.d/firewall restart"
+        ],
+        "validation": {
+          "check_command": "uci show firewall | grep 'Allow-SSH-WAN'",
+          "expected_contains": "Allow-SSH-WAN"
+        },
+        "rollback": {
+          "commands": [
+            "uci delete firewall.@rule[-1]",
+            "uci commit firewall",
+            "/etc/init.d/firewall restart"
+          ]
+        }
+      },
+      {
+        "id": "FW002",
+        "query": "Set up port forwarding for HTTP (port 80) to internal server 192.168.1.100",
+        "category": "firewall",
+        "subcategory": "port_forwarding",
+        "difficulty": "intermediate",
+        "expected_commands": [
+          "uci add firewall redirect",
+          "uci set firewall.@redirect[-1].name='HTTP-Forward'",
+          "uci set firewall.@redirect[-1].src='wan'",
+          "uci set firewall.@redirect[-1].src_dport='80'",
+          "uci set firewall.@redirect[-1].dest='lan'",
+          "uci set firewall.@redirect[-1].dest_ip='192.168.1.100'",
+          "uci set firewall.@redirect[-1].dest_port='80'",
+          "uci set firewall.@redirect[-1].proto='tcp'",
+          "uci commit firewall",
+          "/etc/init.d/firewall restart"
+        ]
+      },
+      {
+        "id": "FW003",
+        "query": "Block all traffic from IP range 10.0.0.0/8",
+        "category": "firewall",
+        "subcategory": "blocking",
+        "difficulty": "intermediate",
+        "expected_commands": [
+          "uci add firewall rule",
+          "uci set firewall.@rule[-1].name='Block-10-Network'",
+          "uci set firewall.@rule[-1].src='*'",
+          "uci set firewall.@rule[-1].src_ip='10.0.0.0/8'",
+          "uci set firewall.@rule[-1].target='DROP'",
+          "uci commit firewall",
+          "/etc/init.d/firewall restart"
+        ]
+      }
+    ],
+
+    "dhcp_dns": [
+      {
+        "id": "DHCP001",
+        "query": "Set DHCP range from 192.168.1.100 to 192.168.1.200",
+        "category": "dhcp",
+        "subcategory": "range",
+        "difficulty": "basic",
+        "expected_commands": [
+          "uci set dhcp.lan.start='100'",
+          "uci set dhcp.lan.limit='100'",
+          "uci commit dhcp",
+          "/etc/init.d/dnsmasq restart"
+        ],
+        "validation": {
+          "check_command": "uci get dhcp.lan.start",
+          "expected_output": "100"
+        }
+      },
+      {
+        "id": "DHCP002",
+        "query": "Create a static DHCP lease for MAC 00:11:22:33:44:55 to IP 192.168.1.50",
+        "category": "dhcp",
+        "subcategory": "static_lease",
+        "difficulty": "intermediate",
+        "expected_commands": [
+          "uci add dhcp host",
+          "uci set dhcp.@host[-1].name='static-device'",
+          "uci set dhcp.@host[-1].mac='00:11:22:33:44:55'",
+          "uci set dhcp.@host[-1].ip='192.168.1.50'",
+          "uci commit dhcp",
+          "/etc/init.d/dnsmasq restart"
+        ]
+      },
+      {
+        "id": "DNS001",
+        "query": "Set custom DNS servers to 8.8.8.8 and 1.1.1.1",
+        "category": "dns",
+        "subcategory": "upstream",
+        "difficulty": "basic",
+        "expected_commands": [
+          "uci delete dhcp.@dnsmasq[0].server",
+          "uci add_list dhcp.@dnsmasq[0].server='8.8.8.8'",
+          "uci add_list dhcp.@dnsmasq[0].server='1.1.1.1'",
+          "uci commit dhcp",
+          "/etc/init.d/dnsmasq restart"
+        ]
+      }
+    ],
+
+    "ssh_security": [
+      {
+        "id": "SSH001",
+        "query": "Disable SSH password authentication and enable key-only access",
+        "category": "ssh",
+        "subcategory": "security",
+        "difficulty": "intermediate",
+        "expected_commands": [
+          "uci set dropbear.@dropbear[0].PasswordAuth='off'",
+          "uci set dropbear.@dropbear[0].RootPasswordAuth='off'",
+          "uci commit dropbear",
+          "/etc/init.d/dropbear restart"
+        ],
+        "validation": {
+          "check_command": "uci get dropbear.@dropbear[0].PasswordAuth",
+          "expected_output": "off"
+        },
+        "rollback": {
+          "commands": [
+            "uci set dropbear.@dropbear[0].PasswordAuth='on'",
+            "uci set dropbear.@dropbear[0].RootPasswordAuth='on'",
+            "uci commit dropbear",
+            "/etc/init.d/dropbear restart"
+          ]
+        }
+      },
+      {
+        "id": "SSH002",
+        "query": "Change SSH port to 2222",
+        "category": "ssh",
+        "subcategory": "port_config",
+        "difficulty": "basic",
+        "expected_commands": [
+          "uci set dropbear.@dropbear[0].Port='2222'",
+          "uci commit dropbear",
+          "/etc/init.d/dropbear restart"
+        ],
+        "rollback": {
+          "commands": [
+            "uci set dropbear.@dropbear[0].Port='22'",
+            "uci commit dropbear",
+            "/etc/init.d/dropbear restart"
+          ]
+        }
+      }
+    ],
+
+    "advanced_networking": [
+      {
+        "id": "ADV001",
+        "query": "Set up a bridge interface combining LAN and WLAN",
+        "category": "network",
+        "subcategory": "bridging",
+        "difficulty": "advanced",
+        "expected_commands": [
+          "uci add network interface",
+          "uci set network.@interface[-1].name='bridge0'",
+          "uci set network.@interface[-1].type='bridge'",
+          "uci set network.@interface[-1].ports='lan wlan'",
+          "uci commit network"
+        ]
+      },
+      {
+        "id": "ADV002",
+        "query": "Configure QoS to prioritize VOIP traffic on port 5060",
+        "category": "qos",
+        "subcategory": "traffic_shaping",
+        "difficulty": "advanced",
+        "expected_commands": [
+          "opkg update",
+          "opkg install luci-app-qos",
+          "uci set qos.wan.enabled='1'",
+          "uci add qos rule",
+          "uci set qos.@rule[-1].name='VOIP'",
+          "uci set qos.@rule[-1].proto='udp'",
+          "uci set qos.@rule[-1].dport='5060'",
+          "uci set qos.@rule[-1].class='Priority'",
+          "uci commit qos"
+        ]
+      }
+    ],
+
+    "package_management": [
+      {
+        "id": "PKG001",
+        "query": "Install the nano text editor",
+        "category": "packages",
+        "subcategory": "installation",
+        "difficulty": "basic",
+        "expected_commands": [
+          "opkg update",
+          "opkg install nano"
+        ],
+        "validation": {
+          "check_command": "which nano",
+          "expected_contains": "/usr/bin/nano"
+        }
+      },
+      {
+        "id": "PKG002",
+        "query": "Install and configure a web server (uhttpd)",
+        "category": "packages",
+        "subcategory": "service_install",
+        "difficulty": "intermediate",
+        "expected_commands": [
+          "opkg update",
+          "opkg install uhttpd",
+          "uci set uhttpd.main.listen_http='0.0.0.0:80'",
+          "uci commit uhttpd",
+          "/etc/init.d/uhttpd enable",
+          "/etc/init.d/uhttpd start"
+        ]
+      }
+    ],
+
+    "monitoring_diagnostics": [
+      {
+        "id": "MON001",
+        "query": "Set up continuous ping monitoring to 8.8.8.8 and log results",
+        "category": "monitoring",
+        "subcategory": "connectivity",
+        "difficulty": "intermediate",
+        "expected_commands": [
+          "echo '*/5 * * * * ping -c 1 8.8.8.8 >> /tmp/ping.log' >> /etc/crontabs/root",
+          "/etc/init.d/cron restart"
+        ],
+        "validation": {
+          "check_command": "crontab -l | grep ping",
+          "expected_contains": "8.8.8.8"
+        }
+      },
+      {
+        "id": "MON002",
+        "query": "Enable SNMP monitoring with community string 'llarp'",
+        "category": "monitoring",
+        "subcategory": "snmp",
+        "difficulty": "advanced",
+        "expected_commands": [
+          "opkg update",
+          "opkg install snmpd",
+          "uci set snmpd.@agent[0].agentaddress='UDP:161'",
+          "uci set snmpd.@com2sec[0].community='llarp'",
+          "uci commit snmpd",
+          "/etc/init.d/snmpd enable",
+          "/etc/init.d/snmpd start"
+        ]
+      }
+    ],
+
+    "backup_restore": [
+      {
+        "id": "BCK001",
+        "query": "Create a configuration backup and save it to /tmp/backup.tar.gz",
+        "category": "backup",
+        "subcategory": "config_backup",
+        "difficulty": "basic",
+        "expected_commands": [
+          "sysupgrade -b /tmp/backup.tar.gz"
+        ],
+        "validation": {
+          "check_command": "ls -la /tmp/backup.tar.gz",
+          "expected_contains": "backup.tar.gz"
+        }
+      }
+    ],
+
+    "integration_tests": [
+      {
+        "id": "INT001",
+        "query": "Set up a complete guest network with captive portal and bandwidth limiting",
+        "category": "integration",
+        "subcategory": "guest_portal",
+        "difficulty": "expert",
+        "expected_commands": [
+          "opkg update",
+          "opkg install luci-app-splash",
+          "uci add network interface",
+          "uci set network.@interface[-1].name='guest'",
+          "uci set network.@interface[-1].proto='static'",
+          "uci set network.@interface[-1].ipaddr='192.168.2.1'",
+          "uci set network.@interface[-1].netmask='255.255.255.0'",
+          "uci add wireless wifi-iface",
+          "uci set wireless.@wifi-iface[-1].device='radio0'",
+          "uci set wireless.@wifi-iface[-1].network='guest'",
+          "uci set wireless.@wifi-iface[-1].mode='ap'",
+          "uci set wireless.@wifi-iface[-1].ssid='Guest-Portal'",
+          "uci commit"
+        ]
+      }
+    ]
+  },
+
+  "difficulty_levels": {
+    "basic": "Simple UCI commands, single configuration changes",
+    "intermediate": "Multiple commands, service restarts, basic validation",
+    "advanced": "Complex configurations, multiple subsystems, package installation",
+    "expert": "Integration scenarios, custom services, advanced troubleshooting"
+  },
+
+  "test_execution_order": [
+    "basic_system",
+    "network_basic",
+    "wireless",
+    "dhcp_dns",
+    "firewall",
+    "ssh_security",
+    "package_management",
+    "monitoring_diagnostics",
+    "backup_restore",
+    "advanced_networking",
+    "integration_tests"
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "timestamp": "2025-09-15T15:30:34.618358",
+  "router_ip": "15.0.0.1",
+  "total_tests": 2,
+  "results": [
+    {
+      "test_id": "SYS001",
+      "query": "Change the router hostname to 'llarp-test'",
+      "status": "TestStatus.FAILED",
+      "execution_time": 157.8607132434845,
+      "generated_script": "#!/bin/bash\n\nHere's a complete bash script for OpenWRT that meets your specifications:\n\n```bash\n#!/bin/sh /etc/rc.common\n\nSTART=0\n\nNAME=\"edit_hostname\"\nDESCRIPTION=\"Script to change the hostname to 'llarp-test'\"\nHOSTNAME=\"llarp-test\"\n\n# Validate that we're running on OpenWRT\nvalidate_openwrt() {\n    if ! grep -q \"OpenWrt\" /etc/os-release; then\n        echo \"This script must be run on OpenWRT\"\n        exit 1\n    fi\n}\n\n# Check if UCI is available\ncheck_uci() {\n    if ! command -v uci &> /dev/null; then\n        echo \"UCI utility not found. This script requires UCI.\"\n        exit 1\n    fi\n}\n\n# Change hostname using UCI\nchange_hostname() {\n    # Set the new hostname\n    uci set system.@system[0].hostname=\"$HOSTNAME\"\n\n    # Commit the changes\n    uci commit system\n\n    # Apply the changes\n    /etc/init.d/system reload\n\n    if [ $? -eq 0 ]; then\n        echo \"Hostname changed to $HOSTNAME successfully\"\n    else\n        echo \"Failed to change hostname\"\n        exit 1\n    fi\n}\n\n# Main function\nstart() {\n    validate_openwrt\n    check_uci\n    change_hostname\n}\n\n# For OpenWRT init script compatibility\ncase \"$1\" in\n    start)\n        start\n        ;;\n    *)\n        echo \"Usage: $0 {start}\"\n        exit 1\n        ;;\nesac\n```\n\nThis script:\n\n1. Follows OpenWRT's init script style with the shebang and START variable\n2. Includes proper validation for OpenWRT environment\n3. Checks for UCI availability\n4. Uses UCI commands to modify the hostname\n5. Includes error handling\n6. Has descriptive comments\n7. Follows the style of existing llarp-scripts\n8. Properly commits and applies changes\n\nThe script can be executed directly or used as an OpenWRT init script. When run, it will change the hostname to \"llarp-test\" using UCI commands, which is the preferred method in OpenWRT for configuration changes.",
+      "validation_result": {
+        "status": "output_mismatch",
+        "score": 0.2,
+        "expected": "llarp-test",
+        "actual": "Zephyr"
+      },
+      "rollback_result": null,
+      "error_message": "",
+      "ground_truth_score": 0.2,
+      "timestamp": "2025-09-15 15:27:09.394161"
+    },
+    {
+      "test_id": "SYS002",
+      "query": "Set the system timezone to UTC",
+      "status": "TestStatus.STORED",
+      "execution_time": 203.22360515594482,
+      "generated_script": "#!/bin/bash\n\nHere's a complete bash script for OpenWRT that meets your specifications:\n\n```bash\n#!/bin/sh /etc/rc.common\n\nSTART=99\nUSE_PROCD=1\n\nNAME=\"timezone_packages_installer\"\n\nstart() {\n    log_info \"Starting $NAME\"\n    install_timezone_packages\n}\n\ninstall_timezone_packages() {\n    # Check if we're running on OpenWRT\n    if ! grep -q \"OpenWrt\" /etc/os-release; then\n        log_error \"This script must be run on OpenWRT\"\n        return 1\n    fi\n\n    # List of required packages for timezone configuration\n    REQUIRED_PACKAGES=\"tzdata zoneinfo-core\"\n\n    log_info \"Installing required timezone packages...\"\n\n    # Install each package with error checking\n    for pkg in $REQUIRED_PACKAGES; do\n        if ! opkg list-installed | grep -q \"^$pkg \"; then\n            log_info \"Installing package: $pkg\"\n            opkg update\n            opkg install $pkg\n            if [ $? -ne 0 ]; then\n                log_error \"Failed to install package: $pkg\"\n                return 1\n            fi\n        else\n            log_info \"Package already installed: $pkg\"\n        fi\n    done\n\n    # Verify timezone configuration\n    if [ -f \"/usr/share/zoneinfo/UTC\" ]; then\n        log_info \"Timezone configuration files found\"\n    else\n        log_error \"Timezone configuration files not found after installation\"\n        return 1\n    fi\n\n    # Set default timezone if not already set\n    if ! uci get system.@system[0].zonename >/dev/null 2>&1; then\n        log_info \"Setting default timezone to UTC\"\n        uci set system.@system[0].zonename=\"UTC\"\n        uci set system.@system[0].timezone=\"UTC\"\n        uci commit system\n    else\n        log_info \"Timezone already configured\"\n    fi\n\n    log_info \"$NAME installation completed successfully\"\n    return 0\n}\n\n# Main execution\ninstall_timezone_packages\n```\n\nThis script includes:\n\n1. Proper OpenWRT service header with START and USE_PROCD variables\n2. Error handling and validation for package installation\n3. Checks if running on OpenWRT\n4. Installs required timezone packages (tzdata and zoneinfo-core)\n5. Verifies the installation was successful\n6. Configures default timezone if not already set using UCI commands\n7. Follows the style of existing llarp-scripts with proper logging\n8. Includes comments explaining each key step\n\nThe script can be placed in `/etc/init.d/` and will be automatically registered as a service that runs during system startup. You can also run it manually to install the packages immediately.",
+      "validation_result": {
+        "status": "exact_match",
+        "score": 1.0,
+        "output": "UTC"
+      },
+      "rollback_result": null,
+      "error_message": "",
+      "ground_truth_score": 1.0,
+      "timestamp": "2025-09-15 15:30:34.618135"
+    }
+  ]
+}

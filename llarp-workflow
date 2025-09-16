@@ -1,0 +1,242 @@
+#!/bin/bash
+
+# LLARP Workflow CLI - Main entry point for the workflow system
+# Integrates with the Python workflow engine
+
+set -euo pipefail
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+PURPLE='\033[0;35m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+# Default paths
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LLARP_AI_DIR="$SCRIPT_DIR/llarp-ai"
+WORKFLOW_ENGINE="$LLARP_AI_DIR/workflow_engine.py"
+KNOWLEDGE_BRIDGE="$LLARP_AI_DIR/knowledge_bridge.py"
+TEST_SCRIPT="$SCRIPT_DIR/test_workflow.py"
+
+# Check if Python components exist
+check_dependencies() {
+    if [[ ! -f "$WORKFLOW_ENGINE" ]]; then
+        echo -e "${RED}Error: Workflow engine not found at $WORKFLOW_ENGINE${NC}"
+        exit 1
+    fi
+
+    if [[ ! -f "$KNOWLEDGE_BRIDGE" ]]; then
+        echo -e "${RED}Error: Knowledge bridge not found at $KNOWLEDGE_BRIDGE${NC}"
+        exit 1
+    fi
+
+    # Check if ollama is running
+    if ! curl -s http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
+        echo -e "${YELLOW}Warning: Ollama not running at 127.0.0.1:11434${NC}"
+        echo "Start ollama with: ollama serve"
+    fi
+}
+
+# Show help
+show_help() {
+    echo -e "${CYAN}LLARP Workflow CLI${NC}"
+    echo "AI-powered workflow management for OpenWRT configuration"
+    echo ""
+
+    echo -e "${YELLOW}USAGE:${NC}"
+    echo "    llarp-workflow <command> [options]"
+    echo ""
+
+    echo -e "${YELLOW}WORKFLOW COMMANDS:${NC}"
+    echo -e "    ${GREEN}process \"<request>\"${NC}     Process a natural language request"
+    echo -e "    ${GREEN}test-models${NC}              Test and select best ollama models"
+    echo -e "    ${GREEN}interactive${NC}              Interactive workflow mode"
+    echo ""
+
+    echo -e "${YELLOW}KNOWLEDGE MANAGEMENT:${NC}"
+    echo -e "    ${GREEN}index-legos${NC}              Index lego scripts into knowledge base"
+    echo -e "    ${GREEN}search \"<query>\"${NC}        Search knowledge base"
+    echo -e "    ${GREEN}store \"<text>\" <type>${NC}   Store knowledge manually"
+    echo -e "    ${GREEN}knowledge-stats${NC}          Show knowledge base statistics"
+    echo ""
+
+    echo -e "${YELLOW}TESTING:${NC}"
+    echo -e "    ${GREEN}test${NC}                     Run full test suite"
+    echo -e "    ${GREEN}test-knowledge${NC}           Test knowledge bridge only"
+    echo -e "    ${GREEN}test-workflow${NC}            Test workflow execution only"
+    echo ""
+
+    echo -e "${YELLOW}EXAMPLES:${NC}"
+    echo "    llarp-workflow process \"Set up secure WiFi on my router\""
+    echo "    llarp-workflow search \"port forwarding\""
+    echo "    llarp-workflow index-legos"
+    echo "    llarp-workflow test"
+    echo ""
+
+    echo -e "${YELLOW}REQUIREMENTS:${NC}"
+    echo "    - Python 3.8+ with required packages"
+    echo "    - Ollama running with at least one model"
+    echo "    - VectL vector store compiled"
+}
+
+# Process a workflow request
+process_request() {
+    local request="$1"
+
+    echo -e "${BLUE}🔄 Processing request: $request${NC}"
+    echo ""
+
+    cd "$SCRIPT_DIR"
+    python3 "$WORKFLOW_ENGINE" --request "$request"
+}
+
+# Interactive mode
+interactive_mode() {
+    echo -e "${CYAN}LLARP Workflow - Interactive Mode${NC}"
+    echo "Enter your requests in natural language"
+    echo "Type 'quit' to exit"
+    echo ""
+
+    cd "$SCRIPT_DIR"
+    python3 "$WORKFLOW_ENGINE" --interactive
+}
+
+# Test ollama models
+test_models() {
+    echo -e "${PURPLE}🧪 Testing ollama models...${NC}"
+    echo ""
+
+    cd "$SCRIPT_DIR"
+    python3 "$WORKFLOW_ENGINE" --test-models
+}
+
+# Knowledge management functions
+index_legos() {
+    echo -e "${GREEN}📚 Indexing lego scripts...${NC}"
+    echo ""
+
+    cd "$SCRIPT_DIR"
+    python3 "$KNOWLEDGE_BRIDGE" --index-legos
+}
+
+search_knowledge() {
+    local query="$1"
+
+    echo -e "${GREEN}🔍 Searching knowledge base: $query${NC}"
+    echo ""
+
+    cd "$SCRIPT_DIR"
+    python3 "$KNOWLEDGE_BRIDGE" --search "$query"
+}
+
+store_knowledge() {
+    local text="$1"
+    local type="${2:-manual}"
+
+    echo -e "${GREEN}💾 Storing knowledge (type: $type)${NC}"
+    echo ""
+
+    cd "$SCRIPT_DIR"
+    python3 "$KNOWLEDGE_BRIDGE" --store "$text" --type "$type"
+}
+
+knowledge_stats() {
+    echo -e "${GREEN}📊 Knowledge base statistics${NC}"
+    echo ""
+
+    cd "$SCRIPT_DIR"
+    python3 "$KNOWLEDGE_BRIDGE" --stats
+}
+
+# Testing functions
+run_tests() {
+    local test_type="$1"
+
+    echo -e "${PURPLE}🧪 Running tests: $test_type${NC}"
+    echo ""
+
+    cd "$SCRIPT_DIR"
+    case "$test_type" in
+        "full")
+            python3 "$TEST_SCRIPT"
+            ;;
+        "knowledge")
+            python3 "$TEST_SCRIPT" --knowledge-only
+            ;;
+        "workflow")
+            python3 "$TEST_SCRIPT" --workflow-only
+            ;;
+        *)
+            echo -e "${RED}Unknown test type: $test_type${NC}"
+            exit 1
+            ;;
+    esac
+}
+
+# Main command dispatcher
+main() {
+    check_dependencies
+
+    case "${1:-help}" in
+        "process")
+            if [[ $# -lt 2 ]]; then
+                echo -e "${RED}Error: Request text required${NC}"
+                echo "Usage: llarp-workflow process \"<request>\""
+                exit 1
+            fi
+            process_request "$2"
+            ;;
+        "interactive")
+            interactive_mode
+            ;;
+        "test-models")
+            test_models
+            ;;
+        "index-legos")
+            index_legos
+            ;;
+        "search")
+            if [[ $# -lt 2 ]]; then
+                echo -e "${RED}Error: Search query required${NC}"
+                echo "Usage: llarp-workflow search \"<query>\""
+                exit 1
+            fi
+            search_knowledge "$2"
+            ;;
+        "store")
+            if [[ $# -lt 2 ]]; then
+                echo -e "${RED}Error: Text to store required${NC}"
+                echo "Usage: llarp-workflow store \"<text>\" [type]"
+                exit 1
+            fi
+            store_knowledge "$2" "${3:-manual}"
+            ;;
+        "knowledge-stats")
+            knowledge_stats
+            ;;
+        "test")
+            run_tests "full"
+            ;;
+        "test-knowledge")
+            run_tests "knowledge"
+            ;;
+        "test-workflow")
+            run_tests "workflow"
+            ;;
+        "help"|"-h"|"--help")
+            show_help
+            ;;
+        *)
+            echo -e "${RED}Unknown command: $1${NC}"
+            echo ""
+            show_help
+            exit 1
+            ;;
+    esac
+}
+
+# Run main function with all arguments
+main "$@"

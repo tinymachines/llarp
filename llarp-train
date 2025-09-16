@@ -1,0 +1,268 @@
+#!/bin/bash
+
+# LLARP Training System CLI
+# Automated training and testing with real OpenWRT router
+
+set -euo pipefail
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+PURPLE='\033[0;35m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+# Default values
+ROUTER_IP="192.168.100.1"
+SSH_KEY=""
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TRAINER_SCRIPT="$SCRIPT_DIR/llarp-ai/llarp_trainer.py"
+
+# Show help
+show_help() {
+    echo -e "${CYAN}LLARP Training System${NC}"
+    echo "Automated training and testing with Mistral on real OpenWRT router"
+    echo ""
+
+    echo -e "${YELLOW}USAGE:${NC}"
+    echo "    llarp-train <command> [options]"
+    echo ""
+
+    echo -e "${YELLOW}COMMANDS:${NC}"
+    echo -e "    ${GREEN}list${NC}                     List all available test scenarios"
+    echo -e "    ${GREEN}basic${NC}                    Run basic tests only"
+    echo -e "    ${GREEN}intermediate${NC}             Run intermediate tests only"
+    echo -e "    ${GREEN}advanced${NC}                 Run advanced tests only"
+    echo -e "    ${GREEN}category <name>${NC}          Run tests for specific category"
+    echo -e "    ${GREEN}single <test_id>${NC}         Run a single test by ID"
+    echo -e "    ${GREEN}full${NC}                     Run complete training suite"
+    echo ""
+
+    echo -e "${YELLOW}CATEGORIES:${NC}"
+    echo "    basic_system      - Hostname, timezone, logging"
+    echo "    network_basic     - IP config, routing, VLANs"
+    echo "    wireless          - WiFi, radio config, guest networks"
+    echo "    firewall          - Rules, port forwarding, blocking"
+    echo "    dhcp_dns          - DHCP ranges, static leases, DNS"
+    echo "    ssh_security      - SSH hardening, port changes"
+    echo "    package_management - Software installation"
+    echo "    monitoring        - SNMP, logging, diagnostics"
+    echo "    advanced_networking - Bridging, QoS"
+    echo ""
+
+    echo -e "${YELLOW}OPTIONS:${NC}"
+    echo "    --router <ip>     Router IP address (default: 15.0.0.1)"
+    echo "    --ssh-key <path>  SSH private key path"
+    echo "    --dry-run         Show what would be executed without running"
+    echo ""
+
+    echo -e "${YELLOW}EXAMPLES:${NC}"
+    echo "    llarp-train list"
+    echo "    llarp-train basic --router 15.0.0.1"
+    echo "    llarp-train category wireless"
+    echo "    llarp-train single SYS001"
+    echo "    llarp-train full"
+    echo ""
+
+    echo -e "${YELLOW}REQUIREMENTS:${NC}"
+    echo "    - Python 3.8+ with paramiko"
+    echo "    - SSH access to OpenWRT router"
+    echo "    - Ollama with mistral-small3.2:24b"
+    echo "    - Router should be at a clean state before training"
+}
+
+# Check dependencies
+check_dependencies() {
+    # Check if trainer script exists
+    if [[ ! -f "$TRAINER_SCRIPT" ]]; then
+        echo -e "${RED}Error: Trainer script not found at $TRAINER_SCRIPT${NC}"
+        exit 1
+    fi
+
+    # Activate Python environment
+    if [[ -f ~/.pyenv/versions/tinymachines/bin/activate ]]; then
+        source ~/.pyenv/versions/tinymachines/bin/activate
+        echo -e "${GREEN}✓ Activated tinymachines Python environment${NC}"
+    else
+        echo -e "${YELLOW}Warning: tinymachines environment not found${NC}"
+    fi
+
+    # Check Python
+    if ! command -v python3 >/dev/null 2>&1; then
+        echo -e "${RED}Error: Python 3 not found${NC}"
+        exit 1
+    fi
+
+    # Check paramiko
+    if ! python3 -c "import paramiko" 2>/dev/null; then
+        echo -e "${YELLOW}Warning: paramiko not installed. Installing...${NC}"
+        pip install paramiko || {
+            echo -e "${RED}Error: Failed to install paramiko${NC}"
+            exit 1
+        }
+    fi
+
+    # Check ollama
+    if ! curl -s http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
+        echo -e "${YELLOW}Warning: Ollama not running at 127.0.0.1:11434${NC}"
+        echo "Start ollama with: ollama serve"
+    fi
+
+    # Check mistral model
+    if ! curl -s http://127.0.0.1:11434/api/tags | grep -q "mistral-small3.2:24b" 2>/dev/null; then
+        echo -e "${YELLOW}Warning: mistral-small3.2:24b not found${NC}"
+        echo "Install with: ollama pull mistral-small3.2:24b"
+    fi
+}
+
+# Test SSH connection
+test_ssh_connection() {
+    local router_ip="$1"
+    local ssh_key_opt=""
+
+    if [[ -n "$SSH_KEY" ]]; then
+        ssh_key_opt="-i $SSH_KEY"
+    fi
+
+    echo -e "${BLUE}Testing SSH connection to $router_ip...${NC}"
+
+    if ssh $ssh_key_opt -o ConnectTimeout=5 -o StrictHostKeyChecking=no root@$router_ip "echo 'SSH OK'" 2>/dev/null; then
+        echo -e "${GREEN}✓ SSH connection successful${NC}"
+        return 0
+    else
+        echo -e "${RED}✗ SSH connection failed${NC}"
+        echo "Make sure:"
+        echo "  - Router is accessible at $router_ip"
+        echo "  - SSH key authentication is set up"
+        echo "  - Router allows root login"
+        return 1
+    fi
+}
+
+# Run training command
+run_training() {
+    local cmd="$1"
+    shift
+    local args=("$@")
+
+    cd "$SCRIPT_DIR"
+
+    # Activate environment and build Python command
+    local python_cmd="source ~/.pyenv/versions/tinymachines/bin/activate && python3 $TRAINER_SCRIPT"
+
+    # Add router option
+    python_cmd="$python_cmd --router $ROUTER_IP"
+
+    # Add SSH key if specified
+    if [[ -n "$SSH_KEY" ]]; then
+        python_cmd="$python_cmd --ssh-key $SSH_KEY"
+    fi
+
+    case "$cmd" in
+        "list")
+            python_cmd="$python_cmd --list-tests"
+            ;;
+        "basic"|"intermediate"|"advanced"|"expert")
+            python_cmd="$python_cmd --difficulty $cmd"
+            ;;
+        "category")
+            if [[ ${#args[@]} -eq 0 ]]; then
+                echo -e "${RED}Error: Category name required${NC}"
+                exit 1
+            fi
+            python_cmd="$python_cmd --categories ${args[0]}"
+            ;;
+        "single")
+            if [[ ${#args[@]} -eq 0 ]]; then
+                echo -e "${RED}Error: Test ID required${NC}"
+                exit 1
+            fi
+            echo -e "${YELLOW}Single test mode not yet implemented${NC}"
+            echo "Use: llarp-train category <category_name> for now"
+            exit 1
+            ;;
+        "full")
+            # Run all tests
+            ;;
+        *)
+            echo -e "${RED}Unknown command: $cmd${NC}"
+            show_help
+            exit 1
+            ;;
+    esac
+
+    echo -e "${BLUE}Running: $python_cmd${NC}"
+    eval "$python_cmd"
+}
+
+# Main command dispatcher
+main() {
+    # Parse global options
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --router)
+                ROUTER_IP="$2"
+                shift 2
+                ;;
+            --ssh-key)
+                SSH_KEY="$2"
+                shift 2
+                ;;
+            --dry-run)
+                echo -e "${YELLOW}Dry run mode - showing what would be executed${NC}"
+                DRY_RUN=true
+                shift
+                ;;
+            --help|-h)
+                show_help
+                exit 0
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
+
+    if [[ $# -eq 0 ]]; then
+        show_help
+        exit 0
+    fi
+
+    local command="$1"
+    shift
+
+    # Check dependencies
+    check_dependencies
+
+    # Test SSH connection (unless listing tests)
+    if [[ "$command" != "list" ]]; then
+        if ! test_ssh_connection "$ROUTER_IP"; then
+            exit 1
+        fi
+    fi
+
+    # Show warning for actual execution
+    if [[ "$command" != "list" && "${DRY_RUN:-false}" != "true" ]]; then
+        echo -e "${YELLOW}⚠️  WARNING: This will execute commands on router $ROUTER_IP${NC}"
+        echo -e "${YELLOW}Make sure the router is in a clean state and you have backups!${NC}"
+
+        # Check if running in automation (non-interactive)
+        if [[ -t 0 ]]; then
+            read -p "Continue? (y/N): " -r
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                echo "Aborted."
+                exit 1
+            fi
+        else
+            echo "Running in automation mode, proceeding..."
+        fi
+    fi
+
+    # Run the training command
+    run_training "$command" "$@"
+}
+
+# Run main function with all arguments
+main "$@"
