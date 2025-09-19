@@ -22,8 +22,8 @@ def main():
     print("QWEN3-CODER:30B DIRECT TRAINING")
     print("="*50)
 
-    # Create trainer
-    trainer = LLARPTrainer(router_ip="192.168.100.1")
+    # Create trainer - use the accessible IP
+    trainer = LLARPTrainer(router_ip="192.168.1.1")
 
     # Force qwen model for all capabilities
     qwen_model = "qwen3-coder:30b"
