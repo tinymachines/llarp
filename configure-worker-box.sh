@@ -77,6 +77,38 @@ uci delete mwan3.default_rule 2>/dev/null || true
 echo "Setting hostname to ${HOSTNAME}..."
 uci set system.@system[0].hostname="${HOSTNAME}"
 
+# Fix OpenVPN profiles auth-user-pass paths
+echo "Fixing OpenVPN profile authentication paths..."
+cd /etc/openvpn/profiles
+for profile in *.ovpn; do
+    sed -i 's|auth-user-pass /home/bisenbek/shared/vpn/pass.txt|auth-user-pass /etc/openvpn/auth.txt|' "$profile"
+    sed -i 's|^auth-user-pass$|auth-user-pass /etc/openvpn/auth.txt|' "$profile"
+done
+
+# Create DNS update script for OpenVPN
+echo "Creating OpenVPN DNS update script..."
+cat > /etc/openvpn/update-resolv-conf << 'EOF'
+#!/bin/sh
+interface=$1
+script_context=$6
+case $script_context in
+    up)
+        echo 'nameserver 10.2.0.1' > /tmp/resolv.conf.openvpn
+        echo 'nameserver 10.2.0.2' >> /tmp/resolv.conf.openvpn
+        ;;
+    down)
+        rm -f /tmp/resolv.conf.openvpn
+        ;;
+esac
+exit 0
+EOF
+chmod +x /etc/openvpn/update-resolv-conf
+
+# Install required packages for testing and connectivity
+echo "Installing required packages..."
+opkg update >/dev/null 2>&1
+opkg install curl netcat >/dev/null 2>&1
+
 # Commit all changes
 echo "Committing configuration changes..."
 uci commit network
@@ -90,6 +122,39 @@ echo "Restarting network services..."
 # Wait for network to come up
 echo "Waiting for network to stabilize..."
 sleep 5
+
+# Configure OpenVPN
+echo "Setting up OpenVPN with random profile..."
+cd /etc/openvpn
+./select-random-profile.sh
+/etc/init.d/openvpn enable
+/etc/init.d/openvpn start
+
+# Wait for VPN connection to establish
+echo "Waiting for VPN connection to establish..."
+sleep 20
+
+# Set up VPN routing (after VPN is connected)
+if ip link show tun0 >/dev/null 2>&1; then
+    echo "Configuring VPN routing..."
+    # Keep original route with higher metric for management access
+    ip route add default via 13.0.0.254 dev phy0-sta0 metric 100 2>/dev/null || true
+    # Add VPN as preferred default route
+    ip route add default via 10.96.0.1 dev tun0 metric 50 2>/dev/null || true
+    echo "VPN routing configured successfully"
+else
+    echo "Warning: VPN connection not established yet"
+fi
+
+# Set up backend services for HAProxy health checks
+echo "Setting up backend services for HAProxy health checks..."
+
+# Set up service on port 8090 for VPN load balancer health checks
+nohup bash -c "while true; do echo \"VPN Backend ${BOX_IP} Ready\" | nc -l 8090; sleep 1; done" >/dev/null 2>&1 &
+
+# Note: Port 80 (uhttpd) is already running for TCP load balancer health checks
+
+echo "Backend services configured for HAProxy health monitoring"
 
 echo ""
 echo "=========================================="

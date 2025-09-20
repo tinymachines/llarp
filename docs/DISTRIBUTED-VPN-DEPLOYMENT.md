@@ -41,16 +41,29 @@ Box 1 (VPN A)        Box 2 (VPN B)        Box 3 (VPN C)
 
 ## Phase 1: Master Router Configuration
 
-### 1. Install Required Packages
+### Automated Master Setup
+
+Use the provided configuration script to apply all required tweaks:
+
+```bash
+# Run the master configuration script
+./configure-master-router.sh
+```
+
+### Manual Master Configuration (Alternative)
+
+If you prefer manual configuration, follow these steps:
+
+#### 1. Install Required Packages
 
 ```bash
 ssh root@17.0.0.1 "
 opkg update
-opkg install haproxy curl netcat
+opkg install haproxy curl netcat kmod-usb-net kmod-usb-net-asix-ax88179
 "
 ```
 
-### 2. Fix LuCI Web Interface (OpenWRT 24.x)
+#### 2. Fix LuCI Web Interface (OpenWRT 24.x)
 
 ```bash
 ssh root@17.0.0.1 "
@@ -63,19 +76,7 @@ uci commit uhttpd
 "
 ```
 
-### 3. Install USB Ethernet Drivers (if using USB adapters)
-
-```bash
-ssh root@17.0.0.1 "
-opkg install kmod-usb-net kmod-usb-net-asix-ax88179
-"
-```
-
-Note: Switch-based setup is recommended over USB adapters for better performance.
-
-### 4. Configure HAProxy Load Balancer
-
-Create `/etc/haproxy.cfg` for switch-based setup:
+#### 3. Configure HAProxy Load Balancer
 
 ```bash
 ssh root@17.0.0.1 "cat > /etc/haproxy.cfg << 'EOF'
@@ -127,23 +128,16 @@ frontend stats
     stats uri /stats
     stats refresh 10s
 EOF"
-```
 
-### 5. Enable HAProxy Service
+#### 4. Enable HAProxy Service
 
 ```bash
 ssh root@17.0.0.1 "
-# Enable and start HAProxy
 /etc/init.d/haproxy enable
 /etc/init.d/haproxy start
-
-# Verify HAProxy is running
 /etc/init.d/haproxy status
-netstat -ln | grep -E ':8080|:8090|:8404'
 "
 ```
-
-Note: mwan3 is not needed for switch-based setup as all workers are on the same network segment.
 
 ## Phase 2: Image Preparation and Deployment
 
@@ -157,11 +151,25 @@ Flash the master image to additional Raspberry Pi devices that will serve as VPN
 
 ### 3. Configure Endpoint Boxes
 
-Use the provided configuration scripts to convert cloned images into VPN endpoints:
+Use the provided parameterized configuration script to convert cloned images into VPN endpoints:
 
-#### Box 2 Configuration Script
+#### Automated Worker Configuration
 
-Create `configure-box2.sh`:
+```bash
+# Configure workers using the parameterized script
+./configure-worker-box.sh 1    # Worker 1 → 17.0.0.10
+./configure-worker-box.sh 2    # Worker 2 → 17.0.0.11
+./configure-worker-box.sh 3    # Worker 3 → 17.0.0.12
+
+# Or use the cluster management script
+./setup-cluster.sh configure 1
+./setup-cluster.sh configure 2
+./setup-cluster.sh configure 3
+```
+
+#### Legacy Individual Configuration Scripts
+
+For backward compatibility, individual scripts are also available:
 
 ```bash
 #!/bin/bash
