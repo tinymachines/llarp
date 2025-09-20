@@ -46,36 +46,36 @@ Box 1 (VPN A)        Box 2 (VPN B)        Box 3 (VPN C)
 ```bash
 ssh root@17.0.0.1 "
 opkg update
-opkg install haproxy mwan3
+opkg install haproxy curl netcat
 "
 ```
 
-### 2. Configure Network Segments
+### 2. Fix LuCI Web Interface (OpenWRT 24.x)
 
 ```bash
 ssh root@17.0.0.1 "
-# Configure LAN2 interface for 17.1.0.0/24
-uci set network.lan2=interface
-uci set network.lan2.proto='static'
-uci set network.lan2.ipaddr='17.1.0.1'
-uci set network.lan2.netmask='255.255.255.0'
-uci set network.lan2.device='eth1'
-
-# Configure LAN3 interface for 17.2.0.0/24
-uci set network.lan3=interface
-uci set network.lan3.proto='static'
-uci set network.lan3.ipaddr='17.2.0.1'
-uci set network.lan3.netmask='255.255.255.0'
-uci set network.lan3.device='eth2'
-
-# Commit network changes
-uci commit network
+# Fix uhttpd configuration for OpenWRT 24.x ucode
+uci delete uhttpd.main.lua_prefix 2>/dev/null || true
+uci set uhttpd.main.cgi_prefix='/cgi-bin'
+uci set uhttpd.main.rfc1918_filter='0'
+uci commit uhttpd
+/etc/init.d/uhttpd restart
 "
 ```
 
-### 3. Configure HAProxy Load Balancer
+### 3. Install USB Ethernet Drivers (if using USB adapters)
 
-Create `/etc/haproxy.cfg`:
+```bash
+ssh root@17.0.0.1 "
+opkg install kmod-usb-net kmod-usb-net-asix-ax88179
+"
+```
+
+Note: Switch-based setup is recommended over USB adapters for better performance.
+
+### 4. Configure HAProxy Load Balancer
+
+Create `/etc/haproxy.cfg` for switch-based setup:
 
 ```bash
 ssh root@17.0.0.1 "cat > /etc/haproxy.cfg << 'EOF'
@@ -83,7 +83,6 @@ global
     maxconn 4096
     ulimit-n 65535
     nbthread 4
-    log stdout local0
 
 defaults
     mode tcp
@@ -99,112 +98,38 @@ frontend tcp_frontend
     mode tcp
     default_backend tcp_backend
 
-# TCP Backend Pool
+# TCP Backend Pool - Switch-based setup
 backend tcp_backend
     mode tcp
     balance roundrobin
-    # Current Lazarus box on 17.0.0.0/24
-    server lazarus1 17.0.0.10:8080 check
-    # Future box 2 on 17.1.0.0/24
-    server lazarus2 17.1.0.10:8080 check
-    # Future box 3 on 17.2.0.0/24
-    server lazarus3 17.2.0.10:8080 check
+    server lazarus1 17.0.0.10:80 check
+    server lazarus2 17.0.0.11:80 check
+    server lazarus3 17.0.0.12:80 check
 
-# UDP Load Balancer (for VPN traffic)
-frontend udp_frontend
-    bind *:1194 interface 17.0.0.1
+# VPN Load Balancer Frontend
+frontend vpn_frontend
+    bind *:8090
     mode tcp
-    default_backend udp_backend
+    default_backend vpn_backend
 
-backend udp_backend
+backend vpn_backend
     mode tcp
     balance roundrobin
-    # OpenVPN/WireGuard endpoints
-    server vpn1 17.0.0.10:1194 check
-    server vpn2 17.1.0.10:1194 check
-    server vpn3 17.2.0.10:1194 check
+    server vpn1 17.0.0.10:8090 check
+    server vpn2 17.0.0.11:8090 check
+    server vpn3 17.0.0.12:8090 check
 
 # Statistics Interface
 frontend stats
     bind *:8404
+    mode http
     stats enable
     stats uri /stats
-    stats refresh 30s
+    stats refresh 10s
 EOF"
 ```
 
-### 4. Configure mwan3 Multi-WAN
-
-```bash
-ssh root@17.0.0.1 "
-# Interface 1 (current LAN)
-uci set mwan3.wan1=interface
-uci set mwan3.wan1.enabled='1'
-uci set mwan3.wan1.count='2'
-uci set mwan3.wan1.timeout='2'
-uci set mwan3.wan1.interval='5'
-uci set mwan3.wan1.down='3'
-uci set mwan3.wan1.up='8'
-uci add_list mwan3.wan1.track_ip='8.8.8.8'
-uci add_list mwan3.wan1.track_ip='1.1.1.1'
-
-# Interface 2 (future LAN2)
-uci set mwan3.wan2=interface
-uci set mwan3.wan2.enabled='1'
-uci set mwan3.wan2.count='2'
-uci set mwan3.wan2.timeout='2'
-uci set mwan3.wan2.interval='5'
-uci set mwan3.wan2.down='3'
-uci set mwan3.wan2.up='8'
-uci add_list mwan3.wan2.track_ip='8.8.8.8'
-uci add_list mwan3.wan2.track_ip='1.1.1.1'
-
-# Interface 3 (future LAN3)
-uci set mwan3.wan3=interface
-uci set mwan3.wan3.enabled='1'
-uci set mwan3.wan3.count='2'
-uci set mwan3.wan3.timeout='2'
-uci set mwan3.wan3.interval='5'
-uci set mwan3.wan3.down='3'
-uci set mwan3.wan3.up='8'
-uci add_list mwan3.wan3.track_ip='8.8.8.8'
-uci add_list mwan3.wan3.track_ip='1.1.1.1'
-
-# Members for load balancing
-uci set mwan3.wan1_m1_w3=member
-uci set mwan3.wan1_m1_w3.interface='wan1'
-uci set mwan3.wan1_m1_w3.metric='1'
-uci set mwan3.wan1_m1_w3.weight='3'
-
-uci set mwan3.wan2_m1_w3=member
-uci set mwan3.wan2_m1_w3.interface='wan2'
-uci set mwan3.wan2_m1_w3.metric='1'
-uci set mwan3.wan2_m1_w3.weight='3'
-
-uci set mwan3.wan3_m1_w3=member
-uci set mwan3.wan3_m1_w3.interface='wan3'
-uci set mwan3.wan3_m1_w3.metric='1'
-uci set mwan3.wan3_m1_w3.weight='3'
-
-# Load balancing policy
-uci set mwan3.balanced=policy
-uci add_list mwan3.balanced.use_member='wan1_m1_w3'
-uci add_list mwan3.balanced.use_member='wan2_m1_w3'
-uci add_list mwan3.balanced.use_member='wan3_m1_w3'
-uci set mwan3.balanced.last_resort='unreachable'
-
-# Rule to apply load balancing
-uci set mwan3.default_rule=rule
-uci set mwan3.default_rule.dest_ip='0.0.0.0/0'
-uci set mwan3.default_rule.use_policy='balanced'
-uci set mwan3.default_rule.proto='all'
-
-# Commit mwan3 configuration
-uci commit mwan3
-"
-```
-
-### 5. Enable Services
+### 5. Enable HAProxy Service
 
 ```bash
 ssh root@17.0.0.1 "
@@ -212,14 +137,13 @@ ssh root@17.0.0.1 "
 /etc/init.d/haproxy enable
 /etc/init.d/haproxy start
 
-# Enable and start mwan3
-/etc/init.d/mwan3 enable
-/etc/init.d/mwan3 start
-
-# Reload network configuration
-/etc/init.d/network reload
+# Verify HAProxy is running
+/etc/init.d/haproxy status
+netstat -ln | grep -E ':8080|:8090|:8404'
 "
 ```
+
+Note: mwan3 is not needed for switch-based setup as all workers are on the same network segment.
 
 ## Phase 2: Image Preparation and Deployment
 
@@ -354,32 +278,73 @@ ssh root@17.0.0.1 "/tmp/configure-box3.sh"
 
 ## Phase 3: Hardware Connection
 
-### 1. Connect USB Ethernet Adapters
+### Switch-Based Connection (Recommended)
 
-- Connect USB-to-Ethernet adapter 1 to master router
-- Connect USB-to-Ethernet adapter 2 to master router
-- Verify they appear as eth1 and eth2
+1. **Connect ethernet switch** to master router
+2. **Connect all worker boxes** to the same ethernet switch
+3. **Power on all devices** and verify connectivity
 
-### 2. Connect Endpoint Boxes
-
-- Connect Box 2 ethernet to USB adapter 1 (17.1.0.0/24 network)
-- Connect Box 3 ethernet to USB adapter 2 (17.2.0.0/24 network)
+All devices will be on the same 17.0.0.0/24 network segment.
 
 ## Phase 4: VPN Configuration
 
-Configure different VPN providers on each endpoint box:
+### Fix OpenVPN Profiles and Setup
 
-### Box 1 (17.0.0.10)
-- Configure VPN Provider A (e.g., NordVPN, ExpressVPN)
-- Ensure VPN traffic routes through tun0
+All worker boxes come with ProtonVPN profiles pre-configured. Fix the authentication paths:
 
-### Box 2 (17.1.0.10)
-- Configure VPN Provider B (different from Box 1)
-- Ensure VPN traffic routes through tun0
+```bash
+# On each worker box, fix auth-user-pass paths
+for worker in 17.0.0.10 17.0.0.11 17.0.0.12; do
+  ssh root@$worker "
+    cd /etc/openvpn/profiles
+    for profile in *.ovpn; do
+      sed -i 's|auth-user-pass /home/bisenbek/shared/vpn/pass.txt|auth-user-pass /etc/openvpn/auth.txt|' \$profile
+      sed -i 's|^auth-user-pass\$|auth-user-pass /etc/openvpn/auth.txt|' \$profile
+    done
 
-### Box 3 (17.2.0.10)
-- Configure VPN Provider C (different from Boxes 1 & 2)
-- Ensure VPN traffic routes through tun0
+    # Create DNS update script
+    cat > /etc/openvpn/update-resolv-conf << 'EOF'
+#!/bin/sh
+interface=\$1
+script_context=\$6
+case \$script_context in
+    up) echo 'nameserver 10.2.0.1' > /tmp/resolv.conf.openvpn; echo 'nameserver 10.2.0.2' >> /tmp/resolv.conf.openvpn ;;
+    down) rm -f /tmp/resolv.conf.openvpn ;;
+esac
+exit 0
+EOF
+    chmod +x /etc/openvpn/update-resolv-conf
+
+    # Install curl for external IP testing
+    opkg update && opkg install curl
+
+    # Select random profile and start OpenVPN
+    cd /etc/openvpn
+    ./select-random-profile.sh
+    /etc/init.d/openvpn enable
+    /etc/init.d/openvpn start
+  "
+done
+```
+
+### Configure VPN Routing
+
+Set up proper routing to use VPN as default gateway:
+
+```bash
+# Allow initial VPN connection through original route, then switch to VPN
+for worker in 17.0.0.10 17.0.0.11 17.0.0.12; do
+  ssh root@$worker "
+    # Wait for VPN to establish, then set as default route
+    sleep 30
+    if ip link show tun0 >/dev/null 2>&1; then
+      ip route del default via 13.0.0.254 dev phy0-sta0 2>/dev/null || true
+      ip route add default via 10.96.0.1 dev tun0 metric 50
+      echo 'VPN routing configured for $worker'
+    fi
+  "
+done
+```
 
 ## Monitoring and Management
 
@@ -471,6 +436,49 @@ ping 17.2.0.10
 - Monitor VPN connection logs for anomalies
 - Use different VPN provider accounts to avoid correlation
 
+## Testing and Validation
+
+### Comprehensive Test Suite
+
+The system includes a comprehensive test suite in the `tests/` directory:
+
+```bash
+# Quick functionality test (10 seconds)
+./tests/quick-test.sh
+
+# Full comprehensive testing (5 minutes)
+./tests/run-all-tests.sh
+
+# Individual test components
+./tests/test-vpn-endpoints.sh      # VPN connections and diversity
+./tests/test-tcp-load-balancer.sh  # TCP traffic distribution
+./tests/test-http-load-balancer.sh # HTTP traffic and external IPs
+./tests/test-udp-load-balancer.sh  # UDP configuration validation
+```
+
+### Expected Test Results
+
+- ✅ All workers reachable and VPN-connected
+- ✅ HAProxy statistics accessible at http://17.0.0.1:8404/stats
+- ✅ Each worker showing different external IP addresses
+- ✅ Load balancing distributing traffic across workers
+- ✅ Response times under 100ms for local traffic
+
+## Usage and Integration
+
+See `docs/DISTRIBUTED-VPN-USAGE.md` for detailed usage examples including:
+- HTTP/TCP/UDP traffic routing
+- Client application integration
+- Performance monitoring
+- Scaling operations
+
 ## Conclusion
 
-This distributed VPN setup provides load-balanced, fault-tolerant VPN connectivity with automatic failover and traffic distribution across multiple exit points. The architecture scales easily by adding more endpoint boxes and can handle significant traffic loads on Raspberry Pi hardware.
+This distributed VPN setup provides load-balanced, fault-tolerant VPN connectivity with automatic failover and traffic distribution across multiple geographic exit points. The architecture scales easily by adding more endpoint boxes and can handle significant traffic loads on Raspberry Pi hardware.
+
+Key benefits:
+- **Geographic VPN diversity** across multiple locations
+- **Automatic failover** if VPN connections drop
+- **Round-robin load balancing** for optimal performance
+- **Simple scaling** with configuration scripts
+- **Comprehensive monitoring** via HAProxy statistics
